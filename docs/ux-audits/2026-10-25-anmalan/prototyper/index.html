@@ -1,0 +1,753 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp — anmälan och spärr (#1274)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* ── Frågan ──────────────────────────────────────────────────────────────────────────────
+     #1274: hur anmäler någon innehåll i Deckster, vad får anmälaren tillbaka, och vad ser designern
+     när en bild spärrats och hur invänder hen. Besluten som ligger fast (F4 fråga 1 och 12, #1268):
+     «vi» är den som driver tjänsten i dag; en borttagning är en spärr per hash, där servern,
+     renderaren, trycket och exporten behandlar hashen som om den inte fanns, historiken står kvar och
+     ritar bilden tom, och bytesen rensas bara när innehållet är olagligt.
+     Ytorna är ritade för hand med kontots, villkorssidans, editorns och telefonens egna färger och
+     mått, och mejlen i L72:s tre band (trä, papper, vitt) som tabeller med inline-stil.
+     PROTOTYP. Slängs när beslutet står i DESIGN-BESLUT.md.
+     ────────────────────────────────────────────────────────────────────────────────────── */
+  body { display: flex; flex-direction: column; min-height: 100vh; overflow: auto; }
+  .protorad { position: relative; z-index: 20; }
+  .protorad .flikar { display: flex; gap: 4px; flex-wrap: wrap; }
+  .protorad .flikar button[aria-pressed='true'] { background: #ffd98a; color: #2a2417; }
+  .protorad .grupp { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .protorad .grupp > span { color: #c8b98d; }
+  .protorad .grupp[hidden] { display: none; }
+  main.scen { flex: 1 1 auto; display: flex; flex-wrap: wrap; gap: 28px; justify-content: safe center; align-content: start; align-items: start; padding: 20px 16px 60px; background: #15171c; }
+  .ram { display: grid; gap: 6px; }
+  .sida { position: relative; outline: 1px solid #3a3f4b; box-shadow: 0 10px 40px rgb(0 0 0 / 45%); overflow: hidden; }
+  .sida[data-bredd='dator'] { width: 1040px; min-height: 680px; }
+  .sida[data-bredd='375'] { width: 375px; min-height: 740px; }
+  .sida[data-bredd='320'] { width: 320px; min-height: 568px; }
+  .sida[data-fast][data-bredd='375'] { height: 740px; }
+  .sida[data-fast][data-bredd='320'] { height: 568px; }
+  .sida[data-fast][data-bredd='dator'] { height: 680px; }
+  .etikett { color: var(--quiet-2); font-size: 11px; margin: 0; }
+  .etikett b { color: #e6ecfa; }
+  .ny { outline: 2px dashed #ffd98a; outline-offset: 3px; border-radius: 4px; }
+  .g { width: 16px; height: 16px; flex: none; }
+  .med { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+
+  /* ── Kontot och villkorssidan (account.css, terms-page.css, buttons.css) ───────────────────── */
+  .acc { --bg: #0f1117; --card: #171a23; --field: #14161c; --edge: #262a35; --muted: #9aa3b8; --soft: #c3cbdd; --ok: #7dd3a0; --ok-ink: #0b2a18; --sec-line: #6f7a90; --sec-ink: #dce3f2;
+    min-height: inherit; height: 100%; background: var(--bg); color: #dfe4ef; font: 16px/1.6 system-ui, sans-serif; box-sizing: border-box; position: relative; }
+  .acc :focus-visible { outline: 3px solid #9cc6ff; outline-offset: 2px; }
+  .acc button { font: inherit; cursor: pointer; }
+  .prim { min-height: 44px; padding: 0 18px; border: 0; border-radius: 10px; background: var(--ok); color: var(--ok-ink); font-weight: 700 !important; font-size: 15px; }
+  .sek { min-height: 44px; padding: 0 16px; border: 1px solid var(--sec-line); border-radius: 10px; background: transparent; color: var(--sec-ink); font-weight: 600 !important; font-size: 14px; }
+  .muted { color: var(--muted); font-size: 14px; line-height: 1.5; margin: 0; }
+  .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; padding: 8px 24px; border-bottom: 1px solid var(--edge); font-size: 14px; }
+  .sida:not([data-bredd='dator']) .bar { padding: 4px 12px; }
+  .brand { display: inline-flex; align-items: center; gap: 10px; min-height: 44px; margin-right: auto; color: #fff; font-weight: 700; font-size: 16px; }
+  .hand { width: 28px; height: 28px; }
+  .bar u { color: #9aa3b8; text-underline-offset: 3px; }
+  .doc { max-width: 680px; margin: 0 auto; padding: 28px 20px 48px; display: grid; gap: 18px; }
+  .sida:not([data-bredd='dator']) .doc { padding: 18px 12px 40px; gap: 14px; }
+  .doc h1 { margin: 0; color: #fff; font-size: 30px; line-height: 1.2; }
+  .sida:not([data-bredd='dator']) .doc h1 { font-size: 24px; }
+  .utkast { justify-self: start; margin: 0; padding: 4px 10px; border: 1px dashed #c8a24a; border-radius: 8px; background: #2a2417; color: #ffd98a; font-size: 12px; font-weight: 700; }
+  .lead { margin: 0; color: #c3cbdd; font-size: 15px; }
+  .rad11 { border: 1px solid var(--edge); border-radius: 14px; background: #171a23; }
+  .rad11 .huvud { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 4px 10px; padding: 14px 16px; }
+  .rad11 .nr { color: #6f7a90; font-weight: 700; }
+  .rad11 b { color: #fff; font-size: 17px; }
+  .rad11 .ks { grid-column: 2; color: #c3cbdd; font-size: 15px; line-height: 1.5; }
+  .rad11 .full { display: grid; gap: 10px; padding: 0 16px 16px 56px; font-size: 15px; }
+  .sida:not([data-bredd='dator']) .rad11 .full { padding: 0 12px 14px; }
+  .rad11 .full p { margin: 0; }
+  .grann { opacity: .5; }
+  .about { margin: 18px 0 0; text-align: center; font-size: 12px; color: var(--muted); display: flex; flex-wrap: wrap; justify-content: center; gap: 0 4px; }
+  .about u { color: inherit; text-underline-offset: 3px; display: inline-flex; align-items: center; min-height: 44px; }
+  /* Formuläret */
+  .form { display: grid; gap: 18px; }
+  .falt { display: grid; gap: 6px; align-content: start; }
+  .falt > label, .falt > .lbl { font-weight: 650; color: #fff; font-size: 15px; }
+  .falt small { color: var(--muted); font-size: 13px; line-height: 1.45; }
+  .falt input[type=text], .falt input[type=email], .falt textarea { min-height: 44px; box-sizing: border-box; border-radius: 10px; border: 1px solid var(--sec-line); background: #14161c; color: #fff; font: inherit; font-size: 15px; padding: 9px 12px; width: 100%; }
+  .falt textarea { min-height: 88px; resize: vertical; }
+  .falt [aria-invalid=true] { border-color: #f0b64a; box-shadow: inset 0 -2px 0 #f0b64a; }
+  .falt .fel { color: #ffd98a; font-size: 13px; }
+  .tva { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .sida:not([data-bredd='dator']) .tva { grid-template-columns: 1fr; }
+  .kryss { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border: 1px solid var(--edge); border-radius: 12px; background: #171a23; font-size: 15px; line-height: 1.5; cursor: pointer; }
+  .kryss input { width: 20px; height: 20px; margin: 2px 0 0; accent-color: var(--ok); flex: none; }
+  .knapprad { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .notis { margin: 0; padding: 10px 14px; border-radius: 10px; background: #1f2937; color: #c3cbdd; font-size: 14px; line-height: 1.5; }
+  .klar { display: grid; gap: 8px; padding: 18px; border-radius: 14px; background: #1b2a22; color: #d8ffe8; line-height: 1.5; font-size: 15px; }
+  .klar strong { color: #fff; font-size: 18px; }
+  .klar p { margin: 0; }
+  .bock { display: inline-grid; place-items: center; width: 24px; height: 24px; flex: none; border-radius: 50%; background: var(--ok); color: #0b2a18; font-size: 14px; font-weight: 800; }
+  /* B: stegen */
+  .steg { display: flex; gap: 6px; flex-wrap: wrap; margin: 0; padding: 0; list-style: none; font-size: 13px; color: var(--muted); }
+  .steg li { display: inline-flex; align-items: center; gap: 6px; }
+  .steg li i { font-style: normal; display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; border: 1px solid #4a5163; font-size: 12px; font-weight: 700; }
+  .steg li[data-pa] { color: #fff; font-weight: 650; }
+  .steg li[data-pa] i { background: var(--ok); color: var(--ok-ink); border-color: var(--ok); }
+  .steg li[data-klar] i { background: #2b303c; color: #fff; }
+  .val { display: grid; gap: 8px; }
+  .valk { display: grid; gap: 2px; text-align: left; padding: 12px 14px; border-radius: 12px; border: 1px solid #3b414e; background: #171a23; color: #fff; }
+  .valk b { font-size: 16px; }
+  .valk span { font-size: 14px; color: #c3cbdd; font-weight: 400; line-height: 1.4; }
+  .valk[aria-pressed=true] { border-color: var(--ok); box-shadow: inset 4px 0 0 var(--ok); }
+  .hittat { display: flex; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 10px; background: #1b2a22; color: #d8ffe8; font-size: 14px; }
+  /* Status (B) */
+  .tidslinje { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
+  .tidslinje li { display: grid; grid-template-columns: 24px 1fr; gap: 10px; padding: 8px 0; color: var(--muted); font-size: 15px; }
+  .tidslinje li i { width: 14px; height: 14px; margin: 5px; border-radius: 50%; border: 2px solid #4a5163; box-sizing: border-box; }
+  .tidslinje li[data-klar] { color: #fff; }
+  .tidslinje li[data-klar] i { background: var(--ok); border-color: var(--ok); }
+  .tidslinje small { display: block; color: var(--muted); font-size: 13px; }
+  .fakta { margin: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 16px; font-size: 15px; }
+  .sida:not([data-bredd='dator']) .fakta { grid-template-columns: 1fr; gap: 2px; }
+  .sida:not([data-bredd='dator']) .fakta dd { margin-bottom: 8px; }
+  .fakta dt { color: var(--muted); }
+  .fakta dd { margin: 0; color: #e6ecfa; }
+
+  /* ── Mina spel (account.css) ──────────────────────────────────────────────────────────────── */
+  .home { padding: 28px 40px; display: grid; gap: 16px; }
+  .home header { display: flex; justify-content: space-between; align-items: baseline; }
+  .home h1 { margin: 0; font-size: 28px; color: #fff; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .spel { background: #171a23; border: 1px solid #262a35; border-radius: 16px; padding: 14px; display: grid; gap: 6px; color: #fff; font-size: 15px; }
+  .spel i { display: block; height: 96px; aspect-ratio: 63 / 88; border-radius: 4px; background: var(--c); }
+  .spel small { color: #9aa3b8; font-size: 13px; }
+  .login { width: min(400px, 100%); margin: 40px auto 0; background: #171a23; border: 1px solid #262a35; border-radius: 20px; padding: 24px; display: grid; gap: 14px; box-sizing: border-box; }
+  .sida:not([data-bredd='dator']) .login { margin: 16px; width: auto; padding: 18px; }
+  .login h1 { margin: 0; font-size: 24px; color: #fff; display: flex; gap: 10px; align-items: center; }
+
+  /* ── Kortet ───────────────────────────────────────────────────────────────────────────────── */
+  .kort { --w: 120px; width: var(--w); aspect-ratio: 63 / 88; border-radius: calc(var(--w) * .05); background: #f3ead6; box-shadow: 0 2px 6px rgb(0 0 0 / 45%); display: grid; grid-template-rows: auto 1fr auto; padding: calc(var(--w) * .05); gap: calc(var(--w) * .04); box-sizing: border-box; color: #2a2417; font-family: Georgia, serif; flex: none; }
+  .kort .titel { font-weight: 700; font-size: calc(var(--w) * .085); padding: calc(var(--w) * .02) calc(var(--w) * .04); background: #e3d6b6; border-radius: calc(var(--w) * .02); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .kort .bild { border-radius: calc(var(--w) * .02); background: radial-gradient(circle at 70% 30%, #f4d58d 0 12%, transparent 13%), linear-gradient(170deg, #9cc3a4 0 40%, #3f8f5f 40% 62%, #23523a 62%); border: 1px solid #c8b993; }
+  .kort .bild[data-konst=b] { background: radial-gradient(circle at 30% 70%, #e05d4f 0 18%, transparent 19%), linear-gradient(200deg, #c8d3e8 0 45%, #6a7fa8 45%); }
+  .kort .bild[data-konst=c] { background: linear-gradient(135deg, #f0b64a 0 30%, #b8461f 30% 55%, #4a2f1f 55%); }
+  /* Spärrad: bildelementet står kvar i mallen men har ingen bild, alltså kortets eget papper. */
+  .kort .bild[data-tom] { background: transparent; border-color: transparent; }
+  .kort .text { font-size: calc(var(--w) * .07); line-height: 1.25; min-height: calc(var(--w) * .28); }
+  .kort .text b { font-family: system-ui, sans-serif; }
+
+  /* ── Mejlklienten ──────────────────────────────────────────────────────────────────────────── */
+  .klient { min-height: inherit; height: 100%; background: #f6f8fc; font: 14px system-ui, sans-serif; color: #1f1f1f; display: grid; grid-template-rows: auto 1fr; }
+  .klient .kh { padding: 12px 20px; border-bottom: 1px solid #e0e3ea; background: #fff; display: grid; gap: 2px; }
+  .klient .kh b { font-size: 18px; font-weight: 500; }
+  .klient .kh span { color: #5f6368; font-size: 12px; }
+  .klient .kropp { overflow: auto; background: #fff; }
+  .klient table, .klient td { border: 0; border-collapse: collapse; }
+  .klient td[align=center] { text-align: center; }
+  .sida:not([data-bredd='dator']) .klient .kh { padding: 10px 12px; }
+  .sida:not([data-bredd='dator']) .klient .kh b { font-size: 16px; }
+
+  /* ── Editorn (proto.css har krönet och Tabell) ─────────────────────────────────────────────── */
+  .byd-editor { min-height: inherit; height: 100%; display: flex; flex-direction: column; }
+  .sparr-tom { width: 60px; height: 38px; display: grid; place-items: center; border-radius: 5px; border: 1px solid #7a6a3c; background: repeating-linear-gradient(135deg, #2a2417 0 6px, #231e14 6px 12px); color: #ffd98a; font-size: 10px; font-weight: 700; flex: none; }
+  .t-bild > .sparr-tom, .smal-rad > .sparr-tom { width: 60px; min-width: 60px; height: 38px; min-height: 38px; border: 1px solid #7a6a3c; border-radius: 5px; background: repeating-linear-gradient(135deg, #2a2417 0 6px, #231e14 6px 12px); color: #ffd98a; }
+  button.sparr-tom { cursor: pointer; font: inherit; font-size: 10px; font-weight: 700; padding: 0; }
+  button.sparr-tom[aria-expanded=true] { box-shadow: 0 0 0 2px #9cc6ff; }
+  .t-bild > i { background: var(--c); }
+  .t-fraga textarea { flex: 1 1 100%; min-height: 70px; border-radius: 8px; border: 1px solid #3b414e; background: #11141b; color: #fff; font: inherit; padding: 8px 10px; }
+  .t-fraga dl { flex: 1 1 100%; margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; font-size: 13px; }
+  .t-fraga dt { color: #a9b3c9; }
+  .t-fraga dd { margin: 0; }
+  .ed-band { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 10px 16px; background: #2a2417; border-bottom: 1px solid #4a4230; color: #ffe9b8; font-size: 13px; line-height: 1.45; }
+  .ed-band p { margin: 0; flex: 1 1 200px; }
+  .ed-band button { min-height: 44px; padding: 0 14px; border: 1px solid #a39a86; border-radius: 8px; background: transparent; color: #ffe9b8; font: inherit; font-weight: 700; cursor: pointer; }
+  /* Smal editor (L12: editorn är skrivbordsförst och degraderar) */
+  .smal-lista { display: grid; gap: 8px; padding: 12px; }
+  .smal-rad { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: center; padding: 10px; border-radius: 10px; background: #1b1d23; border: 1px solid #2f333d; color: #dce3f2; font-size: 13px; }
+  .smal-rad b { color: #fff; font-size: 14px; display: block; }
+  .smal-rad i.t { width: 60px; height: 38px; border-radius: 5px; display: block; background: var(--c); }
+  .smal-rad .t-fraga { grid-column: 1 / -1; margin: 0; }
+
+  /* ── Bordet och telefonen (player.css) ─────────────────────────────────────────────────────── */
+  .tel { --bg: #14161c; --muted: #9aa3b8; --control: #242938; --line: #2c3242; position: relative; height: 100%; min-height: inherit; background: var(--bg); color: #eee; font: 14px system-ui, sans-serif; box-sizing: border-box; display: flex; flex-direction: column; }
+  .tel header { flex: none; display: flex; align-items: center; gap: 10px; padding: 6px 16px; min-height: 52px; border-bottom: 1px solid #262a35; color: var(--muted); font-size: 13px; }
+  .tel header strong { color: #fff; font-size: 15px; display: block; }
+  .tel .yta { flex: 1 1 auto; min-height: 0; position: relative; overflow: hidden; }
+  .flikrad { flex: none; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-top: 1px solid #262a35; }
+  .flikrad span { min-height: 56px; display: grid; place-items: center; color: var(--muted); font-size: 12px; font-weight: 600; }
+  .flikrad span[data-pa] { color: #fff; box-shadow: inset 0 3px 0 #7dd3a0; }
+  .handen { display: flex; justify-content: center; padding: 18px 8px; }
+  .handen .kort { margin-left: -38px; } .handen .kort:first-child { margin-left: 0; }
+  .lyft { position: absolute; inset: 0; background: rgb(5 7 12 / 78%); display: grid; justify-items: center; align-content: start; gap: 14px; padding: 18px 16px; z-index: 3; }
+  .lyft .knappar { display: grid; gap: 8px; width: 100%; max-width: 320px; }
+  .lyft .knappar button { min-height: 48px; border-radius: 12px; border: 0; background: #7dd3a0; color: #0b2a18; font: 700 16px system-ui; }
+  .lyft .knappar button.sek2 { background: transparent; border: 1px solid #2c3242; color: #fff; font-weight: 600; }
+  .lyft .knappar button.tyst { background: transparent; color: #c3cbdd; font-weight: 500; text-decoration: underline; text-underline-offset: 3px; font-size: 14px; min-height: 44px; }
+  .ark-skym { position: absolute; inset: 0; z-index: 6; background: rgb(5 7 12 / 65%); display: flex; align-items: flex-end; }
+  .ark { width: 100%; box-sizing: border-box; display: grid; gap: 12px; padding: 18px 16px 20px; border-radius: 18px 18px 0 0; background: #1b1e27; border-top: 1px solid #2c3242; max-height: 94%; overflow-y: auto; color: #eee; font-size: 15px; }
+  .ark h2 { margin: 0; font-size: 18px; color: #fff; }
+  .ark .falt > label, .ark .falt > .lbl { font-size: 14px; }
+  .ark .falt input, .ark .falt textarea { background: #14161c; }
+  .ark .kryss { background: #14161c; font-size: 14px; }
+  .ark .prim { min-height: 52px; font-size: 16px; border-radius: 12px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chips button { min-height: 44px; padding: 0 12px; border-radius: 10px; border: 1px solid #3b414e; background: #14161c; color: #eee; font: inherit; font-size: 14px; }
+  .chips button[aria-pressed=true] { border-color: #7dd3a0; box-shadow: inset 0 -3px 0 #7dd3a0; color: #fff; font-weight: 650; }
+  .vad-ruta { display: flex; gap: 12px; align-items: center; padding: 10px; border-radius: 12px; background: #14161c; border: 1px solid #2c3242; font-size: 14px; line-height: 1.4; }
+  .vad-ruta small { display: block; color: #9aa3b8; font-size: 12px; }
+  .toast { flex: none; margin: 0; padding: 10px 16px; background: #1b2a22; color: #d8ffe8; font-size: 14px; line-height: 1.45; border-top: 1px solid #2b4a38; }
+  .tvfilt { position: absolute; inset: 40px 60px; border-radius: 30px; background: radial-gradient(ellipse at center, #2e6b45, #1d4a30); border: 16px solid #4a2f1f; display: flex; align-items: center; justify-content: center; gap: 26px; }
+  .tvfilt .hog { position: relative; }
+  .tvfilt .hog small { position: absolute; left: 0; right: 0; bottom: -22px; text-align: center; color: #cfe5d6; font-size: 12px; }
+  .skym-dialog { position: absolute; inset: 0; z-index: 5; display: grid; place-items: start center; padding: 50px 16px; background: rgb(5 7 12 / 72%); overflow: auto; }
+  .dialog { width: min(560px, 100%); box-sizing: border-box; display: grid; gap: 14px; padding: 24px; border-radius: 20px; background: #171a23; border: 1px solid #343a4a; box-shadow: 0 20px 60px rgb(0 0 0 / 60%); }
+  .dialog h2 { margin: 0; font-size: 20px; color: #fff; }
+
+  /* ── Exporten och historiken ───────────────────────────────────────────────────────────────── */
+  .trad { margin: 0; padding: 12px 14px; border-radius: 12px; background: #11141b; border: 1px solid #262a35; font: 12.5px/1.6 ui-monospace, Menlo, monospace; color: #c3cbdd; white-space: pre; overflow-x: auto; }
+  .trad em { font-style: normal; color: #7dd3a0; }
+  .trad s { text-decoration: none; color: #6b7387; }
+  .trad mark { background: none; color: #ffd98a; }
+  .versioner { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+  .versioner li { display: grid; gap: 2px; padding: 10px 12px; border-radius: 10px; border: 1px solid #2f333d; background: #1b1d23; font-size: 13px; color: #c3cbdd; }
+  .versioner li b { color: #fff; font-size: 14px; }
+  .versioner li[data-vald] { border-color: #3c8ce7; box-shadow: inset 3px 0 0 #3c8ce7; }
+  .versioner li small { color: #ffd98a; }
+  .term { margin: 0; padding: 14px 16px; border-radius: 12px; background: #0b0d10; border: 1px solid #262a35; font: 12.5px/1.65 ui-monospace, Menlo, monospace; color: #c3cbdd; white-space: pre-wrap; }
+  .term b { color: #7dd3a0; font-weight: 400; }
+  .term i { color: #6b7387; font-style: normal; }
+</style>
+</head>
+<body>
+<div class="protorad" role="region" aria-label="Prototypens rad (inte en del av förslaget)">
+  <div class="fraga" style="all:unset;flex:1 1 320px;min-width:0">
+    <p><b>PROTOTYP #1274 · anmälan och spärr per hash.</b> Formulären och invändningarna går att klicka; «Läge» visar stegen utan att fylla i.</p>
+    <p>Växla variant med A/B/C eller ← →. Bredden «Alla» ritar dator, 375 och 320 bredvid varandra. Streckad gul ram = det som är nytt.</p>
+  </div>
+  <div class="vaxlare" role="group" aria-label="Variant" id="vaxlare"></div>
+  <div class="grupp"><span>Yta</span><div class="flikar" id="ytor"></div></div>
+  <div class="grupp" id="lagegrupp"><span>Läge</span><div class="flikar" id="lagen"></div></div>
+  <div class="grupp"><span>Bredd</span><div class="flikar" id="bredd"></div></div>
+  <button type="button" id="omstart">Börja om</button>
+  <p class="anteckning" id="anteckning"></p>
+</div>
+<main class="scen" id="scen"></main>
+
+<script>
+// ── Glyferna: #1083:s hand, 16-rutnät, 1,6 rund linje ────────────────────────────────────────────
+const P = {
+  left: 'M13 8H3M7 4 3 8l4 4',
+  flag: 'M3.75 14V2.5M3.75 3h8l-1.75 3 1.75 3h-8',
+  info: 'M8 7.25V11M8 5v.01',
+  mail: 'M2.5 4h11v8h-11zM2.75 4.25 8 8.5l5.25-4.25',
+  down: 'M8 2.5v8M4.75 7.25 8 10.5l3.25-3.25M3 13.25h10',
+  swap: 'M3 5.5h9.5M10 3l2.5 2.5L10 8M13 10.5H3.5M6 8l-2.5 2.5L6 13',
+}
+const g = (n) => `<svg class="g" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="${P[n]}"/>${n === 'info' ? '<circle cx="8" cy="8" r="6"/>' : ''}</svg>`
+const HAND = `<svg class="hand" viewBox="0 0 32 32" aria-hidden="true"><rect x="5" y="8" width="13" height="18" rx="2" transform="rotate(-14 11 17)" fill="#e0a73a" stroke="#171a23" stroke-width="1.5"/><rect x="10" y="6" width="13" height="18" rx="2" fill="#3f8f5f" stroke="#171a23" stroke-width="1.5"/><rect x="15" y="8" width="13" height="18" rx="2" transform="rotate(14 21 17)" fill="#efe8d8" stroke="#171a23" stroke-width="1.5"/></svg>`
+
+// ── Varianterna ──────────────────────────────────────────────────────────────────────────────────
+const V = {
+  A: { namn: 'A · En sida, ett mejl · rekommenderas, med C:s ruta i editorn',
+    not: '<b>Anmälan</b> är en egen sida, /villkor/anmal, i villkorssidans form: fem fält och god tro i den ordning DSA art. 16 räknar dem, och «Var» tar rumskod, länk eller spelets namn. <b>Kvittot</b> är ett mejl i L72:s band som upprepar anmälan. <b>Designern</b> får ett mejl med skälen och <b>invänder genom att svara</b> på det; i editorn är «Spärrad» i cellen en knapp som öppnar C:s remsa med skälen och «Byt bilden», men utan invändningsfält. <span class="plus">+ minst ny yta, en enda väg in, ingen ny tabell för invändningar; operatören läser allt i sin inkorg</span> <span class="minus">− en rumskod gäller i tre timmar, så en sen anmälan säger ofta bara spelets namn; invändningen lever i en mejltråd</span>' },
+  B: { namn: 'B · Fyra steg, ett ärende',
+    not: '<b>Anmälan</b> är en guide i fyra steg: vad gäller det (valet styr frågorna: «mitt verk» frågar efter originalet, «rör barn» gör namn och adress frivilliga), var, varför och vem. Adressen <b>bekräftas med en länk</b> innan anmälan räknas. <b>Kvittot</b> har ett ärendenummer och «Följ anmälan». <b>Designern</b> får ett band i editorn och en <b>egen sida per spärr</b> med beslutet och ett invändningsfält. <span class="plus">+ varje anmälan är komplett och adressen är prövad; båda parter ser var ärendet står</span> <span class="minus">− mest att bygga: guide, ärenden, statussida, spärrsida; länken stoppar den som inte vill lämna en adress</span>' },
+  C: { namn: 'C · Från kortet',
+    not: '<b>Anmälan</b> börjar där bilden syns: ett lyft kort på telefonen får «Anmäl bilden…», och arket bär med sig bordet och kortet, så att anmälaren bara säger varför och vem. Från raden och villkorssidan öppnar samma ark med «Var» som fritt fält. <b>Kvittot</b> är en rad på telefonen och ett kort mejl. <b>Designern</b> trycker på den spärrade cellen i Tabell och får L9:s remsa med skälen, «Byt bilden» och «Invänd…». <span class="plus">+ platsen blir exakt och överlever rumskoden; designern får veta varför cellen är tom där hen ser den</span> <span class="minus">− ett tredje val på det lyfta kortet, en yta som är prövad och full; ett ark på dator ser lånat ut</span>' },
+}
+const YTOR = {
+  ingang: 'Ingången',
+  formular: 'Formuläret',
+  kvitto: 'Kvittot',
+  operator: 'Operatören',
+  agare: 'Designerns mejl',
+  editor: 'Editorn och invändningen',
+  bordet: 'Bordet',
+  export: 'Exporten',
+  historik: 'Historiken',
+}
+const LAGEN = {
+  ingang: { A: [['raden', 'Raden'], ['villkor', 'Villkorssidan']], B: [['raden', 'Raden'], ['villkor', 'Villkorssidan']], C: [['raden', 'Raden'], ['villkor', 'Villkorssidan'], ['kortet', 'Det lyfta kortet']] },
+  formular: { A: [['tomt', 'Tomt'], ['fel', 'Saknas något'], ['ifyllt', 'Ifyllt']], B: [['s1', '1 Vad'], ['s2', '2 Var'], ['s3', '3 Varför'], ['s4', '4 Vem'], ['bekrafta', 'Bekräfta adressen']], C: [['kortet', 'Från kortet'], ['raden', 'Från raden']] },
+  kvitto: { A: [['skarm', 'Skärmen'], ['mejl', 'Kvittomejlet']], B: [['bekraftmejl', 'Bekräftelsemejlet'], ['mejl', 'Kvittomejlet'], ['status', 'Följ anmälan']], C: [['skarm', 'Skärmen'], ['mejl', 'Kvittomejlet']] },
+  operator: null,
+  agare: { A: [['olaga', 'Intrång (bytes kvar)'], ['olagligt', 'Olagligt (rensat)']], B: [['olaga', 'Intrång (bytes kvar)'], ['olagligt', 'Olagligt (rensat)']], C: [['olaga', 'Intrång (bytes kvar)'], ['olagligt', 'Olagligt (rensat)']] },
+  editor: { A: [['sparrad', 'Spärrad'], ['remsa', 'Remsan']], B: [['sparrad', 'Bandet'], ['sidan', 'Spärrsidan'], ['skickad', 'Invändningen skickad']], C: [['sparrad', 'Spärrad'], ['remsa', 'Remsan'], ['invand', 'Invänd'], ['skickad', 'Skickad']] },
+  bordet: null,
+  export: null,
+  historik: null,
+}
+
+const q = new URLSearchParams(location.search)
+let v = (q.get('v') || 'A').toUpperCase()
+let yta = q.get('yta') || 'ingang'
+let bredd = q.get('bredd') || 'alla'
+let lage = q.get('lage') || ''
+let st = {}
+const omstart = () => { st = { typ: '', god: false, chip: v === 'C' ? 'verk' : '', val: 'verk' } }
+omstart()
+const lagen = () => (LAGEN[yta] ? LAGEN[yta][v] : null)
+const fixLage = () => { const l = lagen(); if (!l) { lage = ''; return } if (!l.some(([k]) => k === lage)) lage = l[0][0] }
+
+const EPOST = 'mira.lind@exempel.se'
+const KONTAKT = 'hej@deckster.se'
+const kort = (namn, text, { w = 120, konst = 'a', tom = false } = {}) => `<div class="kort" style="--w:${w}px"><div class="titel">${namn}</div><div class="bild" data-konst="${konst}" ${tom ? 'data-tom' : ''}></div><div class="text">${text}</div></div>`
+const SKOG = (o = {}) => kort('Skogsvaktaren', '<b>Spela:</b> titta på två kort i Skogen.', o)
+
+// ════════════════════════════════════════════════════════════════════════════════════════════════
+// Raden (#757) och villkorssidan
+// ════════════════════════════════════════════════════════════════════════════════════════════════
+const anmalLank = (v === 'B' ? 'Anmäl' : 'Anmäl')
+const rad = (w) => `<p class="about"><u>Villkor</u> · <u>Integritet</u> · <u class="ny">Anmäl</u> · <u>Kontakt</u> · Deckster 0.9.4</p>`
+function bar(w) { return `<div class="bar"><span class="brand">${HAND}<span>Deckster</span></span><u>English</u><u>${w === '320' ? 'Start' : 'Till start'}</u></div>` }
+
+function ingangRaden(w) {
+  if (w === 'dator') return `<div class="acc"><div class="home">
+    <header><h1>Mina spel</h1><span class="muted">mira.lind@exempel.se</span></header>
+    <div class="grid">
+      <div class="spel"><i style="--c:#3f8f5f"></i><b>Skogens råd</b><small>Sparat i dag 21:12</small></div>
+      <div class="spel"><i style="--c:#3f6fb0"></i><b>Stjärnhandel</b><small>Sparat 22 okt</small></div>
+      <div class="spel"><i style="--c:#b0703f"></i><b>Hamnen</b><small>Sparat 3 okt</small></div>
+    </div>
+    ${rad(w)}
+    <p class="muted" style="text-align:center;font-size:12px;color:#7d8597">(prototyp: samma rad står sist i inloggningskortet, på Mina spel, i Profil och på anslutningssidan)</p>
+  </div></div>`
+  return `<div class="acc"><div class="login"><h1>${HAND} Deckster</h1>
+    <p class="muted">Skriv din adress så skickas en länk att logga in med.</p>
+    <div class="falt"><label>E-post</label><input type="email" placeholder="namn@exempel.se"></div>
+    <button class="prim">Skicka länken</button>
+    ${rad(w)}
+  </div></div>`
+}
+
+function rad11(knapp) {
+  return `<div class="rad11"><div class="huvud"><span class="nr">11</span><b>Anmälan och borttagning</b><span class="ks">Ser du något som inte får finnas, anmäl det. Tar Deckster bort något får den som laddade upp det veta varför och kan invända.</span></div>
+    <div class="full">
+      <p>Anmäl innehåll som du tror är olagligt eller gör intrång i dina rättigheter. Säg vad det är, var det finns, varför det inte får finnas och vem du är, och att du lämnar uppgifterna i god tro.</p>
+      <div class="knapprad ny" style="justify-self:start">${knapp}</div>
+      <p>Håller anmälan spärrar vi innehållet och berättar för den som laddade upp det varför. Hen kan invända, och vi prövar invändningen.</p>
+      <p>Den som gör intrång upprepade gånger får sitt konto stängt. Misstanke om brott som hotar någons liv eller säkerhet anmäler vi till polisen.</p>
+    </div></div>`
+}
+function ingangVillkor(w) {
+  const knapp = { A: `<button class="sek med">${g('flag')} Anmäl innehåll</button>`, B: `<button class="sek med">${g('flag')} Anmäl innehåll</button>`, C: `<button class="sek med">${g('flag')} Anmäl innehåll</button><span class="muted" style="font-size:13px">Eller tryck på kortet vid bordet.</span>` }[v]
+  return `<div class="acc">${bar(w)}<div class="doc">
+    <p class="utkast">Utkast · inte granskat av jurist</p>
+    <h1>Villkor och integritet</h1>
+    <div class="rad11 grann"><div class="huvud"><span class="nr">10</span><b>Tryck och leverans</b><span class="ks">Under betan trycks ingenting.</span></div></div>
+    ${rad11(knapp)}
+    <div class="rad11 grann"><div class="huvud"><span class="nr">12</span><b>Ansvar</b><span class="ks">Deckster körs på en server utan reserv.</span></div></div>
+  </div></div>`
+}
+
+// C: det lyfta kortet på telefonen
+function telefonRam(inne, { flik = 'Handen', toast = '' } = {}) {
+  return `<div class="tel"><header><span style="flex:1"><strong>Ada</strong>4 kort · Skogens råd</span></header>
+    <div class="yta">${inne}</div>
+    ${toast ? `<p class="toast">${toast}</p>` : ''}
+    <div class="flikrad">${['Handen', 'Framför mig', 'Bordet', 'Mer'].map((f) => `<span ${f === flik ? 'data-pa' : ''}>${f}</span>`).join('')}</div></div>`
+}
+function handen(w, { tom = false } = {}) {
+  const kw = w === '320' ? 84 : w === '375' ? 96 : 120
+  return `<div class="handen">${SKOG({ w: kw, tom })}${kort('Gläntan', 'Lägg ett kort här.', { w: kw, konst: 'b' })}${kort('Stormen', 'Alla drar ett kort.', { w: kw, konst: 'c' })}${kort('Ugglan', 'Titta på en hand.', { w: kw, konst: 'b' })}</div>`
+}
+function ingangKortet(w) {
+  const kw = w === '320' ? 150 : w === '375' ? 180 : 200
+  const lyft = `<div class="lyft">${SKOG({ w: kw })}<div class="knappar"><button>Spela till bordet</button><button class="sek2">Vänd</button><button class="tyst ny" data-do="till-formular">Anmäl bilden…</button></div></div>`
+  if (w === 'dator') return `<div class="tel" style="justify-content:center;align-items:center;padding:30px"><p class="muted" style="max-width:520px;text-align:center">Datorn har inget lyft kort: där börjar anmälan från raden eller villkorssidan. Distansvyns hand (#1131) kunde få samma rad senare.</p></div>`
+  return telefonRam(handen(w) + lyft)
+}
+
+// ════════════════════════════════════════════════════════════════════════════════════════════════
+// Formuläret
+// ════════════════════════════════════════════════════════════════════════════════════════════════
+const godTro = (checked) => `<label class="kryss"><input type="checkbox" ${checked ? 'checked' : ''} data-god><span>Jag lämnar uppgifterna i god tro, och de är riktiga och fullständiga så långt jag vet.</span></label>`
+
+function formA(w) {
+  const fel = lage === 'fel'
+  const fyllt = lage === 'ifyllt'
+  const val = (s) => (fyllt ? s : '')
+  return `<div class="acc">${bar(w)}<div class="doc">
+    <p class="muted" style="display:flex;gap:6px;align-items:center">${g('left')} Villkor, avsnitt 11</p>
+    <h1>Anmäl innehåll</h1>
+    <p class="lead">Anmäl en bild, ett kort eller en text i Deckster som du tror är olaglig eller gör intrång i din rätt. Anmälan läses av en människa inom två arbetsdagar.</p>
+    <form class="form ny" onsubmit="return false">
+      <div class="falt"><label>Vad är det?</label><textarea ${fel ? 'aria-invalid="true"' : ''} placeholder="Till exempel: bilden på kortet Skogsvaktaren">${val('Bilden på kortet Skogsvaktaren. Det är min målning «Vakten i Tiveden» från 2023.')}</textarea>${fel ? '<span class="fel">Säg vad det är, till exempel kortets namn.</span>' : ''}</div>
+      <div class="falt"><label>Var finns det?</label><input type="text" placeholder="Rumskoden, en länk eller spelets namn" value="${val('Bord 78R466, spelet heter Skogens råd')}"><small>En rumskod gäller i tre timmar. Skriv gärna spelets och kortets namn också.</small></div>
+      <div class="falt"><label>Varför får det inte finnas?</label><textarea ${fel ? 'aria-invalid="true"' : ''} placeholder="Är det ditt verk, säg vilket och var det är publicerat.">${val('Jag har målat den och har inte gett någon lov att använda den. Originalet finns på miralind.se/tiveden.')}</textarea>${fel ? '<span class="fel">Säg varför det inte får finnas.</span>' : ''}</div>
+      <div class="tva">
+        <div class="falt"><label>Ditt namn</label><input type="text" value="${val('Mira Lind')}"></div>
+        <div class="falt"><label>Din e-post</label><input type="email" value="${val(EPOST)}"><small>Kvittot och beslutet går hit.</small></div>
+      </div>
+      ${godTro(fyllt)}${fel ? '<span class="fel" style="color:#ffd98a;font-size:13px;margin-top:-10px">Kryssa i rutan för att skicka.</span>' : ''}
+      <p class="notis">Gäller anmälan sexuellt innehåll som rör barn behöver du inte skriva namn eller e-post.</p>
+      <div class="knapprad"><button class="prim" data-do="skicka">Skicka anmälan</button></div>
+    </form>
+  </div></div>`
+}
+
+function formB(w) {
+  const steg = ['Vad', 'Var', 'Varför', 'Vem']
+  const n = { s1: 1, s2: 2, s3: 3, s4: 4, bekrafta: 5 }[lage]
+  const stegrad = `<ol class="steg">${steg.map((s, i) => `<li ${i + 1 === n ? 'data-pa' : i + 1 < n ? 'data-klar' : ''}><i>${i + 1 < n ? '✓' : i + 1}</i>${s}</li>`).join('<li aria-hidden="true">›</li>')}</ol>`
+  const VAL = [['verk', 'Någon använder mitt verk', 'En bild, en text eller ett varumärke som är ditt eller som du företräder.'], ['olagligt', 'Olagligt innehåll', 'Till exempel hot, hets mot folkgrupp eller något som hotar någons säkerhet.'], ['barn', 'Sexuellt innehåll som rör barn', 'Du behöver inte säga vem du är.'], ['annat', 'Något annat som bryter mot villkoren', 'Till exempel sexuellt innehåll om en verklig person utan samtycke.']]
+  let kropp = ''
+  if (n === 1) kropp = `<h2 style="margin:0;font-size:20px;color:#fff">Vad gäller anmälan?</h2><div class="val">${VAL.map(([k, b, s]) => `<button class="valk" aria-pressed="${st.val === k}" data-valk="${k}"><b>${b}</b><span>${s}</span></button>`).join('')}</div>`
+  if (n === 2) kropp = `<h2 style="margin:0;font-size:20px;color:#fff">Var finns det?</h2>
+    <div class="falt"><label>Rumskod eller länk</label><input type="text" value="78R466"></div>
+    <div class="hittat"><span class="bock">✓</span><span>Bordet finns: <b>Skogens råd</b>, startat i dag 20:05.</span></div>
+    <div class="falt"><label>Vilket kort, eller vad på bordet?</label><input type="text" value="Skogsvaktaren"><small>Har du ingen rumskod, skriv spelets namn och ungefär när du såg det.</small></div>`
+  if (n === 3) kropp = `<h2 style="margin:0;font-size:20px;color:#fff">Varför får det inte finnas?</h2>
+    <div class="falt"><label>Vilket verk är ditt?</label><input type="text" value="Målningen «Vakten i Tiveden», 2023"></div>
+    <div class="falt"><label>Var är originalet publicerat?</label><input type="text" value="miralind.se/tiveden"></div>
+    <div class="falt"><span class="lbl">Du är</span><div class="chips"><button aria-pressed="true">Den som äger rätten</button><button>Ombud för den</button></div></div>
+    <div class="falt"><label>Något mer?</label><textarea>Jag har inte gett någon lov att använda den.</textarea></div>`
+  if (n === 4) kropp = `<h2 style="margin:0;font-size:20px;color:#fff">Vem är du?</h2>
+    <div class="tva"><div class="falt"><label>Ditt namn</label><input type="text" value="Mira Lind"></div><div class="falt"><label>Din e-post</label><input type="email" value="${EPOST}"><small>En länk går hit. Anmälan skickas när du följer den.</small></div></div>
+    ${godTro(true)}`
+  if (n === 5) kropp = `<div class="klar"><strong>Följ länken i mejlet</strong><p>En länk har gått till <b>${EPOST}</b>. Anmälan skickas när du följer den, och länken gäller i ett dygn.</p></div>
+    <p class="muted">Kom inget mejl? Titta bland skräpposten, eller <u>skicka länken igen</u>.</p>`
+  const knappar = n === 5 ? '' : `<div class="knapprad">${n > 1 ? '<button class="sek" data-do="b-bak">Tillbaka</button>' : ''}<button class="prim" data-do="b-fram">${n === 4 ? 'Skicka anmälan' : 'Nästa'}</button></div>`
+  return `<div class="acc">${bar(w)}<div class="doc">
+    <h1>Anmäl innehåll</h1>
+    ${n < 5 ? stegrad : ''}
+    <div class="form ny">${kropp}${knappar}</div>
+  </div></div>`
+}
+
+function arkC(w, franKortet) {
+  const chips = [['verk', 'Mitt verk'], ['olagligt', 'Olagligt'], ['barn', 'Rör barn'], ['annat', 'Annat']]
+  const var_ = franKortet
+    ? `<div class="vad-ruta">${SKOG({ w: 46 })}<span><b>Bilden på Skogsvaktaren</b><small>Bord 78R466 · Skogens råd. Följer med anmälan.</small></span></div>`
+    : `<div class="falt"><label>Vad, och var finns det?</label><textarea placeholder="Kortets namn, spelets namn, rumskoden eller en länk"></textarea></div>`
+  return `<h2>${franKortet ? 'Anmäl bilden' : 'Anmäl innehåll'}</h2>
+    ${var_}
+    <div class="falt"><span class="lbl">Varför får den inte finnas?</span><div class="chips">${chips.map(([k, n]) => `<button aria-pressed="${st.chip === k}" data-chip="${k}">${n}</button>`).join('')}</div>
+      <textarea placeholder="${st.chip === 'verk' ? 'Vilket verk, och var originalet finns' : 'Berätta vad som är fel'}">${franKortet ? 'Min målning «Vakten i Tiveden», publicerad på miralind.se/tiveden.' : ''}</textarea></div>
+    <div class="tva"><div class="falt"><label>Ditt namn${st.chip === 'barn' ? ' (frivilligt)' : ''}</label><input type="text" value="${franKortet ? 'Mira Lind' : ''}"></div><div class="falt"><label>Din e-post${st.chip === 'barn' ? ' (frivillig)' : ''}</label><input type="email" value="${franKortet ? EPOST : ''}"><small>Kvittot och beslutet går hit.</small></div></div>
+    ${godTro(franKortet)}
+    <button class="prim" data-do="skicka">Skicka anmälan</button>
+    <button class="sek" data-do="nop">Avbryt</button>`
+}
+function formC(w) {
+  const franKortet = lage === 'kortet'
+  if (w === 'dator') {
+    const bak = franKortet ? `<div class="tel" style="height:100%"><div class="yta"><div class="tvfilt">${SKOG({ w: 110 })}${kort('Gläntan', 'Lägg ett kort här.', { w: 110, konst: 'b' })}</div></div></div>` : ingangVillkor(w)
+    return `<div style="position:relative;height:100%;min-height:inherit">${bak}<div class="skym-dialog"><div class="dialog acc ny" style="height:auto;min-height:0">${arkC(w, franKortet)}</div></div>${franKortet ? '' : ''}</div>`
+  }
+  return telefonRam(handen(w) + `<div class="ark-skym"><div class="ark ny">${arkC(w, franKortet)}</div></div>`)
+}
+
+// ════════════════════════════════════════════════════════════════════════════════════════════════
+// Mejlen, i L72:s tre band (mail-bands.ts), som tabeller och inline-stil
+// ════════════════════════════════════════════════════════════════════════════════════════════════
+const FONT = `-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif`
+function band({ hello, lead, extra = '', button, fine, link }) {
+  const knapp = button ? `<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:24px 0 0"><tr><td align="center" style="border-radius:999px;background:#f0b64a"><a style="display:block;padding:15px 26px;font:700 16px/1 ${FONT};color:#1f1b12;text-decoration:none;border-radius:999px">${button} &rarr;</a></td></tr></table>` : ''
+  return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#ffffff"><tr><td align="center" style="padding:${bredd === 'dator' || bredd === 'alla' ? '24px 12px' : '0'}">
+  <table role="presentation" align="center" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:560px;margin:0 auto;border-radius:18px;overflow:hidden">
+    <tr><td align="center" style="padding:34px 24px 28px;background:#17120f;background-image:radial-gradient(120% 80% at 70% 10%, #2f2722 0%, #17120f 55%, #0d0b0a 100%)">
+      <div style="width:64px;height:64px;margin:0 auto">${HAND.replace('class="hand"', 'width="64" height="64"')}</div>
+      <p style="margin:12px 0 0;font:800 24px/1 ${FONT};color:#f3e9d6">Deckster</p></td></tr>
+    <tr><td style="padding:30px 28px 32px;background:#f4ead8;text-align:left">
+      <h1 style="margin:0 0 8px;font:800 26px/1.15 ${FONT};color:#1f1b12">${hello}</h1>
+      <p style="margin:0;font:16px/1.55 ${FONT};color:#3a3528">${lead}</p>
+      ${extra}
+      ${knapp}
+      <p style="margin:22px 0 0;font:13px/1.6 ${FONT};color:#5b574c">${fine}</p></td></tr>
+    <tr><td style="padding:20px 28px 24px;background:#ffffff;text-align:left;border:1px solid #e5e2d8;border-top:0;border-radius:0 0 18px 18px">
+      ${link ? `<p style="margin:0;font:13px/1.6 ${FONT};color:#5b574c">Fungerar inte knappen? Klistra in länken:<br><a style="color:#1a0dab;word-break:break-all">${link}</a></p>` : ''}
+      <p style="margin:${link ? '16px' : '0'} 0 0;font:13px/1.6 ${FONT};color:#7a7568">Deckster · <a style="color:#5b574c;text-decoration:none">deckster.se</a><br>Kontakt: <a style="color:#5b574c;text-decoration:none">${KONTAKT}</a></p></td></tr>
+  </table></td></tr></table>`
+}
+const ruta = (rader) => `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:18px 0 0;background:#fffaf0;border-radius:12px"><tr><td style="padding:14px 16px;font:14px/1.55 ${FONT};color:#3a3528">${rader.map(([k, t]) => `<p style="margin:0 0 8px"><b style="color:#1f1b12">${k}</b><br>${t}</p>`).join('')}</td></tr></table>`
+function klient(amne, fran, html) {
+  return `<div class="klient"><div class="kh"><b>${amne}</b><span>${fran} · till ${fran.includes('Deckster') ? 'dig' : 'Deckster'}</span></div><div class="kropp">${html}</div></div>`
+}
+
+function kvittoMejlA() {
+  return klient('Din anmälan till Deckster är mottagen', 'Deckster &lt;noreply@deckster.se&gt;', band({
+    hello: 'Anmälan är mottagen', lead: 'En människa på Deckster läser den inom två arbetsdagar och mejlar dig beslutet. Så här löd den:',
+    extra: ruta([['Vad', 'Bilden på kortet Skogsvaktaren. Det är min målning «Vakten i Tiveden» från 2023.'], ['Var', 'Bord 78R466, spelet heter Skogens råd'], ['Varför', 'Jag har målat den och har inte gett någon lov att använda den. Originalet finns på miralind.se/tiveden.'], ['Vem', 'Mira Lind, ' + EPOST], ['God tro', 'Ja, 25 oktober 2026 kl. 21:48']]),
+    button: 'Så prövas en anmälan', fine: 'Ärendet heter A-0042. Svara på det här mejlet om du vill lägga till något.', link: 'https://deckster.se/villkor#anmalan' }))
+}
+function kvittoMejlC() {
+  return klient('Din anmälan av en bild är mottagen', 'Deckster &lt;noreply@deckster.se&gt;', band({
+    hello: 'Anmälan är mottagen', lead: 'Du anmälde bilden på kortet Skogsvaktaren vid bord 78R466 (Skogens råd). En människa på Deckster läser anmälan inom två arbetsdagar och mejlar dig beslutet.',
+    button: 'Så prövas en anmälan', fine: 'Ärendet heter A-0042. Svara på det här mejlet om du vill lägga till något.', link: 'https://deckster.se/villkor#anmalan' }))
+}
+function bekraftMejlB() {
+  return klient('Bekräfta din anmälan till Deckster', 'Deckster &lt;noreply@deckster.se&gt;', band({
+    hello: 'Bekräfta din anmälan', lead: 'Någon, förhoppningsvis du, har anmält innehåll i Deckster med den här adressen. Anmälan skickas när du trycker på knappen.',
+    button: 'Skicka anmälan', fine: 'Länken gäller i ett dygn och går bara att använda en gång. Har du inte anmält något kan du strunta i mejlet.', link: 'https://deckster.se/anmal/bekrafta?t=Hq3…' }))
+}
+function kvittoMejlB() {
+  return klient('Anmälan A-0042 är mottagen', 'Deckster &lt;noreply@deckster.se&gt;', band({
+    hello: 'Anmälan A-0042 är mottagen', lead: 'En människa på Deckster läser den inom två arbetsdagar. Du får ett mejl när beslutet är fattat, och du kan följa ärendet under tiden.',
+    extra: ruta([['Gäller', 'Någon använder mitt verk'], ['Var', 'Bord 78R466 (Skogens råd), kortet Skogsvaktaren']]),
+    button: 'Följ anmälan', fine: 'Länken visar bara ärendets läge, inte vem som laddade upp innehållet.', link: 'https://deckster.se/anmal/A-0042?t=8Fw…' }))
+}
+
+function kvitto(w) {
+  if (v === 'A') {
+    if (lage === 'mejl') return kvittoMejlA()
+    return `<div class="acc">${bar(w)}<div class="doc"><h1>Anmäl innehåll</h1>
+      <div class="klar ny"><strong><span class="bock">✓</span> Anmälan är skickad</strong><p>Ett kvitto med det du skrev har gått till <b>${EPOST}</b>. Ärendet heter A-0042.</p><p>En människa läser anmälan inom två arbetsdagar och mejlar dig beslutet.</p></div>
+      <div class="knapprad"><button class="sek">Till start</button></div></div></div>`
+  }
+  if (v === 'B') {
+    if (lage === 'bekraftmejl') return bekraftMejlB()
+    if (lage === 'mejl') return kvittoMejlB()
+    return `<div class="acc">${bar(w)}<div class="doc"><p class="muted">Anmälan</p><h1>A-0042</h1>
+      <dl class="fakta"><dt>Gäller</dt><dd>Någon använder mitt verk</dd><dt>Var</dt><dd>Bord 78R466 (Skogens råd), kortet Skogsvaktaren</dd></dl>
+      <ol class="tidslinje ny">
+        <li data-klar><i></i><span>Skickad<small>25 okt 21:48</small></span></li>
+        <li data-klar><i></i><span>Adressen bekräftad<small>25 okt 21:50</small></span></li>
+        <li><i></i><span>Läses<small>Senast 28 okt</small></span></li>
+        <li><i></i><span>Beslut<small>Du får ett mejl</small></span></li>
+      </ol>
+      <p class="muted">Vill du lägga till något, svara på kvittot.</p></div></div>`
+  }
+  if (lage === 'mejl') return kvittoMejlC()
+  if (w === 'dator') return `<div class="acc">${bar(w)}<div class="doc"><h1>Villkor och integritet</h1><div class="klar ny"><strong><span class="bock">✓</span> Anmälan är skickad</strong><p>Kvittot har gått till <b>${EPOST}</b>.</p></div></div></div>`
+  return telefonRam(handen(w), { toast: `<span class="ny">Anmälan är skickad. Kvittot går till ${EPOST}.</span>` })
+}
+
+// ════════════════════════════════════════════════════════════════════════════════════════════════
+// Operatören: mejlet till Kontakt och skripten över Tailscale (DRIFT §10, §12)
+// ════════════════════════════════════════════════════════════════════════════════════════════════
+function operator(w) {
+  const txt = `<pre class="term">Ämne: Anmälan A-0042: någon använder mitt verk
+
+${v === 'B' ? 'Adressen bekräftades 25 okt 21:50.\n' : ''}Vad:     Bilden på kortet Skogsvaktaren${v === 'C' ? ' (bord 78R466, kort c14)' : ''}
+Var:     ${v === 'C' ? 'bord 78R466 · Skogens råd · kortet c14, lyft från handen' : 'Bord 78R466, spelet heter Skogens råd'}
+Varför:  Jag har målat den …
+Vem:     Mira Lind &lt;${EPOST}&gt;, god tro: ja
+<i>Svara inom 2 arbetsdagar (RUNBOOK §9). Stäng med:</i>
+<b>pnpm --filter @byd/server report show A-0042</b></pre>
+<pre class="term"><b>$ pnpm --filter @byd/server report show A-0042</b>
+${v === 'C' ? 'kort c14 i bordets lek ritar 1 bild:' : 'spel som heter «Skogens råd»: 1. Bilder på kort som heter «Skogsvaktaren»:'}
+  sha256:9c1e…a07f  png 1,4 MB  i 2 spel, 3 konton
+<b>$ pnpm --filter @byd/server report block A-0042 9c1e…a07f --skal intrang</b>
+spärrad. 3 ägare mejlade. 4 bord läser om sin lek.
+<i>Olagligt innehåll: </i><b>report purge 9c1e…a07f</b><i> rensar bytesen ur R2 och Postgres.</i>
+<b>$ pnpm --filter @byd/server report decide A-0042 haller</b>
+anmälaren mejlad (beslut och hur hen kan överklaga).</pre>`
+  return `<div class="acc" style="padding:20px;display:grid;gap:14px;align-content:start;font-size:14px"><p class="muted">Operatören får ett textmejl till BYD_CONTACT och arbetar med skript, som plan och usage. Samma i alla tre varianter utom det som står i ärendet.</p>${txt}</div>`
+}
+
+// ════════════════════════════════════════════════════════════════════════════════════════════════
+// Designerns mejl (DSA art. 17)
+// ════════════════════════════════════════════════════════════════════════════════════════════════
+function agare(w) {
+  const olagligt = lage === 'olagligt'
+  const invand = {
+    A: 'Svara på det här mejlet och berätta varför, till exempel att du har licens till bilden. En människa som inte fattade beslutet prövar invändningen inom två arbetsdagar.',
+    B: 'Tryck på knappen, läs beslutet och skriv varför. En människa som inte fattade beslutet prövar invändningen inom två arbetsdagar.',
+    C: 'Öppna spelet och tryck på den spärrade bilden i Tabell. Där står skälen igen och «Invänd…». En människa som inte fattade beslutet prövar invändningen inom två arbetsdagar.',
+  }[v]
+  const rader = [
+    ['Bilden', 'skogsvaktare.png, som du laddade upp 12 oktober. Den står på 12 kort i Skogens råd, bland dem Skogsvaktaren och Vaktens stig.'],
+    ['Skälet', olagligt ? 'Olagligt innehåll (villkoren, avsnitt 7).' : 'Intrång i någon annans upphovsrätt (villkoren, avsnitt 4 och 7). Den som äger rätten till målningen anmälde den och visade var originalet är publicerat.'],
+    ['Så beslutades det', 'Av en människa på Deckster, den 26 oktober, efter en anmälan. Ingen automatik.'],
+    ['Det här händer', olagligt ? 'Bilden är borttagen ur Deckster för gott. Korten står kvar utan den, i alla versioner.' : 'Bilden syns inte i spelet, på borden, i trycket eller i exporten, och korten står kvar utan den. Den ligger kvar hos Deckster och kommer tillbaka om invändningen håller.'],
+    ['Vill du invända?', invand],
+  ]
+  const btn = { A: 'Öppna Skogens råd', B: 'Läs beslutet och invänd', C: 'Öppna bilden i Skogens råd' }[v]
+  return klient('En bild i Skogens råd är spärrad', 'Deckster &lt;noreply@deckster.se&gt;', band({
+    hello: 'En bild i ditt spel är spärrad', lead: 'Efter en anmälan har Deckster spärrat en bild som du laddade upp. Allt annat i spelet är som förut.',
+    extra: ruta(rader), button: btn,
+    fine: 'Du kan också vända dig till allmän domstol. Den som gör intrång upprepade gånger får sitt konto stängt (villkoren, avsnitt 11).',
+    link: { A: 'https://deckster.se/editor?project=skog', B: 'https://deckster.se/sparr/S-0017', C: 'https://deckster.se/editor?project=skog&amp;view=table&amp;asset=S-0017' }[v] }))
+}
+
+// ════════════════════════════════════════════════════════════════════════════════════════════════
+// Editorn: Tabell med den spärrade bilden, och invändningen
+// ════════════════════════════════════════════════════════════════════════════════════════════════
+const RADER = [['c12', 'Gläntan', '#6a7fa8', false], ['c14', 'Skogsvaktaren', '#3f8f5f', true], ['c15', 'Vaktens stig', '#3f8f5f', true], ['c16', 'Stormen', '#b8461f', false]]
+function sparrCell(rid) {
+  if (v !== 'B') return `<button class="sparr-tom ny" data-do="c-remsa" aria-expanded="${lage !== 'sparrad' && rid === 'c14'}">${lage === 'skickad' ? 'Invänt' : 'Spärrad'}</button>`
+  return `<span class="sparr-tom ny" title="Bilden är spärrad efter en anmälan">Spärrad</span>`
+}
+function remsaC() {
+  if (v === 'B' || lage === 'sparrad') return ''
+  if (v === 'A') return `<div class="t-fraga" data-ton="neutral" role="group" aria-label="Spärrad bild"><p>Bilden är spärrad efter en anmälan<small>Den som äger rätten till målningen anmälde den, och en människa beslutade 26 oktober. Den står på 12 kort och syns inte i spelet, på borden, i trycket eller i exporten. Vill du invända, svara på mejlet från 26 oktober.</small></p>
+    <button data-do="nop" class="med">${g('swap')} Byt bilden</button><button data-do="c-stang">Stäng</button></div>`
+  if (lage === 'remsa') return `<div class="t-fraga" data-ton="neutral" role="group" aria-label="Spärrad bild"><p>Bilden är spärrad efter en anmälan<small>Den som äger rätten till målningen anmälde den. Beslutet fattades av en människa 26 oktober. Den står på 12 kort och syns inte i spelet, på borden, i trycket eller i exporten.</small></p>
+    <button data-do="nop" class="med">${g('swap')} Byt bilden</button><button data-do="c-invand">Invänd…</button><button data-do="c-stang">Stäng</button></div>`
+  if (lage === 'invand') return `<div class="t-fraga" data-ton="neutral" role="group" aria-label="Invänd"><p>Varför ska bilden få finnas?<small>Skriv till exempel att du har licens, och var den finns. En människa som inte fattade beslutet prövar det inom två arbetsdagar.</small></p>
+    <textarea>Jag köpte licens för bilden av Mira Lind i maj 2024. Kvittot bifogas gärna.</textarea>
+    <button data-do="c-stang">Avbryt</button><button data-kind="primary" data-do="c-skicka">Skicka invändningen</button></div>`
+  return `<div class="t-fraga" data-ton="neutral" role="status"><p>Invändningen är skickad 26 oktober<small>Svar inom två arbetsdagar, i ett mejl. Bilden är spärrad tills dess.</small></p><button data-do="c-stang">Stäng</button></div>`
+}
+function editorKrom(w, inne) {
+  const smal = w !== 'dator'
+  return `<div class="byd-editor">
+    <div class="ed-huvud">${smal ? '' : '<span class="hem">← Mina spel</span>'}<strong>Skogens råd</strong>${smal ? '' : '<span class="rev">v14</span><span class="sparat">Sparat</span>'}<span class="spacer"></span>${smal ? '' : '<div class="ed-flikar"><button>Mall</button><button aria-selected="true">Tabell</button><button>Regler</button><button>Bord</button></div>'}<span class="who">ML</span></div>
+    ${inne}</div>`
+}
+function editor(w) {
+  if (v === 'B' && lage !== 'sparrad') return sparrSidaB(w)
+  const band = v === 'A' ? `<div class="ed-band ny">${g('info')}<p><b>1 bild är spärrad efter en anmälan.</b> Korten står kvar utan den. Skälen och hur du invänder står i mejlet från 26 oktober.</p></div>`
+    : v === 'B' ? `<div class="ed-band ny">${g('info')}<p><b>1 bild är spärrad efter en anmälan.</b> Korten står kvar utan den.</p><button data-do="b-sidan">Läs beslutet</button></div>` : ''
+  if (w !== 'dator') {
+    const lista = RADER.map(([id, n, c, s]) => `<div class="smal-rad">${s ? sparrCell(id) : `<i class="t" style="--c:${c}"></i>`}<span><b>${n}</b>${id}</span>${s && id === 'c14' ? remsaC() : ''}</div>`).join('')
+    return editorKrom(w, band + `<div class="smal-lista">${lista}</div>`)
+  }
+  const rader = RADER.map(([id, n, c, s]) => `<tr><td class="bock"><input type="checkbox"></td><td class="id">${id}</td><td><span class="las">${n}</span></td><td><div class="t-bild">${s ? sparrCell(id) : `<i style="--c:${c}"></i>`}<button>Välj</button></div></td><td><span class="las">${s ? 'Spela: titta på två kort i Skogen.' : 'Lägg ett kort här.'}</span></td><td><span class="las">1</span></td><td class="spar"><button>×</button></td></tr>${s && id === 'c14' && remsaC() ? `<tr><td colspan="7" style="height:auto;padding:0 8px">${remsaC()}</td></tr>` : ''}`).join('')
+  return editorKrom(w, band + `<div class="t-krona"><input class="t-sok" placeholder="Sök i korten"><div class="t-chips"><button class="t-chip">Alla 77</button><button class="t-chip">Skogen 24</button></div><button class="t-box">Importera ▾</button></div>
+    <div class="t-vy"><div class="t-rulla"><table class="t-data"><colgroup><col style="width:44px"><col style="width:60px"><col style="width:160px"><col style="width:150px"><col><col style="width:70px"><col style="width:44px"></colgroup>
+    <thead><tr><th class="bock"><input type="checkbox"></th><th class="id">id</th><th><span class="sort"><span>namn</span></span></th><th><span class="sort"><span>bild</span></span></th><th><span class="sort"><span>text</span></span></th><th><span class="sort"><span>antal</span></span></th><th class="spar"><button>+</button></th></tr></thead>
+    <tbody>${rader}</tbody></table></div><p class="t-fot">77 kort <span>· 1 bild spärrad</span></p></div>`)
+}
+function sparrSidaB(w) {
+  const skickad = lage === 'skickad'
+  return `<div class="acc">${bar(w)}<div class="doc">
+    <p class="muted" style="display:flex;gap:6px;align-items:center">${g('left')} Skogens råd</p>
+    <h1>En bild är spärrad</h1>
+    <div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap">${SKOG({ w: 110, tom: true })}<dl class="fakta" style="flex:1 1 260px">
+      <dt>Bilden</dt><dd>skogsvaktare.png, på 12 kort</dd>
+      <dt>Skälet</dt><dd>Intrång i någon annans upphovsrätt (villkoren 4 och 7)</dd>
+      <dt>Beslutet</dt><dd>En människa på Deckster, 26 oktober, efter en anmälan</dd>
+      <dt>Bytesen</dt><dd>Ligger kvar, och bilden kommer tillbaka om invändningen håller</dd></dl></div>
+    ${skickad ? `<div class="klar ny"><strong><span class="bock">✓</span> Invändningen är skickad</strong><p>En människa som inte fattade beslutet prövar den inom två arbetsdagar. Svaret kommer i ett mejl och står här.</p></div>`
+    : `<form class="form ny" onsubmit="return false"><div class="falt"><label>Invänd</label><textarea>Jag köpte licens för bilden av Mira Lind i maj 2024.</textarea><small>Säg varför bilden ska få finnas. En människa som inte fattade beslutet prövar det inom två arbetsdagar.</small></div>
+      <div class="knapprad"><button class="prim" data-do="b-skicka">Skicka invändningen</button><button class="sek med">${g('swap')} Byt bilden i Tabell</button></div></form>`}
+    <p class="muted" style="font-size:13px">Du kan också vända dig till allmän domstol.</p>
+  </div></div>`
+}
+
+// ════════════════════════════════════════════════════════════════════════════════════════════════
+// Bordet, exporten och historiken: samma i alla tre (fråga 12)
+// ════════════════════════════════════════════════════════════════════════════════════════════════
+function bordet(w) {
+  if (w === 'dator') return `<div class="tel"><header><span style="flex:1"><strong>TV · 78R466</strong>Skogens råd · 3 spelare</span></header><div class="yta"><div class="tvfilt">
+      <div class="hog">${SKOG({ w: 130, tom: true })}<small>Gläntan</small></div>
+      <div class="hog">${kort('Stormen', 'Alla drar ett kort.', { w: 130, konst: 'c' })}<small>Slänghögen</small></div>
+      <div class="hog">${kort('Vaktens stig', 'Flytta en vakt.', { w: 130, tom: true })}<small>Framför Bo</small></div></div></div></div>`
+  const kw = w === '320' ? 150 : 180
+  return telefonRam(handen(w, { tom: true }) + `<div class="lyft">${SKOG({ w: kw, tom: true })}<div class="knappar"><button>Spela till bordet</button><button class="sek2">Vänd</button>${v === 'C' ? '<button class="tyst">Anmäl bilden…</button>' : ''}</div></div>`)
+}
+
+function exporten(w) {
+  const notis = { A: '', B: `<p class="notis ny">${g('info')} 1 bild är spärrad och följer inte med. Korten följer med utan den. <u>Läs beslutet</u></p>`, C: `<p class="notis ny">${g('info')} Bilden på Skogsvaktaren och 11 kort till är spärrad och följer inte med. Korten följer med utan den.</p>` }[v]
+  const inne = `<div class="dialog" style="width:min(620px,100%)"><h2>Exportera Skogens råd</h2>
+    <p class="muted">Allt i spelet i en zip: korten, mallen, reglerna, bilderna och typsnitten, och en LASMIG.md som förklarar filen.</p>
+    ${notis}
+    <pre class="trad">skogens-rad-v14.zip
+├── manifest.json
+├── LASMIG.md
+├── kort.csv
+├── mall.json
+├── bilder/
+│   ├── glantan.png
+│   ├── stormen.png
+│   <s>└── (skogsvaktare.png är spärrad)</s>
+└── tryck/ …</pre>
+    <pre class="trad ny">"assets": [ … ],
+<mark>"blocked": [
+  { "file": "bilder/skogsvaktare.png",
+    "sha256": "9c1e…a07f",
+    "since": "2026-10-26",
+    "cards": ["c14", "c15", …] }
+]</mark></pre>
+    <pre class="trad">## Spärrade bilder
+En bild i spelet är spärrad efter en anmälan och följer inte med.
+Korten som använde den står kvar utan bild. Se manifest.json, «blocked».</pre>
+    <div class="knapprad"><button class="prim med">${g('down')} Ladda ner zip</button><button class="sek">Stäng</button></div></div>`
+  return `<div class="acc" style="display:grid;place-items:start center;padding:${w === 'dator' ? '40px' : '12px'}">${inne}</div>`
+}
+
+function historik(w) {
+  const mark = (s) => (v === 'A' ? '' : `<small class="ny">${s}</small>`)
+  return `<div class="acc" style="padding:${w === 'dator' ? '28px 40px' : '14px 12px'};display:grid;gap:16px;align-content:start">
+    <h1 style="margin:0;font-size:22px;color:#fff">Skogens råd · versioner</h1>
+    <div style="display:grid;grid-template-columns:${w === 'dator' ? '320px 1fr' : '1fr'};gap:20px;align-items:start">
+      <ol class="versioner">
+        <li><b>v14 · i dag 21:12</b>Automatisk${mark('1 bild spärrad')}</li>
+        <li data-vald><b>Speltest 3 · 18 okt</b>Milstolpe${mark('1 bild spärrad')}</li>
+        <li><b>v9 · 10 okt</b>Automatisk</li>
+      </ol>
+      <div style="display:grid;gap:12px;justify-items:start">
+        <div style="display:flex;gap:14px">${SKOG({ w: w === '320' ? 110 : 140, tom: true })}${kort('Gläntan', 'Lägg ett kort här.', { w: w === '320' ? 110 : 140, konst: 'b' })}</div>
+        ${v === 'A' ? '<p class="muted">Speltest 3 som det såg ut, med bilden tom.</p>' : `<p class="notis ny">Bilden på Skogsvaktaren är spärrad i alla versioner. Att återställa en version tar inte tillbaka den.</p>`}
+        <div class="knapprad"><button class="sek">Återställ den här versionen</button></div>
+      </div>
+    </div>
+    <p class="muted" style="font-size:12px;color:#7d8597">(prototyp: v9 laddades upp före bilden och ritas som den alltid gjort. Ett bord som startades från Speltest 3 läser om sin lek och ritar kortet tomt.)</p>
+  </div>`
+}
+
+// ── Ritningen ───────────────────────────────────────────────────────────────────────────────────
+const scen = document.getElementById('scen')
+const ram = (etikett, html, b, fast = false) => `<div class="ram"><p class="etikett">${etikett}</p><div class="sida" data-bredd="${b}" ${fast ? 'data-fast' : ''}>${html}</div></div>`
+function yt(w) {
+  if (yta === 'ingang') return lage === 'villkor' ? ingangVillkor(w) : lage === 'kortet' ? ingangKortet(w) : ingangRaden(w)
+  if (yta === 'formular') return v === 'A' ? formA(w) : v === 'B' ? formB(w) : formC(w)
+  if (yta === 'kvitto') return kvitto(w)
+  if (yta === 'operator') return operator(w)
+  if (yta === 'agare') return agare(w)
+  if (yta === 'editor') return editor(w)
+  if (yta === 'bordet') return bordet(w)
+  if (yta === 'export') return exporten(w)
+  if (yta === 'historik') return historik(w)
+}
+const fast = () => ['bordet'].includes(yta) || (yta === 'ingang' && lage === 'kortet') || (yta === 'formular' && v === 'C') || (yta === 'kvitto' && v === 'C' && lage === 'skarm')
+function render() {
+  if (!V[v]) v = 'A'
+  if (!YTOR[yta]) yta = 'ingang'
+  fixLage()
+  document.getElementById('vaxlare').innerHTML = Object.keys(V).map((k) => `<button aria-pressed="${k === v}" data-v="${k}">${k}</button>`).join('')
+  document.getElementById('ytor').innerHTML = Object.entries(YTOR).map(([k, n]) => `<button aria-pressed="${k === yta}" data-yta="${k}">${n}</button>`).join('')
+  const l = lagen()
+  document.getElementById('lagegrupp').hidden = !l || l.length < 2
+  document.getElementById('lagen').innerHTML = (l || []).map(([k, n]) => `<button aria-pressed="${k === lage}" data-lage="${k}">${n}</button>`).join('')
+  document.getElementById('bredd').innerHTML = [['alla', 'Alla'], ['dator', 'Dator'], ['375', '375'], ['320', '320']].map(([k, n]) => `<button aria-pressed="${k === bredd}" data-bredd="${k}">${n}</button>`).join('')
+  document.getElementById('anteckning').innerHTML = `<b>${V[v].namn}.</b> ${V[v].not}${['bordet', 'export', 'historik'].includes(yta) ? ' <br><b>Den här ytan:</b> spärren är fråga 12 och ritas likadant i alla tre. Gästerna ser en tom bild som vilken saknad bild som helst; inget på tråden säger «spärrad» till någon annan än ägaren och medredigerarna.' : ''}`
+  const bredder = bredd === 'alla' ? ['dator', '375', '320'] : [bredd]
+  scen.innerHTML = bredder.map((w) => ram(`<b>${YTOR[yta]}</b> · variant ${v}${lage ? ' · ' + (l.find(([k]) => k === lage) || ['', ''])[1] : ''} · ${w === 'dator' ? '1040 px' : w + ' px'}`, yt(w), w, fast())).join('')
+  history.replaceState(null, '', `?v=${v}&yta=${yta}&bredd=${bredd}${lage ? `&lage=${lage}` : ''}`)
+}
+
+document.querySelector('.protorad').addEventListener('click', (e) => {
+  const b = e.target.closest('button')
+  if (!b) return
+  if (b.dataset.v) { v = b.dataset.v; lage = ''; omstart() }
+  if (b.dataset.yta) { yta = b.dataset.yta; lage = ''; omstart() }
+  if (b.dataset.lage) lage = b.dataset.lage
+  if (b.dataset.bredd) bredd = b.dataset.bredd
+  if (b.id === 'omstart') { lage = ''; omstart() }
+  render()
+})
+scen.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-do],[data-valk],[data-chip]')
+  if (!b) return
+  e.preventDefault()
+  if (b.dataset.valk) st.val = b.dataset.valk
+  if (b.dataset.chip) st.chip = b.dataset.chip
+  const d = b.dataset.do
+  const steg = ['s1', 's2', 's3', 's4', 'bekrafta']
+  if (d === 'till-formular') { yta = 'formular'; lage = 'kortet' }
+  if (d === 'skicka') { yta = 'kvitto'; lage = 'skarm' }
+  if (d === 'b-fram') lage = steg[Math.min(steg.indexOf(lage) + 1, 4)]
+  if (d === 'b-bak') lage = steg[Math.max(steg.indexOf(lage) - 1, 0)]
+  if (d === 'b-sidan') lage = 'sidan'
+  if (d === 'b-skicka') lage = 'skickad'
+  if (d === 'c-remsa') lage = lage === 'sparrad' ? 'remsa' : 'sparrad'
+  if (d === 'c-invand') lage = 'invand'
+  if (d === 'c-stang') lage = 'sparrad'
+  if (d === 'c-skicka') lage = 'skickad'
+  render()
+})
+addEventListener('keydown', (e) => {
+  if (e.target.closest('input, textarea, select, [contenteditable]')) return
+  const ks = Object.keys(V)
+  if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+    v = ks[(ks.indexOf(v) + (e.key === 'ArrowRight' ? 1 : ks.length - 1)) % ks.length]
+    lage = ''; omstart(); render()
+  }
+})
+render()
+</script>
+</body>
+</html>
