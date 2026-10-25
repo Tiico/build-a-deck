@@ -85,11 +85,24 @@ export type LogStore = {
   // «Tillbaka till bordet» (#690): the account's newest live admission at a table is given a new
   // token in place of its old one, keeping its seat, name and account; null when there is none.
   returnGuest(sessionId: string, accountId: string, tokenHash: string, now: string): Promise<GuestRecord | null>
+  // The admissions never opened whose wait ran out before `now` (#1277, G6): opening one makes it
+  // live for longer than `pendingMs`, so one that still expires within `pendingMs` of being issued
+  // was never opened. Its name was never written anywhere else. One kicked before it was opened
+  // (revoked before it ran out), and one claimed to an account, are the table's and stay. How many
+  // went.
+  sweepGuests(now: string, pendingMs: number): Promise<number>
 }
 
 // A table as a list can show it before anyone opens it: which session, and the moment of its
 // latest line — null while nothing has happened yet.
 export type SessionSummary = { id: string; lastAt: string | null }
+
+// An admission given and never opened, whose wait is over: what `sweepGuests` takes.
+function neverOpened(g: GuestRecord, now: string, pendingMs: number): boolean {
+  const expires = Date.parse(g.expiresAt)
+  if (g.accountId !== undefined || expires > Date.parse(now) || expires > Date.parse(g.issuedAt) + pendingMs) return false
+  return g.revokedAt === undefined || Date.parse(g.revokedAt) >= expires
+}
 
 export class SeqConflictError extends Error {
   constructor(sessionId: string, expected: number, got: number) {
@@ -271,6 +284,16 @@ export class MemoryLogStore implements LogStore {
     if (!live) return null
     live.tokenHash = tokenHash
     return structuredClone(live)
+  }
+
+  async sweepGuests(now: string, pendingMs: number): Promise<number> {
+    let n = 0
+    for (const [sessionId, guests] of this.guests) {
+      const kept = guests.filter((g) => !neverOpened(g, now, pendingMs))
+      n += guests.length - kept.length
+      this.guests.set(sessionId, kept)
+    }
+    return n
   }
 
   async revokeGuests(sessionId: string, seat: string | null, at: string): Promise<number> {

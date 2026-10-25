@@ -153,9 +153,65 @@ function shell(): Plugin {
   }
 }
 
+// Zod checks every frame the server sends, so it rides in the entry and stays there (L20, the
+// beställare's decision 2026-10-04). But zod 4's schemas carry a second trade beside checking:
+// each one can write itself out as JSON Schema, and the code that does it — `to-json-schema.js`
+// and `json-schema-processors.js`, about 11 kB gzip — is hung on every schema's constructor, so no
+// tree-shaking takes it out. The browser never asks a schema for JSON Schema; the server does, for
+// the AI's strict mode (`packages/server/src/proposal.ts`), and the server is not built here (#1304).
+//
+// So the browser's build gets those two modules as stubs that say why they are not there if
+// anything ever calls them. Only where zod's schemas import them, and loudly in three ways: a zod
+// that no longer imports them from there fails the build here rather than quietly shipping them
+// again; a zod that imports a name the stub lacks fails Rollup's own missing-export check; and app
+// code in the bundle that names `toJSONSchema` or the standard schema's `~standard` fails the build
+// rather than throwing in a reader's hands. Tests run unbundled and keep the whole of zod.
+const ZOD_SCHEMAS = /[/\\]zod[/\\]v4[/\\]classic[/\\]schemas\.js$/
+const ZOD_JSON_SCHEMA = ['../core/json-schema-processors.js', '../core/to-json-schema.js']
+const NO_JSON_SCHEMA = '\0byd-zod-no-json-schema:'
+function zodWithoutJsonSchema(): Plugin {
+  const stubbed = new Set<string>()
+  return {
+    name: 'byd-zod-without-json-schema',
+    apply: 'build',
+    enforce: 'pre',
+    resolveId(source, importer) {
+      if (!importer || !ZOD_SCHEMAS.test(importer) || !ZOD_JSON_SCHEMA.includes(source)) return
+      stubbed.add(source)
+      return `${NO_JSON_SCHEMA}${resolve(importer, '..', source)}`
+    },
+    load(id) {
+      if (!id.startsWith(NO_JSON_SCHEMA)) return
+      const real = id.slice(NO_JSON_SCHEMA.length)
+      const off = `const off = () => { throw new Error('JSON Schema is not built into the browser (vite.config.ts, zodWithoutJsonSchema, #1304)') }`
+      // The processors are called as they are, the methods are made per schema and called later.
+      if (real.endsWith('json-schema-processors.js')) {
+        const names = [...readFileSync(real, 'utf8').matchAll(/^export (?:const|function) (\w+)/gm)].flatMap((m) => (m[1] ? [m[1]] : []))
+        if (names.length < 10) throw new Error(`read only ${names.length} exports out of ${real}; zod has changed how it writes them`)
+        return `${off}\nexport const ${names.map((n) => `${n} = off`).join(', ')}`
+      }
+      return `${off}\nexport const createToJSONSchemaMethod = () => off, createStandardJSONSchemaMethod = () => off`
+    },
+    buildEnd(error) {
+      if (error) return
+      const missed = ZOD_JSON_SCHEMA.filter((s) => !stubbed.has(s))
+      if (missed.length) throw new Error(`zod's schemas no longer import ${missed.join(' and ')}; zodWithoutJsonSchema in vite.config.ts stubs nothing and the JSON Schema code ships again (#1304)`)
+    },
+    generateBundle(_, bundle) {
+      for (const chunk of Object.values(bundle)) {
+        if (chunk.type !== 'chunk') continue
+        for (const [id, mod] of Object.entries(chunk.modules)) {
+          if (/[/\\]node_modules[/\\]/.test(id) || id.startsWith('\0') || !mod.code) continue
+          if (/toJSONSchema|~standard/.test(mod.code)) this.error(`${id} asks a zod schema for JSON Schema, which the browser's build does not carry (zodWithoutJsonSchema, #1304)`)
+        }
+      }
+    },
+  }
+}
+
 export default defineConfig({
   // The shell first: the route preload stands after the language the shell puts on the document.
-  plugins: [react(), shell(), routePreload(), precompressed()],
+  plugins: [zodWithoutJsonSchema(), react(), shell(), routePreload(), precompressed()],
   // PORT lets a preview pick a free port when 5173 is taken; the default stays 5173.
   server: { port: Number(process.env['PORT'] ?? 5173), strictPort: true },
   // A licence is not a comment to be tidied away. The felt's face is baked into the stylesheet as

@@ -1,0 +1,353 @@
+<!doctype html>
+<!-- PROTOTYP: handen på en dator vid ett TV-bord (/play i ett 1280 × 800-fönster). Kastas när varianten är vald. ?v=0|A|B|C, ←/→ byter. -->
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Handen vid TV:n — prototyp</title>
+<style>
+:root {
+  --page: #0b0c10; --bg: #14161c; --surface: #1d2029; --control: #262a36; --rule: #2a2e3a;
+  --ink: #e6e8ee; --ink-strong: #fff; --muted: #9aa3b8; --accent: #7dd3a0; --aim: #ffd98a;
+  --card-ink: #1c1c1c; --back: repeating-linear-gradient(45deg, #3a4d7a 0 6px, #2f4068 6px 12px);
+  --seat-a: #e0544b; --seat-b: #3b82f6;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--page); color: var(--ink); font: 14px system-ui, sans-serif; }
+body { padding: 14px 16px 40px; }
+.rubrik { max-width: 1280px; margin: 0 0 8px; color: #ffd98a; font-size: 13px; line-height: 1.5; }
+.rubrik a { color: inherit; }
+.varianter { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px; }
+.varianter button { padding: 6px 12px; border-radius: 999px; border: 1px solid #4a4230; background: #1f1b12; color: #e9d7a8; font: 600 13px system-ui; cursor: pointer; }
+.varianter button[aria-pressed='true'] { background: #ffd98a; color: #1f1b12; }
+.anteckning { max-width: 1280px; margin: 0 0 12px; padding: 8px 12px; border-radius: 8px; background: #1f1b12; border: 1px solid #4a4230; color: #e9d7a8; font-size: 13px; line-height: 1.55; }
+.anteckning b { color: #ffe9b8; } .plus { color: #b7dca0; } .minus { color: #f0a58a; }
+kbd { font: 600 11px system-ui; padding: 1px 5px; border-radius: 4px; background: #2d2a22; border: 1px solid #5a5240; }
+.skala { width: 1280px; transform-origin: 0 0; }
+.fonster { position: relative; width: 1280px; height: 800px; background: var(--bg); border-radius: 8px; outline: 1px solid #2a2d36; overflow: hidden; display: flex; flex-direction: column; user-select: none; }
+.adress { flex: 0 0 26px; display: flex; align-items: center; padding: 0 12px; background: #23252c; color: #8a90a0; font-size: 12px; }
+.yta { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; }
+button { font: inherit; color: inherit; cursor: pointer; }
+
+/* ── gemensamt: huvud, knappar, kort ── */
+.huvud { flex: none; display: flex; align-items: center; gap: 10px; min-height: 56px; padding: 6px 16px; border-bottom: 1px solid var(--rule); }
+.vem { display: grid; line-height: 1.2; } .vem b { color: #fff; font-size: 15px; } .vem span { color: var(--muted); font-size: 12px; }
+.vem.piller { padding: 6px 14px; border-radius: 999px; background: var(--surface); border-left: 3px solid var(--seat-a); }
+.tyst { flex: 1; color: var(--muted); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tyst span { color: #6ba6ff; }
+.knapp { min-height: 44px; padding: 0 14px; border-radius: 12px; border: 0; background: var(--control); color: #fff; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+.knapp.prim { background: var(--accent); color: #0d2016; }
+.knapp.liten { min-height: 36px; padding: 0 12px; font-size: 13px; }
+.knapp:hover { filter: brightness(1.15); }
+.raknare { display: grid; grid-template-columns: 36px auto 36px; align-items: center; border-radius: 12px; background: var(--surface); overflow: hidden; }
+.raknare button { height: 36px; border: 0; background: transparent; color: #fff; font-size: 18px; }
+.raknare span { padding: 0 6px; text-align: center; font-size: 13px; } .raknare b { color: #fff; font-size: 16px; margin-left: 4px; }
+.kort { position: relative; width: var(--w); height: calc(var(--w) * 1.4); border-radius: calc(var(--w) * .07); border: 0; padding: 0; overflow: hidden; text-align: left; flex: none;
+  background: hsl(var(--hue) 40% 88%); color: var(--card-ink); box-shadow: 0 3px 10px rgba(0,0,0,.45); font-size: calc(var(--w) * .085); }
+.kort .fram { position: absolute; inset: 0; display: flex; flex-direction: column; }
+.kort .fram b { padding: .5em .6em; background: hsl(var(--hue) 55% 35%); color: #fff; font: 800 1.15em/1.15 Georgia, serif; }
+.kort .fram small { padding: .35em .7em 0; font-size: .85em; line-height: 1.3; }
+.kort .fram small:first-of-type { font-style: italic; opacity: .75; }
+.kort .bak { position: absolute; inset: 0; background: var(--back); display: none; }
+.kort[data-down='true'] .fram { display: none; } .kort[data-down='true'] .bak { display: block; }
+.kort .ned { position: absolute; z-index: 2; left: 6%; right: 6%; top: 6%; padding: .35em .6em; border-radius: .6em; background: #1b1e27; color: #eef1f7; font: 700 .95em/1.2 Georgia, serif; }
+.kort .ned i { display: block; font: 600 .75em system-ui; color: var(--muted); font-style: normal; }
+.kort .nr { position: absolute; z-index: 3; right: 6%; bottom: 6%; width: 26px; height: 26px; border-radius: 50%; background: var(--accent); color: #0d2016; font: 800 13px/26px system-ui; text-align: center; }
+.kort[data-sel] { outline: 3px solid var(--accent); outline-offset: 2px; }
+.baksida { width: var(--w); height: calc(var(--w) * 1.4); border-radius: calc(var(--w) * .07); background: var(--back); border: 1px solid #4b5f8e; box-shadow: 0 3px 0 #22304f, 0 6px 0 #1b2742; flex: none; }
+.tomt { width: var(--w); height: calc(var(--w) * 1.4); border-radius: calc(var(--w) * .07); border: 1.5px dashed #3b4152; flex: none; }
+h4 { margin: 0 0 8px; color: var(--muted); font: 700 12px system-ui; letter-spacing: .06em; text-transform: uppercase; }
+.hogar { display: flex; gap: 14px; align-items: flex-end; }
+.hog { display: grid; justify-items: center; gap: 6px; color: var(--muted); font-size: 12px; background: none; border: 0; padding: 0; }
+.hog b { color: #fff; }
+.rad-under { flex: none; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 10px 16px; border-top: 1px solid var(--rule); background: #181a22; }
+.rad-under .valt { flex: 1; min-width: 200px; color: var(--muted); } .rad-under .valt b { color: #fff; }
+.meny { position: absolute; z-index: 30; display: grid; gap: 6px; padding: 8px; border-radius: 12px; background: #23262f; border: 1px solid #353a48; box-shadow: 0 12px 30px rgba(0,0,0,.5); }
+.las { position: absolute; z-index: 40; inset: 0; display: grid; place-items: center; background: rgba(8,9,12,.82); }
+.las .inne { display: grid; justify-items: center; gap: 12px; }
+.senaste { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; color: #c9ced9; font-size: 13px; }
+.senaste li span { color: var(--muted); }
+.zonrad { display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 12px; background: var(--surface); }
+.zonrad .t { flex: 1; } .zonrad .t b { display: block; color: #fff; } .zonrad .t span { color: var(--muted); font-size: 12px; }
+
+/* ── 0 · Idag: telefonens kolumn ── */
+.tel { width: 580px; height: 100%; margin: 0 auto; display: flex; flex-direction: column; background: var(--bg); box-shadow: 0 0 0 1px #20232c; }
+.yta[data-variant='0'] { background: #14161c; }
+.panel { flex: 1; min-height: 0; overflow: auto; padding: 14px 16px; display: grid; align-content: start; gap: 14px; }
+.rutnat { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 12px; justify-items: center; }
+.flikar { flex: none; display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1px solid var(--rule); }
+.flikar button { min-height: 58px; border: 0; background: none; color: var(--muted); font-weight: 700; font-size: 13px; display: grid; place-content: center; justify-items: center; gap: 2px; }
+.flikar button[aria-selected='true'] { color: #fff; box-shadow: inset 0 3px 0 var(--accent); }
+.flikar small { min-width: 18px; padding: 0 5px; border-radius: 9px; background: var(--control); color: #fff; font-size: 11px; line-height: 18px; }
+
+/* ── A · handen längs nederkanten ── */
+.mal { flex: 1; min-height: 0; display: grid; grid-template-columns: auto 1fr auto auto; gap: 14px; padding: 16px; align-items: stretch; }
+.malyta { position: relative; border-radius: 14px; border: 1.5px dashed #3b4152; background: #171a21; padding: 12px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.malyta > header { display: flex; align-items: baseline; gap: 8px; } .malyta > header b { color: #fff; } .malyta > header span { color: var(--muted); font-size: 12px; }
+.malyta .innehall { flex: 1; display: flex; flex-wrap: wrap; gap: 8px; align-content: flex-start; }
+.malyta .ledtext { margin-top: auto; color: #6c7386; font-size: 12px; }
+.malyta[data-aim] { border-color: var(--aim); border-style: solid; box-shadow: 0 0 0 3px rgba(255,217,138,.3), inset 0 0 30px rgba(255,217,138,.12); }
+.malyta.smal { width: 170px; }
+.handband { flex: none; position: relative; height: 262px; border-top: 1px solid var(--rule); background: linear-gradient(#171920, #111217); }
+.handband > header { position: absolute; left: 16px; right: 16px; top: 8px; display: flex; justify-content: space-between; color: var(--muted); font-size: 12px; }
+.handrad { position: absolute; left: 0; right: 0; bottom: 14px; display: flex; justify-content: center; padding: 0 24px; }
+.handrad .slot { flex: 0 1 var(--steg); min-width: 0; position: relative; height: 210px; }
+.handrad .slot:last-child { flex: 0 0 150px; }
+.handrad .kort { position: absolute; left: 0; bottom: 0; cursor: grab; transition: transform .12s; }
+.handrad .slot:hover { z-index: 5; } .handrad .slot:hover .kort { transform: translateY(-18px); }
+.lyft[hidden] { display: none; }
+.lyft { position: absolute; z-index: 20; pointer-events: none; display: grid; justify-items: center; gap: 8px; }
+.lyft .tips { padding: 6px 12px; border-radius: 999px; background: #23262f; color: #dfe3ec; font-size: 13px; white-space: nowrap; }
+.spoke { position: fixed; z-index: 100; pointer-events: none; transform: translate(-50%, -60%) rotate(-3deg); }
+.mer { position: relative; }
+
+/* ── B · flikarna som spalt ── */
+.b-kropp { flex: 1; min-height: 0; display: flex; }
+.b-flikar { flex: 0 0 200px; display: grid; align-content: start; gap: 4px; padding: 12px 10px; border-right: 1px solid var(--rule); }
+.b-flikar button { min-height: 48px; border: 0; border-radius: 12px; background: none; color: var(--muted); font-weight: 700; font-size: 15px; display: flex; align-items: center; gap: 10px; padding: 0 14px; text-align: left; }
+.b-flikar button small { margin-left: auto; min-width: 22px; padding: 0 6px; border-radius: 9px; background: var(--control); color: #fff; font-size: 12px; line-height: 20px; text-align: center; }
+.b-flikar button[aria-selected='true'] { background: var(--surface); color: #fff; box-shadow: inset 3px 0 0 var(--accent); }
+.b-panel { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.b-panel .panel { padding: 18px 22px; }
+.rutnat.stort { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 16px; }
+
+/* ── C · tre spalter ── */
+.c-kropp { flex: 1; min-height: 0; display: grid; grid-template-columns: 290px 1fr 290px; }
+.c-kropp > section { min-height: 0; overflow: auto; padding: 16px; display: grid; align-content: start; gap: 14px; }
+.c-kropp > section + section { border-left: 1px solid var(--rule); }
+.c-mitt { display: flex !important; flex-direction: column; padding: 0 !important; }
+.c-mitt .panel { padding: 16px 20px; }
+.rutnat.mellan { grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 14px; }
+.framfor { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+</style>
+</head>
+<body>
+<p class="rubrik"><b>Handen på en dator vid ett TV-bord.</b> Sedan L85 ger «Gå med» vid ett bord startat «Runt en skärm» handen ensam, också i en dator, på <code>/play</code>. Bordet står på TV:n. Här: ett fönster på 1280 × 800. <span style="color:#a8a08a">← → byter variant. <kbd>F</kbd> vänder kortet under musen eller det markerade.</span></p>
+<div class="varianter" id="varianter"></div>
+<div class="anteckning" id="anteckning"></div>
+<div class="skala" id="skala"><div class="fonster" id="fonster"><div class="adress">deckster.se/play?…</div><div class="yta" id="yta"></div></div></div>
+<div class="spoke" id="spoke" hidden></div>
+
+<script>
+const START = [
+  { id: 'c1', name: 'Hammer Time!', kind: 'Effekt', text: 'Alla klunkar är +1 tills din nästa tur.', hue: 4 },
+  { id: 'c2', name: 'Bar Fight', kind: 'Handling', text: 'Varje spelare slår en tärning. Lägst dricker.', hue: 28 },
+  { id: 'c3', name: 'The Heist', kind: 'Handling', text: 'Ta ett kort ur en annan spelares hand.', hue: 210 },
+  { id: 'c4', name: 'Last Call', kind: 'Effekt', text: 'Spelet slutar när draghögen är tom.', hue: 280 },
+  { id: 'c5', name: 'Bluff', kind: 'Fälla', text: 'Läggs nedvänt. Avslöjas när någon spelar Duel.', hue: 140 },
+  { id: 'c6', name: 'Duel', kind: 'Handling', text: 'Utmana en spelare. Båda visar ett kort ur handen.', hue: 350 },
+  { id: 'c7', name: 'Happy Hour', kind: 'Effekt', text: 'Dra två kort. Ge ett av dem till vänster.', hue: 48 },
+]
+const POOL = [
+  { name: 'Shots!', kind: 'Effekt', text: 'Alla dricker. Den som är sist drar ett kort.', hue: 190 },
+  { name: 'Wingman', kind: 'Handling', text: 'Välj en spelare. Ni delar nästa straff.', hue: 95 },
+  { name: 'Tab Open', kind: 'Effekt', text: 'Lägg ett kort framför dig. Det räknas som två.', hue: 320 },
+  { name: 'Bouncer', kind: 'Fälla', text: 'Stoppa nästa Handling som riktas mot dig.', hue: 230 },
+]
+// Setupens genvägar, i den ordning designern gav dem: den första är huvudknappen (C4).
+const ZONES = { front: 'Framför mig', kast: 'Kasthög', bo: 'Framför Bo', golv: 'Bordet' }
+const ORDER = ['0', 'A', 'B', 'C']
+const NAMES = { '0': 'Idag', A: 'A · Handen längs kanten', B: 'B · Flikarna i en spalt', C: 'C · Allt på en gång' }
+const qs = new URLSearchParams(location.search)
+let V = ORDER.includes(qs.get('v')) ? qs.get('v') : 'A'
+let hand, down, laid, draw, score, last, sel, tab, hover, menu, reading, pool, nid
+function reset() {
+  hand = START.map((c) => ({ ...c })); down = new Set(['c5']); laid = { front: [], kast: [], bo: [{ id: 'b1', name: 'Pub Crawl', hue: 160 }], golv: [] }
+  draw = 12; score = 3; last = ['Bo spelade Pub Crawl framför sig', 'Bo drog 2 kort', 'Ada drog 1 kort']; sel = []; tab = 'hand'; hover = null; menu = false; reading = null; pool = POOL.slice(); nid = 0
+}
+reset()
+const $ = (s, r = document) => r.querySelector(s)
+const byId = (id) => hand.find((c) => c.id === id)
+
+const NOTES = {
+  '0': `<b>Idag.</b> <code>/play</code> är telefonens yta (C4, #1147): en kolumn på 580 px mitt på skärmen, svarta band på båda sidor, flikarna Handen · Framför mig · Bordet · Mer längst ner och handen som ett rutnät av små kort. Ett klick markerar, och raden över flikarna spelar.
+  <br><span class="minus">− Två tredjedelar av skärmen är tomma, korten är 100 px breda på en skärm som rymmer 150, och det man har framför sig ligger bakom en flik fast det finns plats för allt. Musen gör inget av det K11 just bestämde för datorns hand (vila läser, klick vänder, dra spelar).</span>`,
+  A: `<b>A · Handen längs nederkanten (rekommenderas).</b> Det vägen-in-prototypen visade i steg 4, utbyggt. Handen ligger i full storlek längs skärmens nederkant som i <code>/online</code>, och ovanför den står de ytor korten kan spelas till, som stora mål: Draghögen, Framför mig med det som ligger där, Kasthögen, och de andras ytor. Musen gör exakt det den gör i <code>/online</code>s hand (K11, #1291): vila läser, klick vänder, dra till en yta spelar. Ett klick på draghögen drar. Mer-flikens innehåll står i huvudet.
+  <br><span class="plus">+ En grammatik för musen i båda datorns händer, så den som spelat på distans kan redan den här. Ingenting döljs bakom en flik, och korten är 150 px.</span> <span class="minus">− En tredje form av handen att bygga och hålla (telefonens rutnät, /online, och den här), fast den delar gesterna med /online. Utan tangentbord och mus, till exempel en surfplatta på 1280, behövs telefonens tryck ändå (finger läser och öppnar, som i /online).</span>`,
+  B: `<b>B · Telefonens flikar, i en spalt.</b> Samma yta som telefonen, bara bredare: flikarna står som en spalt till vänster, panelen tar resten, och rutnätet ritar korten 150 px breda. Ett klick markerar, raden under handen spelar, precis som i telefonen.
+  <br><span class="plus">+ En yta och en kodväg för all hand vid ett TV-bord, så ett beslut om telefonen gäller datorn av sig själv. Minst att bygga.</span> <span class="minus">− Framför mig och Bordet ligger fortfarande bakom flikar på en skärm som rymmer dem. Klick betyder «markera» här och «vänd» i /online, på samma dator.</span>`,
+  C: `<b>C · Allt på en gång.</b> Flikarnas fyra paneler sida vid sida: Framför mig och räknarna till vänster, handen i mitten, Bordet och de senaste dragen till höger, Mer i huvudet. Handen behåller telefonens verb: klick markerar, raden under spelar.
+  <br><span class="plus">+ Ingenting bakom en flik, och samma verb som telefonen, så den som spelat med telefonen kan den här.</span> <span class="minus">− Handen får bara mitten, och korten hamnar på 130 px. Klick betyder «markera» här och «vänd» i /online. «Bordet»-spalten upprepar det TV:n redan visar.</span>`,
+}
+
+function face(k, opts = {}) {
+  const d = down.has(k.id), n = sel.indexOf(k.id)
+  return `<button class="kort" data-card="${k.id}" data-down="${d}" ${n >= 0 ? 'data-sel' : ''} style="--hue:${k.hue};--w:${opts.w ?? 100}px" aria-label="${k.name}${d ? ', vänt, spelas nedvänt' : ''}">
+    <span class="fram"><b>${k.name}</b><small>${k.kind}</small><small>${k.text}</small></span><span class="bak"></span>
+    ${d ? `<span class="ned"><i>nedvänt</i>${k.name}</span>` : ''}${n >= 0 && sel.length > 1 ? `<span class="nr">${n + 1}</span>` : ''}</button>`
+}
+const laidFace = (p, w) => p.down ? `<div class="baksida" style="--w:${w}px" title="nedvänt"></div>` : `<div class="kort" style="--hue:${p.hue};--w:${w}px"><span class="fram"><b>${p.name}</b></span></div>`
+const counter = () => `<div class="raknare"><button data-score="-1" aria-label="Minska poäng">−</button><span>Poäng<b>${score}</b></span><button data-score="1" aria-label="Öka poäng">+</button></div>`
+const piles = (w) => `<div class="hogar"><button class="hog" data-draw><div class="baksida" style="--w:${w}px"></div><span><b>Draghög</b> · ${draw} · Dra</span></button>
+  <div class="hog">${laid.kast.length ? laidFace(laid.kast.at(-1), w) : `<div class="tomt" style="--w:${w}px"></div>`}<span><b>Kasthög</b> · ${laid.kast.length}</span></div></div>`
+const recent = (n = 5) => `<ul class="senaste">${last.slice(0, n).map((l, i) => `<li>${l} <span>· ${i + 1} min sedan</span></li>`).join('')}</ul>`
+const actionRow = () => {
+  if (!sel.length) return ''
+  const k = byId(sel[0]), ned = sel.some((id) => down.has(id)) ? ' · nedvänt' : ''
+  const what = sel.length === 1 ? `Valt: <b>${k.name}</b>${down.has(k.id) ? ' · spelas nedvänt' : ''}` : `Valt: <b>${sel.length} kort</b>, i ordningen de markerades`
+  return `<div class="rad-under"><span class="valt">${what}</span>
+    ${sel.length === 1 ? `<button class="knapp liten" data-read="${k.id}">Läs stort</button><button class="knapp liten" data-flip="${k.id}">${down.has(k.id) ? 'Vänd upp' : 'Vänd'}</button>` : ''}
+    <button class="knapp liten" data-clear>Avmarkera</button>
+    <button class="knapp prim" data-play="front">Framför mig${ned}</button><button class="knapp" data-play="kast">Kasthög${ned}</button>
+    <span class="mer"><button class="knapp" data-menu>Spela…</button>${menu ? `<div class="meny" style="right:0;bottom:52px">${['bo', 'golv'].map((z) => `<button class="knapp liten" data-play="${z}">${ZONES[z]}${ned}</button>`).join('')}</div>` : ''}</span></div>`
+}
+const frontList = (w) => laid.front.length ? `<div class="framfor">${laid.front.map((p) => laidFace(p, w)).join('')}</div>` : `<p style="margin:0;color:var(--muted)">Ingenting ännu.</p>`
+const tableList = () => `<div class="zonrad"><div class="t"><b>Framför Bo</b><span>${laid.bo.length} kort, uppvända</span></div>${laid.bo.slice(-2).map((p) => laidFace(p, 44)).join('')}</div>
+  <div class="zonrad"><div class="t"><b>Bordet</b><span>${laid.golv.length} kort</span></div>${laid.golv.slice(-2).map((p) => laidFace(p, 44)).join('')}</div>`
+const moreButtons = (cls = '') => ['? Hjälp', 'Regelbok', 'Flagga', 'Lämna'].map((t) => `<button class="knapp ${cls}">${t}</button>`).join('')
+const readOverlay = () => { const k = reading && byId(reading); if (!k) return ''; return `<div class="las" data-closeread><div class="inne">${face(k, { w: 330 })}<button class="knapp" data-closeread>Stäng</button></div></div>` }
+
+function render0() {
+  const tabs = [['hand', 'Handen', hand.length], ['front', 'Framför mig', laid.front.length], ['table', 'Bordet'], ['more', 'Mer']]
+  const panel = {
+    hand: `${piles(64)}<div class="rutnat">${hand.map((k) => face(k, { w: 100 })).join('')}</div>`,
+    front: `${counter()}${frontList(72)}`,
+    table: `${tableList()}<h4>Senaste dragen</h4>${recent()}`,
+    more: `<div style="display:grid;gap:8px">${moreButtons()}</div>`,
+  }[tab]
+  return `<div class="tel"><div class="huvud"><div class="vem" style="flex:1"><b>Ada</b><span>Plats A</span></div><button class="knapp">↶ Ångra</button></div>
+    <div class="panel">${panel}</div>${actionRow()}
+    <div class="flikar" role="tablist">${tabs.map(([id, t, n]) => `<button role="tab" data-tab="${id}" aria-selected="${tab === id}">${t}${n != null ? `<small>${n}</small>` : '<span style="height:18px"></span>'}</button>`).join('')}</div></div>`
+}
+function renderA() {
+  const n = hand.length, steg = Math.max(60, Math.min(158, (1280 - 48 - 150) / Math.max(1, n - 1)))
+  const zone = (id, extra = '') => `<div class="malyta ${extra}" data-zone="${id}"><header><b>${ZONES[id]}</b><span>${laid[id].length} kort</span></header><div class="innehall">${laid[id].slice(id === 'kast' ? -1 : 0).map((p) => laidFace(p, id === 'front' ? 84 : 60)).join('')}</div><span class="ledtext">Dra ett kort hit</span></div>`
+  return `<div class="huvud"><div class="vem piller"><b>Ada</b><span>Plats A</span></div>${counter()}
+      <span class="tyst">Bordet står på TV:n · Senast: <span>${last[0]}</span></span>
+      <button class="knapp">↶ Ångra</button>${moreButtons('liten')}</div>
+    <div class="mal">
+      <div class="malyta smal" style="border-style:solid;border-color:#262a36"><header><b>Draghög</b><span>${draw} kvar</span></header>
+        <button class="hog" data-draw style="margin:auto"><div class="baksida" style="--w:96px"></div><span>Klicka för att dra</span></button></div>
+      ${zone('front')}${zone('kast', 'smal')}
+      <div style="display:grid;gap:14px;width:210px">${zone('bo')}${zone('golv')}</div>
+    </div>
+    <div class="handband"><header><span>Din hand · ${n} kort</span><span>Vila läser · klick vänder · dra till en yta spelar</span></header>
+      <div class="handrad" style="--steg:${steg}px">${hand.map((k) => `<div class="slot" data-slot="${k.id}">${face(k, { w: 150 })}</div>`).join('')}</div></div>
+    <div class="lyft" id="lyft" hidden></div>`
+}
+function renderB() {
+  const tabs = [['hand', 'Handen', hand.length], ['front', 'Framför mig', laid.front.length], ['table', 'Bordet'], ['more', 'Mer']]
+  const panel = {
+    hand: `${piles(84)}<div class="rutnat stort">${hand.map((k) => face(k, { w: 150 })).join('')}</div>`,
+    front: `<div style="width:320px">${counter()}</div>${frontList(110)}`,
+    table: `<div style="max-width:560px;display:grid;gap:10px">${tableList()}</div><h4>Senaste dragen</h4>${recent()}`,
+    more: `<div style="display:grid;gap:8px;max-width:320px">${moreButtons()}</div>`,
+  }[tab]
+  return `<div class="huvud"><div class="vem" style="flex:1"><b>Ada</b><span>Plats A · bordet står på TV:n</span></div><button class="knapp">↶ Ångra</button></div>
+    <div class="b-kropp"><nav class="b-flikar" role="tablist">${tabs.map(([id, t, n]) => `<button role="tab" data-tab="${id}" aria-selected="${tab === id}">${t}${n != null ? `<small>${n}</small>` : ''}</button>`).join('')}</nav>
+      <div class="b-panel"><div class="panel">${panel}</div>${tab === 'hand' ? actionRow() : ''}</div></div>`
+}
+function renderC() {
+  return `<div class="huvud"><div class="vem piller"><b>Ada</b><span>Plats A</span></div><span class="tyst">Bordet står på TV:n</span><button class="knapp">↶ Ångra</button>${moreButtons('liten')}</div>
+    <div class="c-kropp">
+      <section><h4>Framför mig · ${laid.front.length}</h4>${counter()}${frontList(76)}</section>
+      <section class="c-mitt"><div class="panel">${piles(72)}<div class="rutnat mellan">${hand.map((k) => face(k, { w: 130 })).join('')}</div></div>${actionRow()}</section>
+      <section><h4>Bordet</h4>${tableList()}<h4>Senaste dragen</h4>${recent()}</section>
+    </div>`
+}
+
+function zoom() { return Math.min(1, (innerWidth - 32) / 1280) }
+function render() {
+  $('#varianter').innerHTML = ORDER.map((v) => `<button data-v="${v}" aria-pressed="${v === V}">${NAMES[v]}</button>`).join('') + `<button data-reset>Börja om</button>`
+  $('#anteckning').innerHTML = NOTES[V]
+  const y = $('#yta'); y.dataset.variant = V
+  y.innerHTML = ({ '0': render0, A: renderA, B: renderB, C: renderC })[V]() + readOverlay()
+  const z = zoom(); $('#skala').style.transform = `scale(${z})`; $('#skala').style.height = `${800 * z}px`
+  renderLift()
+}
+function renderLift() {
+  const l = $('#lyft'); if (!l) return
+  const k = !drag && hover && byId(hover)
+  if (!k) { l.hidden = true; return }
+  const d = down.has(k.id)
+  l.innerHTML = `${face(k, { w: 300 })}<span class="tips">Klick ${d ? 'vänder upp' : 'vänder'} · dra till en yta spelar${d ? ' nedvänt' : ''}</span>`
+  const slot = $(`[data-slot="${k.id}"]`), fr = $('#yta').getBoundingClientRect(), r = slot.getBoundingClientRect(), z = zoom()
+  const cx = (r.left - fr.left) / z + 75
+  l.style.left = `${Math.max(10, Math.min(1280 - 310, cx - 150))}px`; l.style.top = `${(r.top - fr.top) / z - 470}px`
+  l.hidden = false
+}
+function say(s) { last.unshift(s); last = last.slice(0, 8) }
+function flip(id) { if (down.has(id)) down.delete(id); else down.add(id); render() }
+function play(ids, zone) {
+  for (const id of ids) {
+    const k = byId(id); if (!k) continue
+    const d = down.has(id)
+    laid[zone].push({ ...k, down: d })
+    hand = hand.filter((c) => c.id !== id); down.delete(id)
+    say(d ? `Ada lade ett kort nedvänt i ${ZONES[zone]}` : `Ada spelade ${k.name} till ${ZONES[zone]}`)
+  }
+  sel = []; menu = false; hover = null; render()
+}
+function drawCard() {
+  if (!draw || !pool.length) return
+  const c = { ...pool.shift(), id: `n${nid++}` }; hand.push(c); draw--; say('Ada drog 1 kort')
+  if (V !== 'A') sel = [c.id] // telefonens regel: det dragna kortet blir det markerade
+  render()
+}
+
+// ── klick ──
+let suppressClick = false
+document.addEventListener('click', (e) => {
+  if (suppressClick) return
+  const t = e.target
+  const b = t.closest('#varianter [data-v]'); if (b) { V = b.dataset.v; history.replaceState(null, '', `?v=${V}`); sel = []; menu = false; reading = null; render(); return }
+  if (t.closest('[data-reset]')) { reset(); render(); return }
+  if (t.closest('[data-closeread]') && !t.closest('.inne .kort')) { reading = null; render(); return }
+  const tb = t.closest('[data-tab]'); if (tb) { tab = tb.dataset.tab; menu = false; render(); return }
+  if (t.closest('[data-draw]')) { drawCard(); return }
+  const sc = t.closest('[data-score]'); if (sc) { score += Number(sc.dataset.score); render(); return }
+  const rd = t.closest('[data-read]'); if (rd) { reading = rd.dataset.read; render(); return }
+  const fl = t.closest('[data-flip]'); if (fl) { flip(fl.dataset.flip); return }
+  if (t.closest('[data-clear]')) { sel = []; menu = false; render(); return }
+  if (t.closest('[data-menu]')) { menu = !menu; render(); return }
+  const pl = t.closest('[data-play]'); if (pl) { play(sel.slice(), pl.dataset.play); return }
+  const card = t.closest('#yta [data-card]'); if (!card || t.closest('.las')) return
+  const id = card.dataset.card
+  if (V === 'A') { flip(id); return }
+  sel = sel.includes(id) ? sel.filter((x) => x !== id) : [...sel, id]; menu = false; render()
+})
+
+// ── A: vila läser, dra spelar ──
+document.addEventListener('pointerover', (e) => {
+  if (V !== 'A' || drag) return
+  const s = e.target.closest('.handrad .slot'); const id = s?.dataset.slot ?? null
+  if (id !== hover) { hover = id; renderLift() }
+})
+let drag = null, press = null
+document.addEventListener('pointerdown', (e) => {
+  if (V !== 'A' || e.button !== 0) return
+  const card = e.target.closest('.handrad .kort'); if (card) press = { id: card.dataset.card, x: e.clientX, y: e.clientY }
+})
+const zoneAt = (x, y) => [...document.querySelectorAll('.malyta[data-zone]')].find((z) => { const r = z.getBoundingClientRect(); return x > r.left && x < r.right && y > r.top && y < r.bottom })
+document.addEventListener('pointermove', (e) => {
+  if (!press) return
+  if (!drag && Math.hypot(e.clientX - press.x, e.clientY - press.y) > 6) {
+    drag = { id: press.id }; hover = null; renderLift()
+    const s = $('#spoke'); s.innerHTML = face(byId(drag.id), { w: 120 }); s.hidden = false
+  }
+  if (!drag) return
+  const s = $('#spoke'); s.style.left = `${e.clientX}px`; s.style.top = `${e.clientY}px`
+  const aim = zoneAt(e.clientX, e.clientY)
+  document.querySelectorAll('.malyta').forEach((z) => z.toggleAttribute('data-aim', z === aim))
+})
+document.addEventListener('pointerup', (e) => {
+  press = null; if (!drag) return
+  const id = drag.id; drag = null; $('#spoke').hidden = true
+  const aim = zoneAt(e.clientX, e.clientY)
+  if (aim) play([id], aim.dataset.zone); else render()
+  suppressClick = true; setTimeout(() => (suppressClick = false), 0)
+})
+
+addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+    V = ORDER[(ORDER.indexOf(V) + (e.key === 'ArrowRight' ? 1 : ORDER.length - 1)) % ORDER.length]
+    history.replaceState(null, '', `?v=${V}`); sel = []; menu = false; reading = null; render()
+  }
+  if (e.key === 'f' || e.key === 'F') { const id = V === 'A' ? hover : sel[sel.length - 1]; if (id) flip(id) }
+  if (e.key === 'Escape') { reading = null; menu = false; render() }
+})
+addEventListener('resize', render)
+render()
+</script>
+</body>
+</html>

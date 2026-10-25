@@ -148,10 +148,11 @@ const terms: Document = {
   ],
 }
 
-// What is true today (beställarens beslut 3, 2026-10-24). The masking after twelve months, the
-// deletion of a game's tables, the erasure ledger (#1279), Profil's download and erase (#1280) and
-// the guest's own way from her phone (#1281) are not built, so the text does not say them: erasure
-// is a letter to Kontakt. Each slice brings its own line in here when it lands.
+// What is true today (beställarens beslut 3, 2026-10-24). What can no longer be used is swept (#1277).
+// The masking after twelve months, the deletion of a game's tables, the erasure ledger (#1279),
+// Profil's download and erase (#1280) and the guest's own way from her phone (#1281) are not built,
+// so the text does not say them: erasure is a letter to Kontakt. Each slice brings its own line in
+// here when it lands.
 const privacy: Document = {
   title: 'Integritet i Decksters beta',
   sections: [
@@ -197,7 +198,8 @@ const privacy: Document = {
           list: [
             '**Ditt konto och dina spel:** så länge kontot finns. Ett konto som inte används raderas inte under betan.',
             '**Det gäster lämnar vid ett bord:** tills det raderas. Skriv till {contact} så raderar vi det.',
-            '**En inloggningslänk:** gäller i 15 minuter. **Kakan:** håller dig inloggad i 30 dagar.',
+            '**Inloggningslänkar och kakor:** en länk gäller i 15 minuter och kakan i 30 dagar, och vi tar bort dem när de inte längre går att använda.',
+            '**Inbjudningar:** 30 dagar efter att de använts eller gått ut.',
             '**Säkerhetskopior:** åtta dagar.',
           ],
         },

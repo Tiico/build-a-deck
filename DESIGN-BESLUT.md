@@ -2161,7 +2161,7 @@ Den är märkt «Utkast, inte juridiskt granskat» på sidan och i steget tills 
 Uppgifterna om «vi» står i hakparenteser i `packages/web/src/terms/operator.ts` tills beställaren fyller i dem: namn, adress och kontaktadress, meningen om biträdesavtalen med Cloudflare och Resend, och vad Resends överföring till USA vilar på.
 Texten läser dem därifrån, så att det blir en ändring på ett ställe.
 Villkorstexten är juridisk text och inte verktygets katalog, så dess «vi» hålls inte till L73.
-Integritetstexten säger det som gäller i dag (beslut 3): radering görs via Kontakt, och maskningen efter tolv månader, borttagna spels bord, Profils nedladdning och radering och gästens väg från telefonen står inte i den förrän #1279, #1280 och #1281 är byggda.
+Integritetstexten säger det som gäller i dag (beslut 3): det som inte längre kan användas rensas (#1277), radering görs via Kontakt, och maskningen efter tolv månader, borttagna spels bord, Profils nedladdning och radering och gästens väg från telefonen står inte i den förrän #1279, #1280 och #1281 är byggda.
 
 `createServer` utan register har inga villkor, som en server utan `auth` inte har några konton, och lådan startas med `TERMS` (`main.ts`).
 Grinden sitter på servern: ett konto som inte har godkänt den gällande versionen får läsa, exportera och logga ut, och varje annan skrivande väg svarar `403 { error: 'terms', current }` innan någon kropp läses.
@@ -2504,7 +2504,7 @@ Kontots och gästens vägar är nya ytor och prototypas först.
 
 Skivorna (alla öppna 2026-10-24):
 - #1276 personfälten och kolumnerna som sluten, testad karta — byggd.
-- #1277 det som inte längre kan användas rensas — pågår.
+- #1277 det som inte längre kan användas rensas — byggd.
 - #1278 gästens namn och token ur adressraden och `Referer` — pågår.
 - #1279 radering i lagret, gallring, raderingsliggare och operatörsskript — efter #1276.
 - #1280 kontot laddar ner sina uppgifter och raderar sig i Profil — efter #1279 och #1254, prototyp först.
