@@ -59,11 +59,12 @@ describe('the foot of the login card (#757)', () => {
   })
 })
 
-describe('what a guest leaves behind, said where she saves (#757)', () => {
+describe('what a guest leaves behind, said where she saves (#757, #1281)', () => {
   // Saving is offered once the answers are sent (#690), so the sentence stands there, and goes with
-  // the offer once the answers are saved.
-  const KEPT = 'Ditt namn, dina drag och dina enkätsvar sparas på bordet, inte på dig som person.'
-  it('says what is kept, tied to the table and not to her, beside «Spara till ditt konto»', () => {
+  // the offer once the answers are saved. What it says is what saving changes (G6): the account's
+  // time instead of a year.
+  const KEPT = 'Sparar du bordet till ett konto står ditt namn och dina svar kvar så länge kontot finns, i stället för ett år.'
+  it('says what saving keeps and for how long, beside «Spara till ditt konto»', () => {
     sessionStorage.setItem('byd.survey.sent.t1', '1')
     render(<Survey who="Ada" version="rev-1" saveUrl="/save" remember="t1" onSubmit={async () => undefined} />)
     expect(screen.getByRole('link', { name: 'Spara till ditt konto' })).toBeTruthy()

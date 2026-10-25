@@ -165,7 +165,7 @@ Målet är att kunna ta betalt och lämna ifrån sig allt.
 - ✅ Behörighetsroller: ägare, medredigerare, testledare, betraktare, med inbjudan per adress; byggt med D3 i fas 2.
 - 🔶 GDPR för gäster och konton: Deckster är personuppgiftsansvarig, lagringstider, maskning på plats i loggen, radering för gäst och konto, och registerutdrag (G6, beslutat 2026-10-24, #1269).
   Raderingen i lagret är byggd (#1279): ett inträde, ett bords gäster och ett borttaget spels bord maskas på plats, gästen utan konto gallras tolv månader efter att bordet slutade, liggaren körs om efter en återställning, och operatören raderar med `erase`.
-  Skivorna: personfälten som sluten karta (#1276), rensningen av det som inte längre kan användas (#1277), namn och token ur adressraden (#1278) och raderingen i lagret (#1279) är byggda; kontots väg i Profil (#1280) och gästens väg med integritetssidan (#1281) väntar på prototyper.
+  Skivorna: personfälten som sluten karta (#1276), rensningen av det som inte längre kan användas (#1277), namn och token ur adressraden (#1278), raderingen i lagret (#1279) och gästens väg från telefonen med meningen och integritetstexten (#1281, L87) är byggda; kontots väg i Profil (#1280) återstår.
 - 🔶 Villkor med garantiklausul om IP, godkända i ett eget steg efter första inloggningen; korta betavillkor i betan och en releaseversion på ett aktiebolag (F4, reviderad 2026-10-24, #1268).
   Villkorsversionen och godkännandet på servern (#1270) och betavillkoren med sidan, steget, läsläget och grinden (#1272) är byggda.
   Releaseversionen på aktiebolaget återstår.
@@ -224,7 +224,7 @@ Beställaren beslutade 2026-10-23 (#1199) att stödet för fler partner och tryc
 - 🔶 Tryckunderlag: renderaren gör vektor-PDF med utfall från samma HTML/CSS som texturerna (E2), utan passmärken, eftersom ingen av partnerna i #1199 vill ha dem; partnerns krav i pixlar och utfall är byggda (#1207); kvar är tryckprofil per typ (B2) och CMYK.
 - ⬜ Kassa med kostnadsbesked först i flödet, ingen prisvisning i editorn (F3).
 - ⬜ Automatisk IP-screening med manuell eskalering före tryck (F4, reviderad 2026-10-24, #1268): klassificerare och bildhash på lådan, i skuggläge vid uppladdning redan i betan, och grind först i kassan.
-  Screeningkontraktet, cachen per hash och jobbslaget `screen` är byggda med en fake-klassificerare och operatörens `screening run` och `report` (#1271); lådans klassificerare (NSFW-ViT och CLIP i int8), PDQ, referenslistan i databasen och screeningen vid uppladdning i skuggläge är byggda och mätta mot kortkonst (#1273); anmälan och spärr per hash är byggda (#1274, L87): `/villkor/anmal`, kvittot, `report` för operatören och «Spärrad» i Tabell; granskningen före tryck (#1275) prototypas först och väntar på kassan och en partner.
+  Screeningkontraktet, cachen per hash och jobbslaget `screen` är byggda med en fake-klassificerare och operatörens `screening run` och `report` (#1271); lådans klassificerare (NSFW-ViT och CLIP i int8), PDQ, referenslistan i databasen och screeningen vid uppladdning i skuggläge är byggda och mätta mot kortkonst (#1273); anmälan och spärr per hash är byggda (#1274, L88): `/villkor/anmal`, kvittot, `report` för operatören och «Spärrad» i Tabell; granskningen före tryck (#1275) prototypas först och väntar på kassan och en partner.
 - ⬜ Moms, tull och leveransvillkor för EU-kunder: DDP eller DDU, IOSS (I, ekonomi).
 - ⬜ Fontlicensiering för tryck (I).
 - ⬜ En riktig order som landar i brevlådan (H1, TUNN-SKIVA).

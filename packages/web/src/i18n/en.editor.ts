@@ -1890,6 +1890,7 @@ export const enEditor = {
   'results.flag.when': 'move {n} of {of}',
   'results.flag.table': 'The table',
   'results.flag.silent': 'flagged without a comment',
+  'results.flag.masked': 'flagged, and the comment is removed',
   'results.card.show': 'Show {title} as the card was',
   'results.card.lifted': '{title} as the card was',
   'results.card.by': 'when {who} flagged it',

@@ -518,8 +518,40 @@ export const svPlay = {
   'survey.tied': 'Dina svar är kopplade till {version}.',
   'survey.save': 'Spara till ditt konto',
   'survey.saved': 'Sparat till ditt konto.',
-  // Vad som lagras om en gäst, där hon ansluter eller sparar (#757): knutet till bordet, inte till en person.
-  'guest.kept': 'Ditt namn, dina drag och dina enkätsvar sparas på bordet, inte på dig som person.',
+  // Vad som lagras om en gäst, vem som ser det och hur länge, där hon sätter sig (#757, #1281,
+  // prototypens variant C): tre korta rader i stället för en mening.
+  'guest.kept.saved.label': 'Sparas',
+  'guest.kept.saved': 'ditt namn, dina drag, anteckningar, flaggor och enkätsvar',
+  'guest.kept.seen.label': 'Ser det',
+  'guest.kept.seen': 'alla vid bordet nu, spelets ägare efteråt',
+  'guest.kept.how.label': 'Hur länge',
+  'guest.kept.how': 'namnet och det du skriver i ett år, eller tills du tar bort det',
+  // Där hon sparar bordet till ett konto (G1, G6): då gäller kontots tid i stället för ett år.
+  'guest.kept.account': 'Sparar du bordet till ett konto står ditt namn och dina svar kvar så länge kontot finns, i stället för ett år.',
+
+  // Gästens egen radering (#1281, G6, beställarens val C med en ändring): att behålla namnet är
+  // huvudvalet, och att ta bort det är en synlig andra knapp, där hon lämnar och under tacket.
+  'forget.why': 'Med ditt namn kvar vet designern vem som gjorde och sa vad.',
+  'forget.leave': 'Lämna och ta bort mitt namn…',
+  'forget.thanks': 'Ta bort mitt namn och mina svar…',
+  'forget.leave.title': 'Lämna och ta bort ditt namn?',
+  'forget.thanks.title': 'Ta bort ditt namn och dina svar?',
+  'forget.list': 'Det här tas bort från bordet:',
+  'forget.list.name': 'namnet du satt under, {name}',
+  'forget.list.watched': 'namnet du tittade under, {name}',
+  'forget.list.words': 'det du skrivit i anteckningsblocket och i flaggor',
+  'forget.list.answers': 'dina enkätsvar',
+  'forget.kept': 'Dragen står kvar vid bordet under «{masked}». Det går inte att ångra.',
+  'forget.cancel': 'Avbryt',
+  'forget.leave.yes': 'Ja, lämna och ta bort',
+  'forget.thanks.yes': 'Ja, ta bort',
+  'forget.left.title': 'Du har lämnat bordet, och ditt namn är borttaget.',
+  'forget.left.body': 'Anteckningarna och flaggornas kommentarer är borttagna. Dragen står kvar vid bordet under «{masked}».',
+  'forget.backups': 'Säkerhetskopiorna glömmer dem inom åtta dagar.',
+  'forget.home': 'Till startsidan',
+  'forget.done': 'Ditt namn och dina svar är borttagna.',
+  'forget.done.body': 'Dragen står kvar vid bordet under «{masked}». Säkerhetskopiorna glömmer dem inom åtta dagar.',
+  'forget.thanks.after': 'Tack.',
 
   // Åskådaren (C8).
   'observer.name': 'observatör',

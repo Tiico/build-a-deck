@@ -2089,6 +2089,7 @@ export const svEditor = {
   'results.flag.when': 'drag {n} av {of}',
   'results.flag.table': 'Bordet',
   'results.flag.silent': 'flaggade utan kommentar',
+  'results.flag.masked': 'flaggade, och kommentaren är borttagen',
   'results.card.show': 'Visa {title} som kortet såg ut',
   'results.card.lifted': '{title} som kortet såg ut',
   'results.card.by': 'när {who} flaggade',

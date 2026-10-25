@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Activity, Snapshot } from '@byd/protocol'
 import { TableClient, type ClientStatus, type ClientTrouble, type ConnectOptions } from '../client.js'
 import type { RetrySchedule } from '../status/connection.js'
+import { useT } from '../i18n/index.js'
+import { maskedWords } from '../masked.js'
 
 export type TableConnection = {
   client: TableClient | null
@@ -43,11 +45,15 @@ export function useTableClient(opts: ConnectOptions | null): TableConnection {
   const key = opts ? `${opts.url}|${opts.sessionId}|${opts.seat ?? ''}|${opts.observer ?? ''}|${opts.token ?? ''}|${opts.host ?? ''}|${opts.lobby ? 'lobby' : ''}|${opts.owner ? 'owner' : ''}` : ''
   const latest = useRef(opts)
   latest.current = opts
+  // A masked name or note is said in the reader's language (#1281), the one on when it arrives.
+  const t = useT()
+  const say = useRef(t)
+  say.current = t
 
   useEffect(() => {
     const current = latest.current
     if (!current) return
-    const c = TableClient.connect(current)
+    const c = TableClient.connect({ ...current, masked: maskedWords((key, params) => say.current(key, params)) })
     setClient(c)
     const publish = () => {
       setActivity(c.activity)

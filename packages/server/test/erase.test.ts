@@ -353,6 +353,87 @@ for (const backend of backends) {
       vi.restoreAllMocks()
     })
 
+    // The guest's own way (#1281, G6, F5): her phone asks with the token her seat or her watch was
+    // bought with, and the server erases that admission and nothing else, the way the operator's
+    // script erases one when she writes to Kontakt.
+    const eraseMe = (table: string, token: unknown) => as(null)('POST', `/sessions/${table}/erase`, { token })
+
+    it('lets a guest erase herself with her own token, at a table in play, and the others see the seat taken under the masked name', async () => {
+      const t = await played()
+      await t.bo.synced(t.bo.view!.seq)
+      expect(t.bo.view!.seats.find((s) => s.id === 'A')?.name).toBe(NAME)
+      const res = await eraseMe(t.table.id, t.tokens.ada)
+      expect(res.status).toBe(200)
+      // What it answers says what it did, counted, and never a name.
+      const said = await res.text()
+      expect(JSON.parse(said)).toEqual({ ok: true })
+      await t.bo.waitFor(() => t.bo.view?.seats.find((s) => s.id === 'A')?.name === REDACTED, 4000)
+      // Her own connection is patched too, and still holds the seat.
+      await t.ada.waitFor(() => t.ada.view?.seats.find((s) => s.id === 'A')?.name === REDACTED, 4000)
+      await t.ok(t.ada, 'A', { v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
+      // A connection opened now is told nothing of her: not her name, not her words.
+      const fresh = await run.connectTable(t.table.id, t.table.hostKey)
+      await fresh.close()
+      expect(containsAny(fresh.frames.join('\n'), [NAME, NOTE, COMMENT])).toEqual([])
+      expect(containsAny(fresh.frames.join('\n'), [BO, BO_NOTE, CILLA, CILLA_COMMENT])).toEqual([BO, BO_NOTE, CILLA, CILLA_COMMENT])
+      expect(containsAny(await db.raw(t.table.id), [NAME, NOTE, COMMENT])).toEqual([])
+      // Written in the ledger as asked for, with no name and no token.
+      const ledger = await db.cli(run).erasures.ledger()
+      expect(ledger.at(-1)).toMatchObject({ kind: 'guest', session: t.table.id, seat: 'A', reason: 'request' })
+      expect(containsAny(JSON.stringify(ledger), [NAME, t.tokens.ada, hash(t.tokens.ada)])).toEqual([])
+      for (const c of [t.ada, t.bo, t.cilla]) await c.close()
+    })
+
+    it('lets a guest erase herself after the survey, and her answers go with her name', async () => {
+      const t = await played()
+      await t.ok(t.ada, 'A', { v: 'session.end' })
+      for (const c of [t.ada, t.bo, t.cilla]) await c.close()
+      expect((await answer(t.table.id, t.tokens.ada, 'A', CHANGE)).status).toBe(201)
+      expect((await answer(t.table.id, t.tokens.cilla, null, 'Cillas önskan')).status).toBe(201)
+      const before = await (await t.owner('GET', `/projects/${t.project}/playtest`)).text()
+      expect(containsAny(before, [NAME, COMMENT, CHANGE, CILLA, 'Cillas önskan'])).toEqual([NAME, COMMENT, CHANGE, CILLA, 'Cillas önskan'])
+
+      expect((await eraseMe(t.table.id, t.tokens.ada)).status).toBe(200)
+      // The observer has her own way, the same one.
+      expect((await eraseMe(t.table.id, t.tokens.cilla)).status).toBe(200)
+      const after = await (await t.owner('GET', `/projects/${t.project}/playtest`)).text()
+      expect(containsAny(after, [NAME, COMMENT, CHANGE, CILLA, CILLA_COMMENT, 'Cillas önskan'])).toEqual([])
+      expect(containsAny(after, [BO])).toEqual([BO])
+      expect((await db.surveys.list(t.table.id)).map((s) => s.who)).toEqual([])
+      // Asked again, it is done already, and says so the same way.
+      expect((await eraseMe(t.table.id, t.tokens.ada)).status).toBe(200)
+    })
+
+    it('lets a kicked guest erase herself, since the token still says who she was', async () => {
+      const t = await played()
+      const kicked = await fetch(`${run.http}/sessions/${t.table.id}/kick`, { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${t.table.hostKey}` }, body: JSON.stringify({ seat: 'A' }) })
+      expect(kicked.status).toBe(200)
+      expect((await eraseMe(t.table.id, t.tokens.ada)).status).toBe(200)
+      expect(containsAny(await db.raw(t.table.id), [NAME, NOTE, COMMENT])).toEqual([])
+      for (const c of [t.ada, t.bo, t.cilla]) await c.close()
+    })
+
+    it('erases only the seat the token is for, and a token from another table erases nothing', async () => {
+      const t = await played()
+      const other = await played()
+      for (const c of [t.ada, t.bo, t.cilla, other.ada, other.bo, other.cilla]) await c.close()
+      const rawT = await db.raw(t.table.id)
+      const rawOther = await db.raw(other.table.id)
+      // Another table's token, a made-up one and none at all are nobody here.
+      expect((await eraseMe(t.table.id, other.tokens.ada)).status).toBe(403)
+      expect((await eraseMe(t.table.id, 'not-a-token')).status).toBe(403)
+      expect((await eraseMe(t.table.id, undefined)).status).toBe(400)
+      expect((await eraseMe('no-such-table', t.tokens.ada)).status).toBe(404)
+      expect(await db.raw(t.table.id)).toBe(rawT)
+      expect(await db.raw(other.table.id)).toBe(rawOther)
+      // Bosse's token takes Bosse, and leaves Adelina where she is.
+      expect((await eraseMe(t.table.id, t.tokens.bo)).status).toBe(200)
+      const raw = await db.raw(t.table.id)
+      expect(containsAny(raw, [BO, BO_NOTE])).toEqual([])
+      expect(containsAny(raw, [NAME, NOTE, COMMENT, CILLA, CILLA_COMMENT])).toEqual([NAME, NOTE, COMMENT, CILLA, CILLA_COMMENT])
+      expect(await db.raw(other.table.id)).toBe(rawOther)
+    })
+
     it('says what it does without a name, and refuses what it cannot do', async () => {
       expect((await script()).code).toBe(2)
       expect((await script('table')).code).toBe(2)
