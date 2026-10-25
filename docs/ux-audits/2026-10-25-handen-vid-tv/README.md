@@ -27,4 +27,4 @@ Servera katalogen över http, till exempel `python3 -m http.server 8781` i `prot
 
 Bilder i `prototyper/bilder/`.
 
-Beslut: _väntar på beställaren_.
+Beslut 2026-10-25 (#1308): **A**, handen längs nederkanten med `/online`s musgester. Implementationen är #1310.
