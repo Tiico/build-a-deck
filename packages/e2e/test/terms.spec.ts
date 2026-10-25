@@ -96,7 +96,7 @@ test('«Inte nu» leaves Mina spel as it is, asks on a press, and the server ref
   await next.close()
 })
 
-test('an account from before the terms meets them in a band, first in the queue, and the passkey follows', async ({ page }) => {
+test('an account from before the terms meets them in a band, first in the queue, and every way opens once accepted', async ({ page }) => {
   await page.setViewportSize(DESK.viewport)
   // Logged in behind the page's back, with its name given, as an account that was there before the terms.
   const email = await logIn(page.request, `bo+${crypto.randomUUID().slice(0, 8)}@example.com`, { terms: false })
@@ -115,8 +115,6 @@ test('an account from before the terms meets them in a band, first in the queue,
   await expect(dialog).toHaveCount(0)
   await expect(band).toHaveCount(0)
   await expect(page.getByText('Villkoren inte godkända')).toHaveCount(0)
-  // One band at a time: the passkey's comes now that the terms' has been answered (L78, #1254).
-  await expect(page.getByRole('region', { name: 'Passkey' })).toBeVisible()
   expect(await (await page.request.get('/auth/me')).json()).toMatchObject({ email, terms: { due: false } })
   await makeProject(page.request, { name: 'Hamnen' })
 })

@@ -52,7 +52,7 @@ export function Survey({ who, version, onSubmit, saveUrl, remember, rulebook, sa
           {!saved && saveUrl && <p className="byd-muted">{t('guest.kept')}</p>}
           {/* The row's first two (#757, #1272), where she saves what she left. */}
           {!saved && saveUrl && (
-            <p className="byd-muted byd-trust">
+            <p className="byd-trust">
               <a href="/villkor">{t('trust.terms')}</a> · <a href="/villkor#integritet">{t('trust.privacy')}</a>
             </p>
           )}

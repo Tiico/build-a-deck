@@ -956,7 +956,7 @@ export class ProjectClient {
   // language she was working in and then stays put.
   async importRules(rules: RuleDoc, file: string, t: T = swedish): Promise<void> {
     this.mustBeAbleToEdit(t)
-    await this.termsCleared()
+    if (this.termsHeld) await this.termsCleared()
     // The one edit from the editor that writes the whole book: what the file makes of it is the book.
     this.edit({ v: 'setRules', rules: { ...rules, source: { file, at: new Date().toISOString() } } })
     const saved = await this.save()
@@ -1070,7 +1070,7 @@ export class ProjectClient {
 
   private async beginIcon(svg: string, wanted: string, credit: ProjectCredit | undefined, t: T, gesture?: string): Promise<{ name: string; stored: Promise<void> }> {
     this.mustBeAbleToEdit(t)
-    await this.termsCleared()
+    if (this.termsHeld) await this.termsCleared()
     const file = svgBytes({ svg })
     // The reference first, off the bytes themselves (#310). It is the name the service will give
     // them, so the question the next line asks — does the game already have this symbol? — is
@@ -1281,7 +1281,7 @@ export class ProjectClient {
   // A licence is not in the file: only the designer knows it, and it is stated beside the family.
   async useFont(file: File, t: T = swedish): Promise<string> {
     this.mustBeAbleToEdit(t)
-    await this.termsCleared()
+    if (this.termsHeld) await this.termsCleared()
     // The reference first, off the bytes themselves (#339, as #310 did for the symbol): whether
     // the game already has this typeface is a question about a name, and the name is known here.
     const ref = await assetRefOfFile(file)
@@ -1335,7 +1335,7 @@ export class ProjectClient {
   // symbol (#344, L37).
   async useTheme(theme: Theme, t: T = swedish): Promise<void> {
     this.mustBeAbleToEdit(t)
-    await this.termsCleared()
+    if (this.termsHeld) await this.termsCleared()
     const wanted = themeFamilies(theme).filter((family) => !this.doc.fonts?.[family.family]?.asset)
     const files = await Promise.all(wanted.map(async (family) => ({ family, file: await catalogFile(family, t) })))
     const fetched = await Promise.all(files.map(async ({ family, file }) => ({ family, file, ref: await assetRefOfFile(file) })))
@@ -1402,7 +1402,7 @@ export class ProjectClient {
   // comes into the library under its file name instead of as a hash nobody named.
   async addPicture(file: File, t: T = swedish, onto?: { cardRef: string; field: string }): Promise<string> {
     this.mustBeAbleToEdit(t)
-    await this.termsCleared()
+    if (this.termsHeld) await this.termsCleared()
     // Before the bytes are even hashed: a file the gate is certain to refuse touches neither the
     // document nor the wire (#742). The refusal names the picture as a taken-back one does (L37),
     // because in a batch it is one line among several and has to say which file it is about —
@@ -1452,7 +1452,7 @@ export class ProjectClient {
   // arrive and a met one is said where the designer uploaded, rather than at the next save.
   async uploadAsset(file: Blob, kind: AssetKind, t: T = swedish): Promise<string> {
     this.mustBeAbleToEdit(t)
-    await this.termsCleared()
+    if (this.termsHeld) await this.termsCleared()
     await this.mustBeTakeable(file, kind, t)
     const res = await fetch(`${this.http}/assets?${new URLSearchParams({ project: this.id }).toString()}`, withCredentials({ method: 'POST', headers: { 'content-type': assetTypeDeclaring(kind) }, body: file }))
     if (res.status === 401) throw new Unauthorized()

@@ -32,8 +32,10 @@ test('saving after the survey comes back to the phone, and Back lands on the pag
   await save.click()
   await page.getByLabel('Email').fill(`e2e-${crypto.randomUUID()}@example.com`)
   await page.getByRole('button', { name: 'Send sign-in link' }).click()
-  // A first login is asked what the others should call it (#1254); the step replaces itself too.
+  // A first login is asked what the others should call it (#1254), then the terms (#1272): the same
+  // steps as any new account, and they replace themselves too.
   await page.getByRole('button', { name: 'Skip' }).click()
+  await page.getByRole('button', { name: 'Accept and continue' }).click()
 
   // Back on the phone, on the thanks, which say it is saved.
   await expect(page.getByText('Saved to your account.')).toBeVisible()

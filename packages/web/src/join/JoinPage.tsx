@@ -265,6 +265,7 @@ export function JoinPage({ onSit = (url) => location.assign(url), onOpen = (url)
     <div className="byd-join-page">
       <main className={`byd-join${live.stale ? ' byd-status-stale' : ''}`} data-page="join" {...(live.stale ? { inert: true } : {})}>
       <HomeWay href={links.home} />
+      <TrustWay />
       <header>
         <span>{t('join.into')}</span>
         {/* The game's name, when the table has one (#675): it is what the guest came to play, and
@@ -350,10 +351,6 @@ export function JoinPage({ onSit = (url) => location.assign(url), onOpen = (url)
         </label>
         {/* What a guest leaves behind, said where she sits down (#757): tied to the table, not to her. */}
         <p className="byd-muted">{t('guest.kept')}</p>
-        {/* The row's first two (#757, #1272): the terms and the privacy text, on a page of their own. */}
-        <p className="byd-muted byd-trust">
-          <a href="/villkor">{t('trust.terms')}</a> · <a href="/villkor#integritet">{t('trust.privacy')}</a>
-        </p>
         {/* Villkoret, sagt en gång per skärm och vid fältet — inte en gång per knapp. Det föds
             efter trycket, så det föds som en levande region: en `alert` som kommer till
             dokumentet läses upp när den kommer, och fältet pekar på den. */}
@@ -391,6 +388,17 @@ function HomeWay({ href = '/' }: { href?: string | undefined }) {
       <ArrowGlyph to="left" />
       {t('status.act.home.start')}
     </a>
+  )
+}
+
+// The row's first two where a guest sits down (#757, #1272): the terms and the privacy text, in the
+// card's other top corner and out of its flow, for the same reason as the way home.
+function TrustWay() {
+  const t = useT()
+  return (
+    <p className="byd-join-trust">
+      <a href="/villkor">{t('trust.terms')}</a> · <a href="/villkor#integritet">{t('trust.privacy')}</a>
+    </p>
   )
 }
 

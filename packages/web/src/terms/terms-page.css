@@ -24,7 +24,7 @@
 /* The two halves and «Visa all text», held at the top while the page is read. */
 .byd-terms-parts { position: sticky; top: 0; z-index: 2; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px 0; background: #0f1117; border-bottom: 1px solid var(--byd-terms-line); }
 .byd-terms-parts nav { display: inline-flex; gap: 4px; padding: 3px; border-radius: 10px; background: #1b1d23; }
-.byd-terms-parts nav a { display: inline-flex; align-items: center; min-height: 40px; padding: 0 14px; border-radius: 8px; color: #c3cbdd; font-size: 16px; font-weight: 650; text-decoration: none; }
+.byd-terms-parts nav a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 14px; border-radius: 8px; color: #c3cbdd; font-size: 16px; font-weight: 650; text-decoration: none; }
 .byd-terms-parts nav a:hover, .byd-terms-parts nav a[aria-current] { background: #2b303c; color: #fff; }
 .byd-terms-parts button { margin-left: auto; min-height: 44px; padding: 0 14px; border: 1px solid #6f7a90; border-radius: 10px; background: transparent; color: #dce3f2; font: inherit; font-size: 14px; cursor: pointer; }
 
@@ -39,9 +39,9 @@
 .byd-terms-nr { color: #6f7a90; font-weight: 700; font-variant-numeric: tabular-nums; }
 .byd-terms-row b { color: #fff; font-size: 17px; line-height: 1.4; }
 .byd-terms-ks { grid-column: 2; color: #c3cbdd; font-size: 15px; line-height: 1.5; }
-.byd-terms-open { grid-column: 3; grid-row: 1; color: #9aa3b8; font-size: 13px; white-space: nowrap; }
-.byd-terms-open::after { content: ' ▾' / ''; }
-.byd-terms-row[open] .byd-terms-open::after { content: ' ▴' / ''; }
+.byd-terms-open { grid-column: 3; grid-row: 1; display: inline-flex; align-items: center; gap: 4px; align-self: start; color: #9aa3b8; font-size: 13px; white-space: nowrap; }
+.byd-terms-open .byd-glyph { width: 12px; height: 12px; }
+.byd-terms-row[open] .byd-terms-open .byd-glyph { transform: rotate(180deg); }
 .byd-terms-full { display: grid; gap: 10px; padding: 0 16px 16px 56px; color: #dfe4ef; font-size: 15px; }
 .byd-terms-full p { margin: 0; }
 .byd-terms-full ul { margin: 0; padding-left: 22px; display: grid; gap: 4px; }

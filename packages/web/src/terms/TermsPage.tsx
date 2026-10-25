@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { DecksterMark } from '../brand/DecksterMark.js'
-import { ArrowGlyph } from '../glyphs.js'
+import { ArrowGlyph, ChevronGlyph } from '../glyphs.js'
 import { useLang, useT } from '../i18n/index.js'
 import { usePageTitle } from '../status/DocumentTitle.js'
 import { Inline } from './Inline.js'
@@ -140,6 +140,7 @@ function Row({ open, n, section, href, full }: { open: boolean; n: number; secti
         <Head n={n} section={section} href={href} />
         <span className="byd-terms-open" aria-hidden="true">
           {full}
+          <ChevronGlyph to="down" />
         </span>
       </summary>
       <div className="byd-terms-full">
