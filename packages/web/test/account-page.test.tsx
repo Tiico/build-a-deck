@@ -245,8 +245,9 @@ describe('the tables the account sat at (G1)', () => {
     expect([...to.searchParams.keys()]).not.toContain('name')
     expect([...to.searchParams.keys()]).not.toContain('token')
     // A token of its own: the server keeps only a hash, so the seat is handed a new one.
-    expect(new URLSearchParams(to.hash.slice(1)).get('token')).toBeTruthy()
-    expect(to.searchParams.get('token')).not.toBe(token)
+    const handed = new URLSearchParams(to.hash.slice(1)).get('token')
+    expect(handed).toBeTruthy()
+    expect(handed).not.toBe(token)
   })
 
   // The survey from Mina spel (#1143, variant B): a table that is over has no way in, so the tile
