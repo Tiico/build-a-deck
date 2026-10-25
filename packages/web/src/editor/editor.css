@@ -367,8 +367,10 @@
    and every tab slid 60–90 px under the pointer at 1280 and 1440 (#1250). So the door is the
    designer's own face and «Dela» whoever is here (L63, variant B), and the others hang from the
    header's lower edge under it: a stack that takes no width from the row and no height from the
-   work. The stack is the door's, so the door lets it be drawn outside itself. */
-.byd-editor-here { position: relative; display: flex; gap: 4px; align-items: center; justify-content: center; flex: none; margin-left: 8px; border: 0; border-radius: 20px; padding: 4px 12px 4px 4px; background: transparent; cursor: pointer; }
+   work. The stack is the door's, so the door lets it be drawn outside itself.
+   The door is a layer of its own over the strips under the header, and the stack lies at the
+   bottom of that layer, so the door's focus ring is drawn over the stack and is seen whole (#1321). */
+.byd-editor-here { position: relative; z-index: 3; display: flex; gap: 4px; align-items: center; justify-content: center; flex: none; margin-left: 8px; border: 0; border-radius: 20px; padding: 4px 12px 4px 4px; background: transparent; cursor: pointer; }
 /* The door says what it is (#727, beslut A): «Dela» beside the face, so an invitation can be found
    without knowing that one's own initial is a button. Between 1024 and 1279 the header has no room
    for the word with a wider font than the Mac's (the game's name was cut on CI's Linux), so there
@@ -384,16 +386,20 @@
 .byd-editor-here:hover, .byd-editor-here[aria-expanded='true'] { background: #1b1d23; }
 .byd-editor-here i { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--who); color: #10131a; font: 800 11px system-ui; font-style: normal; }
 /* The others: the stack's middle on the header's lower edge, each face overlapping the one before
-   it by its ring and no more, so every letter is read whole. The door stands in the middle of the
+   it by its ring and no more, so every letter is read whole (#1321). 18 px faces, so three of them
+   are no wider than the door and the gaps beside it at 1024. The door stands in the middle of the
    header's 56 px, so its own middle is 28 px above that edge whatever height the door has. It
    reaches 9 px into whatever stands under the header, inside that strip's own air, and is drawn
    over it (beslut 2026-10-24). Under «Dela» from 1280, under the face below it. */
-.byd-editor-here-others { position: absolute; z-index: 3; top: calc(50% + 18px); right: 10px; display: flex; }
+.byd-editor-here-others { position: absolute; z-index: -1; top: calc(50% + 19px); right: 10px; display: flex; }
 @media (min-width: 1024px) and (max-width: 1279px) {
   .byd-editor > header > .byd-editor-here .byd-editor-here-others { right: auto; left: 50%; transform: translateX(-50%); }
 }
-.byd-editor-here .byd-editor-here-others i { width: 20px; height: 20px; font-size: 10px; box-shadow: 0 0 0 2px var(--byd-editor-chrome-bg); }
-.byd-editor-here .byd-editor-here-others i + i { margin-left: -4px; }
+.byd-editor-here .byd-editor-here-others i { width: 18px; height: 18px; font-size: 9px; box-shadow: 0 0 0 2px var(--byd-editor-chrome-bg); }
+.byd-editor-here .byd-editor-here-others i + i { margin-left: -2px; } /* undantag: ansiktet överlappar med sin ring och inget mer (#1321) */
+/* A control in the row, or in a strip under it, that has the keyboard's focus is lifted over the
+   stack, so its ring is whole even where the stack hangs over it (#1321). */
+.byd-editor > :is(header, .byd-editor-table-link, .byd-editor-notice-band, .byd-editor-readonly, .byd-editor-offline) :focus-visible:not(.byd-editor-here) { position: relative; z-index: 4; }
 /* From four others the last says how many more there are: a count and not a person, so it wears
    no person's colour. */
 .byd-editor-here .byd-editor-here-others .byd-editor-here-more { --who: #3b4358; color: #e6ecfa; letter-spacing: -0.02em; }
