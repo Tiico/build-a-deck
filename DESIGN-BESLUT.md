@@ -4853,6 +4853,17 @@ Att byta yta i radens väljare tar bort punkten, eftersom en punkt i en yta inte
 **Nya typer väntar.**
 Meeple, kub och bricka visades i prototypen för att se att listan rymmer dem, men varje typ är ett eget registerbeslut som tärningen var (B1–B3), och de byggs inte här.
 
+### K32. Material hålls aldrig på handen (beslutat 2026-10-25, #1377)
+
+Beställaren: «Material ska inte gå att ha på handen.»
+En tärning som släpptes över en hands solfjäder hamnade i handen, men ingen skärm ritar en bit i en hand: telefonen ritar handen som en rad kort.
+Tärningen försvann alltså från filten och gick inte att ta ut igen.
+
+**Material är en typ som går att slå eller har en räknare** (`isMaterial` i `packages/engine`), och det läses ur typens deklarerade beteenden som varje annan vägran i motorn.
+Motorn vägrar lägga material i en hand, vilket verb det än kommer med: `move`, `draw`, `deal`, `split` och `version.change`.
+Filten lägger en bit som släpps över en hand på det handen ligger över, oftast filten (`pieceAt`), och tangentbordets «Flytta till» erbjuder ingen hand för en bit.
+Kort hålls som förut.
+
 ## L. Editorn (grillad 2026-09-06)
 
 E1, E2 och E3 gav principerna; det här är hur de blir konkreta.

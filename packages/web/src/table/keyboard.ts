@@ -1,6 +1,6 @@
 import type { Intent, Snapshot, VisibleComponentState, ZoneView } from '@byd/protocol'
 import { translate, type Key, type T } from '../i18n/index.js'
-import { dieKind, isCounter, isDie, standIn } from '../components.js'
+import { dieKind, isCounter, isDie, isPiece, standIn } from '../components.js'
 import { CARD_MM, DIE_MM, TOKEN_MM, besidePile, type DragTarget } from './drop.js'
 import { laidIn } from './lay.js'
 import { faceDown } from '../player/play.js'
@@ -273,6 +273,7 @@ export function placesFor(view: Snapshot, moving: ReadonlySet<string>, sourceZon
   // but counters is not a place for cards at all.
   const byZone = new Map<string, VisibleComponentState[]>()
   for (const c of view.components) byZone.set(c.zone, [...(byZone.get(c.zone) ?? []), c])
+  const pieces = view.components.some((c) => moving.has(c.id) && isPiece(c))
   const countersOnly = (id: string) => {
     const inside = byZone.get(id) ?? []
     return inside.length > 0 && inside.every(isCounter)
@@ -282,6 +283,8 @@ export function placesFor(view: Snapshot, moving: ReadonlySet<string>, sourceZon
     .filter((z) => z.kind !== 'hand' || (z.owner !== undefined && seated.has(z.owner)))
     .filter((z) => view.seat === null || z.kind === 'hand' || z.owner === undefined || z.owner === view.seat)
     .filter((z) => !countersOnly(z.id))
+    // Material is never held (#1377, K32): a die or a chip is offered no hand.
+    .filter((z) => z.kind !== 'hand' || !pieces)
     .map((z): Place => {
       const n = countOf(z)
       const one = n === 1 ? 'one' : 'other'
