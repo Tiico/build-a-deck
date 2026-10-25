@@ -38,6 +38,11 @@ const ZoneDef = z.object({
   // leaves it there, and back in this pile it lies last again. Piles only.
   bottom: z.object({ cardRef: z.string().min(1), face: FaceId }).optional(),
 })
+// Where in its zone a piece of material lies (#1292): the middle of the piece, in the zone's own
+// millimetres. In an area each seat has, it is said from seat A's chair — along the rim from the
+// seat's left, and inwards from the far side — and turned to face every other seat's edge.
+export const MaterialAt = z.object({ x: z.number(), y: z.number() })
+export type MaterialAt = z.infer<typeof MaterialAt>
 // One line of the game's dice (K5, #1136): which kind, how many, and where. Its own schema because
 // the editor's `setDice` holds a list to it as well as the stored document does (#1139).
 export const ProjectDie = z
@@ -47,6 +52,9 @@ export const ProjectDie = z
     perSeat: z.boolean().optional(),
     zone: z.string().min(1).optional(),
     role: z.string().min(1).optional(),
+    // The point the designer dragged the line to (#1292); without one the row lies where the
+    // recipe finds room, as every die written before there were points does.
+    at: MaterialAt.optional(),
   })
   .refine((d) => (d.zone === undefined) !== (d.role === undefined), { message: 'a die lies in a zone or in a role, and only one' })
 export type ProjectDie = z.infer<typeof ProjectDie>
@@ -60,7 +68,20 @@ export const ProjectSetup = z.object({
   // What every seat keeps count of (C4): one counter token per entry in the seat's counters zone.
   // `id` is what a rule names it by (#708, B7), so a rule follows the counter when it is renamed.
   // A counter written before it had one is known by its name (`counterId`).
-  counters: z.array(z.object({ id: z.string().regex(/^[\p{L}\p{N}_:-]{1,64}$/u).optional(), name: z.string().min(1).max(24), start: z.number().int() })).optional(),
+  // Where a counter lies is material like a die's (#1292): `role` is an area each seat has, the
+  // counters zone when it says none, and `at` the point in it; without a point the counters zone
+  // lays its chips along the rim as it always has.
+  counters: z
+    .array(
+      z.object({
+        id: z.string().regex(/^[\p{L}\p{N}_:-]{1,64}$/u).optional(),
+        name: z.string().min(1).max(24),
+        start: z.number().int(),
+        role: z.string().min(1).optional(),
+        at: MaterialAt.optional(),
+      }),
+    )
+    .optional(),
   // Whether the game goes in turns, and which way round the table (K30). Absent is a game without
   // turns, which is every game written before there were turns.
   turns: z.enum(['clockwise', 'counterclockwise']).optional(),
