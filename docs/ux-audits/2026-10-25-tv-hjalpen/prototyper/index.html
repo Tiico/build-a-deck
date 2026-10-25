@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp — hjälpens «?» på TV:ns väg in (#1343)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* ── Frågan ──────────────────────────────────────────────────────────────────────────────
+     #1343: på rummets TV står vägen in i scenens fot (#1290): värden, och under den koden, QR-rutan
+     och hjälpens «?» på en rad (L32, #305). Vid 1024 och 1280 står scenen på sitt golv på 360 px,
+     så foten har 320 px innehåll, och raden behöver 361: koden 237 (40 px, sex tecken à 24 + 6 px
+     spärr, snedstrecket, 14 px luft per sida), 18, rutan 52, 18, ringen 36. «?» hamnar då ensam på
+     en egen rad. Koden och rutan får inte krympa (K26, TV:n är höjdbunden).
+     Måtten nedan är tabellens egna (table.css, help.css): mätta på det byggda bordet 2026-10-25.
+     PROTOTYP. Slängs när beslutet står i DESIGN-BESLUT.md.
+     ────────────────────────────────────────────────────────────────────────────────────── */
+  body { display: flex; flex-direction: column; min-height: 100vh; overflow: auto; }
+  .protorad { position: relative; z-index: 20; }
+  .protorad .flikar { display: flex; gap: 4px; flex-wrap: wrap; }
+  .protorad .flikar button[aria-pressed='true'] { background: #ffd98a; color: #2a2417; }
+  .protorad .grupp { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .protorad .grupp > span { color: #c8b98d; }
+  .protorad .matt { flex: 1 1 100%; flex-wrap: wrap; }
+  .protorad .matt .fel { color: #f0a58a; }
+  .protorad .matt .ok { color: #b7dca0; }
+  main.scen { flex: 1 1 auto; display: flex; justify-content: safe center; align-items: start; padding: 20px 16px 60px; background: #15171c; }
+  .ram { display: grid; gap: 6px; }
+  .etikett { color: var(--quiet-2); font-size: 11px; margin: 0; }
+  .etikett b { color: #e6ecfa; }
+
+  /* ── TV:n (table.css: [data-tv][data-room]) ─────────────────────────────────────────────── */
+  .tv { display: flex; background: #0d0f14; color: #e8eaf0; font: 16px system-ui, sans-serif; outline: 1px solid #3a3f4b; box-shadow: 0 10px 40px rgb(0 0 0 / 45%); }
+  .tv .filt { width: 120px; background: radial-gradient(circle at 100% 50%, #1a1e29, #12151d); border-right: 1px solid #232733; display: grid; place-items: center; color: #4a5164; font-size: 12px; writing-mode: vertical-rl; }
+  .tv aside { position: relative; display: flex; flex-direction: column; gap: 18px; padding: 18px 20px; box-sizing: content-box; }
+  .tv .scenkort { height: 200px; display: grid; place-items: center; border: 1px dashed #3a3f4b; border-radius: 12px; background: #171a23; color: #7d8597; font-size: 24px; width: 206px; justify-self: center; margin: 0 auto; }
+  .tv .fot { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 16px 24px; border-top: 1px solid #232733; padding-top: 16px; min-width: 0; }
+  .tv .vag { flex: 1 1 440px; min-width: 0; display: grid; justify-items: start; gap: 12px; }
+  .tv .namn { flex: 1 1 240px; min-width: 0; display: grid; justify-items: end; gap: 8px; text-align: right; }
+  .tv .join { position: relative; display: flex; align-items: center; gap: 8px 18px; flex-wrap: wrap; }
+  .tv .join > .lbl { color: #7d8597; font-size: 24px; flex: 1 0 100%; }
+  .tv .join > .adr { flex: 1 0 100%; margin: 0; font-size: 24px; font-weight: 700; }
+  .tv .kod { font-family: ui-monospace, Menlo, monospace; font-size: 40px; line-height: 1.1; letter-spacing: 6px; background: #1a1e29; padding: 4px 14px; border-radius: 8px; font-weight: 700; }
+  .tv .kod::before { content: '/'; color: #7d8597; margin-right: 4px; letter-spacing: 0; }
+  .tv .qr { width: 52px; height: 52px; border-radius: 6px; background: #fff; display: block; }
+  /* Ringen: 36 px i en träffyta på 44, dragen till ringens fotavtryck (help.css, #921). */
+  .tv .fraga { display: inline-grid; place-items: center; width: 44px; height: 44px; margin: -4px; border: 0; padding: 0; background: transparent; color: #dce3f2; cursor: pointer; flex: 0 0 auto; font: inherit; }
+  .tv .fraga > span { display: inline-grid; place-items: center; width: 36px; height: 36px; border: 1px solid #6f7a90; border-radius: 999px; font-size: 24px; font-weight: 700; line-height: 1; box-sizing: border-box; }
+  .tv .fraga[aria-expanded='true'] > span { background: #e8eaf0; color: #0d0f14; border-color: #ffd98a; }
+  .tv .fraga:focus-visible { outline: none; }
+  .tv .fraga:focus-visible > span { outline: 3px solid #9cc6ff; outline-offset: 2px; }
+  /* A och B: rubrikraden eller adressraden bär «?» som L32:s rad (help-row): orden först, ringen intill. */
+  .tv .hjalprad { flex: 1 0 100%; display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .tv .hjalprad > :first-child { flex: 0 1 auto; min-width: 0; }
+  .tv .hjalprad > .lbl { color: #7d8597; font-size: 24px; }
+  .tv .hjalprad > .adr { margin: 0; font-size: 24px; font-weight: 700; }
+  /* C: bara där kolumnen står på sitt golv — tätare platta, koden är kvar på 40 px. */
+  .tv[data-v='C'][data-smal] .kod { letter-spacing: 2px; padding: 4px 10px; }
+  .tv[data-v='C'][data-smal] .join { column-gap: 10px; }
+  .tv .horn { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .tv .genvag { display: inline-grid; grid-auto-flow: column; align-items: center; gap: 12px; height: 56px; padding: 0 16px 0 8px; margin-left: -8px; border: 0; background: transparent; color: #c9cfdd; font: 700 24px system-ui, sans-serif; }
+  .tv .genvag > span { display: inline-grid; place-items: center; width: 40px; height: 40px; border: 1px solid #6f7a90; border-radius: 999px; }
+  .tv .marke { display: flex; align-items: center; gap: 8px; font-size: 24px; font-weight: 700; }
+  .tv .marke i { width: 28px; height: 22px; background: linear-gradient(100deg, #7dd3a0 0 30%, #ffd98a 30% 60%, #f5f3eb 60%); border-radius: 3px; transform: skew(-8deg); }
+  .tv .rubrik { margin: 0; font-size: 28px; font-weight: 700; }
+  .tv .rubrik em { font-style: normal; color: #7d8597; font-weight: 500; }
+  /* Lådan (help-box.css): över arbetet, aldrig i flödet; vänd uppåt eftersom foten står längst ner. */
+  .tv .lada { position: absolute; left: 0; bottom: calc(100% + 8px); z-index: 5; width: min(320px, 100%); box-sizing: border-box; padding: 12px 40px 12px 14px; border-radius: 10px; background: #f5f3eb; color: #1e2620; font-size: 16px; line-height: 1.45; box-shadow: 0 8px 30px rgb(0 0 0 / 50%); }
+  .tv .lada p { margin: 0; }
+  .tv .lada p + p { margin-top: 8px; }
+  .tv .lada button { position: absolute; top: 0; right: 0; width: 44px; height: 44px; border: 0; background: transparent; font-size: 20px; cursor: pointer; color: inherit; }
+</style>
+</head>
+<body>
+<div class="protorad" role="region" aria-label="Prototypens rad (inte en del av förslaget)">
+  <div class="fraga-text" style="flex:1 1 320px;min-width:0">
+    <p><b>PROTOTYP #1343 — hjälpens «?» på TV:ns väg in.</b> Scenens fot ritad i sina egna mått; kolumnen är så bred som den är vid varje fönsterbredd. «?» öppnar lådan.</p>
+    <p>Växla variant med knapparna eller ← →. «Nu» är main i dag.</p>
+  </div>
+  <div class="vaxlare" role="group" aria-label="Variant" id="vaxlare"></div>
+  <div class="grupp"><span>Fönster</span><div class="flikar" id="bredd"></div></div>
+  <div class="grupp"><span>Språk</span><div class="flikar" id="lang"></div></div>
+  <div class="grupp"><span>Typsnitt</span><div class="flikar" id="ansikte"></div></div>
+  <p class="anteckning" id="anteckning"></p>
+  <div class="matt" id="matt" aria-live="polite"></div>
+</div>
+<main class="scen" id="scen"></main>
+
+<script>
+// Kolumnens innehåll vid varje fönsterbredd, mätt på det byggda bordet 2026-10-25 (#1343):
+// scenen står på sitt golv på 360 px vid 1024 och 1280, och foten står i två spalter vid 1920.
+const BREDD = { 1024: 320, 1280: 320, 1440: 448, 1920: 720 }
+const VARIANTER = {
+  Nu: { titel: 'Nu · main i dag', text: '<b>Nu.</b> Koden, rutan och «?» på en rad efter värden. <span class="minus">Vid 1024 och 1280 behöver raden 361 px av 320, och «?» står ensam på en egen rad under koden.</span>' },
+  A: { titel: 'A · på rubrikens rad', text: '<b>A · «?» på radens rubrik</b> («Öppna på telefonen ?»), vid alla bredder. L32:s vanliga form: rubriken och dess frågetecken. <span class="plus">Samma plats vid varje bredd, kod och ruta orörda, kodens rad har 13 px över vid golvet, och foten blir 36 px lägre där (302 mot 338).</span> <span class="minus">«?» står före koden, mot #305:s «efter koden och rutan», och vid 1440 och 1920 blir foten 8 px högre, som scenens kort betalar.</span>' },
+  B: { titel: 'B · på adressens rad', text: '<b>B · «?» efter värden</b> («deckster.se ?»), vid alla bredder. <span class="plus">Står intill adressen hjälpen förklarar, och kod och ruta är orörda.</span> <span class="minus">Värden kan bli längre (deck.ockelberg.com mättes in med 15 % marginal), och ringen tar 48 px av den raden; foten som i A, 36 px lägre vid golvet och 8 px högre vid 1440 och 1920.</span>' },
+  C: { titel: 'C · tätare platta vid golvet', text: '<b>C · samma rad, tätare</b>: bara där kolumnen står på sitt golv blir spärren 2 px, luften 10 px och mellanrummen 10. <span class="plus">«?» står kvar efter rutan, som #305 sa, inget flyttar, och foten blir 44 px lägre vid golvet utan att växa någon annanstans.</span> <span class="minus">Kodens platta blir 32 px smalare och läses tätare från soffan, och raden har bara 7 px över vid golvet: en längre kod eller ett bredare typsnitt bryter den igen.</span>' },
+}
+const ORD = {
+  sv: { lbl: 'Öppna på telefonen', genvag: 'Kortkommandon', bord: 'Bordet', tom: 'peka på ett kort', hjalp: 'Hjälp om att gå med', stang: 'Stäng hjälpen',
+    how: 'Spelarna öppnar adressen på sin telefon eller skannar QR-koden. Rumskoden är sista delen av adressen.', phone: 'Telefonen blir handen: korten ligger där, och bordet visas här.' },
+  en: { lbl: 'Open on your phone', genvag: 'Shortcuts', bord: 'The table', tom: 'point at a card', hjalp: 'Help about joining', stang: 'Close the help',
+    how: 'The players open the address on their phone or scan the QR code. The room code is the last part of the address.', phone: 'The phone becomes the hand: the cards are there, and the table is shown here.' },
+}
+const ANSIKTE = { eget: 'system-ui, sans-serif', bred: "Verdana, 'DejaVu Sans', sans-serif" }
+
+const q = new URLSearchParams(location.search)
+let v = VARIANTER[q.get('v')] ? q.get('v') : 'A'
+let bredd = BREDD[q.get('bredd')] ? Number(q.get('bredd')) : 1280
+let lang = ORD[q.get('lang')] ? q.get('lang') : 'sv'
+let ansikte = ANSIKTE[q.get('ansikte')] ? q.get('ansikte') : 'eget'
+let oppen = false
+
+// En QR-ruta som ser ut som en: tre hörnmärken och ett fast mönster, 52 px.
+function qr() {
+  const n = 21, s = 52 / (n + 4)
+  let r = ''
+  const finder = (x, y) => { r += `<rect x="${(x + 2) * s}" y="${(y + 2) * s}" width="${7 * s}" height="${7 * s}" fill="#000"/><rect x="${(x + 3) * s}" y="${(y + 3) * s}" width="${5 * s}" height="${5 * s}" fill="#fff"/><rect x="${(x + 4) * s}" y="${(y + 4) * s}" width="${3 * s}" height="${3 * s}" fill="#000"/>` }
+  for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+    const inFinder = (x < 8 && y < 8) || (x > 12 && y < 8) || (x < 8 && y > 12)
+    if (!inFinder && ((x * 7 + y * 13 + x * y) % 5 < 2)) r += `<rect x="${(x + 2) * s}" y="${(y + 2) * s}" width="${s}" height="${s}" fill="#000"/>`
+  }
+  finder(0, 0); finder(14, 0); finder(0, 14)
+  return `<svg class="qr" viewBox="0 0 52 52" role="img" aria-label="QR-kod: anslut med telefonen, rum H9UF6W">${r}</svg>`
+}
+
+function rita() {
+  const o = ORD[lang], inne = BREDD[bredd], smal = inne <= 320
+  const fraga = `<button type="button" class="fraga" aria-label="${o.hjalp}" aria-expanded="${oppen}" id="fraga"><span aria-hidden="true">?</span></button>`
+  const lbl = `<span class="lbl">${o.lbl}</span>`, adr = `<p class="adr">deckster.se</p>`, kod = `<strong class="kod" id="kod">H9UF6W</strong>`
+  let join
+  if (v === 'A') join = `<div class="hjalprad">${lbl}${fraga}</div>${adr}${kod}${qr()}`
+  else if (v === 'B') join = `${lbl}<div class="hjalprad">${adr}${fraga}</div>${kod}${qr()}`
+  else join = `${lbl}${adr}${kod}${qr()}${fraga}`
+  const lada = oppen ? `<div class="lada" role="dialog" aria-label="${o.hjalp}"><p>${o.how}</p><p>${o.phone}</p><button type="button" id="stang" aria-label="${o.stang}">×</button></div>` : ''
+  document.getElementById('scen').innerHTML = `
+    <div class="ram">
+      <p class="etikett"><b>${VARIANTER[v].titel}</b> · fönster ${bredd} px, kolumnen ${inne + 40} px (${inne} innehåll) · ${lang} · ${ansikte === 'bred' ? 'Verdana/DejaVu' : 'eget typsnitt'}</p>
+      <div class="tv" data-v="${v}" ${smal ? 'data-smal' : ''} lang="${lang}" style="font-family:${ANSIKTE[ansikte]}">
+        <div class="filt">filten</div>
+        <aside style="width:${inne}px">
+          <div class="scenkort">${o.tom}</div>
+          <div class="fot">
+            <div class="vag">
+              <div class="join" id="join">${join}${lada}</div>
+              <div class="horn"><button type="button" class="genvag"><span aria-hidden="true">?</span>${o.genvag}</button></div>
+            </div>
+            <div class="namn">
+              <div class="marke"><i aria-hidden="true"></i>Deckster</div>
+              <h1 class="rubrik">${o.bord} <em>e2e</em></h1>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>`
+  if (ansikte === 'bred') document.querySelectorAll('.tv, .tv *').forEach((el) => { if (!el.classList.contains('kod')) el.style.fontFamily = ANSIKTE.bred })
+  document.getElementById('fraga').onclick = () => { oppen = !oppen; rita(); document.getElementById('fraga').focus() }
+  const stang = document.getElementById('stang')
+  if (stang) { stang.onclick = () => { oppen = false; rita(); document.getElementById('fraga').focus() }; stang.focus() }
+  matt()
+  knappar()
+  document.getElementById('anteckning').innerHTML = VARIANTER[v].text
+  history.replaceState(null, '', `?v=${v}&bredd=${bredd}&lang=${lang}&ansikte=${ansikte}`)
+}
+
+// Måtten läses ur det som ritats: kodradens bredd mot kolumnens innehåll, var ringen står och fotens höjd.
+function matt() {
+  const kod = document.getElementById('kod').getBoundingClientRect()
+  const qrr = document.querySelector('.tv .qr').getBoundingClientRect()
+  const ring = document.querySelector('#fraga > span').getBoundingClientRect()
+  const aside = document.querySelector('.tv aside'), a = aside.getBoundingClientRect()
+  const inne = BREDD[bredd], vanster = a.left + 20
+  const mitt = (ring.top + ring.bottom) / 2
+  const paKodrad = mitt > kod.top && mitt < kod.bottom
+  const ensam = !paKodrad && ring.top > kod.bottom - 1
+  // Vad kodens rad behöver, summerat och inte läst av, eftersom en rad som brutits inte är en rad.
+  const gap = parseFloat(getComputedStyle(document.getElementById('join')).columnGap)
+  const kodrad = kod.width + gap + qrr.width + ((v === 'Nu' || v === 'C') ? gap + ring.width : 0)
+  const fot = document.querySelector('.tv .fot').getBoundingClientRect().height
+  const r = Math.round
+  const plats = ensam ? '<span class="fel">ensam på egen rad under koden</span>' : paKodrad ? '<span class="ok">på kodens rad</span>' : `<span class="ok">på ${v === 'A' ? 'rubrikens' : 'adressens'} rad</span>`
+  document.getElementById('matt').innerHTML = `
+    <span>kod <u>${r(kod.width)} × ${r(kod.height)}</u> px</span>
+    <span>ruta <u>${r(qrr.width)}</u> px</span>
+    <span>kodens rad <u>${r(kodrad)}</u> av <u>${inne}</u> px${kodrad > inne ? ' <span class="fel">(för bred)</span>' : ` (<u>${inne - r(kodrad)}</u> över)`}</span>
+    <span>«?» ${plats}</span>
+    <span>foten <u>${r(fot)}</u> px hög</span>
+    <span>ringen ${ring.right <= vanster + inne + 0.5 ? '<span class="ok">inne i kolumnen</span>' : '<span class="fel">utanför kolumnen</span>'}</span>`
+}
+
+function grupp(id, val, nu, satt, namn = (x) => x) {
+  document.getElementById(id).innerHTML = val.map((x) => `<button type="button" aria-pressed="${String(x) === String(nu)}" data-x="${x}">${namn(x)}</button>`).join('')
+  document.querySelectorAll(`#${id} button`).forEach((b) => (b.onclick = () => { satt(b.dataset.x); rita() }))
+}
+function knappar() {
+  grupp('vaxlare', Object.keys(VARIANTER), v, (x) => (v = x))
+  grupp('bredd', Object.keys(BREDD), bredd, (x) => (bredd = Number(x)))
+  grupp('lang', ['sv', 'en'], lang, (x) => (lang = x))
+  grupp('ansikte', ['eget', 'bred'], ansikte, (x) => (ansikte = x), (x) => (x === 'bred' ? 'Verdana/DejaVu' : 'eget'))
+}
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && oppen) { oppen = false; rita(); document.getElementById('fraga').focus(); return }
+  if (e.target.closest('input, textarea')) return
+  const k = Object.keys(VARIANTER), i = k.indexOf(v)
+  if (e.key === 'ArrowRight') { v = k[(i + 1) % k.length]; rita() }
+  if (e.key === 'ArrowLeft') { v = k[(i + k.length - 1) % k.length]; rita() }
+})
+rita()
+</script>
+</body>
+</html>
