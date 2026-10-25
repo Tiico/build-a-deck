@@ -94,7 +94,7 @@
    fingertip's and the row scrolling in its own box after that (L10). The last card is whole. */
 .byd-desk-hand { flex: none; position: relative; border-top: 1px solid var(--byd-rule); background: linear-gradient(#171920, #111217); padding: 8px 0 14px; }
 .byd-desk-hand-head { display: flex; justify-content: space-between; gap: 16px; padding: 0 16px; color: var(--byd-ink-muted); font-size: 12px; }
-.byd-desk-row { display: flex; justify-content: safe center; overflow: auto hidden; overscroll-behavior-x: contain; scrollbar-width: thin; padding: 24px 24px 0; }
+.byd-desk-row { display: flex; justify-content: safe center; overflow: auto hidden; overscroll-behavior-x: contain; padding: 24px 24px 0; }
 .byd-desk-slot { position: relative; flex: 0 0 var(--byd-desk-step, calc(var(--fan-card) + 8px)); height: calc(var(--fan-card) * 88 / 63); }
 .byd-desk-slot:last-child { flex: 0 0 var(--fan-card); }
 /* An overlapped card shows the strip its neighbour leaves, so its name moves into that strip, as
