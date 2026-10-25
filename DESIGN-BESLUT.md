@@ -1391,6 +1391,13 @@ Listan är sluten och hålls av ett test (#1276); ett nytt fält som bär en mä
 Maskningen byter värdet mot ett reserverat värde och bevarar att det finns och att det inte är tomt, så `decide` säger samma sak om varje rad och spelet blir detsamma.
 Ingenting annat i en rad skrivs någonsin om, och det är DRIFT §7:s enda undantag.
 
+Byggt 2026-10-25 (#1276):
+Listan är `PERSONAL_FIELDS` i `packages/protocol`, och `IMPERSONAL_FIELDS` bredvid den säger för varje annat textfält i ett intent eller ett utfall varför det inte är en persons.
+`test/personal.test.ts` där går igenom schemana och faller för ett textfält som inte står i någon av dem, och korpusens anonymisering läser samma lista.
+`redactLine` och `redactLog` i motorn maskar till `REDACTED`, och en maskad logg spelar upp till samma spel och samma vyer, med namnen och texterna maskade; att skriva den maskade raden i lagret är #1279.
+En tillbakaspolnings sparade bord är zoner och komponenter och har aldrig burit platserna (`Table` i motorn), så det har inga namn att maska; `redact.test.ts` håller det, och `outcome.table` står i `IMPERSONAL_FIELDS`.
+Kolumnerna i de två schemana är klassade i `packages/server/test/personal-columns.test.ts`, som faller för en kolumn som inte är det.
+
 Byggt 2026-09-18:
 E2E-lagret ovanpå återspelningen är `packages/e2e`, en egen Playwright-svit med `@playwright/test`.
 Den kör mot produkten som lådan kör den (DRIFT §2): webben byggd och serverad av servern ur `STATIC_DIR`, allt på ett ursprung, inga `server=`-parametrar någonstans.
@@ -2460,7 +2467,7 @@ En integritetspolicy med en förteckning över behandlingar och biträden står 
 Kontots och gästens vägar är nya ytor och prototypas först.
 
 Skivorna (alla öppna 2026-10-24):
-- #1276 personfälten och kolumnerna som sluten, testad karta — pågår.
+- #1276 personfälten och kolumnerna som sluten, testad karta — byggd.
 - #1277 det som inte längre kan användas rensas — pågår.
 - #1278 gästens namn och token ur adressraden och `Referer` — pågår.
 - #1279 radering i lagret, gallring, raderingsliggare och operatörsskript — efter #1276.
