@@ -61,7 +61,8 @@ function nameOf(route: Route, ctx: TitleContext, t: T): string[] {
     case 'landing':
       return [t('title.landing')]
     case 'login':
-      return [t('title.login')]
+      // The welcome step is the login's own (#1254), and names its tab itself.
+      return [ctx.part ?? t('title.login')]
     case 'new':
       return [t('title.new')]
     case 'claim':

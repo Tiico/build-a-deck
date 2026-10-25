@@ -54,6 +54,9 @@ const COLUMNS: Readonly<Record<string, Class>> = {
   'accounts.id': 'pseudonymous',
   'accounts.email': 'personal',
   'accounts.created_at': 'none',
+  // The name the designer gave her account (#1254), and whether she has been asked for one.
+  'accounts.name': 'personal',
+  'accounts.name_asked': 'none',
   'login_tokens.token_hash': 'none',
   'login_tokens.email': 'personal',
   'login_tokens.expires_at': 'none',
