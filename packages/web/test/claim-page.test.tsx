@@ -37,11 +37,26 @@ describe('ClaimPage', () => {
     const id = await createSession(run)
     const token = await admit(run, id, 'A', 'Ada')
     await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'bo@example.com' }) })
+    // The token is in the claim's fragment (#1278), and goes back to the phone in its fragment too.
+    const play = `/play?session=${id}&seat=A`
+    history.replaceState(null, '', `/claim?${new URLSearchParams({ next: play, server: run.http }).toString()}#token=${token}`)
+    const gone: string[] = []
+    render(<ClaimPage onNavigate={(u) => gone.push(u)} />)
+    await waitFor(() => expect(gone.at(-1)).toBe(`${play}&saved=1#token=${token}`))
+  })
+
+  // A claim link handed out before #1278 carried the token in its query twice: its own, and the
+  // phone's in `next`. It still claims, and goes back to the phone in the new form.
+  it('still claims from an old link, and goes back with the token in the fragment', async () => {
+    const id = await createSession(run)
+    const token = await admit(run, id, 'A', 'Ada')
+    await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'bo@example.com' }) })
     const play = `/play?session=${id}&seat=A&name=Ada&token=${token}`
     history.replaceState(null, '', `/claim?${new URLSearchParams({ token, next: play, server: run.http }).toString()}`)
     const gone: string[] = []
     render(<ClaimPage onNavigate={(u) => gone.push(u)} />)
-    await waitFor(() => expect(gone.at(-1)).toBe(`${play}&saved=1`))
+    expect(location.search).not.toContain(token)
+    await waitFor(() => expect(gone.at(-1)).toBe(`/play?session=${id}&seat=A&saved=1#token=${token}`))
   })
 
   it('never goes back to another site', async () => {
