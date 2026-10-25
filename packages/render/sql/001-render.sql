@@ -3,7 +3,7 @@
 create table if not exists render_jobs (
   hash          text primary key,
   kind          jsonb not null,
-  priority      text not null check (priority in ('texture', 'print')),
+  priority      text not null check (priority in ('texture', 'print', 'screen')),
   compiled      jsonb not null,
   requested_at  bigint not null,
   state         text not null check (state in ('queued', 'running', 'done', 'failed')),
@@ -37,3 +37,31 @@ create table if not exists render_log (
   requested_at  bigint not null
 );
 create index if not exists render_log_account on render_log (account_id, requested_at);
+
+-- Screening (F4, #1271) is the third priority, after textures and prints. A queue made before it
+-- holds its priorities to a check without it; the check is replaced once, and only then, since
+-- replacing it reads the whole table.
+do $$
+begin
+  if exists (
+    select 1 from pg_constraint
+    where conrelid = 'render_jobs'::regclass and conname = 'render_jobs_priority_check'
+      and pg_get_constraintdef(oid) not like '%screen%'
+  ) then
+    alter table render_jobs drop constraint render_jobs_priority_check;
+    alter table render_jobs add constraint render_jobs_priority_check check (priority in ('texture', 'print', 'screen'));
+  end if;
+end $$;
+
+-- One result per picture, classifier and version (F4: the same picture is screened once): the
+-- scores per category, the perceptual hash, and when, in ms as the queue's clocks are. A new
+-- version of a classifier screens a picture again; an old version's result stays as it was.
+create table if not exists screenings (
+  asset_hash   text not null,
+  classifier   text not null,
+  version      text not null,
+  scores       jsonb not null,
+  image_hash   jsonb not null,
+  screened_at  bigint not null,
+  primary key (asset_hash, classifier, version)
+);
