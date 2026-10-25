@@ -119,7 +119,7 @@ export const enEditor = {
   'editor.start.title': 'Start a table',
   'editor.start.how': 'How are you sitting?',
   'editor.start.screen': 'Around one screen',
-  'editor.start.screen.body': 'The table on a TV or big screen, everyone holds their hand on their phone.',
+  'editor.start.screen.body': 'The table on a TV or big screen, everyone holds their hand on their phone or computer.',
   'editor.start.computer': 'Each at their own computer',
   'editor.start.computer.body': 'Everyone sees the table and their own hand in their own window. You send a link.',
   'editor.start.name': 'Your name at the table',

@@ -148,7 +148,7 @@ export const svEditor = {
   'editor.start.title': 'Starta ett bord',
   'editor.start.how': 'Hur sitter ni?',
   'editor.start.screen': 'Runt en skärm',
-  'editor.start.screen.body': 'Bordet på en TV eller stor skärm, var och en har handen i sin telefon.',
+  'editor.start.screen.body': 'Bordet på en TV eller stor skärm, var och en har handen i sin telefon eller dator.',
   'editor.start.computer': 'Var och en vid sin dator',
   'editor.start.computer.body': 'Alla ser bordet och sin egen hand i sitt eget fönster. Du skickar en länk.',
   'editor.start.name': 'Ditt namn vid bordet',

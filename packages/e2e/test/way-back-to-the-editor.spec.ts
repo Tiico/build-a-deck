@@ -43,6 +43,8 @@ test('the TV started from the editor leads back to the editor tab, and a way in 
   // A table of computers seats the host beside the editor (#1286), and its «Öppna bordet» is that
   // seat, once: pressed again, the same tab is brought out rather than a second one opened.
   await page.locator('header').getByRole('button', { name: /^(Fler sätt att öppna bordet|More ways to open the table)$/ }).click()
+  // The menu asks after the game's tables when it opens; «Nytt bord» says a table runs once it knows.
+  await expect(page.getByRole('group', { name: /^(Bordet|The table)$/ }).getByRole('listitem')).toBeVisible()
   await page.getByRole('button', { name: /^(Nytt bord|New table)$/ }).click()
   await page.getByRole('button', { name: /^(Starta ett nytt ändå|Start a new one anyway)$/ }).click()
   const computers = page.getByRole('dialog', { name: /^(Starta ett bord|Start a table)$/ })
