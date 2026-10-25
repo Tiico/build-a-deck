@@ -93,14 +93,16 @@ function shapeOf(faces: number): Shape {
   }
 }
 
-// How long a roll tumbles (K28): 0.7 s on the spot, the figure jumping for most of it and still
-// for the last tenth, so that what the eye lands on is the value and not a blur. Under
-// `prefers-reduced-motion` nothing turns or jumps: the value is there at once and a ring in the
-// colour of the seat that rolled stands round the die for 1.5 s instead.
-export const ROLL_MS = 700
+// How long a roll whips round (K28, revised by #1288 to beställarens variant D): two turns in 0.45 s,
+// braking hard with a small recoil, the figure jumping more and more slowly and still for the last
+// 0.15 s, so that what the eye lands on is the value and not a blur. Under `prefers-reduced-motion`
+// nothing turns or jumps: the value is there at once and a ring in the colour of the seat that
+// rolled stands round the die for 1.5 s instead.
+export const ROLL_MS = 450
 export const ROLL_RING_MS = 1500
-const JUMP_MS = 600
-const JUMP_EVERY_MS = 70
+const JUMP_GAPS_MS = [40, 45, 55, 70, 90]
+// The after-images that trail the spin, each a little further behind than the one before.
+const TRAILS = 3
 
 // A roll, played on the die it rolled by the log line that says so (L35's rule for the shuffle): a
 // die rolled to the side it already showed changes nothing a snapshot could compare, and still
@@ -149,7 +151,7 @@ export function useRolls(activity: readonly Activity[], ready: boolean): Roll[] 
   return rolls
 }
 
-// The figures a tumbling die shows on the way. They are the screen's own and never the log's: the
+// The figures a whipping die shows on the way. They are the screen's own and never the log's: the
 // value the die lands on is `value`, the side the table says is up, and the jumping stops before the
 // tumble does, so no other figure can be the last one drawn (D4).
 function useJumping(faces: number, roll: number | undefined, still: boolean): number | null {
@@ -159,17 +161,19 @@ function useJumping(faces: number, roll: number | undefined, still: boolean): nu
       setShown(null)
       return
     }
-    const until = Date.now() + JUMP_MS
-    const jump = () => setShown(1 + Math.floor(Math.random() * faces))
-    jump()
-    const timer = setInterval(() => {
-      if (Date.now() >= until) {
-        clearInterval(timer)
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const jump = (i: number) => {
+      const gap = JUMP_GAPS_MS[i]
+      if (gap === undefined) {
         setShown(null)
-      } else jump()
-    }, JUMP_EVERY_MS)
+        return
+      }
+      setShown(1 + Math.floor(Math.random() * faces))
+      timer = setTimeout(() => jump(i + 1), gap)
+    }
+    jump(0)
     return () => {
-      clearInterval(timer)
+      clearTimeout(timer)
       setShown(null)
     }
   }, [faces, roll, still])
@@ -181,13 +185,27 @@ export function DieFace({ faces, value, roll, still }: { faces: number; value: n
   const jumping = useJumping(faces, roll, still)
   const figure = String(jumping ?? value)
   const set: Figure = figure.length > 1 ? (shape.two ?? { top: shape.top, size: shape.size * 0.85 }) : shape
+  const whipping = roll !== undefined && !still
   return (
-    <svg viewBox="0 0 100 100" aria-hidden="true" focusable="false">
-      <circle className="byd-die-ring" cx={50} cy={52} r={58} />
-      {shape.outline}
-      <text data-die-value="" x={50} y={set.top} fontSize={set.size}>
-        {figure}
-      </text>
-    </svg>
+    <>
+      {whipping &&
+        Array.from({ length: TRAILS }, (_, i) => (
+          <svg key={`${roll}-${i}`} className="byd-die-trail" style={{ ['--trail' as string]: i + 1 }} viewBox="0 0 100 100" aria-hidden="true" focusable="false">
+            {shape.outline}
+          </svg>
+        ))}
+      <svg key={whipping ? roll : 'still'} className="byd-die-body" viewBox="0 0 100 100" aria-hidden="true" focusable="false">
+        <circle className="byd-die-ring" cx={50} cy={52} r={58} />
+        {shape.outline}
+        <text data-die-value="" x={50} y={set.top} fontSize={set.size}>
+          {figure}
+        </text>
+      </svg>
+      {whipping && (
+        <svg key={`${roll}-catch`} className="byd-die-catch" viewBox="0 0 100 100" aria-hidden="true" focusable="false">
+          <circle cx={50} cy={50} r={58} />
+        </svg>
+      )}
+    </>
   )
 }

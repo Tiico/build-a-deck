@@ -1,7 +1,7 @@
 import type { Row } from '@byd/template'
 import type { ProjectDoc } from './types.js'
 import { ASSET_PREFIX, assetBytesUrl, isAssetRef, isEarly } from './assets.js'
-import { themeFamilies, themeOf } from './themes.js'
+import { cardFamilies } from './themes.js'
 
 // The type a game is set in (B3). A family the project names carries the file it is drawn from,
 // so what a printer sets a year from now is what the designer saw; a family that is only a CSS
@@ -31,14 +31,15 @@ export function familiesInUse(doc: Pick<ProjectDoc, 'template'>): string[] {
 // designer's back. The rest of the catalog is behind «Fler typsnitt…», which is the picker's and
 // not this list's.
 //
-// One place that decides the order: the theme the game started from (#632) puts its heading and
-// then its body family at the head of `game`, and the game's other typefaces follow in the order
-// it has them. A theme family the game no longer carries is not offered — it would be a name
-// without a file (#420).
-export function familyChoices(doc: Pick<ProjectDoc, 'fonts' | 'theme'>, current: string): { game: string[]; kept: string | null } {
+// One place that decides the order: the game's theme puts the family its headings are set in and
+// then its text's at the head of `game` (#634), read off the cards because the game remembers no
+// theme of its own (L84), and the game's other typefaces follow in the order it has them. A
+// family the game does not carry is not offered at the head — it would be a name without a file
+// (#420).
+export function familyChoices(doc: ProjectDoc, current: string): { game: string[]; kept: string | null } {
   const carried = Object.keys(doc.fonts ?? {})
-  const theme = themeOf(doc)
-  const first = theme ? themeFamilies(theme).map((f) => f.family).filter((family) => carried.includes(family)) : []
+  const { heading, body } = cardFamilies(doc)
+  const first = [...new Set([...heading, ...body])].filter((family) => carried.includes(family))
   const game = [...first, ...carried.filter((family) => !first.includes(family))]
   return { game, kept: game.includes(current) ? null : current }
 }

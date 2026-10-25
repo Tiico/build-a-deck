@@ -189,6 +189,23 @@ describe('the physical checks on the wall (E5)', () => {
     expect(document.querySelectorAll('[data-card-ref][data-marked]')).toHaveLength(0)
   })
 
+  // The way to the print package (#1208, beslut B): under the checks, for those who may take it.
+  it('leads to the print package from the checks', () => {
+    const went: HTMLElement[] = []
+    render(<DeckWall doc={faulty()} face="front" selectedRow={null} onSelectRow={() => undefined} onSelectElement={() => undefined} printPackage={{ href: '/print-package?project=p1&from=editor', onGo: (from) => went.push(from) }} />)
+    openBox(/^Fysisk kontroll/)
+    const link = screen.getByRole('link', { name: 'Se tryckpaketet ›' })
+    expect(link.getAttribute('href')).toBe('/print-package?project=p1&from=editor')
+    fireEvent.click(link)
+    expect(went).toEqual([link])
+  })
+
+  it('offers no way to the print package without one', () => {
+    wall()
+    openBox(/^Fysisk kontroll/)
+    expect(screen.queryByRole('link', { name: 'Se tryckpaketet ›' })).toBeNull()
+  })
+
   it('says so plainly when nothing is wrong', () => {
     const clean = faulty()
     clean.template.faces['front']!.base = [paper, body]

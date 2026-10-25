@@ -2,6 +2,8 @@ import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { TypeRegistry, initialState, liftLog, project, replay, STANDARD_TYPES } from '../src/index.js'
+import { PERSONAL_FIELDS, type Applied, type PersonalField } from '@byd/protocol'
+import { SCRIPTED } from '../scripts/scripted.js'
 import { anonymise, record, type CorpusEntry } from '../scripts/corpus.js'
 import { CARD, Harness, twoSeatSetup } from './fixture.js'
 import type { SetupDef } from '../src/index.js'
@@ -64,6 +66,55 @@ describe('recording an entry', () => {
     const entry = record('test', 'v1', h.state.setup, h.log, registry)
     expect(entry.expected['A']?.notes).toEqual([{ id: `n${added.seq}`, by: 'A', text: '(anteckning)', done: true }])
   })
+})
+
+// The people are found by the list the protocol keeps (#1276), not by verbs the script names: a
+// personal field added to the protocol is anonymised the day it is listed, and a corpus recorded
+// before is what it was.
+describe('anonymising by the protocol’s list of personal fields (#1276)', () => {
+  it('anonymises a personal field the script has never heard of', () => {
+    const h = new Harness()
+    h.do(null, { v: 'seat.claim', seat: 'A', name: 'Nicklas Ö' })
+    const left = h.do('A', { v: 'seat.release', seat: 'A' })
+    // A field that does not exist yet, listed the way it would be.
+    const grown = [...PERSONAL_FIELDS, { v: 'seat.release', field: 'why', holds: 'comment' } as unknown as PersonalField]
+    const log: Applied[] = h.log.map((l) => (l === left ? ({ ...l, intent: { ...l.intent, why: 'Eva var otrevlig' } } as unknown as Applied) : l))
+    const out = anonymise(log, undefined, grown)
+    expect(out[1]?.intent).toEqual({ v: 'seat.release', seat: 'A', why: '(kommentar)' })
+    expect(out[0]?.intent).toEqual({ v: 'seat.claim', seat: 'A', name: 'Spelare 1' })
+  })
+
+  it('keeps which card a flag is about, which is the play and nobody’s words (#1142)', () => {
+    const h = new Harness()
+    h.do(null, { v: 'seat.claim', seat: 'A', name: 'Nicklas Ö' })
+    h.do(null, { v: 'deal', from: 'draw', to: ['hand:A'], each: 1 })
+    const card = h.top('hand:A')
+    h.do('A', { v: 'flag', note: 'privat', component: card })
+    expect(anonymise(h.log)[2]?.intent).toEqual({ v: 'flag', note: '(kommentar)', component: card })
+  })
+
+  // What the seeded entries say about their people is what today's list makes of the sessions
+  // they were seeded from: the same pseudonyms on the same lines. (The rest of three of them were
+  // recorded under an older engine and setup, which is what the corpus is for.)
+  for (const [name, script] of SCRIPTED) {
+    it(`${name}: today's anonymisation of the session it was seeded from gives the people on disk`, () => {
+      const entry = JSON.parse(readFileSync(join(dir, `${name}.json`), 'utf8')) as CorpusEntry
+      const people = (log: readonly Applied[]) => log.map((l) => [l.intent.v, ...PERSONAL_FIELDS.filter((f) => f.v === l.intent.v).map((f) => (l.intent as Record<string, unknown>)[f.field])])
+      const h = script()
+      expect(people(liftLog(record(name, 'v1', h.initial.setup, h.log, registry).log))).toEqual(people(liftLog(entry.log)))
+    })
+  }
+
+  for (const file of files) {
+    // The people only: three of the four entries were recorded before the game was anonymised too
+    // (#540), and an entry is never recorded again (DRIFT §7).
+    it(`${file}: anonymising its people again changes nothing, so the corpus there is is what the list gives`, () => {
+      const entry = JSON.parse(readFileSync(join(dir, file), 'utf8')) as CorpusEntry
+      const log = liftLog(entry.log)
+      expect(anonymise(log)).toEqual(log)
+      expect(log.some((l) => PERSONAL_FIELDS.some((f) => f.v === l.intent.v && f.field in l.intent))).toBe(true)
+    })
+  }
 })
 
 // The game as well as the people (#540, beställarens beslut): the repo is public, and a real log

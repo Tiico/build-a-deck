@@ -19,6 +19,8 @@ const PATHS: Record<string, Route> = {
   [GUIDED]: 'new',
   '/claim': 'claim',
   '/profile': 'profile',
+  // The print package is a part of a game, named as the editor's tabs are (#1208): «game · Tryckpaketet».
+  '/print-package': 'editor',
   '/editor': 'editor',
   '/table': 'table',
   '/join': 'join',

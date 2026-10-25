@@ -2,6 +2,7 @@
 // the browser keeps, and the projects that belong to the account. `http` is the server origin;
 // in development it is another port, so credentials are sent explicitly.
 import type { CardFace, CardPeek, Role } from '@byd/server/doc'
+import type { PreparedOrder, PrintRequirements, Quote } from '@byd/print'
 import { translate, type T } from '../i18n/index.js'
 import { Said } from '../i18n/said.js'
 import { Unauthorized, pageLang, withCredentials } from './session.js'
@@ -214,6 +215,50 @@ export async function readExport(http: string, project: string): Promise<ExportS
   const res = await fetch(`${http}/projects/${encodeURIComponent(project)}/export?${q.toString()}`, withCredentials())
   // Saved under the name the server gives it (#542), which says the version the zip holds: the
   // list the window was opened from may be a version behind.
+  if (res.status === 200) return { state: 'ready', zip: await res.blob(), name: zipName(res.headers.get('content-disposition'), project) }
+  if (res.status !== 202) return { state: 'refused', status: res.status }
+  const body = (await res.json()) as { total: number; done: number }
+  return { state: 'preparing', total: body.total, done: body.done }
+}
+
+// The print package (#1208): what Testtryckeriet would be sent for the game as it is saved, asked for
+// as the order to an address would be routed (F2), so the page shows what the routing chooses. The
+// same question again says how far the files have come, and asks for any not yet drawn. A finding
+// of the print checks names the card and the side, and the code the editor says in words (E5).
+export type PrintFinding = { code: string; severity: 'error' | 'warning'; element: string; cardRef: string; face: string; values: Record<string, unknown> }
+export type PrintPackage = {
+  project: string
+  rev: number
+  provider: { id: string; label: string; manufacturesIn: string[] }
+  requirements: PrintRequirements[]
+  to?: string
+  quote?: Quote
+  order: PreparedOrder
+  files: { name: string; state: 'done' | 'queued' | 'running' | 'failed' }[]
+  rulebook: { name: string; state: 'done' | 'queued' | 'running' | 'failed' } | null
+  errors: PrintFinding[]
+  warnings: PrintFinding[]
+  total: number
+  done: number
+  failed: number
+}
+export type PrintPackageRead = { state: 'ready'; pkg: PrintPackage } | { state: 'refused'; status: number; reason?: string }
+export async function readPrintPackage(http: string, project: string, to: string): Promise<PrintPackageRead> {
+  const q = new URLSearchParams({ to, ...pageLang() })
+  const res = await fetch(`${http}/projects/${encodeURIComponent(project)}/print-package?${q.toString()}`, withCredentials())
+  if (res.status === 401) throw new Unauthorized()
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string }
+    return { state: 'refused', status: res.status, ...(body.error ? { reason: body.error } : {}) }
+  }
+  return { state: 'ready', pkg: (await res.json()) as PrintPackage }
+}
+
+// The package as one zip, once every file of it is drawn: until then how far they have come, as the
+// export says it (G5). Saved under the name the server gives it, which says the version it holds.
+export async function readPrintZip(http: string, project: string, provider: string): Promise<ExportState> {
+  const q = new URLSearchParams({ provider, ...pageLang() })
+  const res = await fetch(`${http}/projects/${encodeURIComponent(project)}/print-package/zip?${q.toString()}`, withCredentials())
   if (res.status === 200) return { state: 'ready', zip: await res.blob(), name: zipName(res.headers.get('content-disposition'), project) }
   if (res.status !== 202) return { state: 'refused', status: res.status }
   const body = (await res.json()) as { total: number; done: number }

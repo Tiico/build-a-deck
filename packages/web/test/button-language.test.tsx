@@ -29,7 +29,7 @@ import type { SetupDef } from '@byd/engine'
 import { projectDoc } from './project-doc.js'
 import { admit, asSeat, asTable, createSession, roomOf, seatSetup, startServer, twoSeatSetup, type Running } from './fixture.js'
 import { atWidth } from './viewport.js'
-import { chooseTheme } from './choose-theme.js'
+import { openExample } from './open-example.js'
 import { drawnAs, painted, type Ground, type Spot } from './painted.js'
 import { contrastRatio, flatten } from '../src/player/contrast.js'
 
@@ -333,13 +333,13 @@ describe('the guided start', () => {
 // Every mode the editor can be showing at the desk, and the two doors inside them that have to be
 // held open to be seen at all. Named here so that a walk which finds nothing fails instead of
 // agreeing with itself.
-const EDITOR_VIEWS = ['Bord', 'Kortvägg', 'Mall', 'Mall, ikonbiblioteket öppet', 'Media', 'Regler', 'Speltema', 'Speltema, biblioteket öppet', 'Speltema, ett tema valt', 'Tabell', 'Tabell, ett nytt fält på väg', 'Tabell, filtrerad'] as const
+const EDITOR_VIEWS = ['Bord', 'Kortvägg', 'Mall', 'Mall, ikonbiblioteket öppet', 'Media', 'Regler', 'Speltema', 'Speltema, biblioteket öppet', 'Speltema, exemplen öppna', 'Tabell', 'Tabell, ett nytt fält på väg', 'Tabell, filtrerad'] as const
 
 // Whichever mode is open, the blue button that puts the work on the table is the only filled thing
 // in the room.
 async function editorViews(width: number): Promise<Record<string, string>> {
-  // Choosing a theme stores its families as the project's own files, and a file is only taken from
-  // somebody signed in.
+  // The editor is walked as the signed-in designer sees it: a file is only taken from somebody
+  // signed in.
   await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'ada@example.com', next: '/' }) })
   atWidth(width)
   history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
@@ -374,7 +374,7 @@ async function editorViews(width: number): Promise<Record<string, string>> {
         out['Tabell, ett nytt fält på väg'] = document.querySelector('.byd-editor')!.outerHTML
         fireEvent.keyDown(document.querySelector('.byd-newfield')!, { key: 'Escape' })
       }
-      // Speltema folds its parts (L57), so the walk opens every one of them before it reads the
+      // Speltema's parts can be folded (L57, L84), so the walk opens every one of them before it reads the
       // tab, and then the library that opens from the icons.
       if (tab.textContent?.trim() === 'Speltema') {
         for (const head of document.querySelectorAll<HTMLElement>('[data-theme-section] h2 button[aria-expanded="false"]')) fireEvent.click(head)
@@ -383,11 +383,10 @@ async function editorViews(width: number): Promise<Record<string, string>> {
         if (!document.querySelector('.byd-symbols-library .byd-symbols-tile')) throw new Error('the icons never opened the symbol library')
         out['Speltema, biblioteket öppet'] = document.querySelector('.byd-editor')!.outerHTML
         fireEvent.click(screen.getByRole('button', { name: 'Klar' }))
-        // A tile is a choice, and a game whose theme is chosen has one tile on. The walk used to
-        // read the gallery only before anything was chosen, so the chosen tile kept the panel's
-        // fill unmeasured while the guided start's same tile was drawn by its edge alone (#665).
-        await chooseTheme('Skogssaga')
-        out['Speltema, ett tema valt'] = document.querySelector('.byd-editor')!.outerHTML
+        // The examples are a sheet of their own (L84), and the question a copy asks has buttons of
+        // its own, so both are read open.
+        openExample('Skogssaga')
+        out['Speltema, exemplen öppna'] = document.querySelector('.byd-editor')!.outerHTML
       }
       // The icon libraries are a door too: the rail's Ikon tool opens their sheet under the card
       // (#1093), and until it is open nothing in the walk has ever seen its buttons drawn.
