@@ -1,3 +1,4 @@
+import { boxClassifiers } from '@byd/screening'
 import { assetsFromEnv } from './objects.js'
 import { Renderer } from './renderer.js'
 import { PostgresRenderStore } from './store-postgres.js'
@@ -43,5 +44,6 @@ const stop = async (signal: string) => {
 process.on('SIGTERM', () => void stop('SIGTERM'))
 process.on('SIGINT', () => void stop('SIGINT'))
 
-// The pictures and typefaces a page names by hash are read from where the app put them (#1028).
-await runWorker({ store, renderer, assets: store.assets(), until: 'forever', log })
+// The pictures and typefaces a page names by hash are read from where the app put them (#1028),
+// and a screening's picture is too (#1271); the classifiers run here, on the box (F4, beslut 8).
+await runWorker({ store, renderer, assets: store.assets(), classifiers: boxClassifiers(), until: 'forever', log })
