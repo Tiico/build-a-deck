@@ -34,10 +34,11 @@ else
 fi
 # The erasure ledger (#1279, DRIFT §5), one line per entry in the form `erase replay --from` reads:
 # what a restore to an earlier point must do again, read from the latest point when the database
-# itself cannot be read. Names nobody. A backup from before the table has no ledger to say.
+# itself cannot be read. Names nobody. A backup from before the table has no ledger to say, and one
+# from before #1280 no account column, which is read so that its absence is no error.
 if [ "$(q "select to_regclass('erasures') is not null")" = "t" ]; then
   q "select json_strip_nulls(json_build_object('msg', 'erasure', 'id', id, 'at', to_char(at at time zone 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"'),
-       'kind', kind, 'reason', reason, 'session', session_id, 'seat', seat, 'project', project_id,
+       'kind', kind, 'reason', reason, 'session', session_id, 'seat', seat, 'project', project_id, 'account', to_jsonb(erasures) ->> 'account_id',
        'issuedAt', to_char(issued_at at time zone 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"')))
      from erasures order by at, id"
 fi

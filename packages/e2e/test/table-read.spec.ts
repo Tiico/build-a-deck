@@ -23,7 +23,7 @@ for (const device of [TABLET_FLAT, DESK]) {
       const table = await tableOf({ players: 2, counters: [], cards: 4, copies: 1 })
       const dealer = await host(table)
       await dealer.send([{ v: 'draw', from: 'draw', to: 'table', count: 1 }])
-      const { page } = await open(device, `${table.tableUrl}&lang=sv`)
+      const { page } = await open(device, withQuery(table.tableUrl, 'lang=sv'))
       const card = page.locator('.byd-card[data-component]').first()
       await expect(card).toHaveAttribute('data-face', 'back')
 

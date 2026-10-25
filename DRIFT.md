@@ -221,6 +221,12 @@ Två undantag från «raderas aldrig», beslutade av beställaren 2026-10-24.
 Bilder, typsnitt och renderingar efter ett raderat konto, som inget annat spel eller bord nämner, sopas efter 30 dygn (G6, #1269).
 Olagligt innehåll som spärrats efter en anmälan rensas ur R2 och Postgres; annat spärrat innehåll står kvar som bytes, och servern, renderaren, trycket och exporten behandlar hashen som om den inte fanns (F4, #1268, fråga 12).
 Ingen av dem skriver om en asset, så hashen avgör fortfarande bytesen, och en referens till en hash som inte längre finns blir tom som ovan.
+Byggt 2026-10-25 (#1280): när ett konto raderar sig skrivs det dess spel nämner, och de renderingar det burit, upp i `asset_sweeps` med dagen 30 dygn bort, i raderingens transaktion.
+Sopningen (`PostgresAssetSweep`, i samma varv som gallringen) tar dem när dagen kommit och inget som finns kvar nämner dem: en bild eller ett typsnitt som inget spel, inget bord vars spel finns och inget väntande jobb nämner raderas ur `assets` och ur R2 under `assets/<hash>`; en rendering som inget annat konto burit raderas ur `render_outputs`, `render_jobs` och R2 under `renders/<hash>`.
+En hash som nämns igen är inte längre kontots och lämnas för gott.
+Raden går före bytesen, i en transaktion per hash, så att ett R2 som inte svarar lämnar raden till nästa varv.
+S3-protokollet har fått sitt femte anrop för det, en `DELETE`.
+I minnet sopas ingenting, eftersom ingenting där lever i 30 dygn.
 Spärren är byggd 2026-10-25 (#1274, DESIGN-BESLUT F4): en spärrad hash står i `asset_blocks`, och appen och renderworkern behandlar den som en som aldrig laddats upp.
 Det som ritats av bilden tas ur renderkön och ur R2 (`renders/<hash>`) när spärren skrivs, och en rensning tar `assets/<hash>` ur R2 och raden ur `assets`; spärren står kvar efter en rensning, så att samma bytes aldrig laddas upp igen.
 En signerad länk som redan lämnats ut lever sin timme ut.
@@ -267,6 +273,8 @@ Att liggaren inte går förlorad med punkten löses med en kopia: `erase ledger`
 En körning till ändrar ingenting, så liggaren går att köra om hur många gånger som helst.
 Gallringen behöver ingen kopia: sopningen gör den vid varje start, innan dörren öppnas.
 Stegen står i RUNBOOK §6.
+Sedan #1280 har liggaren ett fjärde slag, `account`, med kontots id i `account_id`: ett konto som raderat sig, och det enda ställe där id:t står kvar.
+Körs liggaren om tas kontot först i sin stund, före spelen det tog med sig, så att det dess spel nämnde skrivs upp för sopningen igen.
 
 ### Huvudnyckeln för AI-nycklarna (#999)
 

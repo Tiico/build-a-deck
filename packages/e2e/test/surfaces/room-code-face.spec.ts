@@ -1,4 +1,5 @@
 import type { Page } from '@playwright/test'
+import { withQuery } from '../../support/api.js'
 import { SMALL_TV, TV } from '../../support/devices.js'
 import { expect, test } from '../../support/test.js'
 
@@ -39,7 +40,7 @@ for (const [where, device, url, selector] of [
   ['table mode', SMALL_TV, (t: { tableUrl: string }) => t.tableUrl, '.byd-table-plate [data-address] b'],
 ] as const) {
   test(`the code on ${where} is drawn in a fixed-width face, not a fallback`, async ({ table, open }) => {
-    const { page } = await open(device, `${url(table)}&lang=sv`)
+    const { page } = await open(device, withQuery(url(table), 'lang=sv'))
     await expect(page.locator(selector)).toHaveText(table.code)
     await page.evaluate(() => document.fonts.ready)
     const faces = await drawnIn(page, selector)

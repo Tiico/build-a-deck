@@ -2,7 +2,7 @@ import type { APIRequestContext, Page } from '@playwright/test'
 import type { ZoneBeside } from '@byd/protocol'
 import { deckFromProject } from '@byd/server'
 import { setupFromProject } from '@byd/server/doc'
-import { tableOf as tableFromSetup, type Table } from '../support/api.js'
+import { tableOf as tableFromSetup, withQuery, type Table } from '../support/api.js'
 import { TV } from '../support/devices.js'
 import { gameDoc } from '../support/game.js'
 import { expect, test } from '../support/test.js'
@@ -82,7 +82,7 @@ async function pileTable(request: APIRequestContext, { side, rot, cards }: { sid
 
 /** The big screen, one card taken off the deck through the ring, and the two boxes that leaves. */
 async function drawOne(open: (device: typeof TV, url: string) => Promise<{ page: Page }>, url: string, left: number): Promise<{ top: Box; card: Box }> {
-  const { page } = await open(TV, `${url}&lang=sv`)
+  const { page } = await open(TV, withQuery(url, 'lang=sv'))
   const pile = page.locator('.byd-pile[data-zone="draw"]')
   await expect(pile, 'the whole deck is in the draw pile before anything is taken off it').toHaveAttribute('data-count', String(left + 1))
   // The way a person gets there: press the pile, take Dra 1 out of the ring (K14).

@@ -1,7 +1,7 @@
 import type { ProjectDoc } from '@byd/server'
 import { deckFromProject } from '@byd/server'
 import { setupFromProject } from '@byd/server/doc'
-import { tableOf as tableFromSetup } from '../support/api.js'
+import { tableOf as tableFromSetup, withQuery } from '../support/api.js'
 import { TV } from '../support/devices.js'
 import { gameDoc } from '../support/game.js'
 import { expect, test } from '../support/test.js'
@@ -55,7 +55,7 @@ test.describe('spelstarten vid ett riktigt bord', () => {
     // `&lang=sv`, som resten av sviten gör det: språket följer annars webbläsarens, och
     // Playwrights är engelska. Meningarna som läses här är designerns språk och inte verktygets
     // (A4), så det ska stå vilket språk de läses i.
-    const screen = await open(TV, `${table.tvUrl}&lang=sv`, { facesReady: true })
+    const screen = await open(TV, withQuery(table.tvUrl, 'lang=sv'), { facesReady: true })
     const tile = screen.page.locator('[data-table-start]')
     await expect(tile).toBeVisible()
     await expect(tile).toHaveText(/Starta spelet/)
@@ -110,7 +110,7 @@ test.describe('bordet ett nytt spel föds med', () => {
     const table = await tableFromSetup(request, setupFromProject(doc), deckFromProject(doc))
     await player(table, { name: 'Ada', seat: 'A' })
 
-    const screen = await open(TV, `${table.tvUrl}&lang=sv`, { facesReady: true })
+    const screen = await open(TV, withQuery(table.tvUrl, 'lang=sv'), { facesReady: true })
     const tile = screen.page.locator('[data-table-start]')
     await expect(tile).toBeVisible()
 
@@ -148,7 +148,7 @@ test.describe('starten på TV:n syns från soffan (#718)', () => {
     const doc = gameDoc({ players: 2, counters: [], cards: 8 })
     const table = await tableFromSetup(request, setupFromProject(doc), deckFromProject(doc))
     await player(table, { name: 'Ada', seat: 'A' })
-    const screen = await open(TV, `${table.tvUrl}&lang=sv`, { facesReady: true })
+    const screen = await open(TV, withQuery(table.tvUrl, 'lang=sv'), { facesReady: true })
     const page = screen.page
     const tile = page.locator('[data-table-start]')
     await expect(tile).toBeVisible()

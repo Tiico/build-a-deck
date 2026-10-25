@@ -103,7 +103,7 @@ test.describe('the status page on the room’s screens is drawn in the room’s 
         await page.clock.install()
         await stallEntry(page)
         // The mode is in the query, not the path: `/table` is both screens.
-        await page.goto(`/table?session=whatever&host=x&mode=${screen.mode}`, { waitUntil: 'load' })
+        await page.goto(`/table?session=whatever&mode=${screen.mode}#host=x`, { waitUntil: 'load' })
         await expect(page.locator('#byd-shell [data-k="h"]')).not.toBeEmpty()
         holdsTheRoomsSizes(await measure(page, '#byd-shell'), screen, 'loading', false)
         await page.clock.runFor(DEFAULT_TIMING.slowAfterMs + 500)
@@ -146,7 +146,7 @@ test.describe('the status page on the room’s screens is drawn in the room’s 
       try {
         const page = await ctx.newPage()
         // A table the server has never heard of.
-        await page.goto(`/table?session=no-such-table&host=x&mode=${screen.mode}`)
+        await page.goto(`/table?session=no-such-table&mode=${screen.mode}#host=x`)
         const missing = ".byd-status[data-surface='page'][data-status-notice='missing']"
         await expect(page.locator(missing)).toBeVisible()
         holdsTheRoomsSizes(await measure(page, missing), screen, 'missing', true)

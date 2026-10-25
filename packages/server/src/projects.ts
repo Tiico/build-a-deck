@@ -312,7 +312,14 @@ export type ProjectStore = {
   // The invitations used, or run out unused, before `before` (#1277, G6): a third person's address
   // kept for nothing. Dela lists only the ones still waiting. How many went.
   sweepInvites(before: string): Promise<number>
+  // The invitations an account sent and the ones sent to its address, whatever became of them
+  // (#1280, art. 15): what its extract says of them.
+  invitesOf(account: string, email: string): Promise<{ sent: InviteRecord[]; received: InviteRecord[] }>
 }
+
+// An invitation as the extract tells it: to which game and address, as what, when, and whether it
+// was followed.
+export type InviteRecord = { project: string; email: string; role: Role; sentAt: string; expiresAt: string; acceptedAt: string | null }
 
 export class MemoryProjectStore implements ProjectStore {
   private readonly docs = new Map<string, ProjectRecord>()
@@ -322,7 +329,7 @@ export class MemoryProjectStore implements ProjectStore {
   private readonly edits = new Map<string, AppliedEdit[]>()
   // Who else a project is shared with (D3), by project.
   private readonly shared = new Map<string, Map<string, Role>>()
-  private readonly invites = new Map<string, { project: string; email: string; role: Role; expiresAt: string; used?: boolean; usedAt?: string }>()
+  private readonly invites = new Map<string, { project: string; email: string; role: Role; expiresAt: string; by?: string; sentAt: string; used?: boolean; usedAt?: string }>()
   // The writes held to a ceiling on storage, one after another (#1197): weighing asks the asset
   // store, which is a wait, and no other such write may come in between the count and the write.
   private turn: Promise<unknown> = Promise.resolve()
@@ -490,7 +497,13 @@ export class MemoryProjectStore implements ProjectStore {
   }
 
   async invite(invite: { tokenHash: string; project: string; email: string; role: Role; by?: string; expiresAt: string }): Promise<void> {
-    this.invites.set(invite.tokenHash, { project: invite.project, email: invite.email, role: invite.role, expiresAt: invite.expiresAt })
+    this.invites.set(invite.tokenHash, { project: invite.project, email: invite.email, role: invite.role, expiresAt: invite.expiresAt, ...(invite.by ? { by: invite.by } : {}), sentAt: new Date().toISOString() })
+  }
+
+  async invitesOf(account: string, email: string): Promise<{ sent: InviteRecord[]; received: InviteRecord[] }> {
+    const all = [...this.invites.values()].sort((a, b) => a.sentAt.localeCompare(b.sentAt))
+    const told = (i: (typeof all)[number]): InviteRecord => ({ project: i.project, email: i.email, role: i.role, sentAt: i.sentAt, expiresAt: i.expiresAt, acceptedAt: i.used ? (i.usedAt ?? null) : null })
+    return { sent: all.filter((i) => i.by === account).map(told), received: all.filter((i) => i.email.toLowerCase() === email.toLowerCase()).map(told) }
   }
 
   async openInvites(project: string, now: string): Promise<{ email: string; role: Role; expiresAt: string }[]> {
@@ -591,7 +604,19 @@ export class MemoryProjectStore implements ProjectStore {
     this.history.delete(id)
     this.edits.delete(id)
     this.shared.delete(id)
+    for (const [hash, i] of this.invites) if (i.project === id) this.invites.delete(hash)
     return had
+  }
+
+  // An account that deleted itself (#1280), as Postgres forgets it: its games go, and the versions
+  // and edits it made in other games, its memberships and the invitations it sent or was sent no
+  // longer say it.
+  forgetAccount(account: string, email: string): void {
+    for (const [id, rec] of this.docs) if (rec.owner === account) void this.remove(id)
+    for (const versions of this.history.values()) for (const v of versions) if (v.by === account) delete v.by
+    for (const edits of this.edits.values()) for (const e of edits) if (e.by === account) delete e.by
+    for (const members of this.shared.values()) members.delete(account)
+    for (const [hash, i] of this.invites) if (i.by === account || i.email.toLowerCase() === email.toLowerCase()) this.invites.delete(hash)
   }
 }
 

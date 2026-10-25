@@ -1,6 +1,9 @@
 import { PHYSICAL_VERBS, REDACTED, type Applied, type GameVersionId, type Seating } from '@byd/protocol'
 import { redactLine, type SetupDef } from '@byd/engine'
-import { changesAt, type Erased, type Erasure, type ErasureStore, type LedgerEntry } from './erase.js'
+import { NOTHING_ERASED, changesAt, type Erased, type Erasure, type ErasureStore, type LedgerEntry } from './erase.js'
+
+// Forgetting an account in the memory stores beside the log (#1280): true when there was one.
+export type AccountForgetting = { forget(account: string): Promise<boolean> }
 import type { MemorySurveyStore } from './surveys.js'
 import type { Deck } from './faces.js'
 import { QuotaReached, startThatFrees, tableGrowth, withFrees, type TableCeilings, type TableUse } from './quotas.js'
@@ -303,10 +306,13 @@ export class MemoryLogStore implements LogStore {
 
   // The erasure in memory (#1279): the same changes Postgres makes, over these maps and the survey
   // store's, with nothing to wait for between them. `projects` says whether a game is still there.
-  erasures(surveys: MemorySurveyStore, projects?: { load(id: string): Promise<unknown> } | null): ErasureStore {
+  // `accounts` forgets an account that deleted itself (#1280) in the stores beside this one — its
+  // games, its login, its key and its tier; this store forgets it as a bearer and as a claimer.
+  // Nothing in memory outlives the process, so there is no sweep of what its games named.
+  erasures(surveys: MemorySurveyStore, projects?: { load(id: string): Promise<unknown> } | null, accounts?: AccountForgetting): ErasureStore {
     const ledger = this.ledger
     const listeners = this.erased
-    const at = async (session: string, erasure: Erasure, reason: LedgerEntry['reason'], sum: Erased): Promise<void> => {
+    const at = async (session: string, erasure: Exclude<Erasure, { kind: 'account' }>, reason: LedgerEntry['reason'], sum: Erased): Promise<void> => {
       const log = this.logs.get(session)
       if (!log) return
       const guests = this.guests.get(session) ?? []
@@ -322,8 +328,20 @@ export class MemoryLogStore implements LogStore {
     }
     return {
       erase: async (entries) => {
-        const sum: Erased = { sessions: [], lines: 0, guests: 0, surveys: 0 }
+        const sum: Erased = { ...NOTHING_ERASED, sessions: [] }
         for (const e of entries) {
+          if (e.kind === 'account') {
+            for (const [session, guests] of this.guests) {
+              for (const g of guests.filter((g) => g.accountId === e.account)) {
+                await at(session, { kind: 'guest', session, seat: g.seat, issuedAt: g.issuedAt }, 'request', sum)
+                delete g.accountId
+              }
+            }
+            for (const r of this.sessions.values()) if (r.accountId === e.account) delete r.accountId
+            if (await accounts?.forget(e.account)) sum.accounts++
+            if (!ledger.some((l) => l.id === e.id)) ledger.push(structuredClone(e))
+            continue
+          }
           const sessions = e.kind === 'game' ? [...this.sessions.values()].filter((r) => r.project === e.project).map((r) => r.id) : [e.session]
           for (const session of sessions) await at(session, e, e.reason, sum)
           if (!ledger.some((l) => l.id === e.id)) ledger.push(structuredClone(e))

@@ -2,7 +2,7 @@ import type { APIRequestContext, Page } from '@playwright/test'
 import { deckFromProject } from '@byd/server'
 import { setupFromProject } from '@byd/server/doc'
 import { spelkortDoc } from '../../../server/scripts/spelkort.js'
-import { tableOf, type Table } from '../../support/api.js'
+import { tableOf, type Table, withQuery } from '../../support/api.js'
 import type { Device } from '../../support/devices.js'
 import { expect, test, type Fixtures } from '../../support/test.js'
 
@@ -139,7 +139,7 @@ async function dealt(request: APIRequestContext, host: Fixtures['host'], player:
 // Rummets TV, med varje korts bild på väg — `/faces` svarar 202 som när renderingen arbetar — så att
 // kasthögens bildtext (#771) står där och skylten mäts mot den.
 async function television(open: Fixtures['open'], device: Device, table: Table): Promise<Page> {
-  const { page } = await open(device, `${table.tvUrl}&lang=sv`)
+  const { page } = await open(device, withQuery(table.tvUrl, 'lang=sv'))
   await page.route('**/faces/**', (r) => r.fulfill({ status: 202, body: 'queued' }))
   await page.reload()
   await expect(page.locator('[data-seat-plate]')).toHaveCount(table.seats.length, { timeout: 20_000 })

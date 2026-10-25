@@ -4,8 +4,8 @@
 //
 // The terms follow #1268's outline section by section, with the same numbering, so 9 and 10 stand as
 // headings from the start and no number ever changes. The privacy text follows #1269's maps and F1–F7,
-// and says only what is true today (beställarens beslut 3, 2026-10-24): erasure goes through Kontakt,
-// and the text is brought up to date with each slice that changes that (#1277, #1279–#1281).
+// and says only what is true today (beställarens beslut 3, 2026-10-24), brought up to date with each
+// slice that changes that (#1277, #1279–#1281).
 //
 // This is legal text and not the tool's catalogue: «vi» here is the one who runs Deckster, a party to
 // an agreement, which is why it lives outside `i18n/` and is not held to L73's voice
@@ -153,9 +153,8 @@ const terms: Document = {
 // What is true today (beställarens beslut 3, 2026-10-24). What can no longer be used is swept (#1277),
 // and a guest's names and free text are masked after twelve months and with a game taken away, with
 // the ledger run again after a restore (#1279). A guest removes her own name and words from her
-// phone, where she leaves the table and under the thanks (#1281). Profil's download and erase (#1280)
-// is not built, so the text does not say it: an account's erasure is a letter to Kontakt. Each slice
-// brings its own line in here when it lands.
+// phone, where she leaves the table and under the thanks (#1281). An account downloads what is kept
+// about it and deletes itself in Profil (#1280). Each slice brings its own line in here when it lands.
 const privacy: Document = {
   title: 'Integritet i Decksters beta',
   sections: [
@@ -202,13 +201,14 @@ const privacy: Document = {
             '**Ditt konto och dina spel:** så länge kontot finns. Ett konto som inte används raderas inte under betan.',
             '**Gäst utan konto:** namn och fritext tas bort 12 månader efter att bordet avslutades. Spelet och enkätens siffror står kvar utan namn.',
             '**Gäst som sparat till ett konto:** så länge kontot finns.',
+            '**Ett raderat konto:** försvinner direkt, med sina spel. Bilder och typsnitt som bara dess spel använde tas bort inom 30 dagar.',
             '**Ett borttaget spel:** namnen och fritexten vid dess bord, och enkätsvaren, tas bort direkt.',
             '**Inloggningslänkar och kakor:** en länk gäller i 15 minuter och kakan i 30 dagar, och vi tar bort dem när de inte längre går att använda.',
             '**Inbjudningar:** 30 dagar efter att de använts eller gått ut.',
             '**Säkerhetskopior:** åtta dagar. Efter en återställning tar vi bort det som raderats igen.',
           ],
         },
-        'Vill du att det du lämnat som gäst raderas tidigare gör du det själv på telefonen: när du lämnar bordet, eller under tacket när bordet har avslutats. Har telefonen inte länken kvar, eller gäller det ditt konto, skriver du till {contact}.',
+        'Ditt konto raderar du själv i Profil. Vill du att det du lämnat som gäst raderas tidigare gör du det själv på telefonen: när du lämnar bordet, eller under tacket när bordet har avslutats. Har telefonen inte länken kvar, skriver du till {contact}.',
       ],
     },
     {
@@ -235,7 +235,7 @@ const privacy: Document = {
       ks: 'Du kan få se, rätta, flytta och radera det vi har om dig. Skriv till oss.',
       body: [
         'Du har rätt att få veta vad vi har om dig, få det rättat, raderat eller utlämnat i ett format du kan ta med dig, och att invända mot det vi gör på ett berättigat intresse.',
-        '**Med konto:** skriv till {contact}. Ditt namn kan du själv ändra eller ta bort i Profil.',
+        '**Med konto:** i Profil laddar du ner det vi har om dig och raderar kontot. Ditt namn kan du själv ändra eller ta bort där.',
         '**Som gäst:** ta bort ditt namn och dina svar på telefonen, när du lämnar bordet eller under tacket när bordet har avslutats. Annars skriver du till {contact} med spelets namn, ungefär när ni spelade och namnet du satt under.',
         'Är du inte nöjd med hur vi svarar kan du klaga hos Integritetsskyddsmyndigheten, imy.se.',
       ],

@@ -9,7 +9,7 @@ test('the ball on each plate is the seat’s letter, not the first letter of who
   const table = await tableOf({ players: 2, counters: [], cards: 4 })
   const bo = await join(request, table, { name: 'Bo', seat: 'A' })
   await open(DESK, withQuery(bo.onlineUrl, `lang=sv`))
-  const { page: tv } = await open(DESK, `${table.tvUrl}&lang=sv`)
+  const { page: tv } = await open(DESK, withQuery(table.tvUrl, 'lang=sv'))
 
   const a = tv.locator('[data-seat-plate="A"] > b')
   const b = tv.locator('[data-seat-plate="B"] > b')

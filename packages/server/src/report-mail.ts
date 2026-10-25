@@ -40,7 +40,7 @@ export function receiptMail(r: Report, link: string, contact?: string): Mail {
       to: r.email,
       subject,
       text: `The report is received.\n\n${lead}\n\n${asText(list)}\n\nHow a report is tried: ${link}\n\n${fine}${textFoot(site, contact, 'Contact')}`,
-      html: bands({ lang: 'en', subject, pre: 'Read within two working days.', hello: 'The report is received', lead, facts: list, button: 'How a report is tried', fine, pasteIt: 'Button not working? Paste the link into your browser:', contactWord: 'Contact', link, contact }),
+      html: bands({ lang: 'en', subject, pre: 'Read within two working days.', hello: 'The report is received', lead, facts: list, fine, contactWord: 'Contact', contact, action: { button: 'How a report is tried', pasteIt: 'Button not working? Paste the link into your browser:', link: link } }),
     }
   }
   const subject = `Din anmälan till Deckster är mottagen, ${r.id}`
@@ -50,7 +50,7 @@ export function receiptMail(r: Report, link: string, contact?: string): Mail {
     to: r.email,
     subject,
     text: `Anmälan är mottagen.\n\n${lead}\n\n${asText(list)}\n\nSå prövas en anmälan: ${link}\n\n${fine}${textFoot(site, contact, 'Kontakt')}`,
-    html: bands({ lang: 'sv', subject, pre: 'Läses inom två arbetsdagar.', hello: 'Anmälan är mottagen', lead, facts: list, button: 'Så prövas en anmälan', fine, pasteIt: 'Fungerar inte knappen? Klistra in länken i webbläsaren:', contactWord: 'Kontakt', link, contact }),
+    html: bands({ lang: 'sv', subject, pre: 'Läses inom två arbetsdagar.', hello: 'Anmälan är mottagen', lead, facts: list, fine, contactWord: 'Kontakt', contact, action: { button: 'Så prövas en anmälan', pasteIt: 'Fungerar inte knappen? Klistra in länken i webbläsaren:', link: link } }),
   }
 }
 
@@ -81,11 +81,11 @@ export function decisionMail(r: Report, outcome: ReportOutcome, link: string, co
   if (r.lang === 'en') {
     const subject = `Your report ${r.id}: ${words.hello.toLowerCase()}`
     const fine = 'You may also turn to a court.'
-    return { to: r.email, subject, text: `${words.hello}.\n\n${words.lead}\n\n${fine}${textFoot(site, contact, 'Contact')}`, html: bands({ lang: 'en', subject, pre: words.hello, hello: words.hello, lead: words.lead, button: 'How a report is tried', fine, pasteIt: 'Button not working? Paste the link into your browser:', contactWord: 'Contact', link, contact }) }
+    return { to: r.email, subject, text: `${words.hello}.\n\n${words.lead}\n\n${fine}${textFoot(site, contact, 'Contact')}`, html: bands({ lang: 'en', subject, pre: words.hello, hello: words.hello, lead: words.lead, fine, contactWord: 'Contact', contact, action: { button: 'How a report is tried', pasteIt: 'Button not working? Paste the link into your browser:', link: link } }) }
   }
   const subject = `Din anmälan ${r.id}: ${words.hello.toLowerCase()}`
   const fine = 'Du kan också vända dig till allmän domstol.'
-  return { to: r.email, subject, text: `${words.hello}.\n\n${words.lead}\n\n${fine}${textFoot(site, contact, 'Kontakt')}`, html: bands({ lang: 'sv', subject, pre: words.hello, hello: words.hello, lead: words.lead, button: 'Så prövas en anmälan', fine, pasteIt: 'Fungerar inte knappen? Klistra in länken i webbläsaren:', contactWord: 'Kontakt', link, contact }) }
+  return { to: r.email, subject, text: `${words.hello}.\n\n${words.lead}\n\n${fine}${textFoot(site, contact, 'Kontakt')}`, html: bands({ lang: 'sv', subject, pre: words.hello, hello: words.hello, lead: words.lead, fine, contactWord: 'Kontakt', contact, action: { button: 'Så prövas en anmälan', pasteIt: 'Fungerar inte knappen? Klistra in länken i webbläsaren:', link: link } }) }
 }
 
 const why: Record<BlockReason, string> = {
@@ -117,6 +117,6 @@ export function ownerMail(to: string, a: { game: string; cards: readonly string[
     to,
     subject,
     text: `${hello}.\n\n${lead}\n\n${asText(list)}\n\nÖppna ${a.game}: ${a.link}\n\n${fine}${textFoot(site, a.contact, 'Kontakt')}`,
-    html: bands({ lang: 'sv', subject, pre: 'Svara på mejlet för att invända.', hello, lead, facts: list, button: `Öppna ${a.game}`, fine, pasteIt: 'Fungerar inte knappen? Klistra in länken i webbläsaren:', contactWord: 'Kontakt', link: a.link, contact: a.contact }),
+    html: bands({ lang: 'sv', subject, pre: 'Svara på mejlet för att invända.', hello, lead, facts: list, fine, contactWord: 'Kontakt', contact: a.contact, action: { button: `Öppna ${a.game}`, pasteIt: 'Fungerar inte knappen? Klistra in länken i webbläsaren:', link: a.link } }),
   }
 }

@@ -37,12 +37,15 @@ export type Letter = {
   pre: string
   hello: string
   lead: string
-  button: string
+  // What the paper says after the lead, a paragraph each (#1280): a letter that tells rather than
+  // asks has more to say and no button.
+  more?: readonly string[]
+  // The letter's one button and the link it follows, written out again in the white band. A letter
+  // without one (#1280) still names the site it came from, so its hand and its foot are there.
+  action?: { button: string; pasteIt: string; link: string } | { site: string }
   fine: string
-  pasteIt: string
   // The word before the contact in the foot, in the reader's language.
   contactWord: string
-  link: string
   contact?: string | undefined
   // What the letter is about, said as a list under the lead (#1274): a report repeated to whoever
   // made it, a block's reasons to the owner. Each is a label and what somebody wrote or what was
@@ -58,8 +61,9 @@ const factsOf = (facts: readonly (readonly [string, string])[]): string =>
   `</td></tr></table>\n`
 
 export function bands(l: Letter): string {
-  const site = siteOf(l.link)
-  const href = esc(l.link)
+  const action = l.action && 'button' in l.action ? l.action : null
+  const site = action ? siteOf(action.link) : l.action && 'site' in l.action ? siteOf(l.action.site) : null
+  const href = action ? esc(action.link) : ''
   const hand = site ? `<img src="${esc(site)}${MARK}" width="64" height="64" alt="" style="display:block;border:0;margin:0 auto">` : ''
   const foot =
     `<p style="margin:0;font:13px/1.6 ${FONT};color:#7a7568">Deckster` +
@@ -91,15 +95,20 @@ export function bands(l: Letter): string {
     </td></tr>
     <tr><td bgcolor="#f4ead8" style="padding:30px 28px 32px;background:#f4ead8;text-align:left">
       <h1 style="margin:0 0 8px;font:800 26px/1.15 ${FONT};color:#1f1b12;letter-spacing:-.02em">${esc(l.hello)}</h1>
-      <p style="margin:0;font:16px/1.55 ${FONT};color:#3a3528">${esc(l.lead)}</p>
-${l.facts && l.facts.length > 0 ? factsOf(l.facts) : ''}      <table role="presentation" cellspacing="0" cellpadding="0" border="0" class="byd-button" style="margin:24px 0 0"><tr><td align="center" style="border-radius:999px;background:#f0b64a">
-        <a href="${href}" style="display:block;padding:15px 26px;font:700 16px/1 ${FONT};color:#1f1b12;text-decoration:none;border-radius:999px">${esc(l.button)} &rarr;</a>
-      </td></tr></table>
+      <p style="margin:0;font:16px/1.55 ${FONT};color:#3a3528">${esc(l.lead)}</p>${(l.more ?? []).map((p) => `
+      <p style="margin:16px 0 0;font:16px/1.55 ${FONT};color:#3a3528">${esc(p)}</p>`).join('')}${l.facts && l.facts.length > 0 ? `\n${factsOf(l.facts)}` : ''}${
+        action
+          ? `
+      <table role="presentation" cellspacing="0" cellpadding="0" border="0" class="byd-button" style="margin:24px 0 0"><tr><td align="center" style="border-radius:999px;background:#f0b64a">
+        <a href="${href}" style="display:block;padding:15px 26px;font:700 16px/1 ${FONT};color:#1f1b12;text-decoration:none;border-radius:999px">${esc(action.button)} &rarr;</a>
+      </td></tr></table>`
+          : ''
+      }
       <p style="margin:22px 0 0;font:13px/1.6 ${FONT};color:#5b574c">${esc(l.fine)}</p>
     </td></tr>
     <tr><td style="padding:20px 28px 24px;background:#ffffff;text-align:left;border:1px solid #e5e2d8;border-top:0;border-radius:0 0 18px 18px">
-      <p style="margin:0;font:13px/1.6 ${FONT};color:#5b574c">${esc(l.pasteIt)}<br><a href="${href}" style="color:#1a0dab;word-break:break-all">${href}</a></p>
-      <div style="margin-top:16px">${foot}</div>
+      ${action ? `<p style="margin:0;font:13px/1.6 ${FONT};color:#5b574c">${esc(action.pasteIt)}<br><a href="${href}" style="color:#1a0dab;word-break:break-all">${href}</a></p>
+      <div style="margin-top:16px">${foot}</div>` : foot}
     </td></tr>
   </table>
 </td></tr></table>

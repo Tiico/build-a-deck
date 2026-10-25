@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { DecksterMark } from '../brand/DecksterMark.js'
 import { requestLink } from './session.js'
 import { arrival } from './api.js'
@@ -17,9 +17,11 @@ import { letGoOfSuggestion, loginWithPasskey, useKeychain } from './passkey.js'
 // invitation, the guide's draft (#691); a visitor who came for that one thing is not shown the
 // pitch, and the visit is not counted as it. The first visit has a line of its own: the same link
 // logs in and makes the account, which the line for whoever comes back does not need to say.
-export function LoginCard({ http, next, onNavigate = (url) => location.assign(url), lead, help }: { http: string; next: string; onNavigate?(url: string): void; lead?: string | undefined; help?: string | undefined }) {
+// `notice` is what happened just before the card, said above it: an account deleted (#1280). The
+// pitch does not stand beside it.
+export function LoginCard({ http, next, onNavigate = (url) => location.assign(url), lead, help, notice }: { http: string; next: string; onNavigate?(url: string): void; lead?: string | undefined; help?: string | undefined; notice?: ReactNode }) {
   const t = useT()
-  const [pitch] = useState(() => lead === undefined && !pitchSeen())
+  const [pitch] = useState(() => lead === undefined && notice === undefined && !pitchSeen())
   useEffect(() => {
     if (pitch) markPitchSeen()
   }, [pitch])
@@ -91,6 +93,7 @@ export function LoginCard({ http, next, onNavigate = (url) => location.assign(ur
         <DecksterMark className="byd-login-mark" edge="#171a23" />
         Deckster
       </h1>
+      {notice}
       {pitch && <p className="byd-muted" data-pitch>{t('login.pitch')}</p>}
       {/* The field and its button are under this row, and the box never lands on them (#726). */}
       <div className="byd-muted byd-help-row" data-help-explains=".byd-login form">

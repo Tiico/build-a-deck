@@ -1,3 +1,4 @@
+import { withQuery } from '../../support/api.js'
 import { TV } from '../../support/devices.js'
 import { expect, test } from '../../support/test.js'
 
@@ -11,7 +12,7 @@ test('25 kort på en hand hänger inte längre ut över filten än en hand med f
   const table = await tableOf({ players: 8, counters: [], cards: 40, copies: 1 })
   const dealer = await host(table)
   await dealer.send([{ v: 'draw', from: 'draw', to: 'hand:A', count: 25 }])
-  const { page } = await open(TV, `${table.tvUrl}&lang=sv`)
+  const { page } = await open(TV, withQuery(table.tvUrl, 'lang=sv'))
   await expect(page.locator('[data-zone="hand:A"] .byd-back')).toHaveCount(12)
   await page.waitForTimeout(500)
   const over = await page.evaluate(() => {

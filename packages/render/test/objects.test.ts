@@ -35,7 +35,7 @@ describe('Signature Version 4', () => {
   })
 })
 
-// An S3 stand-in: path-style buckets, PUT stores, GET returns, a listing answers, and every
+// An S3 stand-in: path-style buckets, PUT stores, GET returns, DELETE forgets, a listing answers, and every
 // request must carry a signature — in a header or in the query.
 function fakeS3(): { server: Server; objects: Map<string, { bytes: Buffer; type: string }>; requests: string[] } {
   const objects = new Map<string, { bytes: Buffer; type: string }>()
@@ -61,6 +61,11 @@ function fakeS3(): { server: Server; objects: Map<string, { bytes: Buffer; type:
         res.end()
       })
       return
+    }
+    if (req.method === 'DELETE') {
+      objects.delete(url.pathname)
+      res.writeHead(204)
+      return res.end()
     }
     const o = objects.get(url.pathname)
     if (!o) {
@@ -90,6 +95,15 @@ describe('S3ObjectStore', () => {
     expect(fake.objects.get('/byd-assets/renders/abc')).toEqual({ bytes: Buffer.from([1, 2, 3]), type: 'image/png' })
     expect(await store.get('renders/abc')).toEqual(new Uint8Array([1, 2, 3]))
     expect(await store.get('renders/nope')).toBeNull()
+  })
+
+  it('deletes an object, signed, and a key that holds nothing is no error (#1280)', async () => {
+    await store.put('assets/gone', new Uint8Array([9]), 'image/png')
+    await store.delete('assets/gone')
+    expect(fake.objects.has('/byd-assets/assets/gone')).toBe(false)
+    expect(fake.requests.at(-1)).toBe('DELETE /byd-assets/assets/gone')
+    await store.delete('assets/never')
+    expect(await store.get('assets/gone')).toBeNull()
   })
 
   it('puts exactly the bytes it was given, also when they are a view into a larger Node buffer', async () => {
@@ -168,5 +182,7 @@ describe('MemoryObjectStore', () => {
     expect(await store.get('a')).toEqual(new Uint8Array([7]))
     expect(await store.link('a', 60)).toBeNull()
     await store.check()
+    await store.delete('a')
+    expect(await store.get('a')).toBeNull()
   })
 })

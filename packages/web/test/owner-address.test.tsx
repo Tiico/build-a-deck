@@ -1,6 +1,10 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from 'vitest'
+import { render, screen } from '@testing-library/react'
+import { WebSocket as WsClient } from 'ws'
 import { TABLE_PROTOCOL } from '@byd/protocol'
+import { ObserverPage } from '../src/observer/ObserverPage.js'
+import { createNamedSession, startServer } from './fixture.js'
 import { onlineUrl, tvUrl } from '../src/editor/tableLinks.js'
 import { takeHostKey } from '../src/table/hostKey.js'
 import { TableClient, setWebSocketImplementation, type WebSocketCtor } from '../src/client.js'
@@ -13,7 +17,8 @@ import { dropOwnerName, hostSeatAt, rememberHostSeat } from '../src/hostSeat.js'
 afterEach(() => {
   history.replaceState(null, '', '/')
   localStorage.clear()
-  setWebSocketImplementation(null)
+  // Back to the socket `setup.ts` gives every jsdom test, which a real table's page needs.
+  setWebSocketImplementation(WsClient as unknown as WebSocketCtor)
 })
 
 describe('the ways to the table (#1306)', () => {
@@ -99,5 +104,27 @@ describe('the owner’s own seat (#1306)', () => {
     rememberHostSeat('s1', { seat: 'A', name: 'Vera' })
     expect(hostSeatAt('s1')).toEqual({ seat: 'A', name: 'Vera' })
     expect(hostSeatAt('s2')).toBeNull()
+  })
+})
+
+// The owner's own watch (#1335). Nothing in the tool builds `/observe?…&name=…&owner=1` since
+// #1306, and the name she watches under is her account's, which the page asks the box for. A name
+// an old link carried is neither shown as hers nor kept in the address.
+describe('the owner’s own watch (#1335)', () => {
+  it('takes no name from the address, and drops the one an old link carried', async () => {
+    const run = await startServer()
+    try {
+      const id = await createNamedSession(run, 'Skogens herrar')
+      history.replaceState({ kept: 1 }, '', `/observe?session=${id}&name=Vera&owner=1&server=${encodeURIComponent(run.url)}`)
+      const before = history.length
+      render(<ObserverPage />)
+      expect(await screen.findAllByText('observatör tittar på och ser alla kort')).not.toHaveLength(0)
+      expect(screen.queryByText(/Vera/)).toBeNull()
+      expect(new URLSearchParams(location.search).has('name')).toBe(false)
+      expect(new URLSearchParams(location.search).get('owner')).toBe('1')
+      expect(history.length).toBe(before)
+    } finally {
+      await run.stop()
+    }
   })
 })

@@ -8,6 +8,10 @@ import { createHash, createHmac } from 'node:crypto'
 export type ObjectStore = {
   put(key: string, bytes: Uint8Array, contentType: string): Promise<void>
   get(key: string): Promise<Uint8Array | null>
+  // Takes an object away; a key that holds nothing is no error. A deleted account's pictures and
+  // renderings that nothing else names, 30 days on (#1280, G6), and a picture purged after a report
+  // with the textures and print files drawn from a picture that was blocked (#1274, DRIFT §4).
+  delete(key: string): Promise<void>
   // A URL a browser may fetch the object from directly for `ttlSeconds`; null when the bytes
   // have to come through the server instead. With `disposition` the store answers with that
   // Content-Disposition, so a file opened from the link is called what it is (#678).
@@ -17,10 +21,6 @@ export type ObjectStore = {
   readonly origin?: string
   // Throws when the store cannot be reached: what /health asks (DRIFT §2).
   check(): Promise<void>
-  // Takes an object out of the bucket; an object that is not there is no error. The one way bytes
-  // ever leave it: a picture purged after a report because it was illegal, and the textures and print
-  // files drawn from a picture that was blocked (#1274, DRIFT §4).
-  delete?(key: string): Promise<void>
 }
 
 // In the process, for development and tests: nothing to link to.
@@ -84,6 +84,7 @@ export class S3ObjectStore implements ObjectStore {
     return new Uint8Array(await res.arrayBuffer())
   }
 
+  // S3 answers 204 whether or not there was an object, which is what `delete` promises.
   async delete(key: string): Promise<void> {
     const s = this.signed('DELETE', this.url(key), {}, EMPTY_SHA256)
     const res = await fetch(s.url, { method: 'DELETE', headers: s.headers })

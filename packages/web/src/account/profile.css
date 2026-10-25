@@ -76,6 +76,17 @@
    there (L13: a line is held to 3:1 against the ground it lands on). */
 .byd-profile-question > button { min-height: 44px; padding: 0 16px; border-radius: 10px; border: 1px solid #a39a86; background: transparent; color: var(--byd-secondary-ink); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
 .byd-profile-question > button[data-kind='danger'] { border-color: #7a3243; background: #7a3243; color: #ffe4ea; font-weight: 700; }
+/* «Radera kontot?» (#1280) names everything that goes: its sentence and the list under it stand as
+   one block beside the answers, which keep their place in the middle of it. */
+.byd-profile-question > div { flex: 1 1 240px; display: grid; gap: 8px; }
+.byd-profile-question > div > p { margin: 0; line-height: 1.45; }
+.byd-profile-question > div > ul { margin: 0; padding-left: 20px; display: grid; gap: 4px; line-height: 1.45; }
+
+/* The Konto card's parts (#1280): the extract and the deletion, each under its own heading and a
+   line, so the card reads as the account and its two rights rather than three cards. */
+.byd-profile-part { display: grid; gap: 12px; padding-top: 16px; border-top: 1px solid var(--byd-profile-line); }
+.byd-profile-part h3 { margin: 0; font-size: 15px; font-weight: 750; }
+.byd-profile-part .byd-profile-saved b { overflow-wrap: anywhere; }
 
 /* «Namn» (#1254): the field, the line under it, and the row the name makes in Dela, drawn in Dela's
    own form on the account's ground. The card's parts stand at its own 12 px, not a form's 16. */

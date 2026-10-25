@@ -14,7 +14,7 @@ test.describe('a die rolled from the felt (#1137)', () => {
     const table = await tableOf({ players: 2, counters: [], cards: 4, dice: [{ faces: 6, count: 2, zone: 'table' }] })
     const seat = await join(request, table, { name: 'Bo', seat: 'A' })
     const { page } = await open(DESK, withQuery(seat.onlineUrl, `lang=sv`))
-    const { page: tv } = await open(DESK, `${table.tvUrl}&lang=sv`)
+    const { page: tv } = await open(DESK, withQuery(table.tvUrl, 'lang=sv'))
     // Nothing has happened at the table yet, so the waiting room lies over the dice (L77).
     await pastTheWaitingRoom(page)
 
