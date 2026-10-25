@@ -1,4 +1,4 @@
-import { tableWithRules } from '../../support/api.js'
+import { tableWithRules, withQuery } from '../../support/api.js'
 import { DESK, SMALL_TV, TV, type Device } from '../../support/devices.js'
 import { expect, test } from '../../support/test.js'
 
@@ -19,7 +19,7 @@ for (const device of [LAPTOP, SMALL_TV, DESK, TV]) {
       const table = await tableWithRules(request, { players: 2 })
       const hosting = await host(table)
       await hosting.send([{ v: 'session.end' } as never])
-      const { page } = await open(device, `${table.tvUrl}&lang=${lang}`)
+      const { page } = await open(device, withQuery(table.tvUrl, `lang=${lang}`))
       await expect(page.locator('[data-join-ended]')).toBeVisible()
       await expect(page.locator('.byd-tv-brand [data-editor-way]')).toBeVisible()
       await expect(page.locator('.byd-tv-head h1')).toContainText('Skogens herrar')
