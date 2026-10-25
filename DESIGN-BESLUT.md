@@ -8803,6 +8803,8 @@ Fokus står på «Avbryt», och «Ja, lämna och ta bort» respektive «Ja, ta b
 Vid Lämna raderas namnet först och platsen lämnas sedan, eftersom raderingen är det som kan misslyckas och frågas igen; ett nej står vid knappen som trycktes (#7).
 Efteråt landar hon på en egen sida, «Du har lämnat bordet, och ditt namn är borttaget.», med vad som står kvar, att säkerhetskopiorna glömmer det inom åtta dagar, och «Till startsidan».
 Platsväljaren hade erbjudit henne platsen igen under ett namn som inte längre finns.
+Byggandet hittade att en telefon som lämnar aldrig fick sitt svar på lådan: platsen töms i samma varv som raden skrivs, och tömningen stänger platsens anslutningar innan dörren hunnit kvittera, så med Postgres tid för att återkalla inträdet gick kvittot förlorat.
+Aktören kvitterar nu kuvertet som lämnade platsen före beskedet och stängningen (`emptied`, `leaving.test.ts`).
 Under tacket byts sparandet mot beskedet «Ditt namn och dina svar är borttagna.», tacket säger bara «Tack.», och fliken minns det vid en omladdning som den minns att svaren skickats.
 Observatören har samma väg under sitt tack.
 Ägarens egen plats har ingen token och därför ingen sådan knapp; kontots radering är #1280:s.
