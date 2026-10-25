@@ -253,6 +253,36 @@ Provet körs varje måndag morgon av ett schemalagt jobb som rapporterar utfalle
 Vägen i steg 2 är densamma som `ops/restore.sh` går i sin tillfälliga katalog, men mot den riktiga volymen.
 Det som är provat varje gång `ops/restore-test.sh` körs är att bytesen i R2 går att läsa tillbaka och att loggen spelar upp; att peka dem på den riktiga volymen är resten.
 
+**Återställning till en tidigare punkt än `LATEST`**, när det senaste är fel och inte bara borta (DRIFT §5, #1279):
+en sådan punkt ligger före raderingar som gjorts sedan, och de måste göras igen innan tjänsten släpps på.
+Liggaren ligger i samma databas och går förlorad med punkten, så den sparas först.
+
+1. Spara liggaren som den är nu, över Tailscale (DRIFT §10):
+
+   ```bash
+   DATABASE_URL=… pnpm --silent --filter @byd/server erase ledger > raderingar.jsonl
+   ```
+
+   Går den nuvarande databasen inte att läsa, tas liggaren ur en återställning av `LATEST` i en tillfällig katalog, där den ligger i WAL som allt annat:
+
+   ```bash
+   docker compose --profile backup run --rm --no-deps -T --user postgres backup /usr/local/bin/restore.sh LATEST | grep '"msg":"erasure"' > raderingar.jsonl
+   ```
+
+2. Återställ som i steg 2 ovan, men till punkten: en basbackup ur `backup.sh list` i stället för `LATEST`, och `recovery_target_time = '…'` med `recovery_target_action = 'promote'` i `postgresql.auto.conf`, så att WAL spelas upp till punkten och inte till slutet.
+   Kör sedan `docker compose up -d postgres` i stället för `ops/deploy.sh --force`, så att appen inte öppnar dörren än.
+3. Kör liggaren om mot den återställda databasen:
+
+   ```bash
+   DATABASE_URL=… pnpm --filter @byd/server erase replay --from raderingar.jsonl
+   ```
+
+   Raden som skrivs säger hur många rader i liggaren som kördes och hur mycket som maskades, aldrig vad.
+   Att köra den en gång till ändrar ingenting.
+4. `ops/deploy.sh --force`, och verifiera enligt steg 4.
+
+Provet i `packages/server/test/erase.test.ts` gör samma sak i Postgres: en kopia av tabellerna före en radering läggs tillbaka, och liggaren körs om till samma rader som raderingen lämnade.
+
 ## 7. När något går fel
 
 | Symptom | Vad det betyder |
