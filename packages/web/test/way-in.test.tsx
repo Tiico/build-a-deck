@@ -146,17 +146,15 @@ describe('every start in the editor asks how you sit, and the table keeps the an
 
   it('copies the room’s address, never the code alone', async () => {
     const user = userEvent.setup()
-    const copied: string[] = []
-    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: (text: string) => (copied.push(text), Promise.resolve()) } })
     const made = await startFromApi('computer')
     await openEditor()
     await user.click(screen.getByRole('tab', { name: 'Bord' }))
     const row = await rowOf(made.id)
     await user.click(within(row).getByRole('button', { name: /^Fler val för bordet / }))
     await user.click(within(row).getByRole('menuitem', { name: /^Kopiera länk/ }))
-    await waitFor(() => expect(copied).toHaveLength(1))
-    expect(at(copied[0]!).pathname).toBe(`/${made.code}`)
+    // userEvent stands in for the clipboard, so what was copied is read back from it.
     expect(await screen.findByText('Länken är kopierad. Skicka den till dem som ska spela.')).toBeTruthy()
+    expect(at(await navigator.clipboard.readText()).pathname).toBe(`/${made.code}`)
   })
 
   it('opens a table of computers at the host’s own seat, under her name, when she started it here', async () => {
