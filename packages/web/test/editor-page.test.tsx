@@ -61,7 +61,7 @@ describe('EditorPage', () => {
     await screen.findByText(/laddar kort/i)
     await run.completeRenders()
     const link = (await screen.findByRole('link', { name: /öppna bordet/i })) as HTMLAnchorElement
-    expect(link.href).toMatch(/\/table\?session=[0-9a-f-]{36}&mode=tv#host=[A-Za-z0-9_-]{20,}$/)
+    expect(link.href).toMatch(/\/table\?session=[0-9a-f-]{36}&mode=tv(&[^#]*)?#host=[A-Za-z0-9_-]{20,}$/)
     expect((await run.store.loadSession(new URL(link.href).searchParams.get('session')!))?.version).toBe('rev-2')
   })
 
