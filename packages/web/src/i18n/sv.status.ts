@@ -204,6 +204,13 @@ export const svStatus = {
   // Ett skäl den här klienten aldrig hört talas om får en mening av sin egen i stället för att
   // utvecklarens engelska ord skrivs ut på skärmen.
   'refusal.other': 'Bordet tog inte emot draget. Försök igen om en stund.',
+  // Gästens egen radering som inte gick igenom (#1281), sagd som ett nej sägs.
+  'forget.failed': 'Det gick inte att ta bort namnet. Försök igen.',
+  // En maskad plats, kommentar eller anteckning (G6, #1279, #1281), som läsaren ser den i stället
+  // för platshållaren; varje väg kan möta en.
+  'masked.name': 'Utan namn',
+  'masked.comment': 'Kommentaren är borttagen.',
+  'masked.note': 'Anteckningen är borttagen.',
 
   // Ord som skalet runt varje yta säger, och som därför måste finnas var sidan än öppnas (#760):
   // kort som inte gick att ladda, en spelare som tagits bort från bordet, hjälprutornas knappar och «Avbryt».

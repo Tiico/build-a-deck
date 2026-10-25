@@ -1,3 +1,4 @@
+import { isMasked, maskedWords, sayPlaytest } from '../masked.js'
 import { useEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import type { DocDiff, Playtest, PlaytestAnswer, PlaytestFlag, PlaytestQuestion, PlaytestTable, PlaytestVersion } from '@byd/server/doc'
 import type { ProjectClient } from './ProjectClient.js'
@@ -48,7 +49,7 @@ export function PlaytestResults({ client, table, onTable, switcher, version: ask
   useEffect(() => {
     let live = true
     client.playtest().then(
-      (read) => live && setData(read),
+      (read) => live && setData(sayPlaytest(read, maskedWords(t))),
       (err: unknown) => live && setFailed(saidOr(err, t('results.error'))),
     )
     // A version's name is the designer's (B4); without it a version is called by its number.
@@ -420,7 +421,7 @@ function Flags({ tables, version, versionName, origin, lang }: { tables: readonl
               <p>
                 <b>{f.who ?? t('results.flag.table')}</b>
                 {f.observer && <em className="byd-results-badge">{t('results.observer')}</em>} <span className="byd-results-quiet">· {t('results.atTable', { table: tableName(x, t) })}</span>
-                {f.note ? `: «${f.note}»` : ` ${t('results.flag.silent')}`}
+                {isMasked(f.note) ? ` ${t('results.flag.masked')}` : f.note ? `: «${f.note}»` : ` ${t('results.flag.silent')}`}
               </p>
               {f.card && <p className="byd-results-card-line">{cardLine(f.card, t)}</p>}
             </li>

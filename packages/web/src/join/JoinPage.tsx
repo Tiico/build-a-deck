@@ -374,8 +374,16 @@ export function JoinPage({ onSit = (url) => location.assign(url), onOpen = (url)
             {...(says ? { 'aria-describedby': saysId } : {})}
           />
         </label>
-        {/* What a guest leaves behind, said where she sits down (#757): tied to the table, not to her. */}
-        <p className="byd-muted">{t('guest.kept')}</p>
+        {/* What a guest leaves behind, who sees it and for how long, said where she sits down (#757,
+            #1281, variant C). The privacy page is the row at the top's (#1272). */}
+        <dl className="byd-join-kept">
+          <dt>{t('guest.kept.saved.label')}</dt>
+          <dd>{t('guest.kept.saved')}</dd>
+          <dt>{t('guest.kept.seen.label')}</dt>
+          <dd>{t('guest.kept.seen')}</dd>
+          <dt>{t('guest.kept.how.label')}</dt>
+          <dd>{t('guest.kept.how')}</dd>
+        </dl>
         {/* Villkoret, sagt en gång per skärm och vid fältet — inte en gång per knapp. Det föds
             efter trycket, så det föds som en levande region: en `alert` som kommer till
             dokumentet läses upp när den kommer, och fältet pekar på den. */}
