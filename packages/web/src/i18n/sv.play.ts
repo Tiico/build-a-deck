@@ -397,15 +397,6 @@ export const svPlay = {
   'player.mine.empty': 'Inget här ännu. Spela ett kort från handen.',
   // Hela bordet, utfällt när det efterfrågas (C4). Raden över handen är högarna; det här är
   // varje zon läsaren ser in i, andra platsers ytor inräknade sedan #414.
-  // Raden under kortet som läses i handen på /online (#1291): vad klicket och draget gör.
-  'online.hand.says.mouse': 'Klick vänder · dra till bordet spelar',
-  'online.hand.says.mouse.turned': 'Klick vänder upp · dra till bordet spelar nedvänt',
-  'online.hand.says.key': 'Mellanslag vänder · Enter öppnar handlingar',
-  'online.hand.back': 'Tillbaka till handen',
-  'online.last': 'Senast:',
-  'online.last.now': 'nyss',
-  'online.last.s': 'för {n} s sedan',
-  'online.last.min': 'för {n} min sedan',
   'online.table.where': 'Hela bordet visas på TV:n eller på en större skärm.',
   // Telefonens fyra flikar (#1147, beställarens val B).
   'player.tabs': 'Telefonens flikar',
@@ -414,12 +405,6 @@ export const svPlay = {
   'player.tab.table': 'Bordet',
   'player.tab.more': 'Mer',
   'player.more.help': 'Så fungerar handen',
-  'online.spread.title': 'Hela handen',
-  'online.spread.label.one': 'Hela handen, {n} kort',
-  'online.spread.label.other': 'Hela handen, {n} kort',
-  'online.spread.count.one': '{n} kort',
-  'online.spread.count.other': '{n} kort',
-  'online.spread.close': 'Stäng',
   'player.hand.actions': 'Spela valda kort',
   'player.hand.read': 'Läs stort',
   'player.hand.marked.one': '{n} kort valt',
@@ -592,7 +577,6 @@ export const svPlay = {
   'join.observe': 'Bara titta (du ser allt, alla ser dig)',
 
   // Helt online (C2): bordet och handen i samma fönster.
-  'online.showall': 'Visa alla',
   'notes.title': 'Anteckningar',
   'notes.unseen': 'Anteckningar, nytt från någon annan',
   'notes.empty': 'Inget antecknat än. Det ni skriver här ser alla vid bordet, och det ligger kvar till nästa gång.',
@@ -605,20 +589,6 @@ export const svPlay = {
   'notes.refused.full': 'Blocket är fullt: hundra rader. Ta bort en innan du skriver en ny.',
   'notes.refused.gone': 'Raden finns inte längre: någon tog bort den.',
   'notes.refused.other': 'Bordet tog inte emot raden. Försök igen.',
-  // Väntrummet över filten tills något har hänt vid bordet (L77, #1130).
-  'online.wait.heading': 'Väntar på spelare · {n} av {of}',
-  'online.wait.text': 'Skicka länken till dem som ska spela. Bordet startar när du säger till.',
-  'online.wait.address': 'Bordets adress',
-  'online.wait.copy': 'Kopiera länk',
-  'online.wait.copied': 'Kopierad',
-  'online.wait.copy.failed': 'Gick inte att kopiera. Adressen är markerad, så kopiera den själv.',
-  'online.wait.seats': 'Platserna',
-  'online.wait.free': 'väntar…',
-  'online.wait.me': '{name} (du)',
-  'online.wait.begin': 'Börja spela',
-  'online.wait.hide': 'Göm väntrummet',
-  'online.observers.one': '{names} tittar på',
-  'online.observers.other': '{names} tittar på',
 
   // Reglerna vid bordet (B7). Själva regeltexten är designerns och står aldrig här.
   'rules.drawer.open': 'Regler',
