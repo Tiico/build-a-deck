@@ -1406,11 +1406,6 @@
 [data-tv][data-room] aside h2:where(:not(.byd-rules-panel *)) { font-size: 24px; letter-spacing: 1px; margin-bottom: 8px; }
 [data-tv][data-room] .byd-tv-head h1 { font-size: 28px; }
 [data-tv][data-room] .byd-tv-join > span, [data-tv][data-room] .byd-tv-join > [data-join-head] > span { font-size: 24px; }
-/* The 36 px ring stands on the heading's 24 px line without making it taller (#1343): every pixel
-   the foot grows comes off the stage's card, which holds K26's 24 px of body text at 1920 × 1080
-   with less than a pixel to spare. The target keeps its 44 px; only its share of the line shrinks,
-   and the ring hangs a few pixels into the foot's padding above and the row's gap below. */
-[data-tv][data-room] .byd-tv-join > [data-join-head] .byd-help .byd-help-ask { margin-block: calc((24px - var(--byd-tap, 44px)) / 2); }
 /* The room's code at the size beslut C set (#675): 40 px, under the host at K26's 24. */
 [data-tv][data-room] .byd-tv-join strong { font-size: 40px; line-height: 1.1; }
 [data-tv][data-room] .byd-tv-render { font-size: 24px; }
