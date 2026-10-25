@@ -1301,8 +1301,8 @@ export const svEditor = {
   'rules.import.over.says': 'Du ser vad som försvinner innan något sparas',
   'rules.booklet.says': 'A5, för att skriva ut och vika',
   // Den tomma bokens tre vägar in, var och en med en rad om vad den ger (#1258).
-  'rules.empty.says': 'Spelarna läser dem på telefonen, på TV:n och i det tryckta häftet. Välj hur du vill börja — allt går att ändra efteråt.',
-  'rules.template.says': 'Översikt, Uppställning, En tur, Handlingar, Spelet tar slut — var och en med en fråga att svara på.',
+  'rules.empty.says': 'Spelarna läser dem på telefonen, på TV:n och i det tryckta häftet. Välj hur du vill börja, och ändra vad du vill efteråt.',
+  'rules.template.says': 'Översikt, Uppställning, En tur, Handlingar och Spelet tar slut, var och en med en fråga att svara på.',
   'rules.start.says': 'Bara en översikt. Du lägger till avsnitten själv.',
   'rules.import.says': 'En Markdown-fil (.md) med sina bilder. Du ser vad som blir vad innan något sparas.',
   // Det öppna blockets borttagning, uppkallad efter vad blocket är (#1258).

@@ -40,7 +40,10 @@ describe('the empty rules tab is the page the book will be (#131, #1258)', () =>
   it('names the template’s five sections on its way in, and lays out no book that is not there', async () => {
     await openRules()
     // The five are said in the line under the way that makes them, in the order they come.
-    expect(template().textContent).toContain(SECTIONS.join(', '))
+    const said = template().textContent ?? ''
+    const at = SECTIONS.map((section) => said.indexOf(section))
+    expect(at.every((i) => i >= 0)).toBe(true)
+    expect([...at].sort((a, b) => a - b)).toEqual(at)
     // And nothing is drawn as though it were a book: no sections in the page, and no column of
     // contents for a book that has none (#1258) — the «· tomt» marks went with them.
     expect(within(ways()).queryAllByRole('heading', { level: 4 })).toEqual([])
