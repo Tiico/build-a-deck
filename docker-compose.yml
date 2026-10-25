@@ -56,6 +56,9 @@ services:
       PORT: "8080"
       IDLE_EVICT_MS: ${IDLE_EVICT_MS:-1800000}
       IDLE_END_MS: ${IDLE_END_MS:-86400000}
+      # How long an invitation is kept after it was used or ran out (#1277, G6); empty is the
+      # decided 30 days, and the app takes no more than that whatever is written here.
+      INVITE_KEEP_MS: ${INVITE_KEEP_MS:-}
       # The release deploy.sh rolled to, so /health can be asked what the box runs (DRIFT §7).
       # deploy.sh exports it in the same breath as it picks the images, so what the app says it
       # is and what was pulled come from one variable. Unset by hand, and /health says nothing.

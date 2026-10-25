@@ -56,6 +56,11 @@ export class PostgresAuthStore implements AuthStore {
     const row = rows[0]
     return row ? { id: String(row.id), email: row.email } : null
   }
+  async sweepSpent(now: string): Promise<{ loginTokens: number; sessions: number }> {
+    const tokens = await this.sql`delete from login_tokens where used_at is not null or expires_at <= ${now} returning 1`
+    const sessions = await this.sql`delete from auth_sessions where expires_at <= ${now} returning 1`
+    return { loginTokens: tokens.length, sessions: sessions.length }
+  }
   async deleteSession(sessionHash: string): Promise<void> {
     await this.sql`delete from auth_sessions where session_hash = ${sessionHash}`
   }
@@ -327,6 +332,17 @@ export class PostgresLogStore implements LogStore {
       returning session_id, token_hash, kind, seat, name, issued_at, expires_at, revoked_at, account_id
     `
     return row ? played(row) : null
+  }
+
+  async sweepGuests(now: string, pendingMs: number): Promise<number> {
+    const rows = await this.sql`
+      delete from guest_tokens
+      where account_id is null and expires_at <= ${now}
+        and expires_at <= issued_at + ${pendingMs} * interval '1 millisecond'
+        and (revoked_at is null or revoked_at >= expires_at)
+      returning 1
+    `
+    return rows.length
   }
 
   async revokeGuests(sessionId: string, seat: string | null, at: string): Promise<number> {
@@ -642,9 +658,18 @@ export class PostgresProjectStore implements ProjectStore {
     return row?.project_id ?? null
   }
 
+  async sweepInvites(before: string): Promise<number> {
+    const rows = await this.sql`
+      delete from project_invites
+      where (accepted_at is not null and accepted_at < ${before}) or (accepted_at is null and expires_at < ${before})
+      returning 1
+    `
+    return rows.length
+  }
+
   async acceptInvite(tokenHash: string, now: string): Promise<{ project: string; email: string; role: Role } | null> {
     const [row] = await this.sql<{ project_id: string; email: string; role: string }[]>`
-      update project_invites set accepted_at = now()
+      update project_invites set accepted_at = ${now}
       where token_hash = ${tokenHash} and accepted_at is null and expires_at > ${now}
       returning project_id, email, role
     `

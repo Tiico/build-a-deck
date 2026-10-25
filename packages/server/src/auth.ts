@@ -35,6 +35,10 @@ export type AuthStore = {
   acceptTerms(accountId: string, version: string, at: string): Promise<void>
   // Every version the account has accepted, oldest first, with when.
   termsAccepted(accountId: string): Promise<TermsAcceptance[]>
+  // What can no longer be used (#1277, G6): the login links that are spent or ran out, and the
+  // sessions that ran out. `GET /auth/verify` says the same of a spent link, one that ran out and
+  // one never given, so no row is kept for its answer. How many of each went.
+  sweepSpent(now: string): Promise<{ loginTokens: number; sessions: number }>
 }
 
 export type TermsAcceptance = { version: string; at: string }
@@ -102,6 +106,14 @@ export class MemoryAuthStore implements AuthStore {
   async deleteSession(sessionHash: string): Promise<void> {
     this.sessions.delete(sessionHash)
   }
+  async sweepSpent(now: string): Promise<{ loginTokens: number; sessions: number }> {
+    let loginTokens = 0
+    for (const [h, t] of this.tokens) if (t.used || t.expiresAt <= now) loginTokens += Number(this.tokens.delete(h))
+    let sessions = 0
+    for (const [h, s] of this.sessions) if (s.expiresAt <= now) sessions += Number(this.sessions.delete(h))
+    return { loginTokens, sessions }
+  }
+
   async addPasskey(passkey: PasskeyRecord): Promise<void> {
     this.passkeys.set(passkey.id, { ...passkey })
   }

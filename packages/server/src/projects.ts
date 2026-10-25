@@ -306,6 +306,9 @@ export type ProjectStore = {
   acceptInvite(tokenHash: string, now: string): Promise<{ project: string; email: string; role: Role } | null>
   // The project an invitation that can still be followed at `now` leads to (#691), without using it.
   inviteTo(tokenHash: string, now: string): Promise<string | null>
+  // The invitations used, or run out unused, before `before` (#1277, G6): a third person's address
+  // kept for nothing. Dela lists only the ones still waiting. How many went.
+  sweepInvites(before: string): Promise<number>
 }
 
 export class MemoryProjectStore implements ProjectStore {
@@ -316,7 +319,7 @@ export class MemoryProjectStore implements ProjectStore {
   private readonly edits = new Map<string, AppliedEdit[]>()
   // Who else a project is shared with (D3), by project.
   private readonly shared = new Map<string, Map<string, Role>>()
-  private readonly invites = new Map<string, { project: string; email: string; role: Role; expiresAt: string; used?: boolean }>()
+  private readonly invites = new Map<string, { project: string; email: string; role: Role; expiresAt: string; used?: boolean; usedAt?: string }>()
   // The writes held to a ceiling on storage, one after another (#1197): weighing asks the asset
   // store, which is a wait, and no other such write may come in between the count and the write.
   private turn: Promise<unknown> = Promise.resolve()
@@ -502,7 +505,14 @@ export class MemoryProjectStore implements ProjectStore {
     const found = this.invites.get(tokenHash)
     if (!found || found.used || found.expiresAt < now) return null
     found.used = true
+    found.usedAt = now
     return { project: found.project, email: found.email, role: found.role }
+  }
+
+  async sweepInvites(before: string): Promise<number> {
+    let n = 0
+    for (const [hash, i] of this.invites) if ((i.used ? (i.usedAt ?? '') : i.expiresAt) < before) n += Number(this.invites.delete(hash))
+    return n
   }
 
   async replace(id: string, expectedRev: number, doc: ProjectDoc, atSeq?: number, ceilings?: Pick<Ceilings, 'storageBytes'>, edits: readonly AppliedEdit[] = [], by?: string): Promise<ProjectRecord | 'conflict' | 'missing'> {

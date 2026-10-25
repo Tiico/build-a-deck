@@ -2468,7 +2468,7 @@ Kontots och gästens vägar är nya ytor och prototypas först.
 
 Skivorna (alla öppna 2026-10-24):
 - #1276 personfälten och kolumnerna som sluten, testad karta — byggd.
-- #1277 det som inte längre kan användas rensas — pågår.
+- #1277 det som inte längre kan användas rensas — byggd.
 - #1278 gästens namn och token ur adressraden och `Referer` — pågår.
 - #1279 radering i lagret, gallring, raderingsliggare och operatörsskript — efter #1276.
 - #1280 kontot laddar ner sina uppgifter och raderar sig i Profil — efter #1279 och #1254, prototyp först.

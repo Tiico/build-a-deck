@@ -3,6 +3,7 @@ import { MemoryAuthStore, MemoryLogStore, MemoryProjectStore, PostgresLogStore, 
 import type { ProjectStore } from '../src/projects.js'
 import { GUEST_PENDING_TTL_MS } from '../src/rooms.js'
 import { INVITE_KEEP_MS, inviteKeepFrom, sweepSpent } from '../src/sweep.js'
+import { bootMain } from './boot.js'
 import { start, twoSeatSetup } from './fixture.js'
 import { template } from './deck.js'
 
@@ -99,17 +100,17 @@ for (const backend of backends) {
     it('takes the cookies that ran out, and logs nobody out', async () => {
       const run = await start({ auth: db.auth, projects: db.projects, store: db.store, authBypass: true })
       try {
-        const login = await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: `ada-${backend.name}@example.com` }) })
+        const login = await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: `ada-${backend.name.toLowerCase()}@example.com` }) })
         const cookie = (login.headers.get('set-cookie') ?? '').split(';')[0] ?? ''
         const me = async (c: string) => ((await (await fetch(`${run.http}/auth/me`, { headers: { cookie: c } })).json()) as { email: string | null }).email
-        expect(await me(cookie)).toBe(`ada-${backend.name}@example.com`)
-        const ada = await db.auth.accountByEmail(`ada-${backend.name}@example.com`)
+        expect(await me(cookie)).toBe(`ada-${backend.name.toLowerCase()}@example.com`)
+        const ada = await db.auth.accountByEmail(`ada-${backend.name.toLowerCase()}@example.com`)
         await db.auth.createSession(hash('old-cookie'), ada!.id, iso(later(new Date(), -DAY)))
 
         quietly()
         expect(await sweepSpent(db, new Date())).toMatchObject({ auth_sessions: 1 })
         expect(await sweepSpent(db, new Date())).toMatchObject({ auth_sessions: 0 })
-        expect(await me(cookie)).toBe(`ada-${backend.name}@example.com`)
+        expect(await me(cookie)).toBe(`ada-${backend.name.toLowerCase()}@example.com`)
       } finally {
         await run.stop()
       }
@@ -198,5 +199,23 @@ describe('how long an invitation is kept (#1277, G6)', () => {
     expect(inviteKeepFrom({ INVITE_KEEP_MS: String(7 * DAY) })).toBe(7 * DAY)
     expect(inviteKeepFrom({ INVITE_KEEP_MS: String(90 * DAY) })).toBe(30 * DAY)
     expect(() => inviteKeepFrom({ INVITE_KEEP_MS: 'en månad' })).toThrow(/INVITE_KEEP_MS/)
+  })
+})
+
+// The sweeper as the box's process runs it: once as it starts, before it listens, and every hour
+// after (`main.ts`). In memory, so the line says nothing went; what goes is asked above.
+describe('the sweep at start (#1277)', () => {
+  it('runs before the app listens, and says how many went from each table', async () => {
+    const { lines } = await bootMain()
+    const swept = lines.findIndex((l) => l['msg'] === 'swept')
+    expect(lines[swept]).toEqual({ msg: 'swept', login_tokens: 0, auth_sessions: 0, project_invites: 0, guest_tokens: 0 })
+    expect(swept).toBeLessThan(lines.findIndex((l) => l['msg'] === 'listening'))
+  })
+
+  it('with an INVITE_KEEP_MS it cannot read, does not start, and the log says why', async () => {
+    const { code, lines } = await bootMain({ INVITE_KEEP_MS: 'en månad' })
+    expect(code).not.toBe(0)
+    expect(lines.some((l) => l['msg'] === 'listening')).toBe(false)
+    expect(String(lines.find((l) => l['msg'] === 'sweep')?.['error'])).toMatch(/INVITE_KEEP_MS/)
   })
 })
