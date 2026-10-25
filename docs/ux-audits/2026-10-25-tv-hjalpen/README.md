@@ -32,4 +32,4 @@ B lägger ringen på den rad som har minst marginal, eftersom värden byter namn
 
 Skärmdumparna ligger i `bilder/` (`<variant>-<bredd>-<språk>.png`, och `A-1280-sv-oppen.png` med lådan öppen).
 
-Beslut: _väntar på beställaren_.
+Beslut: **A**, beställaren 2026-10-25 (#1343).
