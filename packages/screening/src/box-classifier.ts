@@ -1,8 +1,9 @@
 import { createHash } from 'node:crypto'
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import type { InferenceSession, Tensor } from 'onnxruntime-node'
 import type { Classifier } from './classifier.js'
+import { CLIP_PROMPTS } from './clip-prompts.js'
 import { MODELS, modelsDir } from './models.js'
 import { pdq } from './pdq.js'
 import { onWhite, planar, resample, squareTiles } from './pictures.js'
@@ -16,7 +17,7 @@ import { checkPixels, type Pixels, type Screening } from './schema.js'
 //   violence, nudes in art, playing cards and ordinary pictures, no fantasy or violent picture
 //   reached 0.5, and its highest were nudes in art.
 // - `violence` is OpenAI's CLIP ViT-B/32 (MIT), its image encoder alone, read zero-shot against
-//   prompts embedded once (`clip-prompts.json`): the share the violent prompts take of a softmax
+//   prompts embedded once (`clip-prompts.ts`): the share the violent prompts take of a softmax
 //   over them and a dozen ordinary kinds of picture, the highest of the picture's squares. Violence
 //   is allowed in print and online (beslut 7), so the score is kept and used for nothing.
 // - The hash is PDQ (`pdq.ts`), with its quality.
@@ -33,12 +34,9 @@ const CLIP_SIDE = 224
 const CLIP_MEAN = [0.48145466, 0.4578275, 0.40821073]
 const CLIP_STD = [0.26862954, 0.26130258, 0.27577711]
 
-type Prompts = { model: string; dims: number; logitScale: number; neutral: string[]; violence: string[]; vectors: string }
-const PROMPTS_FILE = new URL('./clip-prompts.json', import.meta.url)
-const prompts = JSON.parse(readFileSync(PROMPTS_FILE, 'utf8')) as Prompts
+const prompts = CLIP_PROMPTS
 const promptVectors = (() => {
-  const bytes = Buffer.from(prompts.vectors, 'base64')
-  const all = new Float32Array(bytes.buffer, bytes.byteOffset, bytes.byteLength / 4)
+  const all = new Float32Array(Uint8Array.from(Buffer.from(prompts.vectors, 'base64')).buffer)
   const rows = (from: number, n: number) => Array.from({ length: n }, (_, i) => all.subarray((from + i) * prompts.dims, (from + i + 1) * prompts.dims))
   return { neutral: rows(0, prompts.neutral.length), violence: rows(prompts.neutral.length, prompts.violence.length) }
 })()
@@ -48,7 +46,7 @@ const promptVectors = (() => {
 export const boxClassifierIngredients = (): string =>
   createHash('sha256')
     .update(`${MODELS.nsfw.sha256}\n${MODELS.clip.sha256}\n`)
-    .update(readFileSync(PROMPTS_FILE))
+    .update(JSON.stringify(CLIP_PROMPTS))
     .digest('hex')
 
 function softmax(xs: readonly number[]): number[] {

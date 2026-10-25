@@ -2175,7 +2175,7 @@ Ingen bildhash når en klient: ingenting i projektionen ändrades.
 Byggt 2026-10-25 (#1273): lådans klassificerare, PDQ, referenslistan och screeningen vid uppladdning i skuggläge.
 Klassificeraren heter `vit-nsfw.clip-violence@1` och körs med onnxruntime i renderworkern, så att ingen bild lämnar lådan (beslut 8).
 `sexual` är AdamCodd/vit-base-nsfw-detector (Apache-2.0), en ViT-B/16 vid 384 px som tränats på teckningar och foton, i int8.
-`violence` är OpenAI:s CLIP ViT-B/32 (MIT), bara bildkodaren i int8, läst noll-skott mot fyra våldsprompter och tolv vanliga slags bilder vars textvektorer bäddats in en gång (`clip-prompts.json`); poängen är det högsta av bildens kvadrater längs den långa sidan.
+`violence` är OpenAI:s CLIP ViT-B/32 (MIT), bara bildkodaren i int8, läst noll-skott mot fyra våldsprompter och tolv vanliga slags bilder vars textvektorer bäddats in en gång (`clip-prompts.ts`); poängen är det högsta av bildens kvadrater längs den långa sidan.
 Våld tillåts (beslut 7), så den poängen sparas och används till ingenting.
 Valet gjordes på en mätning mot kortkonst, som står i #1273: CLIP noll-skott för `sexual` gav 14 av 50 fantasybilder och 5 av 50 vanliga bilder 0,5 eller mer, och NSFW-modellen gav ingen fantasy-, vålds- eller spelkortsbild 0,5, och sina högsta poäng åt nakenhet i konst.
 Med den valda klassificeraren nådde 1 av 256 bilder utan nakenhet 0,5 i `sexual`, ett halsband med blommor, och ingen 0,6, medan 2 av 40 nakenbilder i konst nådde 0,6; 0,6 är tröskeln att börja pröva med i `screening report`.

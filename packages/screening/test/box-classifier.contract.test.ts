@@ -14,7 +14,7 @@ describe('lådans klassificerare', () => {
     expect(BOX_CLASSIFIER).toEqual({ id: 'vit-nsfw.clip-violence', version: '1' })
     // Changing a model or a prompt changes what a score means. That is a new version: change the
     // version above and the fingerprint here in the same commit.
-    expect(boxClassifierIngredients()).toBe('cfd0bafa54a630f01663b89f22545c46112cf316922b9ef07f2744b87dba26b2')
+    expect(boxClassifierIngredients()).toBe('be1f0993ce5e80e9ac6624ba3c7213098e3973591ac201e843a4b9e2496184fe')
   })
 
   it('hashar med PDQ och säger kvaliteten, och samma bild i halva storleken är samma bild', async () => {

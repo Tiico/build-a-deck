@@ -34,7 +34,7 @@ export const MODELS = {
     source: 'AdamCodd/vit-base-nsfw-detector, fine-tuned from google/vit-base-patch16-384',
   },
   // Violence: OpenAI's CLIP ViT-B/32, the image encoder alone, as Xenova's int8 ONNX export. The
-  // text side is not run: the prompts are embedded once, and the vectors are in `clip-prompts.json`.
+  // text side is not run: the prompts are embedded once, and the vectors are in `clip-prompts.ts`.
   clip: {
     file: 'clip-vit-base-patch32.vision.int8.onnx',
     url: 'https://huggingface.co/Xenova/clip-vit-base-patch32/resolve/d15189d7028b43f1d3e65039190477f6af591c2a/onnx/vision_model_quantized.onnx',

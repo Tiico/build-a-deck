@@ -165,6 +165,14 @@ const COLUMNS: Readonly<Record<string, Class>> = {
   'screenings.scores': 'none',
   'screenings.image_hash': 'none',
   'screenings.screened_at': 'none',
+  // The reference list (#1273): PDQ hashes of pictures that must not be printed, and where each came
+  // from in the operator's words — a takedown and its date, or the list it came in. A hash says
+  // nothing about who uploaded a picture, and the source names a list or a takedown, never a person.
+  'screening_references.algorithm': 'none',
+  'screening_references.bits': 'none',
+  'screening_references.quality': 'none',
+  'screening_references.source': 'none',
+  'screening_references.added_at': 'none',
 }
 
 const root = join(import.meta.dirname, '../../..')
