@@ -38,6 +38,7 @@ async function openBook(book: RuleDoc | null = rules): Promise<void> {
   await userEvent.click(screen.getByRole('tab', { name: 'Regler' }))
 }
 const page = () => document.querySelector('[data-rulebook]') as HTMLElement
+const adding = () => within(document.querySelector('.byd-rules-bar') as HTMLElement).getByRole('group', { name: 'Lägg till' })
 type Splice = Extract<EditIntent, { v: 'spliceRules' }>
 // What the actor logged, read once it has logged as many as the press made.
 async function logged(n: number): Promise<EditIntent[]> {
@@ -80,12 +81,16 @@ describe('the Regler tab writes only the blocks it touches (#1053)', () => {
     expect((made as Splice).blocks).toEqual([{ kind: 'list', id: 't2', ordered: false, items: ['Spela ett kort.'] }])
   })
 
+  // Adding lays after the block last written in (#1258), so the paragraph is opened and left first;
+  // leaving it untouched writes nothing.
   it('lays a new block where it is added, and touches nothing beside it', async () => {
     const user = userEvent.setup()
     await openBook()
-    await user.click(within(page()).getByRole('button', { name: 'Lägg till först' }))
+    await user.click(within(page()).getByText('Dra ett kort.'))
+    await user.keyboard('{Escape}')
+    await user.click(within(adding()).getByRole('button', { name: '＋ Text' }))
     const [added] = await logged(1)
-    expect(named(added!)).toMatchObject({ replace: [], after: null })
+    expect(named(added!)).toMatchObject({ replace: [], after: 't1' })
     expect((added as Splice).blocks).toHaveLength(1)
   })
 
@@ -93,7 +98,7 @@ describe('the Regler tab writes only the blocks it touches (#1053)', () => {
     const user = userEvent.setup()
     await openBook()
     await user.click(within(page()).getByText('Spela ett kort.'))
-    await user.click(within(page()).getByRole('button', { name: 'Ta bort blocket' }))
+    await user.click(within(page()).getByRole('button', { name: 'Ta bort stycket' }))
     await user.click(within(page()).getByRole('button', { name: 'Slutet' }))
     await user.click(within(page()).getByRole('button', { name: 'Ta bort avsnittet' }))
     const intents = await logged(2)
@@ -103,10 +108,11 @@ describe('the Regler tab writes only the blocks it touches (#1053)', () => {
     ])
   })
 
+  // Before any block has been written in, the row lays at the end of the book (#1258).
   it('lays a section of the designer’s own after the last block she saw', async () => {
     const user = userEvent.setup()
     await openBook()
-    await user.click(within(document.body).getByRole('button', { name: '＋ Eget avsnitt' }))
+    await user.click(within(adding()).getByRole('button', { name: '＋ Avsnitt' }))
     const [added] = await logged(1)
     expect(named(added!)).toMatchObject({ replace: [], after: 't3' })
     expect((added as Splice).blocks.map((b) => b.kind)).toEqual(['heading', 'text'])
@@ -115,7 +121,7 @@ describe('the Regler tab writes only the blocks it touches (#1053)', () => {
   it('starts a book where there was none without writing over one a co-editor started', async () => {
     const user = userEvent.setup()
     await openBook(null)
-    await user.click(await screen.findByRole('button', { name: 'Börja skriva reglerna' }))
+    await user.click(await screen.findByRole('button', { name: /^Ett tomt blad/ }))
     const [started] = await logged(1)
     expect(named(started!)).toMatchObject({ replace: [], after: null })
     expect((started as Splice).title).toBe('Skogens herrar')

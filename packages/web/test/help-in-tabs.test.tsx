@@ -66,7 +66,8 @@ describe('Mall: the layer column (L32, the surface that measured the cost)', () 
 describe('Regler', () => {
   it('says what the tab is in one short line, and the rest behind the question mark', async () => {
     await openEditor('Regler')
-    expect(screen.getByText('Reglerna hör till spelet.')).toBeTruthy()
+    // Said as the empty book's own heading, on the page, since #1258.
+    expect(await screen.findByRole('heading', { name: 'Reglerna hör till spelet' })).toBeTruthy()
     absent(/sparas med varje version/)
     absent(/följer med när det byter namn/)
     const box = await opened('reglerna')
