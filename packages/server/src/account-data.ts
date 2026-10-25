@@ -144,6 +144,7 @@ Times are in UTC, written like \`2026-10-25T14:03:00.000Z\`, and \`null\` means 
   \`notes\` are the lines you wrote on the table's notepad: \`at\` when and \`text\` what.
   \`survey\` is your survey after the game: \`at\` when you answered and \`answers\` what, from 1 to 5 for \`fun\`, \`clarity\` and \`balance\`, and in your own words for \`change\`.
   The moves themselves belong to the table and its game's owner, and are not here.
+- \`goneGames\`: the games gone from your My games whose notice you have not closed: \`name\` the game's name, \`why\` why it went (\`removed\` when its owner removed it, \`account\` when its owner deleted their account) and \`at\` when. Who owned it is not said.
 - \`borne\`: what your account bears: \`tables\`, how many tables were started from your games or by you, and \`renders\`, how many card pictures were rendered for you.
 `
   }
@@ -182,6 +183,7 @@ Tider står i UTC, skrivna som \`2026-10-25T14:03:00.000Z\`, och \`null\` betyde
   \`notes\` är raderna du skrev i bordets anteckningar: \`at\` när och \`text\` vad.
   \`survey\` är din enkät efter spelet: \`at\` när du svarade och \`answers\` vad, från 1 till 5 för \`fun\` (roligt), \`clarity\` (tydligt) och \`balance\` (jämnt), och med egna ord för \`change\` (vad du skulle ändra).
   Själva dragen hör till bordet och spelets ägare och står inte här.
+- \`goneGames\`: spelen som försvunnit ur dina Mina spel och vars besked du inte har stängt: \`name\` spelets namn, \`why\` varför det försvann (\`removed\` när ägaren tog bort det, \`account\` när ägaren raderade sitt konto) och \`at\` när. Vem som ägde det står inte med.
 - \`borne\`: vad ditt konto står för: \`tables\`, hur många bord som startats från dina spel eller av dig, och \`renders\`, hur många kortbilder som renderats åt dig.
 `
 }
