@@ -1,6 +1,7 @@
 // The designer's own AI key from the browser's side (#999, E4): what the server says about it — never
 // the key — and saving, proving, choosing a model and removing it. The key travels to the server
 // once, in the body of the save, and is never read back.
+import { termsDueIn } from './terms-due.js'
 import type { AiFailure, AiKeyDescription, AiModel, AiProvider } from '@byd/server/doc'
 import { Unauthorized, withCredentials } from './session.js'
 
@@ -21,7 +22,8 @@ export function modelNameOf(models: readonly AiModel[] | null, id: string): stri
 }
 
 // Why a key was not saved: the provider's closed set of words, and the server's own reasons.
-export type KeyRefusal = Exclude<AiFailure, 'refused'> | 'too-many' | 'unavailable' | 'malformed' | 'offline'
+// `terms`: the account has the terms to accept first (#1272), and the key is not saved until it has.
+export type KeyRefusal = Exclude<AiFailure, 'refused'> | 'too-many' | 'unavailable' | 'malformed' | 'offline' | 'terms'
 
 const json = (body: unknown): RequestInit => ({ headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
 const why = async (res: Response): Promise<string> => ((await res.json().catch(() => ({}))) as { error?: string }).error ?? ''
@@ -45,6 +47,7 @@ export async function saveAiKey(http: string, provider: AiProvider, key: string)
   if (res.status === 400) return { ok: false, why: 'malformed' }
   if (res.status === 429) return { ok: false, why: 'too-many' }
   if (res.status === 503) return { ok: false, why: 'unavailable' }
+  if ((await termsDueIn(res)) !== null) return { ok: false, why: 'terms' }
   const said = await why(res)
   return { ok: false, why: (['invalid-key', 'no-credit', 'rate-limit', 'overloaded', 'network'] as const).find((w) => w === said) ?? 'network' }
 }

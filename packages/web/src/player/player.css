@@ -413,3 +413,7 @@ html:has(.byd-player) { background: #14161c; }
    the same three stand in its own head. */
 .byd-player > header .byd-undo, .byd-player > header .byd-flag, .byd-player > header .byd-exit { gap: 0; padding: 0; width: 44px; }
 .byd-player > header .byd-undo .byd-glyph, .byd-player > header .byd-flag .byd-glyph, .byd-player > header .byd-exit .byd-glyph { width: 18px; height: 18px; }
+/* «Villkor · Integritet» where a guest saves what she left (#757, #1272): in the thanks' own ink, and
+   each a fingertip wide and tall. */
+.byd-trust { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; margin: 0; white-space: pre; }
+.byd-trust a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 5px; margin: 0 -5px; color: inherit; text-underline-offset: 3px; }

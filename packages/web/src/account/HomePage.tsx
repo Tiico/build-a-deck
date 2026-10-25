@@ -7,7 +7,9 @@ import { CardPreview } from '../editor/CardPreview.js'
 import { CARD_PX } from '../editor/corner.js'
 import { previewIcons } from '../editor/assets.js'
 import { previewFonts } from '../editor/fonts.js'
-import { duplicateProject, gameFan, logout, myAccount, myCards, myPlayed, myProjects, myUsage, myWaiting, removeProject, renameProject, returnToTable, runningTables, startTable, type GameWaiting, type Played, type ProjectSummary, type RunningTable } from './api.js'
+import { duplicateProject, gameFan, logout, myAccount, myCards, myPlayed, myProjects, myUsage, myWaiting, removeProject, renameProject, returnToTable, runningTables, startTable, type GameWaiting, type Played, type ProjectSummary, type RunningTable, type TermsStanding } from './api.js'
+import { TermsDue, laterFor, putOff } from './terms-due.js'
+import { TermsOffer } from './TermsOffer.js'
 import { QuotaReached } from './quota.js'
 import { quotaWords, type QuotaWords } from './quota-words.js'
 import { startInTab, tableWay } from '../startWay.js'
@@ -42,6 +44,9 @@ const StartQuestion = lazy(() => import('../editor/StartQuestion.js').then((m) =
 const ExportDialog = lazy(() => import('./GameDialogs.js').then((m) => ({ default: m.ExportDialog })))
 const RenameDialog = lazy(() => import('./GameDialogs.js').then((m) => ({ default: m.RenameDialog })))
 const ImportDialog = lazy(() => import('./GameDialogs.js').then((m) => ({ default: m.ImportDialog })))
+// The terms' step as a dialog (#1272, variant B), drawn on a press for an account that has not
+// accepted them, and never on the first frame.
+const TermsDialog = lazy(() => import('./TermsStep.js').then((m) => ({ default: m.TermsDialog })))
 
 // /  — "Mina spel" (G1; Arbetsbänken since #1204, beslut B): the game last saved large, the others as
 // rows, and a new one as a dashed row; beside them, what is happening. Not logged in, the landing page stands here instead (#1009), and the login
@@ -64,6 +69,12 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
   // Whether the account has been asked what the others should call it (#1254): until it has, the
   // question is the page's one band.
   const [asked, setAsked] = useState(true)
+  // Where the account stands against the terms (#1272, variant B). The page looks as it always does;
+  // a press that writes opens the step as a dialog instead, and the press goes on once accepted.
+  // `later` is «Inte nu» for this visit, which lets the next band in the queue stand.
+  const [terms, setTerms] = useState<TermsStanding>({ current: null, accepted: null, due: false })
+  const [later, setLater] = useState(false)
+  const [termsAsked, setTermsAsked] = useState<{ then: (() => void) | null } | null>(null)
   const [projects, setProjects] = useState<ProjectSummary[] | null>(null)
   // The game being exported, and whether a game is being brought in (G5, #529).
   const [exporting, setExporting] = useState<ProjectSummary | null>(null)
@@ -146,6 +157,23 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
     ;(refocus.to === HEADING ? heading.current : mores.current.get(refocus.to))?.focus()
   }, [refocus])
   const say = useSay()
+  // A press that writes (#1272): done at once when the terms are accepted, and otherwise asked for
+  // first, in the dialog, and done when they are. What is kept for afterwards is the press itself,
+  // never the wrapper, so it does not ask again with what the page knew before.
+  const withTerms =
+    <A extends unknown[]>(act: (...args: A) => void) =>
+    (...args: A): void => {
+      if (terms.due) setTermsAsked({ then: () => act(...args) })
+      else act(...args)
+    }
+  // A refusal for the terms (#1272): the server knew before the page did, which is a version that
+  // came into force while the page stood. The dialog is asked, and the press is done again after it.
+  const askTerms = (err: unknown, again: () => void): boolean => {
+    if (!(err instanceof TermsDue)) return false
+    setTerms((s) => ({ ...s, current: err.current, due: true }))
+    setTermsAsked({ then: again })
+    return true
+  }
   // Every start asks how you sit first (#1286), here as in the editor: `startingFor` is the game the
   // question stands over. The answer starts the table, which keeps it, and opens the screen it gives
   // the host beside this page; the code is said once the server has it.
@@ -164,6 +192,7 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
             return table
           },
           (err: unknown) => {
+            if (askTerms(err, () => startAs(p, answer))) return null
             setNotice(err instanceof QuotaReached ? quotaWords(err.quota, { kind: 'table', rev: p.rev, here: runningOf(p).length }, t) : err instanceof Error ? err.message : String(err))
             return null
           },
@@ -175,16 +204,17 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
   // «＋ Nytt spel» asks what the account holds before the guide opens (#1198): the guide makes the
   // game only in its last step, so a ceiling met there would be met after every step had been walked.
   // A question that gets no answer opens the guide as before, and the server still asks at the end.
-  const newGame = async () => {
+  const newGame = withTerms(() => void makeGame())
+  const makeGame = async () => {
     const games = (await myUsage(http))?.measures['projects']
     if (games && games.limit !== null && games.used >= games.limit) return setNotice(quotaWords({ measure: 'projects', limit: games.limit, used: games.used, bearer: 'you' }, { kind: 'newGame' }, t))
     onNavigate(`/new?${suffix(new URLSearchParams())}`)
   }
   // «Starta bord» from a game's ⋯ or its hero (#1145, beslut A): asked first while a table of it runs.
-  const startFrom = (p: ProjectSummary) => {
+  const startFrom = withTerms((p: ProjectSummary) => {
     if (runningOf(p).length > 0) return setAnother(p)
     start(p)
-  }
+  })
   // The hero's fan (#1204, beslut B): three of its cards, asked for once the list has said which game
   // leads, and held with the game it is for, so a fan never stands behind another game's card.
   const [fan, setFan] = useState<{ project: string; faces: CardFace[] } | null>(null)
@@ -205,6 +235,10 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
       .then((me) => {
         const e = me?.email ?? null
         setAsked(me?.asked ?? true)
+        if (me) {
+          setTerms(me.terms)
+          setLater(me.terms.current !== null && laterFor(me.terms.current))
+        }
         setEmail(e)
         if (!e) return undefined
         // The cards are asked for beside the list rather than after it: they are a second answer,
@@ -305,14 +339,14 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
                 type="button"
                 onClick={() => {
                   setMenu(null)
-                  setRenaming(p)
+                  withTerms(() => setRenaming(p))()
                 }}
               >
                 {t('home.menu.rename')}
               </button>
               <button
                 type="button"
-                onClick={() => {
+                onClick={withTerms(function duplicate() {
                   setMenu(null)
                   setRefocus({ to: p.id })
                   void duplicateProject(http, p.id, t).then(
@@ -328,9 +362,9 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
                       setRefocus({ to: p.id })
                       say?.('polite', t('home.duplicated', { name: copy.name }))
                     },
-                    (err: unknown) => setNotice(err instanceof QuotaReached ? quotaWords(err.quota, { kind: 'duplicate', game: p.name }, t) : err instanceof Error ? err.message : String(err)),
+                    (err: unknown) => askTerms(err, duplicate) || setNotice(err instanceof QuotaReached ? quotaWords(err.quota, { kind: 'duplicate', game: p.name }, t) : err instanceof Error ? err.message : String(err)),
                   )
-                }}
+                })}
               >
                 {t('home.menu.duplicate')}
               </button>
@@ -360,7 +394,7 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
               type="button"
               onClick={() => {
                 setMenu(null)
-                setAsking(p)
+                withTerms(() => setAsking(p))()
               }}
             >
               {t('home.menu.remove')}
@@ -416,8 +450,10 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
             <DecksterMark className="byd-home-logo" edge={WOOD_EDGE} />
             <span>Deckster</span>
           </span>
+          {/* The quiet word (#1272, variant B): the page is as it always is, and says why a press asks. */}
+          {terms.due && <span className="byd-terms-chip">{t('terms.chip')}</span>}
           {/* The word is the start of the name, so what is read out begins with what is written (2.5.3). */}
-          <button type="button" className="byd-secondary byd-home-import" title={t('home.import.open')} aria-label={t('home.import.open')} onClick={() => setImporting(true)}>
+          <button type="button" className="byd-secondary byd-home-import" title={t('home.import.open')} aria-label={t('home.import.open')} onClick={withTerms(() => setImporting(true))}>
             <ImportGlyph />
             <span className="byd-home-import-word">{t('home.import.word')}</span>
           </button>
@@ -477,9 +513,20 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
               {t('home.title')}
             </h1>
           </header>
-          {/* One band at a time (#1254): the name for an account that has not been asked, and the
-              passkey after the link (#1180, beslut A) once it has — under the heading, once per browser. */}
-          {asked ? (
+          {/* One band at a time (#1254): the terms first for an account that has not accepted them
+              (#1272), then the name for an account that has not been asked, and the passkey after the
+              link (#1180, beslut A) once it has — under the heading, once per browser. */}
+          {terms.due && terms.current !== null && !later ? (
+            <TermsOffer
+              version={terms.current}
+              changed={terms.accepted !== null}
+              onRead={() => setTermsAsked({ then: null })}
+              onLater={() => {
+                putOff(terms.current)
+                setLater(true)
+              }}
+            />
+          ) : asked ? (
             <PasskeyOffer http={http} />
           ) : (
             <NameOffer
@@ -550,7 +597,7 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
                     say?.('polite', t('home.removed', { name: gone.name }))
                     setRefocus({ to: HEADING })
                   },
-                  (err: unknown) => setNotice(err instanceof Error ? err.message : String(err)),
+                  (err: unknown) => askTerms(err, () => setAsking(gone)) || setNotice(err instanceof Error ? err.message : String(err)),
                 )
               }}
             >
@@ -824,7 +871,7 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
             setRefocus({ to: game.id })
             void renameProject(http, game.id, name, t).then(
               () => setProjects((list) => (list ?? []).map((x) => (x.id === game.id ? { ...x, name } : x))),
-              (err: unknown) => setNotice(err instanceof Error ? err.message : String(err)),
+              (err: unknown) => askTerms(err, () => setRenaming(game)) || setNotice(err instanceof Error ? err.message : String(err)),
             )
           }}
           onClose={() => {
@@ -848,6 +895,25 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
           }}
           nameOf={(id) => listed.current?.find((p) => p.id === id)?.name}
           onOpen={(id) => onNavigate(`/editor?${suffix(new URLSearchParams({ project: id }))}`)}
+        />
+      )}
+      {termsAsked && terms.current !== null && (
+        <TermsDialog
+          http={http}
+          version={terms.current}
+          // From the band it is the terms themselves; from a press, why the press asks first.
+          title={t(termsAsked.then ? 'terms.dialog.title' : 'terms.step.title')}
+          {...(termsAsked.then ? { lead: t('terms.dialog.lead') } : {})}
+          onAccepted={() => {
+            const then = termsAsked.then
+            setTerms((s) => ({ ...s, accepted: s.current, due: false }))
+            setTermsAsked(null)
+            then?.()
+          }}
+          onLater={() => {
+            setLater(true)
+            setTermsAsked(null)
+          }}
         />
       )}
       </Suspense>

@@ -2172,6 +2172,35 @@ Operatören köar en spelversions bilder med `screening run <spel>` och läser u
 Allt som är en bild screenas, också en symbol ur det kurerade biblioteket (E4), eftersom den ligger som en uppladdad svg; den screenas en gång för alla spel som använder den, eftersom cachen är per hash.
 Ingen bildhash når en klient: ingenting i projektionen ändrades.
 
+Byggt 2026-10-25 (#1272, beställarens beslut 2026-10-24, variant B ur [prototypen](https://github.com/Tiico/build-a-deck/blob/70e7a5d82a880873592a4ed9d44598ff7e73be41/docs/ux-audits/2026-10-24-betavillkor/prototyper/index.html)): betavillkoren, sidan, steget, läsläget och grinden.
+Texten är prototypens utkast och står i `packages/web/src/terms/beta.ts` under versionen `2026-10-25`, som är registrets första och väsentlig.
+Den är märkt «Utkast, inte juridiskt granskat» på sidan och i steget tills beställaren säger annat.
+Uppgifterna om «vi» står i hakparenteser i `packages/web/src/terms/operator.ts` tills beställaren fyller i dem: namn, adress och kontaktadress, meningen om biträdesavtalen med Cloudflare och Resend, och vad Resends överföring till USA vilar på.
+Texten läser dem därifrån, så att det blir en ändring på ett ställe.
+Villkorstexten är juridisk text och inte verktygets katalog, så dess «vi» hålls inte till L73.
+Integritetstexten säger det som gäller i dag (beslut 3): det som inte längre kan användas rensas (#1277), en gästs namn och fritext maskas efter tolv månader och direkt med ett borttaget spel (#1279), annan radering görs via Kontakt, och Profils nedladdning och radering och gästens väg från telefonen står inte i den förrän #1280 och #1281 är byggda.
+
+`createServer` utan register har inga villkor, som en server utan `auth` inte har några konton, och lådan startas med `TERMS` (`main.ts`).
+Grinden sitter på servern: ett konto som inte har godkänt den gällande versionen får läsa, exportera och logga ut, och varje annan skrivande väg svarar `403 { error: 'terms', current }` innan någon kropp läses.
+På editorns linje är svaret `{ v: 'refused', why: 'terms', to, ask, current }`, och en betraktares vägran sägs först.
+De öppna vägarna är en sluten lista, `OPEN_WRITES` i `terms.ts`: godkännandet och namnet före det, att ta bort AI-nyckeln, exporten och tryck-PDF:en, gästens egna vägar (att ansluta, claima, gå tillbaka till bordet och svara på enkäten) och värdens kod och spark.
+Inloggning, utloggning och passkeys under `/auth/` når aldrig grinden.
+En väg som läggs till senare är stängd tills listan säger annat.
+
+Steget är välkomstkortets andra (#1254): ett konto som har villkoren att godkänna ser namnet som «Steg 1 av 2» och villkoren som «Steg 2 av 2» i samma kort, på `/login?step=terms`, med «← Namnet» tillbaka.
+Kortet har fem rader «Kort sagt», länkarna till hela villkoren och integriteten i en egen flik, meningen om 18 år, «Godkänn och fortsätt» och «Inte nu».
+«Inte nu» går vidare utan godkännande och skjuter upp villkoren besöket ut.
+Ett konto som fanns före villkoren, eller som sköt upp dem, möter dem i ett band först i bandkön på Mina spel, före namnet och passkeyn och ett åt gången: «Deckster har fått villkor.», och vid en väsentlig ändring «Villkoren har ändrats.».
+Läsläget är Mina spel som vanligt med ordet «Villkoren inte godkända» i huvudet.
+En tryckning som skriver öppnar steget som dialog och görs när villkoren är godkända: nytt spel, import, starta bord, byt namn, kopiera och ta bort, och likadant i guiden och på inbjudningssidan; export och tryckpaket står öppna.
+I editorn hålls en ändring i klienten under dialogen «Godkänn villkoren för att spara» och skickas när villkoren är godkända, och «Inte nu» tar tillbaka den; en uppladdning och en sparning väntar på samma sätt.
+`/villkor` har villkor och integritet på en sida, med «Kort sagt» per avsnitt, hela texten bakom en öppning, «Visa all text» och `#integritet` som integritetstextens adress.
+En engelsk läsare får sidans och stegets ord på engelska och en mening om att texten finns på svenska tills den svenska är godkänd.
+«Villkor · Integritet» står först på #757:s rad på inloggningskortet, landningssidan, Mina spel och Profil, och på telefonen där gästen ansluter och där hon sparar sina svar.
+
+Inte byggt: mejlet 30 dagar före en väsentlig ändring, den engelska texten, «Det här är nytt sedan …» och versionsväljaren, som väntar på en andra version.
+Grindarna är `packages/server/test/terms-gate.test.ts` mot båda lagren, `packages/web/test/terms-step.test.tsx` mot den riktiga servern och `packages/e2e/test/terms.spec.ts` i den byggda appen.
+
 ---
 
 ## G. Data, feedback och förtroende
