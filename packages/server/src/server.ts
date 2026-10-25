@@ -2248,7 +2248,11 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     const record = { id, version: `rev-${rec.rev}`, setup: setupFromProject(rec), deck: await deckOf(opts, rec), project: rec.id, ...(rec.owner !== undefined ? { accountId: rec.owner } : {}), ...room.record, ...(seating ? { seating } : {}) }
     if (!(await openTable(opts, res, record, () => bearerOf(opts, account, rec.owner)))) return true
     await opts.host.get(id)
-    json(res, 201, { id, version: `rev-${rec.rev}`, code: room.code, hostKey: room.hostKey })
+    // The host of a table of computers sits down at its first seat (L77), which every seat is
+    // free to be when it starts; it is said here so that a page without the game's setup at hand,
+    // as Mina spel is, can seat her.
+    const hostSeat = seating === 'computer' ? record.setup.seats[0] : undefined
+    json(res, 201, { id, version: `rev-${rec.rev}`, code: room.code, hostKey: room.hostKey, ...(hostSeat ? { hostSeat } : {}) })
     return true
   }
   // The whole log for the replay corpus (DRIFT §7): version, setup and every line with its

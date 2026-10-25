@@ -1,6 +1,7 @@
 // The creator's account (G1, DRIFT §11) from the browser's side: a magic link by mail, a cookie
 // the browser keeps, and the projects that belong to the account. `http` is the server origin;
 // in development it is another port, so credentials are sent explicitly.
+import type { SeatId, Seating } from '@byd/protocol'
 import type { CardFace, CardPeek, Role } from '@byd/server/doc'
 import { translate, type T } from '../i18n/index.js'
 import { Said } from '../i18n/said.js'
@@ -124,8 +125,9 @@ export async function acceptInvite(http: string, token: string, t: T = swedish):
 
 // Starting a table from the home page (G1): the same session the editor starts, so the code and
 // the host key come from the server and nowhere else.
-export async function startTable(http: string, project: string, t: T = swedish): Promise<{ id: string; code: string; hostKey: string }> {
-  const res = await fetch(`${http}/projects/${encodeURIComponent(project)}/sessions`, withCredentials({ method: 'POST' }))
+// The answer to «Hur sitter ni?» goes with it (#1286), for the table to keep.
+export async function startTable(http: string, project: string, t: T = swedish, seating?: Seating): Promise<{ id: string; code: string; hostKey: string; hostSeat?: SeatId }> {
+  const res = await fetch(`${http}/projects/${encodeURIComponent(project)}/sessions`, withCredentials({ method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(seating ? { seating } : {}) }))
   if (res.status === 401) throw new Unauthorized()
   // Every role but a viewer may start one (D3); the page does not offer it to a viewer (#689),
   // so a refusal is an answer that changed under the page, said as what it means.
@@ -135,17 +137,17 @@ export async function startTable(http: string, project: string, t: T = swedish):
   const quota = await quotaOf(res)
   if (quota) throw new QuotaReached(quota, t('error.startTable.failed'))
   if (!res.ok) throw new Said(t('error.startTable.failed'))
-  return (await res.json()) as { id: string; code: string; hostKey: string }
+  return (await res.json()) as { id: string; code: string; hostKey: string; hostSeat?: SeatId }
 }
 
 // The tables of a game that are running and can still be joined (#724): the ones with a room code.
 // Only a role that may start tables is told the code, so only such a role is asked.
-export type RunningTable = { id: string; code: string; lastAt: string | null }
+export type RunningTable = { id: string; code: string; lastAt: string | null; seating?: Seating }
 export async function runningTables(http: string, project: string): Promise<RunningTable[]> {
   const res = await fetch(`${http}/projects/${encodeURIComponent(project)}/sessions`, withCredentials())
   if (!res.ok) return []
-  const tables = (await res.json()) as { id: string; ended: boolean; lastAt: string | null; code?: string }[]
-  return tables.flatMap((x) => (!x.ended && x.code ? [{ id: x.id, code: x.code, lastAt: x.lastAt }] : []))
+  const tables = (await res.json()) as { id: string; ended: boolean; lastAt: string | null; code?: string; seating?: Seating }[]
+  return tables.flatMap((x) => (!x.ended && x.code ? [{ id: x.id, code: x.code, lastAt: x.lastAt, ...(x.seating ? { seating: x.seating } : {}) }] : []))
 }
 
 // Taking a game away (G1): its whole history goes with it, so the page asks first.

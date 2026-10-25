@@ -13,6 +13,7 @@ import { projectDoc } from './project-doc.js'
 import { faviconSvg } from '../src/brand/mark.js'
 import { admit, asTable, createSession, registerRoom, roomOf, startServer, type Running } from './fixture.js'
 import { watchFontNet, type FontNet } from './font-net.js'
+import { answerStart } from './start-answer.js'
 
 // Accounts (G1, prototype A): the login card at `/login` until the link in the mail has been
 // followed, and then "Mina spel" at `/`, where whoever is logged out finds the landing page (#1009). The cookie jar in test/setup.ts plays the browser.
@@ -492,6 +493,7 @@ describe('a game on the home page (G1)', () => {
     await waitFor(() => within(hero).getByRole('img', { name: 'Första kortet: Drake' }))
 
     fireEvent.click(within(hero).getByRole('button', { name: 'Starta bord' }))
+    await answerStart()
     // Once a table of it runs, the hero opens that table instead of starting another.
     const open = await within(hero).findByRole('link', { name: /^Öppna bordet [A-Z2-9]{6} i Vinterspelet \(öppnas i bordets egen flik\)$/ })
     expect(open.getAttribute('target')).toMatch(/^byd-tv-/)
@@ -505,6 +507,7 @@ describe('a game on the home page (G1)', () => {
     await home()
     fireEvent.click(within(card()).getByRole('button', { name: 'Fler val för Skogens herrar' }))
     fireEvent.click(within(await screen.findByRole('group', { name: 'Val för Skogens herrar' })).getByRole('button', { name: 'Starta bord' }))
+    await answerStart()
     const said = await waitFor(() => {
       expect(running()).not.toBeNull()
       return running()!
@@ -593,6 +596,7 @@ describe('a game on the home page (G1)', () => {
     fireEvent.click(more)
     fireEvent.click(await screen.findByRole('button', { name: 'Starta nytt bord' }))
     fireEvent.click(screen.getByRole('button', { name: 'Starta ett nytt ändå' }))
+    await answerStart()
     await waitFor(async () => expect(await listed()).toBe(2))
   })
 
@@ -741,6 +745,7 @@ describe('the game menu and the question on the home page (#475)', () => {
     await home()
     fireEvent.click(more())
     fireEvent.click(await waitFor(() => within(menu()!).getByRole('button', { name: 'Starta bord' })))
+    await answerStart()
     await waitFor(() => expect(document.activeElement).toBe(more()))
     // The way to it is the band in «Pågår nu» (#724), and says it opens in the table's own tab:
     // opened twice, the same tab (#1217).

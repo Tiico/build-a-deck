@@ -10,8 +10,9 @@ import { previewFonts } from '../editor/fonts.js'
 import { duplicateProject, gameFan, logout, myCards, myPlayed, myProjects, myUsage, myWaiting, removeProject, renameProject, returnToTable, runningTables, startTable, whoAmI, type GameWaiting, type Played, type ProjectSummary, type RunningTable } from './api.js'
 import { QuotaReached } from './quota.js'
 import { quotaWords, type QuotaWords } from './quota-words.js'
-import { tvUrl } from '../editor/tableLinks.js'
-import { tableTab } from '../ways.js'
+import { tableWay } from '../ways.js'
+import { startInTab } from '../startWay.js'
+import type { StartAnswer } from '../editor/startAnswer.js'
 import { anotherAsk } from '../editor/another.js'
 import { GameMenu } from './GameMenu.js'
 import { useWide } from '../join/wide.js'
@@ -35,6 +36,8 @@ import { versionWord } from '../i18n/version.js'
 // frame, so they are fetched when one is opened, with their own sheet, and not carried in the sheet
 // every first painting blocks on (#366, L40). That sheet's alarm in `felt-font.spec.ts` bound when
 // the start page grew its code row (#675); this is the answer the alarm asks for.
+// «Hur sitter ni?» (L77, #1286), loaded with its stylesheet when a table is about to start.
+const StartQuestion = lazy(() => import('../editor/StartQuestion.js').then((m) => ({ default: m.StartQuestion })))
 const ExportDialog = lazy(() => import('./GameDialogs.js').then((m) => ({ default: m.ExportDialog })))
 const RenameDialog = lazy(() => import('./GameDialogs.js').then((m) => ({ default: m.RenameDialog })))
 const ImportDialog = lazy(() => import('./GameDialogs.js').then((m) => ({ default: m.ImportDialog })))
@@ -139,15 +142,32 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
     ;(refocus.to === HEADING ? heading.current : mores.current.get(refocus.to))?.focus()
   }, [refocus])
   const say = useSay()
-  // A table from a game's ⋯, said by its code once the server has it.
-  const start = (p: ProjectSummary) =>
-    void startTable(http, p.id, t).then(
-      (table) => {
-        say?.('polite', t('home.started', { code: table.code }))
-        setProjects((list) => (list ?? []).map((x) => (x.id === p.id ? { ...x, tables: (x.tables ?? 0) + 1 } : x)))
-      },
-      (err: unknown) => setNotice(err instanceof QuotaReached ? quotaWords(err.quota, { kind: 'table', rev: p.rev, here: runningOf(p).length }, t) : err instanceof Error ? err.message : String(err)),
+  // Every start asks how you sit first (#1286), here as in the editor: `startingFor` is the game the
+  // question stands over. The answer starts the table, which keeps it, and opens the screen it gives
+  // the host beside this page; the code is said once the server has it.
+  const [startingFor, setStartingFor] = useState<ProjectSummary | null>(null)
+  const start = (p: ProjectSummary) => setStartingFor(p)
+  const startAs = (p: ProjectSummary, answer: StartAnswer) => {
+    setStartingFor(null)
+    setRefocus({ to: p.id })
+    void startInTab(
+      answer,
+      (seating) =>
+        startTable(http, p.id, t, seating).then(
+          (table) => {
+            say?.('polite', t('home.started', { code: table.code }))
+            setProjects((list) => (list ?? []).map((x) => (x.id === p.id ? { ...x, tables: (x.tables ?? 0) + 1 } : x)))
+            return table
+          },
+          (err: unknown) => {
+            setNotice(err instanceof QuotaReached ? quotaWords(err.quota, { kind: 'table', rev: p.rev, here: runningOf(p).length }, t) : err instanceof Error ? err.message : String(err))
+            return null
+          },
+        ),
+      server,
+      lang,
     )
+  }
   // «＋ Nytt spel» asks what the account holds before the guide opens (#1198): the guide makes the
   // game only in its last step, so a ceiling met there would be met after every step had been walked.
   // A question that gets no answer opens the guide as before, and the server still asks at the end.
@@ -159,7 +179,6 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
   // «Starta bord» from a game's ⋯ or its hero (#1145, beslut A): asked first while a table of it runs.
   const startFrom = (p: ProjectSummary) => {
     if (runningOf(p).length > 0) return setAnother(p)
-    setRefocus({ to: p.id })
     start(p)
   }
   // The hero's fan (#1204, beslut B): three of its cards, asked for once the list has said which game
@@ -255,7 +274,7 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
           {/* The tables already running come first (#724, beslut B), so a second press to see the
               code again opens the table it was for rather than starting another. */}
           {runningOf(p).map((table) => (
-            <a key={table.id} href={tvUrl(table.id, server, undefined, true, lang)} target={tableTab(table.id, 'tv')} onClick={() => setMenu(null)}>
+            <a key={table.id} {...tableWay(table, server, lang)} onClick={() => setMenu(null)}>
               {t('home.menu.open', { code: table.code })}
             </a>
           ))}
@@ -459,7 +478,8 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
               keep={{
                 label: t('tables.another.open', { table: anotherTable.code }),
                 onChoose: () => {
-                  window.open(tvUrl(anotherTable.id, server, undefined, true, lang), tableTab(anotherTable.id, 'tv'))
+                  const way = tableWay(anotherTable, server, lang)
+                  window.open(way.href, way.target)
                   setAnother(null)
                   setRefocus({ to: another.id })
                 },
@@ -563,7 +583,7 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
                       {t('home.hero.edit')}
                     </a>
                     {heroTable ? (
-                      <a className="byd-secondary" href={tvUrl(heroTable.id, server, undefined, true, lang)} target={tableTab(heroTable.id, 'tv')} aria-label={t('home.running.open.aria', { code: heroTable.code, name: hero.name })}>
+                      <a className="byd-secondary" {...tableWay(heroTable, server, lang)} aria-label={t('home.running.open.aria', { code: heroTable.code, name: hero.name })}>
                         {t('home.menu.open', { code: heroTable.code })}
                       </a>
                     ) : (
@@ -643,7 +663,7 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
                 >
                   {t('home.running.game')}
                 </a>
-                <a href={tvUrl(table.id, server, undefined, true, lang)} target={tableTab(table.id, 'tv')} aria-label={t('home.running.open.aria', { code: table.code, name: table.name })}>
+                <a {...tableWay(table, server, lang)} aria-label={t('home.running.open.aria', { code: table.code, name: table.name })}>
                   {t('home.running.open')}
                 </a>
               </div>
@@ -745,6 +765,15 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
         <AboutLine http={http} />
       </div>
       <Suspense fallback={null}>
+      {startingFor && (
+        <StartQuestion
+          onStart={(answer) => startAs(startingFor, answer)}
+          onCancel={() => {
+            setStartingFor(null)
+            setRefocus({ to: startingFor.id })
+          }}
+        />
+      )}
       {exporting && (
         <ExportDialog
           http={http}

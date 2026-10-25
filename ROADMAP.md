@@ -121,6 +121,7 @@ Målet är att en grupp kan spela vilket kortspel som helst utan att sakna någo
 - ✅ Bordets anteckningsblock på `/online` (K29, #1131): en spalt med rader som alla vid bordet skriver, bockar av och tar bort, med skribentens platsfärg; sessionens och inte spelets, så Ångra och tillbakaspolning lämnar det kvar.
 - ✅ Tärningar d4–d20, slagna från bordet och telefonen, i spelets setup med antal per spelare (K28, #1129). Typerna, setupen och aktivitetsraden med värden (#1136), telefonens ark «Tärningar» med flerslag i ett kuvert (#1138), fliken Bord med en rad per tärning (#1139), bordet som ritar och slår dem (#1137), och trycket, där en tärning är en köpt lagervara som partnern packar och som går att välja bort (#1140).
 - ✅ Vägen tillbaka mellan editorn och borden (L80, #1217): varje bordsyta leder ägaren till editorns egen flik, ett bord öppnas i sin egen flik i stället för en ny, ägaren som lämnar `/online` landar i spelet, och Mina spel, `/join` och `/login` har en väg vidare.
+- ✅ Vägen in till ett bord (L84, #1286): två sätt att sitta, runt en TV eller vid varsin dator. Varje start frågar vilket och bordet minns svaret, så ett bord har en väg in, «Öppna bordet», och anslutningssidan ett enda «Gå med» på varje skärm. Genvägarna där designern hoppade in själv är borta ur editorn.
 - ❓ Fler komponenttyper än standardkortet och tärningen — bricka, meeple, bräde (B1, B2, B3).
   Frågan är om release är "kortspel" eller "kort- och brädspel"; A1 talar för kort först.
 

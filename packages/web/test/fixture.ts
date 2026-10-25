@@ -524,10 +524,11 @@ export async function asObserver(run: Running, id: string, name: string): Promis
 }
 
 // A table started from a project, the way the editor starts one (L5): the game has a name.
-export async function createNamedSession(run: Running, name: string, id = 's1'): Promise<string> {
+// `seating` is the host's answer to «Hur sitter ni?» (#1286), which the table keeps.
+export async function createNamedSession(run: Running, name: string, id = 's1', seating?: 'screen' | 'computer'): Promise<string> {
   const { zones, seats, floor } = twoSeatSetup()
   await run.projects.create(`p-${id}`, { name, template: { faces: { front: { base: [], variants: {} }, back: { base: [], variants: {} } } }, rows: [], icons: {}, setup: { zones, seats, floor, deckZone: 'draw' } })
-  const res = await fetch(`${run.http}/projects/p-${id}/sessions`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' })
+  const res = await fetch(`${run.http}/projects/p-${id}/sessions`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(seating ? { seating } : {}) })
   if (res.status !== 201) throw new Error(`create named session failed: ${res.status} ${await res.text()}`)
   const made = (await res.json()) as { id: string; code: string; hostKey: string }
   rooms.set(made.id, { code: made.code, hostKey: made.hostKey })

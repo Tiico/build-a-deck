@@ -70,7 +70,7 @@ for (const backend of backends) {
     const table = async (id: string, body?: unknown) => {
       const res = await owner('POST', `/projects/${id}/sessions`, body)
       expect(res.status).toBe(201)
-      const made = (await res.json()) as { id: string; code: string; hostKey: string }
+      const made = (await res.json()) as { id: string; code: string; hostKey: string; hostSeat?: string }
       registerRoom(made.id, made)
       return made
     }
@@ -79,6 +79,9 @@ for (const backend of backends) {
       const id = await project()
       const computer = await table(id, { seating: 'computer' })
       const screen = await table(id, { seating: 'screen' })
+      // The host of a table of computers is told the seat she sits down at; at a TV she sits nowhere.
+      expect(computer.hostSeat).toBe('A')
+      expect(screen.hostSeat).toBeUndefined()
       expect(await (await fetch(`${run.http}/rooms/${computer.code}`)).json()).toEqual({ session: computer.id, name: 'Fredagskort', seating: 'computer' })
       expect(await (await fetch(`${run.http}/rooms/${screen.code}`)).json()).toEqual({ session: screen.id, name: 'Fredagskort', seating: 'screen' })
       const listed = (await (await owner('GET', `/projects/${id}/sessions`)).json()) as { id: string; seating?: string }[]

@@ -171,18 +171,14 @@ const SHELL = `
               </div>
               <div class="byd-tables-go">
                 <button class="byd-secondary byd-tables-update" data-stop="updating the table">Uppdatera till version 3</button>
-                <a class="byd-secondary" href="#" data-stop="playing from here">Spela härifrån</a>
+                <a class="byd-secondary" href="#" data-stop="opening the table">Öppna bordet</a>
                 <button class="byd-tables-more" aria-haspopup="menu" aria-expanded="true" data-stop="the row's menu">▾</button>
                 <div class="byd-tables-menu" role="menu">
-                  <a class="byd-tables-way" role="menuitem" href="#" data-stop="the TV view">Öppna TV-vyn</a>
-                  <a class="byd-tables-way" role="menuitem" href="#" data-stop="the table mode">Bordsläge</a>
-                  <a class="byd-tables-way" role="menuitem" href="#" data-stop="watching">Titta på</a>
-                  <button class="byd-tables-way" role="menuitem" aria-expanded="true" data-stop="the QR toggle">QR för telefoner</button>
+                  <button class="byd-tables-way" role="menuitem" data-stop="copying the link">Kopiera länk</button>
                   <hr class="byd-tables-cut" />
                   <button class="byd-tables-way byd-tables-way-apart" role="menuitem" data-stop="ending the table">Avsluta bordet</button>
                 </div>
               </div>
-              <div class="byd-tables-qr"><a href="#" data-stop="the join link">Anslutningssidan</a></div>
               <div class="byd-tables-question" role="alertdialog">
                 <p>Avsluta bordet K7QX2P?</p>
                 <button data-kind="danger" data-stop="the yes to ending">Ja, avsluta</button>

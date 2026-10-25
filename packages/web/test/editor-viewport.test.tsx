@@ -201,13 +201,13 @@ async function tablesTab(width: number): Promise<Record<string, string>> {
     // A table nobody has played lies behind a fold (#176), and a fold is where this sweep would
     // otherwise stop: it would find two controls, measure them and call the tab clean.
     fireEvent.click(await screen.findByRole('button', { name: /Startade, aldrig spelade/ }))
-    // Waited for by the one way that is not there until the table itself has answered: sitting
-    // down needs a free seat, and a free seat is something only the table's own snapshot knows.
-    // Waiting for it is what puts every way into the markup rather than most of them.
-    await screen.findByRole('link', { name: /Spela härifrån/ })
-    // The other five are in the row's menu, and a menu that is shut is five targets nobody has
-    // ever measured — which is exactly how `.byd-tables-ways` shipped at 32 px (#133).
-    fireEvent.click(screen.getByRole('button', { name: /Fler sätt att öppna (?!bordet)/ }))
+    // Waited for by the line that is not there until the table itself has answered: who sits is
+    // something only the table's own snapshot knows. Waiting for it is what puts the row as it
+    // stands into the markup rather than the row as it connects.
+    await screen.findByText('ingen sitter än')
+    // The rest is in the row's menu, and a menu that is shut is targets nobody has ever measured —
+    // which is exactly how `.byd-tables-ways` shipped at 32 px (#133).
+    fireEvent.click(screen.getByRole('button', { name: /^Fler val för bordet / }))
     return { Bord: document.querySelector('.byd-editor')!.outerHTML }
   } finally {
     unmount()
