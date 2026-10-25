@@ -622,45 +622,53 @@ describe('a game on the home page (G1)', () => {
   })
 })
 
+// The account the panel is read for: Ada owns Skogens herrar and Vinterspelet. Kim, a co-editor,
+// saves version 2 of Skogens herrar; a table on version 2 raises two flags and is answered by its
+// seat; and Ada sat at a table of no game herself, over and not answered. Returns that table.
+async function waitingAccount(): Promise<{ sat: string; kim: { id: string } }> {
+  await run.stop()
+  run = await startServer({ auth: true, authBypass: true })
+  const json = { 'content-type': 'application/json' }
+  await fetch(`${run.http}/auth/login`, { method: 'POST', headers: json, body: JSON.stringify({ email: 'ada@example.com' }) })
+  expect((await fetch(`${run.http}/projects`, { method: 'POST', headers: json, body: JSON.stringify({ id: run.projectId, ...projectDoc() }) })).status).toBe(201)
+  expect((await fetch(`${run.http}/projects`, { method: 'POST', headers: json, body: JSON.stringify({ id: run.otherProjectId, ...projectDoc(), name: 'Vinterspelet' }) })).status).toBe(201)
+  // Kim, a co-editor, saves version 2 of Skogens herrar, which makes it the game saved last.
+  const kim = await run.auth!.ensureAccount('kim@example.com')
+  await run.projects.share(run.projectId, kim.id, 'editor')
+  expect(await run.projects.replace(run.projectId, 1, { ...projectDoc(), rows: [...projectDoc().rows, { id: 'uggla', fields: { title: 'Uggla', antal: 1 } }] }, 0, undefined, [], kim.id)).toMatchObject({ rev: 2 })
+  // A table on version 2: two flags from a seat, and its answer once the table is over.
+  const made = (await (await fetch(`${run.http}/projects/${run.projectId}/sessions`, { method: 'POST', headers: json, body: '{}' })).json()) as { id: string; code: string; hostKey: string }
+  registerRoom(made.id, made)
+  const token = await admit(run, made.id, 'A', 'Bo')
+  const seat = TableClient.connect({ url: run.url, sessionId: made.id, seat: 'A', token })
+  await seat.ready()
+  await seat.send({ v: 'seat.claim', seat: 'A', name: 'Bo' })
+  await seat.send({ v: 'flag', note: 'Draken är för stark' })
+  await seat.send({ v: 'flag' })
+  const host = TableClient.connect(await asTable(run, made.id))
+  await host.ready()
+  await host.send({ v: 'session.end' })
+  seat.close()
+  host.close()
+  expect((await fetch(`${run.http}/sessions/${made.id}/survey`, { method: 'POST', headers: json, body: JSON.stringify({ token, seat: 'A', answers: { fun: 4, clarity: 3, balance: 4, change: '' } }) })).status).toBe(201)
+  // A table Ada sat at herself, over and not answered.
+  const sat = await createSession(run, 'satt')
+  const mine = await admit(run, sat, 'A', 'Ada')
+  expect((await fetch(`${run.http}/guests/claim`, { method: 'POST', headers: json, body: JSON.stringify({ token: mine }) })).status).toBe(200)
+  const satHost = TableClient.connect(await asTable(run, sat))
+  await satHost.ready()
+  await satHost.send({ v: 'session.end' })
+  satHost.close()
+  return { sat, kim }
+}
+
 // «Väntar på dig» (#1225, #1204 beslut B): in the column of what is happening, under «Pågår nu»,
 // the new flags on a game's newest version, the surveys the account has left to answer, and a
 // newest version someone else saved. Each a row with its icon, what it is, where it is from and an
 // arrow, leading where it is dealt with: Resultat on that version, the survey, the editor.
 describe('what waits for the account on the home page (#1225)', () => {
   it('lists the new flags, the survey left to answer and a co-editor’s version, and leads to each', async () => {
-    await run.stop()
-    run = await startServer({ auth: true, authBypass: true })
-    const json = { 'content-type': 'application/json' }
-    await fetch(`${run.http}/auth/login`, { method: 'POST', headers: json, body: JSON.stringify({ email: 'ada@example.com' }) })
-    expect((await fetch(`${run.http}/projects`, { method: 'POST', headers: json, body: JSON.stringify({ id: run.projectId, ...projectDoc() }) })).status).toBe(201)
-    expect((await fetch(`${run.http}/projects`, { method: 'POST', headers: json, body: JSON.stringify({ id: run.otherProjectId, ...projectDoc(), name: 'Vinterspelet' }) })).status).toBe(201)
-    // Kim, a co-editor, saves version 2 of Skogens herrar, which makes it the game saved last.
-    const kim = await run.auth!.ensureAccount('kim@example.com')
-    await run.projects.share(run.projectId, kim.id, 'editor')
-    expect(await run.projects.replace(run.projectId, 1, { ...projectDoc(), rows: [...projectDoc().rows, { id: 'uggla', fields: { title: 'Uggla', antal: 1 } }] }, 0, undefined, [], kim.id)).toMatchObject({ rev: 2 })
-    // A table on version 2: two flags from a seat, and its answer once the table is over.
-    const made = (await (await fetch(`${run.http}/projects/${run.projectId}/sessions`, { method: 'POST', headers: json, body: '{}' })).json()) as { id: string; code: string; hostKey: string }
-    registerRoom(made.id, made)
-    const token = await admit(run, made.id, 'A', 'Bo')
-    const seat = TableClient.connect({ url: run.url, sessionId: made.id, seat: 'A', token })
-    await seat.ready()
-    await seat.send({ v: 'seat.claim', seat: 'A', name: 'Bo' })
-    await seat.send({ v: 'flag', note: 'Draken är för stark' })
-    await seat.send({ v: 'flag' })
-    const host = TableClient.connect(await asTable(run, made.id))
-    await host.ready()
-    await host.send({ v: 'session.end' })
-    seat.close()
-    host.close()
-    expect((await fetch(`${run.http}/sessions/${made.id}/survey`, { method: 'POST', headers: json, body: JSON.stringify({ token, seat: 'A', answers: { fun: 4, clarity: 3, balance: 4, change: '' } }) })).status).toBe(201)
-    // A table Ada sat at herself, over and not answered.
-    const sat = await createSession(run, 'satt')
-    const mine = await admit(run, sat, 'A', 'Ada')
-    expect((await fetch(`${run.http}/guests/claim`, { method: 'POST', headers: json, body: JSON.stringify({ token: mine }) })).status).toBe(200)
-    const satHost = TableClient.connect(await asTable(run, sat))
-    await satHost.ready()
-    await satHost.send({ v: 'session.end' })
-    satHost.close()
+    const { sat, kim } = await waitingAccount()
 
     history.replaceState(null, '', `/?server=${encodeURIComponent(run.http)}`)
     // Kim has given her account no name (#1254): she is somebody else, and never her address's word.
@@ -735,6 +743,30 @@ describe('what waits for the account on the home page (#1225)', () => {
       release()
       globalThis.fetch = realFetch
     }
+  })
+
+  // The prototype's flag chip on a game's row (#1282), «⚑ 2 nya flaggor», counted as the panel counts
+  // them (G1: raised on the game's newest version) and from the same answer. The hero says the same
+  // in its numbers and wears no chip.
+  it('marks a game’s row with its new flags, as the panel counts them', async () => {
+    await waitingAccount()
+    // Ada saves Vinterspelet after Kim's version, so it leads and Skogens herrar is a row.
+    const json = { 'content-type': 'application/json' }
+    expect((await fetch(`${run.http}/projects/${run.otherProjectId}`, { method: 'PUT', headers: json, body: JSON.stringify({ rev: 1, ...projectDoc(), name: 'Vinterspelet', rows: [...projectDoc().rows, { id: 'is', fields: { title: 'Is', antal: 1 } }] }) })).status).toBe(200)
+    history.replaceState(null, '', `/?server=${encodeURIComponent(run.http)}`)
+    render(<HomePage onNavigate={() => undefined} />)
+    const panel = await screen.findByRole('region', { name: 'Väntar på dig' })
+    expect(within(panel).getAllByRole('link')[0]!.textContent).toBe('2 nya flaggorSkogens herrar v2 · från bordet i dag')
+    const hero = screen.getByRole('region', { name: 'Fortsätt där du slutade' })
+    expect(within(hero).getByText('Vinterspelet')).toBeTruthy()
+    const row = document.querySelector(`[data-project="${run.projectId}"]`) as HTMLElement
+    const chip = await within(row).findByText('2 nya flaggor')
+    expect(chip.closest('[data-new-flags]')).not.toBeNull()
+    // Said with the game when the row is gone through, after its line and before its card.
+    await waitFor(() => expect(within(row).getByRole('link', { name: /^Skogens herrar .* 2 nya flaggor Första kortet/ })).toBeTruthy())
+    // One chip on the page: the game with no new flags has none, and the hero has its number.
+    expect(document.querySelectorAll('.byd-home-chip[data-new-flags]').length).toBe(1)
+    expect(within(hero).queryByText('2 nya flaggor')).toBeNull()
   })
 
   // Two tables of one game, both over and neither answered, were two rows that said the same thing

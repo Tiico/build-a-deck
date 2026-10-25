@@ -688,30 +688,48 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
             <section className="byd-home-all" aria-labelledby={hero ? 'byd-home-all' : undefined}>
               {hero && <h2 id="byd-home-all" className="byd-home-h2">{t('home.all.title')}</h2>}
               <div className="byd-home-grid" data-projects style={{ ['--byd-home-card-h' as string]: `${HOME_CARD_H}px` }}>
-                {rest.map((p) => (
-                  <div key={p.id} className="byd-home-game" data-project={p.id}>
-                    {/* The game's name leads the link's name, and the card comes last (#555): going
-                        through the page's links, the game is what is heard first. */}
-                    <a className="byd-home-open" aria-labelledby={`home-${p.id}-name home-${p.id}-line home-${p.id}-played home-${p.id}-card`} href={editorOf(p)} onClick={toEditor(p)}>
-                      <GameCard project={p.id} peek={p.card ?? null} face={cards?.[p.id] ?? null} lost={cardsLost} assetBase={http} t={t} />
-                      <span className="byd-home-row">
-                        <strong id={`home-${p.id}-name`}>{p.name}</strong>
-                        <span id={`home-${p.id}-line`} className="byd-muted">
-                          {factsLine(t, p)}
-                        </span>
-                        <span id={`home-${p.id}-played`} className="byd-muted">
-                          {playedLine(t, lang, p)}
-                        </span>
-                        {runningOf(p).slice(0, 1).map((table) => (
-                          <span key={table.id} className="byd-home-live">
-                            {t('home.row.live', { code: table.code })}
+                {rest.map((p) => {
+                  const live = runningOf(p).slice(0, 1)
+                  const flags = waiting?.[p.id]?.playtest?.flags ?? 0
+                  return (
+                    <div key={p.id} className="byd-home-game" data-project={p.id}>
+                      {/* The game's name leads the link's name, and the card comes last (#555): going
+                          through the page's links, the game is what is heard first. Its new flags are
+                          said before the card (#1282), since they are news about the game. */}
+                      <a className="byd-home-open" aria-labelledby={`home-${p.id}-name home-${p.id}-line home-${p.id}-played${flags > 0 ? ` home-${p.id}-flags` : ''} home-${p.id}-card`} href={editorOf(p)} onClick={toEditor(p)}>
+                        <GameCard project={p.id} peek={p.card ?? null} face={cards?.[p.id] ?? null} lost={cardsLost} assetBase={http} t={t} />
+                        <span className="byd-home-row">
+                          <strong id={`home-${p.id}-name`}>{p.name}</strong>
+                          <span id={`home-${p.id}-line`} className="byd-muted">
+                            {factsLine(t, p)}
                           </span>
-                        ))}
-                      </span>
-                    </a>
-                    {moreOf(p)}
-                  </div>
-                ))}
+                          <span id={`home-${p.id}-played`} className="byd-muted">
+                            {playedLine(t, lang, p)}
+                          </span>
+                          {/* What is going on with the game, as chips on one line (#1204, #1282): a table
+                              running, and the flags new on its newest version (G1), counted as «Väntar
+                              på dig» counts them and from the same answer. */}
+                          {(live.length > 0 || flags > 0) && (
+                            <span className="byd-home-chips">
+                              {live.map((table) => (
+                                <span key={table.id} className="byd-home-chip byd-home-live">
+                                  {t('home.row.live', { code: table.code })}
+                                </span>
+                              ))}
+                              {flags > 0 && (
+                                <span id={`home-${p.id}-flags`} className="byd-home-chip" data-new-flags="">
+                                  <FlagGlyph />
+                                  {t(flags === 1 ? 'home.waiting.flags.one' : 'home.waiting.flags.other', { n: flags })}
+                                </span>
+                              )}
+                            </span>
+                          )}
+                        </span>
+                      </a>
+                      {moreOf(p)}
+                    </div>
+                  )
+                })}
                 <a className="byd-home-game" data-new href={`/new?${suffix(new URLSearchParams())}`} onClick={(e) => { e.preventDefault(); void newGame() }}>
                   {t('home.new')}
                 </a>
