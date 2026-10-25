@@ -2359,6 +2359,16 @@ Prototypens panel och heronas «enkätsvar» och «nya flaggor» byggdes som pro
   En medredigerares version nämns bara när författaren är känd, med det namn adressen ger (#1198) och aldrig med adressen.
 - Grindarna: `packages/server/test/version-author.test.ts` (författaren och bakåtfyllnaden, mot minnet och Postgres), `packages/server/test/waiting.test.ts` (definitionen av ny, svaren, medredigerarens version och behörigheten, mot minnet och Postgres) och `packages/web/test/account-page.test.tsx` och `editor-results.test.tsx` (panelen, heron och vägen in i Resultat).
 
+**Panelens enkäter per spel, spelradens flaggbricka och «Pågår nu» vid 1024 (2026-10-25, #1282).**
+- **Enkäterna vid ett spel är en rad i panelen**, som flaggorna och versionerna redan är en rad per spel.
+  Två avslutade bord vid samma spel gav två rader som var lika till bokstaven.
+  Raden räknar dem («Svara på 2 enkäter · Skogens herrar · 2 bord, senast i dag») och leder till enkäten vid det bord man satt vid sist, det man minns bäst.
+  Varje bord behåller sin egen bricka och sin egen väg till enkäten under «Bord du har spelat vid».
+  Rader med datum eller rumskod valdes bort: panelen i prototypen tål tre korta rader, inte en rad per bord, och en rumskod säger ingenting efter att bordet är slut.
+- **Spelraden bär prototypens flaggbricka** («⚑ 2 nya flaggor») med samma definition av ny och från samma svar som panelen; heron säger det i sina siffror och bär ingen bricka.
+- **«Pågår nu» lägger sina två knappar sida vid sida där båda ryms hela, och under varandra där de inte gör det**, så att ingen av dem bryts över två rader.
+- Grindarna: `packages/web/test/account-page.test.tsx` (raden, brickan) och `home-layout.test.tsx` (knapparna på en rad vid 1024, 1280 och 1440, också i ett brett typsnitt).
+
 ### G2. Kommunikation: ingen inbyggd röst (fråga 19)
 
 Användarna kör Discord eller motsvarande vid sidan om.

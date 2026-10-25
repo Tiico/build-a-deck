@@ -112,6 +112,43 @@ describe.each([390, 320, 1280])('Mina spel at %i px (#555)', (width) => {
   }, 60_000)
 })
 
+// «Öppna bordet» in «Pågår nu» broke over two lines at 1024 (#1282), where the side column is 300 px
+// and the two ways of a band shared it half and half. Each way says itself on one line at every
+// desk width, side by side where both fit and one under the other where they do not, and in a wide
+// face too (Verdana or DejaVu), since the Mac's narrow system font hides what the runner's does not.
+describe.each([1024, 1280, 1440])('«Pågår nu» at %i px (#1282)', (width) => {
+  it('says each way of a running table on one line, inside its band', async () => {
+    const html = await started()
+    const page = await browser.newPage({ viewport: { width, height: 800 } })
+    try {
+      await page.setContent(document_(html), { waitUntil: 'load' })
+      for (const face of ['', `* { font-family: Verdana, 'DejaVu Sans', sans-serif !important; }`]) {
+        if (face) await page.addStyleTag({ content: face })
+        const ways = (await page.evaluate(`(() => {
+          const band = document.querySelector('.byd-home-running-row').getBoundingClientRect()
+          return [...document.querySelectorAll('.byd-home-running-row a')].map((a) => {
+            const words = document.createRange()
+            words.selectNodeContents(a)
+            const box = a.getBoundingClientRect()
+            return {
+              text: a.textContent,
+              lines: new Set([...words.getClientRects()].filter((r) => r.width > 0).map((r) => Math.round(r.top))).size,
+              height: box.height,
+              inside: box.left >= band.left && box.right <= band.right,
+              cut: a.scrollWidth > a.clientWidth,
+            }
+          })
+        })()`)) as { text: string; lines: number; height: number; inside: boolean; cut: boolean }[]
+        expect(ways.map((w) => w.text)).toEqual(['Öppna spelet', 'Öppna bordet'])
+        for (const way of ways) expect({ ...way, face }).toEqual({ ...way, face, lines: 1, inside: true, cut: false })
+        for (const way of ways) expect(way.height).toBeGreaterThanOrEqual(44)
+      }
+    } finally {
+      await page.close()
+    }
+  }, 60_000)
+})
+
 // The help on an empty account was laid straight over «＋ Nytt spel», the one thing it explains
 // (#726, L32). With room over its line it opens there instead.
 describe.each([390, 768, 1280])('an empty account at %i px (#726)', (width) => {

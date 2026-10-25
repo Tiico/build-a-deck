@@ -176,7 +176,12 @@ input.byd-code-field { font: 700 22px/1 ui-monospace, Menlo, monospace; letter-s
 .byd-home-row { display: grid; gap: 3px; min-width: 0; padding-top: 6px; }
 .byd-home-row strong { overflow: hidden; text-overflow: ellipsis; }
 .byd-home-row .byd-muted { font-size: 13px; }
-.byd-home-live { justify-self: start; margin-top: 4px; padding: 2px 8px; border-radius: 999px; background: #1b2a22; color: #d8ffe8; font-size: 12px; font-weight: 600; }
+/* What is going on with a game, as the prototype's chips on one line (#1204, #1282): a table
+   running on the table's green, and the new flags on the flag's yellow, as «Väntar på dig» has it. */
+.byd-home-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; min-width: 0; }
+.byd-home-chip { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.byd-home-live { background: #1b2a22; color: #d8ffe8; }
+.byd-home-chip[data-new-flags] { background: #2e2717; color: #f2c46d; }
 /* The hero (#1204, beslut B): the game last saved, its fan, and its two things to do. */
 .byd-home-hero > .byd-home-game { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 32px; padding: 28px; border-radius: 22px; background: radial-gradient(90% 120% at 0% 100%, #1d2a24, var(--byd-account-card-bg) 60%); }
 .byd-home-hero .byd-home-open { display: block; padding: 0; }
@@ -223,6 +228,11 @@ input.byd-code-field { font: 700 22px/1 ui-monospace, Menlo, monospace; letter-s
 .byd-home-running-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: 10px 12px; padding: 14px 16px; border-radius: 16px; background: #1b2a22; color: #d8ffe8; }
 .byd-home-running-row b { font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .byd-home-running-row strong { justify-self: end; font: 700 22px ui-monospace, Menlo, monospace; letter-spacing: 4px; color: #fff; }
+/* The two ways under the name and the code (#1282): side by side and of one width where both fit
+   whole, and one under the other, each the band's width, where they do not — at 1024 the side
+   column is 300 px, and «Öppna bordet» broke over two lines in half of it. */
+.byd-home-running-ways { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 10px 12px; }
+.byd-home-running-ways > a { flex: 1 1 0; min-width: max-content; white-space: nowrap; }
 .byd-home-running-row a { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 12px; border-radius: 10px; background: #7dd3a0; color: #0f1117; font-weight: 700; text-decoration: none; text-align: center; }
 /* The way to the game is the row's second action (#1217): outlined, as L13 has every second one. */
 .byd-home-running-row a.byd-home-running-game { background: transparent; box-shadow: inset 0 0 0 1px #7dd3a088; color: #d8ffe8; }
