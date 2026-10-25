@@ -289,8 +289,14 @@ export type ProjectStore = {
   at(id: string, rev: number): Promise<ProjectRecord | null>
   // Names a version, or takes the name back with null.
   label(id: string, rev: number, label: string | null): Promise<VersionSummary | 'missing'>
-  // Takes a game away with its whole history; false when there was no such game.
-  remove(id: string): Promise<boolean>
+  // Takes a game away with its whole history; false when there was no such game. Every member but
+  // the owner is told it went (#1334), in the same step: by the game's name, `why` and when.
+  remove(id: string, why?: GoneWhy): Promise<boolean>
+  // The games gone from an account's Mina spel that it has not closed the band of (#1334), oldest
+  // first.
+  goneFor(account: string): Promise<GoneGame[]>
+  // Closes one: the notice goes. False when it is not the account's, or already gone.
+  dismissGone(account: string, id: string): Promise<boolean>
   // The edit log between saves (D3): committed before an edit is applied, read back on load.
   appendEdits(id: string, edits: AppliedEdit[]): Promise<void>
   readEdits(id: string, sinceSeq: number): Promise<AppliedEdit[]>
@@ -317,6 +323,11 @@ export type ProjectStore = {
   invitesOf(account: string, email: string): Promise<{ sent: InviteRecord[]; received: InviteRecord[] }>
 }
 
+// Why a game went from a member's Mina spel (#1334): its owner took it away, or deleted her account.
+export type GoneWhy = 'removed' | 'account'
+// What a member is told of it: the game's name, why and when, and never who the owner was (G6).
+export type GoneGame = { id: string; name: string; why: GoneWhy; at: string }
+
 // An invitation as the extract tells it: to which game and address, as what, when, and whether it
 // was followed.
 export type InviteRecord = { project: string; email: string; role: Role; sentAt: string; expiresAt: string; acceptedAt: string | null }
@@ -330,6 +341,8 @@ export class MemoryProjectStore implements ProjectStore {
   // Who else a project is shared with (D3), by project.
   private readonly shared = new Map<string, Map<string, Role>>()
   private readonly invites = new Map<string, { project: string; email: string; role: Role; expiresAt: string; by?: string; sentAt: string; used?: boolean; usedAt?: string }>()
+  // The games gone from each member's Mina spel (#1334), by account.
+  private readonly gone = new Map<string, GoneGame[]>()
   // The writes held to a ceiling on storage, one after another (#1197): weighing asks the asset
   // store, which is a wait, and no other such write may come in between the count and the write.
   private turn: Promise<unknown> = Promise.resolve()
@@ -599,7 +612,15 @@ export class MemoryProjectStore implements ProjectStore {
     return { rev, at: found.at, ...(found.label !== undefined ? { label: found.label } : {}) }
   }
 
-  async remove(id: string): Promise<boolean> {
+  async remove(id: string, why: GoneWhy = 'removed'): Promise<boolean> {
+    const rec = this.docs.get(id)
+    if (rec?.owner !== undefined) {
+      const at = new Date().toISOString()
+      // The web bundle reads this module too, so the id is Web Crypto's and not `node:crypto`'s.
+      for (const account of this.shared.get(id)?.keys() ?? []) {
+        if (account !== rec.owner) this.gone.set(account, [...(this.gone.get(account) ?? []), { id: crypto.randomUUID(), name: rec.name, why, at }])
+      }
+    }
     const had = this.docs.delete(id)
     this.history.delete(id)
     this.edits.delete(id)
@@ -608,11 +629,23 @@ export class MemoryProjectStore implements ProjectStore {
     return had
   }
 
-  // An account that deleted itself (#1280), as Postgres forgets it: its games go, and the versions
-  // and edits it made in other games, its memberships and the invitations it sent or was sent no
-  // longer say it.
+  async goneFor(account: string): Promise<GoneGame[]> {
+    return structuredClone(this.gone.get(account) ?? [])
+  }
+
+  async dismissGone(account: string, id: string): Promise<boolean> {
+    const all = this.gone.get(account) ?? []
+    const kept = all.filter((g) => g.id !== id)
+    this.gone.set(account, kept)
+    return kept.length < all.length
+  }
+
+  // An account that deleted itself (#1280), as Postgres forgets it: its games go, each member told
+  // why (#1334), and the versions and edits it made in other games, its memberships, the invitations
+  // it sent or was sent and the games gone from its own Mina spel no longer say it.
   forgetAccount(account: string, email: string): void {
-    for (const [id, rec] of this.docs) if (rec.owner === account) void this.remove(id)
+    for (const [id, rec] of this.docs) if (rec.owner === account) void this.remove(id, 'account')
+    this.gone.delete(account)
     for (const versions of this.history.values()) for (const v of versions) if (v.by === account) delete v.by
     for (const edits of this.edits.values()) for (const e of edits) if (e.by === account) delete e.by
     for (const members of this.shared.values()) members.delete(account)

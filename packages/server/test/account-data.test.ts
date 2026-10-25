@@ -20,6 +20,10 @@ const IN_THE_EXTRACT: Readonly<Record<string, string | { not: string }>> = {
   'events.intent': 'tables.0.flags.0.note',
   'surveys.who': 'tables.0.name',
   'surveys.answers': 'tables.0.survey.answers',
+  // The band on her Mina spel (#1334), as long as she has not closed it.
+  'gone_games.name': 'goneGames.0.name',
+  'gone_games.why': 'goneGames.0.why',
+  'gone_games.at': 'goneGames.0.at',
   // A report (#1274) is anyone's, account or not, and tied to the address its writer gave, never to
   // an account: it is given out through Kontakt when its writer asks (RUNBOOK §8).
   ...Object.fromEntries(['at', 'what', 'place', 'why', 'name', 'email'].map((c) => [`reports.${c}`, { not: 'a report is tied to the address its writer gave, not to an account, and is given out through Kontakt' }])),
@@ -114,6 +118,8 @@ for (const backend of accountBackends) {
       expect(data.passkeys).toEqual([expect.objectContaining({ device: 'Safari på Mac', aaguid: 'fbfc3007-154e-4ecc-8c0b-6e020557d7bd' })])
       expect(data.aiKey).toMatchObject({ provider: 'anthropic', last4: 'x7Qd' })
       expect(data.games.map((g) => [g.name, g.role]).sort()).toEqual([['Skogens råd', 'owner'], ['Stjärnhandel', 'owner'], ['Vargtimmen', 'editor']])
+      // Månskugga, Sara's game she edited, which Sara took away: by its name, why and when, never by Sara.
+      expect(data.goneGames).toEqual([{ name: 'Månskugga', why: 'removed', at: expect.any(String) }])
       expect(data.games.find((g) => g.name === 'Vargtimmen')?.versionsSaved.map((v) => v.rev)).toEqual([2])
       expect(data.invitesSent).toEqual([expect.objectContaining({ game: 'Skogens råd', email: w.kim.email, role: 'editor' })])
       expect(data.invitesReceived).toEqual([expect.objectContaining({ game: 'Vargtimmen', email: w.nicklas.email })])
@@ -123,7 +129,11 @@ for (const backend of accountBackends) {
       // Her own table; the one at Sara's game is borne by Sara.
       expect(data.borne.tables).toBe(1)
       // Nothing of the key itself, and nothing about the others: Kim is only the address she invited.
-      for (const other of ['sk-ant-api03-hemligx7Qd', 'Kim Kvar', 'Sara', w.sara.email, 'Bo', BO_NOTE]) expect([other, text.includes(other)]).toEqual([other, false])
+      // Each as a word of its own: in memory an account's id is 43 random base64url characters, and
+      // one in a hundred or so of them holds «Bo» somewhere inside it.
+      const said = (word: string) => new RegExp(`(?<![\\w-])${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\w-])`).test(text)
+      expect([NICKLAS, 'Månskugga', w.nicklas.email].map(said)).toEqual([true, true, true])
+      for (const other of ['sk-ant-api03-hemligx7Qd', 'Kim Kvar', 'Sara', w.sara.email, 'Bo', BO_NOTE]) expect([other, said(other)]).toEqual([other, false])
     })
   })
 }
