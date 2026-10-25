@@ -2490,11 +2490,33 @@ Ett konto kan ladda ner sina uppgifter och radera sig självt (art. 15 och 20); 
 En integritetspolicy med en förteckning över behandlingar och biträden står på «Villkor · Integritet» på #757:s rad.
 Kontots och gästens vägar är nya ytor och prototypas först.
 
+Byggt 2026-10-25 (#1279): raderingen i lagret, gallringen, liggaren och operatörsskriptet.
+Raderingen är `ErasureStore` i `packages/server/src/erase.ts`, i minnet och i Postgres (`pg.erasures()`), och den tar tre saker: ett inträde, ett bords gäster och ett spels bord.
+Ett inträde är en plats eller en betraktare som en gäst köpt med ett namn, och det heter efter bordet, platsen och stunden det gavs, eftersom en tokens hash byts när ett konto går tillbaka till bordet (#690).
+Hennes rader är de som skrivits från de gånger hon satt på platsen, och en betraktares är flaggorna med hennes namn.
+Att hon satt där avgörs av att hennes inträde levde när platsen togs, eftersom en plats har ett levande inträde åt gången (DRIFT §9); en `seat.claim` som inget inträdes livstid rymmer går till inträdena på platsen med samma namn.
+I hennes rader maskas personfälten med `redactLine`, hennes inträde står kvar under det maskade namnet, och hennes enkätsvar raderas.
+Ett bords gäster är alla rader och alla inträden vid bordet, och alla enkätsvar raderas.
+Ett spel är vart och ett av dess bord, medan sessionsraden och bäraren står kvar och kvoterna räknar samma bord som förut (#1196).
+Allt sker i en transaktion per begäran under bordets skrivlås, och en rad maskas som den skrevs: bara `intent` ändras, bara i personfälten, och raden behåller sin `schema_version`.
+Ett spel som tas bort i editorn maskar sina bord direkt efter att spelet gått; misslyckas maskningen står spelet borta, och sopningens nästa varv hittar det.
+Sopningen (`sweepErasures`, vid start och varje timme bredvid `sweepSpent`) maskar en gäst utan konto tolv kalendermånader efter att bordets logg slutade med `session.end`, och då står hennes enkätsvar kvar med siffrorna men utan namn och fritext.
+Ett claimat inträde rörs inte, och inte heller en rad som också är ett claimat inträdes.
+Samma sopning maskar borden efter spel som är borta och som liggaren inte har maskat, vilket första gången efter deployen är varje spel som någonsin tagits bort; ett andra varv ändrar ingenting.
+Ett bord som står laddat läser om sin logg när en radering har maskat den, vem som än raderade: appen själv, eller operatörens skript i en annan process, som Postgres berättar om med en notifiering när transaktionen går igenom.
+Varje anslutning får då en patch som efter vilken rad som helst, platsen står kvar som tagen under det maskade namnet, och en ny anslutning får den maskade loggen.
+Det en öppen telefon redan har visat av aktivitetsraderna ligger kvar i den webbläsaren tills den laddas om.
+Liggaren är tabellen `erasures`: id, när, vad (`guest`, `table` eller `game`), varför (`request`, `retention` eller `removed`), och bordet, platsen och stunden eller spelet; inget namn, ingen adress och ingen token.
+Operatörsskriptet är `pnpm --filter @byd/server erase`, med `table <session> [--seat <plats> | --name <namn>]`, `game <id>`, `ledger` och `replay [--from <fil>]`, och det säger vad det gjorde i en rad utan namn.
+`erase game` maskar ett spels bord och lämnar spelet, som är designerns att ta bort; `replay` tar bort ett spel igen bara när designern hade tagit bort det.
+Ytorna säger ännu inte det maskade värdet med egna ord: en maskad plats visar platshållaren som den är, och det hör till kontots och gästens skivor (#1280, #1281).
+Grinden är `packages/server/test/erase.test.ts`, mot båda lagren, med en återställning i Postgres som körs om ur liggaren.
+
 Skivorna (alla öppna 2026-10-24):
 - #1276 personfälten och kolumnerna som sluten, testad karta — byggd.
 - #1277 det som inte längre kan användas rensas — byggd.
-- #1278 gästens namn och token ur adressraden och `Referer` — pågår.
-- #1279 radering i lagret, gallring, raderingsliggare och operatörsskript — efter #1276.
+- #1278 gästens namn och token ur adressraden och `Referer` — byggd.
+- #1279 radering i lagret, gallring, raderingsliggare och operatörsskript — byggd.
 - #1280 kontot laddar ner sina uppgifter och raderar sig i Profil — efter #1279 och #1254, prototyp först.
 - #1281 gästens väg: meningen, radering från telefonen och integritetssidan — efter #1279 och villkorens rad (#1272), prototyp först.
 

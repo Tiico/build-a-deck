@@ -54,4 +54,14 @@ export class MemorySurveyStore implements SurveyStore {
   async list(sessionId: string): Promise<SurveyRecord[]> {
     return this.records.filter((r) => r.sessionId === sessionId).map((r) => structuredClone(r))
   }
+  // An erasure's (#1279): each of the table's answers kept as it is, kept with what `change` gives
+  // instead, or dropped for null — the memory store's share of what Postgres does in its transaction.
+  rewrite(sessionId: string, change: (record: SurveyRecord, index: number) => SurveyRecord | null): void {
+    let i = 0
+    this.records = this.records.flatMap((r) => {
+      if (r.sessionId !== sessionId) return [r]
+      const next = change(structuredClone(r), i++)
+      return next ? [next] : []
+    })
+  }
 }
