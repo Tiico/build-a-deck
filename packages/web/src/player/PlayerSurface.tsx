@@ -13,7 +13,7 @@ import { DicePill, DiceSheet, diceOf } from './Dice.js'
 import { standingRewind } from '../table/rewind.js'
 import { cardName } from '../table/keyboard.js'
 import { TableSummary, RecentActivity } from './TableSummary.js'
-import { ExitButton, FlagButton, SessionOverlays, UndoButton, useSheetOpener, useToast, type Sheet } from './SessionOverlays.js'
+import { ExitButton, FlagButton, SessionOverlays, UndoButton, useSheetOpener, useToast, type Forget, type Sheet } from './SessionOverlays.js'
 import { RuleDrawer } from '../rules/RuleDrawer.js'
 import { Help } from '../editor/HelpDrawer.js'
 import { playIntents } from './play.js'
@@ -90,9 +90,12 @@ export type PlayerSurfaceProps = {
   away?: boolean | undefined
   // The owner's way to the editor with the seat kept (#1217), for the exit sheet.
   stay?: ReactNode
+  // A guest's way to leave with her name removed (#1281), and where it leads once done.
+  forget?: Forget | undefined
+  onForgotten?: () => void
 }
 
-export function PlayerSurface({ client, view, activity, seat, name, sessionId, faces, version, marks, turnedHand, openHand, onLeft, away = false, stay }: PlayerSurfaceProps) {
+export function PlayerSurface({ client, view, activity, seat, name, sessionId, faces, version, marks, turnedHand, openHand, onLeft, away = false, stay, forget, onForgotten }: PlayerSurfaceProps) {
   const ids = useId()
   const t = useT()
   const [tab, setTab] = useState<Tab>('hand')
@@ -410,7 +413,7 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
         />
       )}
       {rolling && <DiceSheet view={view} activity={activity} send={(...intents) => client.send(...intents)} onClose={() => setRolling(false)} />}
-      <SessionOverlays client={client} view={view} seat={seat} sheet={sheet} onSheet={setSheet} onLeft={onLeft} toast={null} onToast={setToast} version={version} faces={faces} stay={stay} />
+      <SessionOverlays client={client} view={view} seat={seat} sheet={sheet} onSheet={setSheet} onLeft={onLeft} toast={null} onToast={setToast} version={version} faces={faces} stay={stay} forget={forget} {...(onForgotten ? { onForgotten } : {})} />
     </>
   )
 }

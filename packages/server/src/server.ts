@@ -230,6 +230,8 @@ const StartBody = z.object({ seating: z.enum(SEATINGS).optional() })
 const JoinBody = z.object({ name: z.string().trim().min(1).max(64).refine((name) => name !== REDACTED, 'the placeholder of a masked name is nobody’s name'), seat: z.string().min(1).optional() })
 const KickBody = z.object({ seat: z.string().min(1) })
 const ClaimBody = z.object({ token: z.string().min(1) })
+// The guest's own erasure (#1281): the token her phone was given, and nothing else.
+const EraseBody = z.object({ token: z.string().min(1) })
 
 // The tables an account sat at (G1), newest first, each with what came of it: the game's name,
 // whether it ended, whether the survey was answered from that seat, how many moments were flagged
@@ -904,6 +906,24 @@ async function surveySender(opts: ServerOptions, req: IncomingMessage, session: 
   if (observer) return seat === null && body.who ? { who: body.who, seat: null, observer: true } : null
   if (seat === null || !session.setup.seats.includes(seat)) return null
   return { who: actor.seats().find((s) => s.id === seat)?.name ?? seat, seat }
+}
+
+// `POST /sessions/:id/erase` (#1281): what the guest's own erasure answers, and does.
+async function eraseGuest(opts: ServerOptions, erasures: ErasureStore, sessionId: string, raw: string): Promise<[number, unknown]> {
+  if (!(await opts.store.loadSession(sessionId))) return [404, { error: 'unknown session' }]
+  let given: unknown
+  try {
+    given = JSON.parse(raw || '{}')
+  } catch {
+    given = null
+  }
+  const parsed = EraseBody.safeParse(given)
+  if (!parsed.success) return [400, { error: 'a token is needed' }]
+  const guest = await opts.store.guestByToken(sessionId, hash(parsed.data.token))
+  if (!guest) return [403, { error: 'the token admits nobody at this table' }]
+  const done = await erasures.erase([entry({ kind: 'guest', session: sessionId, seat: guest.seat, issuedAt: guest.issuedAt }, 'request', clock(opts))])
+  await opts.host.reload(done.sessions)
+  return [200, { ok: true }]
 }
 
 // One editor on one project (D3). Only the account that owns the project may edit it; roles for
@@ -2544,6 +2564,18 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     }
     await opts.surveys.put({ sessionId, version: actor.version, at: clock(opts).toISOString(), ...sender, answers: body.answers })
     json(res, 201, { ok: true })
+    return true
+  }
+  // A guest erases herself (#1281, G6, F5): her phone asks with the token her seat or her watch was
+  // bought with, and that admission is erased as the operator's script erases one through Kontakt
+  // (#1279) — her name, what she wrote from it and her survey answers. The token is looked up and
+  // not tried as the door tries it: a guest who has left, was kicked, or whose table is over is still
+  // the one the token was given to, and her way to be forgotten does not close with the door. A
+  // token is nobody at any other table, so it erases nothing there.
+  const erase = /^\/sessions\/([^/]+)\/erase$/.exec(url.pathname)
+  if (erase && req.method === 'POST' && opts.erasures) {
+    const [status, body] = await eraseGuest(opts, opts.erasures, decodeURIComponent(erase[1] ?? ''), await readBody(req))
+    json(res, status, body)
     return true
   }
   const surveys = /^\/sessions\/([^/]+)\/surveys$/.exec(url.pathname)

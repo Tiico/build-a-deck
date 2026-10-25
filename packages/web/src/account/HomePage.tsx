@@ -1,3 +1,4 @@
+import { maskedWord, maskedWords } from '../masked.js'
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { canDelete, canEdit, canStartTables, type CardFace, type Role } from '@byd/server/doc'
 import { LandingPage } from './LandingPage.js'
@@ -776,7 +777,7 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
                     <span className="byd-home-waiting-icon"><PencilGlyph /></span>
                     <span className="byd-home-waiting-text">
                       <b>{t('home.played.answer')}</b>
-                      <small>{t('home.waiting.survey.line', { game: p.game ?? t('home.played.some-table'), name: p.name })}</small>
+                      <small>{t('home.waiting.survey.line', { game: p.game ?? t('home.played.some-table'), name: maskedWord(p.name, 'seat-name', maskedWords(t)) })}</small>
                     </span>
                     <span className="byd-home-waiting-arrow"><ChevronGlyph to="right" /></span>
                   </a>
@@ -809,7 +810,7 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
                     <span className="byd-muted">{when(t, lang, p.at)}</span>
                   </div>
                   <strong>{p.deleted ? t('home.played.deleted') : (p.game ?? t('home.played.some-table'))}</strong>
-                  <span className="byd-muted">{t('home.played.you', { version: versionWord(p.version, t, 'short'), name: p.name })}</span>
+                  <span className="byd-muted">{t('home.played.you', { version: versionWord(p.version, t, 'short'), name: maskedWord(p.name, 'seat-name', maskedWords(t)) })}</span>
                   {/* What the player can do with the table (#1143, variant B): open it while it runs,
                       answer its survey once it is over, and otherwise nothing but a quiet tick. A
                       game taken away has no survey worth answering (#676). */}

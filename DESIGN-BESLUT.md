@@ -2558,6 +2558,12 @@ Samma sopning maskar borden efter spel som är borta och som liggaren inte har m
 Ett bord som står laddat läser om sin logg när en radering har maskat den, vem som än raderade: appen själv, eller operatörens skript i en annan process, som Postgres berättar om med en notifiering när transaktionen går igenom.
 Varje anslutning får då en patch som efter vilken rad som helst, platsen står kvar som tagen under det maskade namnet, och en ny anslutning får den maskade loggen.
 Det en öppen telefon redan har visat av aktivitetsraderna ligger kvar i den webbläsaren tills den laddas om.
+
+Byggt 2026-10-25 (#1281): gästens egen väg, som L87 beskriver.
+`POST /sessions/:id/erase` tar gästens token och raderar inträdet den gavs för, som operatörens skript raderar ett, med skälet `request` i liggaren.
+Token slås upp och prövas inte som dörren prövar den, så en gäst som lämnat, blivit sparkad eller vars bord är slut kan fortfarande radera sig; vid ett annat bord är den ingen, och raderar ingenting.
+En maskad plats, kommentar eller anteckning sägs på läsarens språk, «Utan namn», «Kommentaren är borttagen.» och «Anteckningen är borttagen.», och aldrig som platshållaren.
+Bordsklienten säger dem en gång för varje yta vid bordet (`masked` i `TableClient`), och Resultat och Mina spel säger dem ur sina egna svar.
 Liggaren är tabellen `erasures`: id, när, vad (`guest`, `table` eller `game`), varför (`request`, `retention` eller `removed`), och bordet, platsen och stunden eller spelet; inget namn, ingen adress och ingen token.
 Operatörsskriptet är `pnpm --filter @byd/server erase`, med `table <session> [--seat <plats> | --name <namn>]`, `game <id>`, `ledger` och `replay [--from <fil>]`, och det säger vad det gjorde i en rad utan namn.
 `erase game` maskar ett spels bord och lämnar spelet, som är designerns att ta bort; `replay` tar bort ett spel igen bara när designern hade tagit bort det.
@@ -8778,3 +8784,34 @@ Sessionen och vyrollerna är desamma, och ett blandat bord fungerar som förut; 
 `packages/server/test/seating.test.ts` visar att svaret sparas, sägs på koden och i bordslistan, överlever en omstart och avvisas när det inte finns, mot minnet och Postgres.
 `packages/web/test/way-in.test.tsx` visar frågan vid varje start i editorn och på Mina spel, radens enda väg in och dess meny, kopian och vart «Öppna bordet» leder.
 `join-code-address.test.tsx` visar anslutningssidans enda «Gå med» för båda svaren på telefon och dator.
+
+### L87. Gästen tar bort sitt namn där hon lämnar och under tacket, men att behålla det är huvudvalet (prototypat 2026-10-25, beslutat 2026-10-25, #1281)
+
+Beställarens val är variant C ur [`docs/ux-audits/2026-10-25-gdpr-ytor/`](https://github.com/Tiico/build-a-deck/blob/c19d6c02/docs/ux-audits/2026-10-25-gdpr-ytor/README.md) (`?iss=gast&v=C`), med en ändring.
+Raderingen står där gästen lämnar bordet och under tacket efter enkäten, och de andra ser hennes plats som «Utan namn» (G6, F5).
+Ändringen gäller knapparnas rangordning: att lämna och behålla namnet är huvudvalet, och raderingen är en synlig andra knapp.
+Vi uppmanar alltså till att inte radera, men gömmer inte möjligheten.
+
+Lämna-arket har kvar sina två vägar ut i samma ordning och form som förut, «Lämna bordet» och «Avsluta för alla».
+Under dem står, efter en tunn linje, en mening om varför namnet hjälper: «Med ditt namn kvar vet designern vem som gjorde och sa vad.»
+Därunder står «Lämna och ta bort mitt namn…», en knapp med linje och utan fyllning, i den dämpade texten.
+Den är alltså där, nåbar och 44 px hög, men den ser inte ut som ett tredje val av samma vikt.
+Tacket har samma form: «Spara till ditt konto» står kvar som vägen vidare, och under villkorsraden står meningen och «Ta bort mitt namn och mina svar…».
+
+Knappen ställer först frågan i L9:s form, i ett eget ark: vad som tas bort (namnet hon satt under, det hon skrivit i anteckningsblocket och i flaggor, och under tacket enkätsvaren), att dragen står kvar under «Utan namn», och att det inte går att ångra.
+Fokus står på «Avbryt», och «Ja, lämna och ta bort» respektive «Ja, ta bort» är arkets röda knapp.
+Vid Lämna raderas namnet först och platsen lämnas sedan, eftersom raderingen är det som kan misslyckas och frågas igen; ett nej står vid knappen som trycktes (#7).
+Efteråt landar hon på en egen sida, «Du har lämnat bordet, och ditt namn är borttaget.», med vad som står kvar, att säkerhetskopiorna glömmer det inom åtta dagar, och «Till startsidan».
+Platsväljaren hade erbjudit henne platsen igen under ett namn som inte längre finns.
+Under tacket byts sparandet mot beskedet «Ditt namn och dina svar är borttagna.», tacket säger bara «Tack.», och fliken minns det vid en omladdning som den minns att svaren skickats.
+Observatören har samma väg under sitt tack.
+Ägarens egen plats har ingen token och därför ingen sådan knapp; kontots radering är #1280:s.
+
+Meningen där gästen sätter sig är tre korta rader i stället för en: «Sparas», «Ser det» och «Hur länge», med integritetssidan på raden överst (#1272).
+Där hon sparar till ett konto säger meningen vad sparandet ändrar: att namnet och svaren står kvar så länge kontot finns, i stället för ett år.
+Integritetstexten säger gästens väg i avsnitten om gäster, lagringstider och rättigheter.
+
+Varianterna A (bara under tacket, «Borttagen gäst») och B (en rad i Mer hela tiden, «Plats B») valdes bort.
+A lämnade den som går före slutet med bara Kontakt, och B gjorde att spela vidare utan namn till ett nytt läge för varje yta.
+
+Grindarna är `packages/server/test/erase.test.ts` för dörren mot minnet och Postgres, `packages/web/test/guest-forget.test.tsx` för arket, frågan och tacket, `masked-names.test.ts` för att ingen skärm vid bordet får platshållaren, och `packages/e2e/test/guest-forget.spec.ts` för resan från telefonen med beviset på nätverkstrafiken.

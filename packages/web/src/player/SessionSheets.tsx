@@ -1,11 +1,11 @@
-import { useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useFocusTrap } from '../editor/focusTrap.js'
 import { Refusal, type RefusalHandle } from '../status/Refusal.js'
 import { useT } from '../i18n/index.js'
 import type { VisibleComponentState } from '@byd/protocol'
 import { Texture } from '../table/Texture.js'
 import { cardName } from '../table/keyboard.js'
-import { CloseGlyph } from '../glyphs.js'
+import { CheckGlyph, CloseGlyph } from '../glyphs.js'
 
 // Flagging a moment (G3, prototype A): a sheet with an optional note. Sends at once.
 //
@@ -122,7 +122,12 @@ export function ProposeSheet({ where, who, onPropose, onClose }: { where: string
 // `pile` is where the hand goes back to, by its own name (#714); null says «leken». `stay` is the
 // owner's third way (#1217, L80): to the game's editor with the seat kept, first because it is the
 // one that gives nothing up.
-export function ExitSheet({ pile, onLeave, onEnd, onClose, refusal, stay }: { pile: string | null; onLeave(): void; onEnd(): void; onClose(): void; refusal?: RefusalHandle; stay?: ReactNode }) {
+//
+// `onForget` is a guest's way to leave and have her name removed (#1281, G6; beställarens val C med
+// en ändring 2026-10-25): offered under both ways out, after the sentence on why keeping it helps,
+// as a quieter button than either. Keeping the name is the first choice; removing it is visible and
+// reachable, and never dressed as an equal one. Absent without a guest's token.
+export function ExitSheet({ pile, onLeave, onEnd, onClose, refusal, stay, onForget }: { pile: string | null; onLeave(): void; onEnd(): void; onClose(): void; refusal?: RefusalHandle; stay?: ReactNode; onForget?: () => void }) {
   const t = useT()
   const box = useSheet(onClose)
   return (
@@ -154,6 +159,14 @@ export function ExitSheet({ pile, onLeave, onEnd, onClose, refusal, stay }: { pi
           </button>
           <p>{t('exit.sheet.end.body')}</p>
         </div>
+        {onForget && (
+          <div className="byd-forget-way">
+            <p>{t('forget.why')}</p>
+            <button type="button" data-kind="forget" onClick={onForget}>
+              {t('forget.leave')}
+            </button>
+          </div>
+        )}
         <div className="byd-sheet-actions">
           <button type="button" data-kind="quiet" onClick={onClose} data-first>
             {t('exit.sheet.stay')}
@@ -162,6 +175,65 @@ export function ExitSheet({ pile, onLeave, onEnd, onClose, refusal, stay }: { pi
         {refusal && <Refusal handle={refusal} />}
       </div>
     </div>
+  )
+}
+
+// The question before a guest's name is removed (#1281, L9's manners): what goes, what stays, that
+// it cannot be undone, with the focus on the answer that changes nothing. `leaving` is the way out's
+// («Lämna och ta bort ditt namn?»), and otherwise it is the thanks' («Ta bort ditt namn och dina
+// svar?»), which takes the answers too. `watched`: she watched rather than sat.
+export function ForgetSheet({ name, leaving, watched = false, onYes, onClose, refusal, busy = false }: { name: string; leaving: boolean; watched?: boolean; onYes(): void; onClose(): void; refusal?: RefusalHandle; busy?: boolean }) {
+  const t = useT()
+  const box = useSheet(onClose)
+  return (
+    <div className="byd-sheet-backdrop" onClick={onClose}>
+      <div
+        className="byd-sheet byd-session-sheet byd-forget-sheet"
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="forget-sheet-title"
+        onClick={(e) => e.stopPropagation()}
+        ref={box}
+      >
+        <p className="byd-sheet-title" id="forget-sheet-title">{t(leaving ? 'forget.leave.title' : 'forget.thanks.title')}</p>
+        <p>{t('forget.list')}</p>
+        <ul>
+          <li>{t(watched ? 'forget.list.watched' : 'forget.list.name', { name })}</li>
+          <li>{t('forget.list.words')}</li>
+          {!leaving && <li>{t('forget.list.answers')}</li>}
+        </ul>
+        <p>{t('forget.kept', { masked: t('masked.name') })}</p>
+        <div className="byd-sheet-actions">
+          <button type="button" data-kind="quiet" onClick={onClose} data-first>
+            {t('forget.cancel')}
+          </button>
+          <button type="button" data-kind="no" onClick={onYes} disabled={busy} className={refusal?.notice ? 'byd-status-refused-control' : undefined} {...(refusal?.control ?? {})}>
+            {t(leaving ? 'forget.leave.yes' : 'forget.thanks.yes')}
+          </button>
+        </div>
+        {refusal && <Refusal handle={refusal} />}
+      </div>
+    </div>
+  )
+}
+
+// Where a guest who left and had her name removed lands (#1281): it is done, what stayed, and when
+// the backups forget it. A page of its own and not the seat picker, which would offer her the seat
+// she just gave up under a name that is no longer there.
+export function ForgottenPage({ home }: { home: string }) {
+  const t = useT()
+  const here = useRef<HTMLHeadingElement>(null)
+  useEffect(() => here.current?.focus(), [])
+  return (
+    <main className="byd-forgotten" data-page="forgotten">
+      <CheckGlyph />
+      <h1 ref={here} tabIndex={-1}>
+        {t('forget.left.title')}
+      </h1>
+      <p>{t('forget.left.body', { masked: t('masked.name') })}</p>
+      <p>{t('forget.backups')}</p>
+      <a href={home}>{t('forget.home')}</a>
+    </main>
   )
 }
 

@@ -1,3 +1,5 @@
+import { forgetMe } from '../player/forget.js'
+import { ForgottenPage } from '../player/SessionSheets.js'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Intent, VisibleComponentState } from '@byd/protocol'
 import '../table/table.css'
@@ -183,7 +185,10 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
   // The room's code: the one the server tells this connection — the owner's own seat is told it,
   // and told the new one after «Ny kod» — or else the one a guest arrived with.
   const code = conn.room?.code ?? params.get('code')
+  // She left with her name removed (#1281), ahead of the door the release shut behind her.
+  const [forgotten, setForgotten] = useState(false)
 
+  if (forgotten) return <ForgottenPage home={links.home ?? '/'} />
   if (!sessionId || !seat) return <StatusNotice notice={guestNotice('missing', t)} surface="page" links={links} />
   // Not admitted, or kicked (DRIFT §9): a shut door rather than a broken line.
   if (refused === 'kicked') return <StatusNotice notice={kickedNotice(roomOpen === true, t)} surface="page" links={links} />
@@ -191,6 +196,8 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
   if (!view || !client) return <RouteStatus status={live.state === 'missing' ? { ...live, notice: guestNotice('missing', t) } : said} over="card" links={links} onRetry={conn.retry} />
 
   const me = view.seats.find((s) => s.id === seat)
+  // A guest's way to leave with her name removed (#1281); the owner's own seat is her account's (#1280).
+  const forget = token ? { name: me?.name ?? name ?? seat, run: () => forgetMe(http, sessionId, token) } : undefined
   // Which shape the hand takes (K17's revision of 2026-09-14, #77). In a landscape window it is a
   // column at the window's inline end and the felt keeps the height; in a portrait one the band
   // under the felt stands exactly as it was — there the window's short side is the width, the
@@ -346,7 +353,7 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
         )}
       </main>
       {kbd.panel}
-      <SessionOverlays client={client} view={view} seat={seat} sheet={sheet} onSheet={setSheet} onLeft={left} toast={toast} onToast={setToast} version={version} faces={http} stay={stay} flagDocked />
+      <SessionOverlays client={client} view={view} seat={seat} sheet={sheet} onSheet={setSheet} onLeft={left} toast={toast} onToast={setToast} version={version} faces={http} stay={stay} flagDocked forget={forget} onForgotten={() => setForgotten(true)} />
       </div>
       ) : (
         /* A window too small to carry a board gets the player's own surface instead (#99): the
@@ -368,6 +375,8 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
             openHand={kbd.openHand}
             onLeft={left}
             stay={stay}
+            forget={forget}
+            onForgotten={() => setForgotten(true)}
             away
           />
           {kbd.panel}

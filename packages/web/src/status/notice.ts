@@ -182,6 +182,8 @@ const REFUSALS: { match: RegExp; say: Key }[] = [
   { match: /is not a pile|is not an area|into itself|needs x and y/, say: 'refusal.place' },
   { match: /cannot peek/, say: 'refusal.peek' },
   { match: /^unknown (component|zone|seat)/, say: 'refusal.unknown' },
+  // The guest's own erasure that did not go through (#1281, `forgetMe`).
+  { match: /^the name could not be removed$/, say: 'forget.failed' },
 ]
 
 export function refusalText(reason: string, t: T = swedish): string {

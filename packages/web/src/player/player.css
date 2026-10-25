@@ -346,6 +346,27 @@ html:has(.byd-player) { background: #14161c; }
    off the spacing and not worked out from the order. */
 .byd-exit-choice p { margin: 6px 2px 0; font-size: 13px; color: var(--byd-ink-muted); }
 .byd-exit-sheet .byd-sheet-actions { margin-top: 20px; }
+/* A guest's way to have her name removed (#1281, beställarens val C med en ändring): after both ways
+   out and after why keeping the name helps, as a button with a line and no fill, so it is plainly
+   there and plainly not a third choice of the same weight. The same under the thanks. */
+.byd-forget-way { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--byd-rule); display: grid; gap: 8px; }
+.byd-forget-way p { margin: 0; font-size: 13px; color: var(--byd-ink-muted); }
+.byd-forget-way button[data-kind='forget'] { width: 100%; min-height: 44px; padding: 10px 14px; border: 1px solid var(--byd-line); border-radius: 12px; background: transparent; color: var(--byd-ink-muted); font: 600 14px system-ui; }
+.byd-survey-thanks .byd-forget-way { width: 100%; max-width: 340px; margin-top: 12px; }
+/* The question itself (L9's manners): what goes as a short list, what stays under it. */
+.byd-forget-sheet ul { margin: 0 0 12px; padding-left: 20px; font-size: 13px; color: var(--byd-ink); display: grid; gap: 4px; }
+.byd-survey > .byd-sheet-backdrop { max-width: none; margin: 0; text-align: left; }
+/* Done, in place of the save under the thanks. */
+.byd-forget-done { display: grid; justify-items: center; gap: 4px; max-width: 340px; margin-top: 12px; }
+.byd-forget-done svg, .byd-forgotten svg { width: 24px; height: 24px; color: var(--byd-accent); }
+.byd-survey-thanks .byd-forget-done strong { font-size: 16px; color: var(--byd-ink-strong); }
+.byd-forget-done span { font-size: 13px; color: var(--byd-ink-muted); }
+/* Where she lands after leaving with her name removed: the page's own message, in the middle. */
+.byd-forgotten { --byd-bg: #14161c; --byd-control: #242938; --byd-line: #2c3242; --byd-accent: #7dd3a0; --byd-ink-muted: #9aa3b8; min-height: 100svh; box-sizing: border-box; padding: 24px 20px; display: grid; place-content: center; justify-items: center; gap: 12px; text-align: center; background: var(--byd-bg); color: #fff; }
+.byd-forgotten h1 { margin: 0; max-width: 340px; font-size: 22px; line-height: 1.25; }
+.byd-forgotten h1:focus { outline: none; }
+.byd-forgotten p { margin: 0; max-width: 340px; font-size: 15px; line-height: 1.45; color: var(--byd-ink-muted); }
+.byd-forgotten a { display: inline-flex; align-items: center; min-height: 44px; margin-top: 8px; padding: 0 18px; border: 1px solid var(--byd-line); border-radius: 12px; background: var(--byd-control); color: #fff; font-weight: 700; text-decoration: none; }
 /* The survey takes the focus as a whole when it appears (#483); the box is not a control, so it
    draws no ring, and its buttons draw their own. */
 .byd-survey:focus { outline: none; }
