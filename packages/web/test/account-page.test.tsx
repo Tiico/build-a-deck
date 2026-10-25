@@ -688,6 +688,55 @@ describe('what waits for the account on the home page (#1225)', () => {
     expect(stat('nya flaggor')).toBe('nya flaggor2')
   })
 
+  // The two sources answer in either order. Drawn on what waits alone, the panel stood with the
+  // co-editor's version and the survey arrived under it a moment later, so the rows jumped and a
+  // reader (or the test above, under load) took the first two for all of it.
+  it('stands only once the tables the account sat at have answered too', async () => {
+    await run.stop()
+    run = await startServer({ auth: true, authBypass: true })
+    const json = { 'content-type': 'application/json' }
+    await fetch(`${run.http}/auth/login`, { method: 'POST', headers: json, body: JSON.stringify({ email: 'ada@example.com' }) })
+    expect((await fetch(`${run.http}/projects`, { method: 'POST', headers: json, body: JSON.stringify({ id: run.projectId, ...projectDoc() }) })).status).toBe(201)
+    const kim = await run.auth!.ensureAccount('kim@example.com')
+    await run.auth!.setName(kim.id, 'Kim')
+    await run.projects.share(run.projectId, kim.id, 'editor')
+    expect(await run.projects.replace(run.projectId, 1, { ...projectDoc(), rows: [...projectDoc().rows, { id: 'uggla', fields: { title: 'Uggla', antal: 1 } }] }, 0, undefined, [], kim.id)).toMatchObject({ rev: 2 })
+    const sat = await createSession(run, 'satt')
+    const mine = await admit(run, sat, 'A', 'Ada')
+    expect((await fetch(`${run.http}/guests/claim`, { method: 'POST', headers: json, body: JSON.stringify({ token: mine }) })).status).toBe(200)
+    const satHost = TableClient.connect(await asTable(run, sat))
+    await satHost.ready()
+    expect(await satHost.send({ v: 'session.end' })).toMatchObject({ ok: true })
+    satHost.close()
+
+    // The tables the account sat at are held back until what waits has answered and been drawn.
+    const realFetch = globalThis.fetch
+    let release!: () => void
+    const held = new Promise<void>((resolve) => (release = resolve))
+    let waited = false
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const path = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url).pathname
+      if (path === '/me/played') await held
+      const res = await realFetch(input, init)
+      if (path === '/me/waiting') waited = true
+      return res
+    }) as typeof fetch
+    try {
+      history.replaceState(null, '', `/?server=${encodeURIComponent(run.http)}`)
+      render(<HomePage onNavigate={() => undefined} />)
+      await screen.findByRole('region', { name: 'Fortsätt där du slutade' })
+      await waitFor(() => expect(waited).toBe(true))
+      await new Promise((resolve) => setTimeout(resolve, 50))
+      expect(screen.queryByRole('region', { name: 'Väntar på dig' })).toBeNull()
+      release()
+      const panel = await screen.findByRole('region', { name: 'Väntar på dig' })
+      expect(within(panel).getAllByRole('link').map((row) => row.textContent)).toEqual(['Svara på enkätenEtt bord · du spelade som Ada', 'Kim sparade version 2Skogens herrar · i dag'])
+    } finally {
+      release()
+      globalThis.fetch = realFetch
+    }
+  })
+
   it('stands nowhere when nothing waits', async () => {
     await run.stop()
     run = await startServer({ auth: true, authBypass: true })

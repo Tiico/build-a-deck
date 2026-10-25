@@ -1,6 +1,7 @@
 import { catalogFaceSource, catalogFont, type CatalogFamily, fileInSheet, fileSheetHref } from '../editor/font-catalog.js'
 import { assetRef, assetRefOf } from '../editor/assets.js'
 import { withCredentials } from '../account/api.js'
+import { refusedForTerms } from '../account/terms-due.js'
 import type { T } from '../i18n/index.js'
 import { NotMade } from './not-made.js'
 import { iconsOf, starterSet, themeFamilies, themeIconFiles, type Theme } from '../editor/themes.js'
@@ -45,9 +46,11 @@ async function bytesOf(catalog: CatalogFamily, t: T, known?: string): Promise<Ui
 // Asseten heter hashen av sina bytes och ingenting annat, så namnet går att räkna ut på den här
 // sidan också. Håller de två inte med varandra pekar dokumentet på ingenting, och det ska sägas
 // här och inte vid tryck ett år senare.
-async function upload(http: string, type: string, bytes: Uint8Array<ArrayBuffer>): Promise<string | 'login'> {
+async function upload(t: T, http: string, type: string, bytes: Uint8Array<ArrayBuffer>): Promise<string | 'login'> {
   const res = await fetch(`${http}/assets`, withCredentials({ method: 'POST', headers: { 'content-type': type }, body: bytes }))
   if (res.status === 401) return 'login'
+  // The terms (#1272): the page asks for them and makes the game again once they are accepted.
+  await refusedForTerms(res, t)
   if (!res.ok) throw new NotMade('wizard.error.upload')
   const ref = assetRef(((await res.json()) as { hash: string }).hash)
   const own = await assetRefOf(bytes)
@@ -68,14 +71,14 @@ async function upload(http: string, type: string, bytes: Uint8Array<ArrayBuffer>
 export async function uploadTheme(t: T, http: string, theme: Theme, known: Record<string, string | undefined> = {}): Promise<ThemeFiles | 'login'> {
   const fonts: ThemeFiles['fonts'] = {}
   for (const family of themeFamilies(theme)) {
-    const ref = await upload(http, 'font/woff2', await bytesOf(family, t, known[family.family]))
+    const ref = await upload(t, http, 'font/woff2', await bytesOf(family, t, known[family.family]))
     if (ref === 'login') return 'login'
     // Katalogposten vet sin licens och fyller i den, för tryckets skull, och `source` är vad listan
     // i editorn ska säga om posten (L27).
     fonts[family.family] = catalogFont(family, ref)
   }
   const starters = starterSet({ icons: {} }, theme, t, await themeIconFiles(theme))
-  for (const { file } of starters) if ((await upload(http, file.type, file.bytes)) === 'login') return 'login'
+  for (const { file } of starters) if ((await upload(t, http, file.type, file.bytes)) === 'login') return 'login'
   return { fonts, icons: iconsOf(starters) }
 }
 

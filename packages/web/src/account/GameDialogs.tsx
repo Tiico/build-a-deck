@@ -158,7 +158,7 @@ type Importing ={ state: 'idle' } | { state: 'reading'; name: string } | { state
 
 // A refusal said in the reader's words (A4): the server names what is wrong, the catalogue says it.
 // A code this page does not know yet — a newer server — is said as a refusal with its code.
-const PROBLEMS = ['network', 'not-zip', 'no-manifest', 'not-json', 'not-export', 'newer-format', 'manifest', 'history', 'current-rev', 'asset-missing-file', 'asset-hash', 'asset-too-big', 'asset-format', 'asset-unsafe', 'asset-unknown', 'unplayable', 'too-big', 'refused'] as const
+const PROBLEMS = ['network', 'not-zip', 'no-manifest', 'not-json', 'not-export', 'newer-format', 'manifest', 'history', 'current-rev', 'asset-missing-file', 'asset-hash', 'asset-too-big', 'asset-format', 'asset-unsafe', 'asset-unknown', 'unplayable', 'too-big', 'terms', 'refused'] as const
 const problemKey = (code: string): Key | null => ((PROBLEMS as readonly string[]).includes(code) ? (`home.import.problem.${code}` as Key) : null)
 
 export function ImportDialog({ http, onClose, onImported, onOpen, nameOf }: { http: string; onClose(): void; onImported(id: string): Promise<void>; onOpen(id: string): void; nameOf(id: string): string | undefined }) {
@@ -187,7 +187,9 @@ export function ImportDialog({ http, onClose, onImported, onOpen, nameOf }: { ht
     } catch {
       return setNow({ state: 'failed', name, problems: [{ code: 'network' }] })
     }
-    if (!got.ok) return setNow('quota' in got ? { state: 'failed', name, problems: [], quota: got.quota } : { state: 'failed', name, problems: got.problems })
+    // The terms (#1272) are the page's to ask before the window opens; one that changed while it stood
+    // is said as the one problem, with the way to them.
+    if (!got.ok) return setNow('quota' in got ? { state: 'failed', name, problems: [], quota: got.quota } : 'terms' in got ? { state: 'failed', name, problems: [{ code: 'terms' }] } : { state: 'failed', name, problems: got.problems })
     // The game is made; a list that cannot be read again this moment does not unmake it (#542).
     await onImported(got.id).catch(() => undefined)
     setNow({ state: 'done', id: got.id, name })

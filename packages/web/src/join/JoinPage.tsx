@@ -290,6 +290,7 @@ export function JoinPage({ onSit = (url) => location.assign(url), onOpen = (url)
     <div className="byd-join-page">
       <main className={`byd-join${live.stale ? ' byd-status-stale' : ''}`} data-page="join" {...(live.stale ? { inert: true } : {})}>
       <HomeWay href={links.home} />
+      <TrustWay />
       <header>
         <span>{t('join.into')}</span>
         {/* The game's name, when the table has one (#675): it is what the guest came to play, and
@@ -412,6 +413,17 @@ function HomeWay({ href = '/' }: { href?: string | undefined }) {
       <ArrowGlyph to="left" />
       {t('status.act.home.start')}
     </a>
+  )
+}
+
+// The row's first two where a guest sits down (#757, #1272): the terms and the privacy text, in the
+// card's other top corner and out of its flow, for the same reason as the way home.
+function TrustWay() {
+  const t = useT()
+  return (
+    <p className="byd-join-trust">
+      <a href="/villkor">{t('trust.terms')}</a> · <a href="/villkor#integritet">{t('trust.privacy')}</a>
+    </p>
   )
 }
 

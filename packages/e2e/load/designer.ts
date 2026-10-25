@@ -29,6 +29,9 @@ export class Designer {
         const res = await fetch(`${origin}/auth/verify?token=${encodeURIComponent(token)}`, { redirect: 'manual' })
         const cookie = res.headers.get('set-cookie')?.split(';')[0]
         if (!cookie) throw new Error(`the link for ${email} set no cookie: ${res.status}`)
+        // The terms in force first (#1272): the box closes every way that writes until they are accepted.
+        const { current } = (await (await fetch(`${origin}/terms`)).json()) as { current: { version: string } | null }
+        if (current) await fetch(`${origin}/me/terms`, { method: 'POST', headers: { cookie, 'content-type': 'application/json' }, body: JSON.stringify({ version: current.version }) })
         return new Designer(origin, cookie, email)
       }
       if (Date.now() > deadline) throw new Error(`no mail to ${email} in the app's log`)

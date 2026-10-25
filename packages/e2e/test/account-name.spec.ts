@@ -23,6 +23,8 @@ test('the first login asks what the others should call her, and the editor says 
   await expect(field).toBeFocused()
   await field.fill('Nicklas Ockelberg')
   await page.getByRole('button', { name: 'Fortsätt' }).click()
+  // The terms are the card's second step (#1272), and the journey through them is `terms.spec.ts`'s.
+  await page.getByRole('button', { name: 'Godkänn och fortsätt' }).click()
 
   await expect(page.getByRole('heading', { name: 'Mina spel' })).toBeVisible()
   expect(new URL(page.url()).pathname).toBe('/')
@@ -57,6 +59,7 @@ test('«Hoppa över» keeps no name, and the question does not come back', async
   const card = page.locator('.byd-welcome')
   await expect(card).toBeInViewport({ ratio: 1 })
   await page.getByRole('button', { name: 'Hoppa över' }).click()
+  await page.getByRole('button', { name: 'Godkänn och fortsätt' }).click()
 
   await expect(page.getByRole('heading', { name: 'Mina spel' })).toBeVisible()
   await expect(page.getByRole('region', { name: 'Namn' })).toHaveCount(0)

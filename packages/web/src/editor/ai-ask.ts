@@ -12,14 +12,15 @@ export type AskTurn = { role: 'user' | 'assistant'; text: string }
 // Why an answer did not come: the provider's own closed set of words, the server's ceilings — the
 // time an answer may take, and how many may run at once — and the editor's own: no key to ask
 // with, and no server to ask.
-export type AskFailure = AiFailure | 'timeout' | 'busy' | 'no-key' | 'offline'
+// `terms`: the account has the terms to accept first (#1272), and nothing was asked.
+export type AskFailure = AiFailure | 'timeout' | 'busy' | 'no-key' | 'offline' | 'terms'
 // A `part` is one part of a proposal, whole, as it was written (#1002): read, never trusted — the
 // panel reads it with the proposal model before it draws it. `broken` on `done` says a proposal
 // began and was cut off before it was whole.
 export type AskEvent = { t: 'text'; text: string } | { t: 'part'; key: string; part: unknown } | { t: 'done'; broken?: boolean } | { t: 'failed'; kind: AskFailure }
 export type Asking = { cancel(): void; finished: Promise<void> }
 
-const KINDS: readonly AskFailure[] = ['invalid-key', 'no-credit', 'rate-limit', 'overloaded', 'refused', 'network', 'timeout', 'busy', 'no-key', 'offline']
+const KINDS: readonly AskFailure[] = ['invalid-key', 'no-credit', 'rate-limit', 'overloaded', 'refused', 'network', 'timeout', 'busy', 'no-key', 'offline', 'terms']
 const kindOf = (value: unknown): AskFailure => KINDS.find((k) => k === value) ?? 'network'
 
 // The proposal a question refines (#1004): the one still waiting, as the model wrote it, and the
@@ -50,7 +51,7 @@ export function askAi(http: string, project: string, ask: { question: string; tu
     if (cancelled) return void res.body?.cancel().catch(() => undefined)
     if (!res.ok || !res.body) {
       const said = ((await res.json().catch(() => ({}))) as { error?: unknown }).error
-      return tell({ t: 'failed', kind: res.status === 409 ? 'no-key' : res.status === 429 && said === 'busy' ? 'busy' : 'network' })
+      return tell({ t: 'failed', kind: res.status === 409 ? 'no-key' : res.status === 429 && said === 'busy' ? 'busy' : res.status === 403 && said === 'terms' ? 'terms' : 'network' })
     }
     reader = res.body.getReader()
     const decoder = new TextDecoder()

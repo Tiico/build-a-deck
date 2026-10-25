@@ -38,7 +38,7 @@ import type { ProjectDoc } from '@byd/server'
 import { useTableClient } from '../table/useTableClient.js'
 import { TableEnded, type ProjectClient, type SaveFailure } from './ProjectClient.js'
 import { RENDER_STALLED_AFTER_MS, stillRendering, useStalled, type Textures } from '../table/textures.js'
-import { loginUrl, removeProject } from '../account/api.js'
+import { loginUrl, myAccount, removeProject } from '../account/api.js'
 import { HereFaces } from './HereDoor.js'
 import { StatusNotice } from '../status/StatusNotice.js'
 import { useSay } from '../status/StatusLive.js'
@@ -59,6 +59,9 @@ import { versionWord } from '../i18n/version.js'
 
 // «Hur sitter ni?» (L77) is asked once per table, so its window comes when it is first asked for.
 const StartQuestion = lazy(() => import('./StartQuestion.js').then((m) => ({ default: m.StartQuestion })))
+// The terms' step as a dialog (#1272, variant B): an edit made by an account that has not accepted the
+// terms waits under it, and is saved once they are. Drawn on an edit, never on the first frame.
+const TermsDialog = lazy(() => import('../account/TermsStep.js').then((m) => ({ default: m.TermsDialog })))
 const PlaytestPrototype = import.meta.env.DEV ? lazy(() => import('./prototype/PlaytestWorkspace.js')) : null
 
 // How long the render count may stand still before the line says so (#88, UX-43): the table's own
@@ -82,6 +85,7 @@ const SAVE_FAILED: Record<SaveFailure, Key> = {
   loggedOut: 'editor.save.loggedOut',
   offline: 'editor.save.offline',
   failed: 'editor.save.failed',
+  terms: 'editor.save.terms',
 }
 
 export function EditorPage({ onNavigate = (url) => location.assign(url), timing = DEFAULT_EDITOR_TIMING }: EditorPageProps = {}) {
@@ -155,6 +159,22 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   // `lead` is what did not happen when a met ceiling is said (#1198, variant A), set off before the rest.
   const [notice, setNotice] = useState<{ text: string; lead?: string } | null>(null)
   const say = useCallback((text: string) => setNotice({ text }), [])
+  // The terms (#1272): an account that has not accepted them holds its edits from the start, so the
+  // first one opens the dialog rather than going to the actor and back. The server says so too, for
+  // a version that comes into force while the editor is open.
+  useEffect(() => {
+    if (!client) return
+    let live = true
+    void myAccount(http).then(
+      (me) => {
+        if (live && me?.terms.due && me.terms.current !== null) client.holdForTerms(me.terms.current)
+      },
+      () => undefined,
+    )
+    return () => {
+      live = false
+    }
+  }, [client, http])
   const sayQuota = useCallback((words: QuotaWords) => setNotice({ lead: words.what, text: [words.why, words.way].filter((part) => part !== '').join(' ') }), [])
   // An icon chosen for a layer is bound at once and its bytes follow (#1093). Should they not arrive
   // the choice has been taken back whole, and the notice says so where every upload's failure is said.
@@ -957,6 +977,21 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
       {askingStart && (
         <Suspense fallback={null}>
           <StartQuestion onStart={(answer) => void startAs(answer)} onCancel={() => setAskingStart(false)} />
+        </Suspense>
+      )}
+      {client.termsAsked && client.termsCurrent && (
+        <Suspense fallback={null}>
+          <TermsDialog
+            http={http}
+            version={client.termsCurrent}
+            title={t('terms.dialog.edit.title')}
+            lead={t('terms.dialog.edit.lead')}
+            onAccepted={() => client.releaseTerms()}
+            onLater={() => {
+              client.dropHeld(t)
+              say(t('terms.later'))
+            }}
+          />
         </Suspense>
       )}
       {table && (

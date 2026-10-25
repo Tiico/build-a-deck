@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
+import { Suspense, lazy, useEffect, useState } from 'react'
 import { acceptInvite, loginUrl } from './api.js'
+import { TermsDue } from './terms-due.js'
 import { useT } from '../i18n/index.js'
 import { noticeFor } from '../status/notice.js'
 import { AccountStatus, spent, waiting } from './AccountStatus.js'
@@ -9,6 +10,8 @@ import { AccountStatus, spent, waiting } from './AccountStatus.js'
 // has run out, says so rather than pretending. Not signed in, the login card comes first and
 // brings them back here.
 export type InvitePageProps = { onNavigate?(url: string): void }
+
+const TermsDialog = lazy(() => import('./TermsStep.js').then((m) => ({ default: m.TermsDialog })))
 
 // The default is one function for the life of the module and not a fresh one per render: it is a
 // dependency of the effect that follows the invitation, and a fresh one followed it again on every
@@ -23,6 +26,9 @@ export function InvitePage({ onNavigate = go }: InvitePageProps) {
   const token = /^\/invites\/([^/?#]+)/.exec(location.pathname)?.[1] ?? ''
   // A used or lapsed invitation is an answer; a service that did not answer is worth asking again.
   const [problem, setProblem] = useState<'spent' | 'offline' | null>(null)
+  // The terms (#1272): following an invitation is a write, so an account that has not accepted them
+  // is asked first, and the invitation is followed once they are. Put off, the way is home.
+  const [terms, setTerms] = useState<string | null>(null)
   const [attempt, setAttempt] = useState(0)
   useEffect(() => {
     let live = true
@@ -42,7 +48,11 @@ export function InvitePage({ onNavigate = go }: InvitePageProps) {
         if (server) q.set('server', server)
         onNavigate(`/editor?${q.toString()}`)
       },
-      () => live && setProblem('offline'),
+      (err: unknown) => {
+        if (!live) return
+        if (err instanceof TermsDue) setTerms(err.current)
+        else setProblem('offline')
+      },
     )
     return () => {
       live = false
@@ -56,5 +66,24 @@ export function InvitePage({ onNavigate = go }: InvitePageProps) {
   // login card.
   const notice =
     problem === 'spent' ? spent(t('invite.spent.heading'), t('invite.spent'), t) : problem === 'offline' ? noticeFor('offline', 'app', t) : waiting(t('invite.opening'), t)
-  return <AccountStatus page="invite" notice={notice} server={server} signedIn onRetry={() => setAttempt((n) => n + 1)} />
+  return (
+    <>
+      <AccountStatus page="invite" notice={notice} server={server} signedIn onRetry={() => setAttempt((n) => n + 1)} />
+      {terms !== null && (
+        <Suspense fallback={null}>
+          <TermsDialog
+            http={http}
+            version={terms}
+            title={t('terms.dialog.title')}
+            lead={t('terms.dialog.lead')}
+            onAccepted={() => {
+              setTerms(null)
+              setAttempt((n) => n + 1)
+            }}
+            onLater={() => onNavigate(server ? `/?${new URLSearchParams({ server }).toString()}` : '/')}
+          />
+        </Suspense>
+      )}
+    </>
+  )
 }

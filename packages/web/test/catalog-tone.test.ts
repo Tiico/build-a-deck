@@ -9,6 +9,7 @@ import { enPlay } from '../src/i18n/en.play.js'
 import { enOnline } from '../src/i18n/en.online.js'
 import { enAccount } from '../src/i18n/en.account.js'
 import { enEditor } from '../src/i18n/en.editor.js'
+import { TEXTS } from '../src/terms/beta.js'
 
 // The tool speaks plain Swedish (L73, #1101, beställarens beslut 2026-10-22).
 //
@@ -41,6 +42,11 @@ const RETIRED_EN = ['setting the table', 'taking its time', 'on our own', 'no lo
 
 // «Vi» stays only where somebody actually did something: the mail that was sent, and the test
 // printer's own answer, quoted in its voice on the print package (#1208).
+//
+// The beta's terms and privacy text (#1272) are not the catalogue: they are an agreement, and their
+// «vi» is a party to it — the one who runs Deckster. They live in `terms/beta.ts`, outside every
+// part read here, and the step and the page around them speak in the catalogue's voice like any
+// other surface (`the terms' text stays out of the catalogue` below).
 const WE_MAY = new Set(['login.sent.body', 'print.answer.taken'])
 
 const offenders = (catalogue: Record<string, string>, breaks: (text: string, key: string) => boolean) =>
@@ -77,6 +83,17 @@ describe('the tool speaks plain Swedish (L73, #1101)', () => {
       })
     })
   }
+
+  // The named exception (#1272): the agreement's sentences, with their «vi», are the terms' module's
+  // and never a key in the catalogue, where the tool would be speaking them as itself.
+  it('the terms\' text stays out of the catalogue', () => {
+    const catalogue = new Set(Object.values(PARTS).flatMap(([sv, en]) => [...Object.values(sv), ...Object.values(en)]))
+    for (const text of Object.values(TEXTS)) {
+      const sentences = [...text.summary, ...[text.terms, text.privacy].flatMap((doc) => doc.sections.flatMap((s) => [s.ks, ...s.body.flatMap((b) => (typeof b === 'string' ? [b] : b.list))]))]
+      expect(sentences.filter((sentence) => catalogue.has(sentence))).toEqual([])
+      expect(sentences.some((sentence) => we(sentence, ''))).toBe(true)
+    }
+  })
 
   // The control: the four readings do catch what they are here to catch, so the empty lists above
   // are catalogues without it rather than readings that match nothing.

@@ -44,7 +44,7 @@ import { REFERRER_POLICY, UPLOAD_POLICY, pageNonce, pagePolicy, scriptHashesOf, 
 import { DEFAULT_PLANS, QuotaReached, YOU, growth, limitOf, tableWindowFrom, type Bearer, type Limit, type Measure, type Plans, type QuotaMet, type TableCeilings } from './quotas.js'
 import { planOf, usageOf, type AccountPlanStore } from './account-plans.js'
 import { NO_CARDS, cardGrowth, cardsUsed, type CardMeasure } from './quota-cards.js'
-import { TERMS, checkRegister, termsInForce, termsStanding, type TermsRegister, type TermsStanding } from './terms.js'
+import { checkRegister, openToTheDue, termsInForce, termsStanding, type TermsRegister, type TermsStanding } from './terms.js'
 import { entry, type ErasureStore } from './erase.js'
 
 // `staticDir`: the built web app, served from the same origin as the API (README, DRIFT §1).
@@ -101,7 +101,8 @@ export type ServerOptions = {
   // without accounts nobody bears anything.
   plans?: Plans
   accountPlans?: AccountPlanStore
-  // The terms' versions (#1270, `terms.ts`): the box runs with `TERMS`, and a test with its own.
+  // The terms' versions (#1270, `terms.ts`): the box runs with `TERMS` (`main.ts`), and a test with
+  // its own. Without one no terms apply, as without `auth` there are no accounts.
   terms?: TermsRegister
   // The erasure (#1279, G6): a game taken away masks its tables with it. Without it a game's tables
   // are masked by the sweeper's next round, which finds the tables of every game that is gone.
@@ -336,7 +337,7 @@ const HEADERS_TIMEOUT_MS = KEEP_ALIVE_MS + 1_000
 // WebSocket per connection at `/sessions/:id?seat=A` — omit `seat` for a table view.
 export function createServer(given: ServerOptions): Server {
   // A register that cannot say which version is in force stops the start, rather than a request.
-  checkRegister(given.terms ?? TERMS)
+  checkRegister(given.terms ?? [])
   const opts: ServerOptions = { ...given, limiter: given.limiter ?? new LoginLimiter(), passkeyChallenges: given.passkeyChallenges ?? new PasskeyChallenges(), ...(given.ai ? { ai: { limiter: new KeyTryLimiter(), ...given.ai } } : {}) }
   const http = createHttpServer({ keepAliveTimeout: KEEP_ALIVE_MS, headersTimeout: HEADERS_TIMEOUT_MS }, (req, res) => {
     // A closing server lets go of a connection as soon as it goes quiet. Node hangs up the idle
@@ -445,6 +446,14 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
     return
   }
   try {
+    // The closed ways (#1272, F4 beslut 5): an account that has not accepted the terms in force writes
+    // nothing but what `OPEN_WRITES` leaves open, whichever way it knocks on, a way added later
+    // included. Asked before any body is read, so a refusal writes nothing. Nobody signed in is not
+    // asked here: the way itself says whether it wants an account.
+    if (!openToTheDue(req.method ?? 'GET', url.pathname)) {
+      const current = await termsDueFor(opts, req)
+      if (current) return json(res, 403, { error: 'terms', current })
+    }
     if (req.method === 'GET' && url.pathname === '/health') {
       // Health means the store answers (DRIFT §2), not just that the process is up.
       const loaded = await opts.host.loaded()
@@ -973,9 +982,23 @@ async function openEditorDoor(opts: ServerOptions, req: IncomingMessage, ws: Web
   const said = account ? { name: account.name ?? account.email, email: account.email } : { name }
   const editor = { id: randomUUID(), ...said, role, ...(account ? { account: account.id } : {}), send, close: () => ws.close(4003, 'gone'), gone: () => ws.close(4004, 'unknown project') }
   const leave = actor.subscribe(editor)
+  // Whether the account is clear of the terms on this line (#1272), asked once as the line opens. While
+  // it is not, its messages are handled one after another, since each asks the store first and an
+  // edit must never overtake the save or the edit sent before it (#988, #993); once it is, they go
+  // straight to the actor as they always did, with nothing awaited before it.
+  let termsCleared = (await termsDueFor(opts, req, account)) === null
+  let behind: Promise<void> | null = null
   ws.on('close', leave)
   ws.on('message', (data) => {
-    void (async () => {
+    if (termsCleared && !behind) return void handle(data)
+    const run = (behind ?? Promise.resolve()).then(() => handle(data))
+    behind = run
+    void run.finally(() => {
+      if (behind === run) behind = null
+    })
+  })
+  const handle = async (data: WebSocket.RawData): Promise<void> => {
+    {
       // Which of the editor's requests a refusal answers (#991): an edit and a save can both be on
       // the line at once, and the editor ends only the wait the refusal is about. A request that
       // cannot be read is neither, and its refusal names none. A refused edit is named by the
@@ -991,6 +1014,20 @@ async function openEditorDoor(opts: ServerOptions, req: IncomingMessage, ws: Web
         if (!canEdit(role)) {
           refuse(`en ${roleWord(role)} kan bara titta`)
           return
+        }
+        // The terms (#1272): an account that has not accepted them changes nothing on this line
+        // either, and is told so in a refusal of its own, so that the editor holds the edit for the
+        // dialog rather than taking it off. Asked until the account has accepted, and then no more on
+        // this line: a version that comes into force while the editor is open asks at the next one.
+        if (msg.t === 'edit') ask = msg.ask
+        if (!termsCleared) {
+          const current = await termsDueFor(opts, req, account)
+          if (current) {
+            send({ v: 'refused', why: 'terms', to: msg.t, ...(ask === undefined ? {} : { ask }), current })
+            if (msg.t === 'edit') actor.resync(editor)
+            return
+          }
+          termsCleared = true
         }
         if (msg.t === 'save') {
           // Held to the owner's ceiling on storage (#1197), whoever saves: a refusal for it says the
@@ -1010,8 +1047,8 @@ async function openEditorDoor(opts: ServerOptions, req: IncomingMessage, ws: Web
         else refuse(err instanceof Error ? err.message : String(err))
         actor.resync(editor)
       }
-    })()
-  })
+    }
+  }
 }
 
 // The AI answers in flight on this server (#1001), counted against its ceilings.
@@ -2745,10 +2782,20 @@ async function routeAuth(opts: ServerOptions, auth: AuthStore, req: IncomingMess
   json(res, 404, { error: 'not found' })
 }
 
-const registerOf = (opts: ServerOptions): TermsRegister => opts.terms ?? TERMS
+const registerOf = (opts: ServerOptions): TermsRegister => opts.terms ?? []
 const TermsBody = z.object({ version: z.string().max(32) })
 async function standingOf(opts: ServerOptions, auth: AuthStore, accountId: string): Promise<TermsStanding> {
   return termsStanding(registerOf(opts), (await auth.termsAccepted(accountId)).map((a) => a.version), clock(opts))
+}
+// The version an account has to accept before it may write again (#1272), or null when it need not —
+// no terms in force, nobody signed in, or accepted already. Asks the store nothing while no terms
+// are in force, which is a server without a register.
+async function termsDueFor(opts: ServerOptions, req: IncomingMessage, known?: Account | null): Promise<string | null> {
+  if (!opts.auth || termsInForce(registerOf(opts), clock(opts)) === null) return null
+  const account = known === undefined ? await accountOf(opts.auth, req) : known
+  if (!account) return null
+  const standing = await standingOf(opts, opts.auth, account.id)
+  return standing.due ? standing.current : null
 }
 
 // Passkeys (#1180): saving one needs the session the link made; logging in with one makes a

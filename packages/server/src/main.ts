@@ -1,6 +1,7 @@
 import { TypeRegistry, STANDARD_TYPES } from '@byd/engine'
 import { TableHost } from './actor.js'
 import { createServer } from './server.js'
+import { TERMS } from './terms.js'
 import { MemoryLogStore, type LogStore } from './store.js'
 import { MemoryProjectStore, type ProjectStore } from './projects.js'
 import { MemorySurveyStore, type SurveyStore } from './surveys.js'
@@ -168,7 +169,7 @@ await sweep()
 // Testtryckeriet stands where a print partner will (F1, F2, #1208): the print package is prepared
 // by it, so what the designer sees and downloads is what a partner would be sent.
 const printProviders = printProvidersOf(STANDARD_TYPES)
-const server = createServer({ host, store, registry, renders, projects, assets, surveys, auth, mailer, authBypass, ai, printProviders,...(objects ? { objects } : {}), ...(staticDir ? { staticDir } : {}), ...(publicOrigin ? { publicOrigin } : {}), ...(appOrigin ? { appOrigin } : {}), ...(release ? { release } : {}), ...(contact ? { contact } : {}), ...(corpus ? { corpus } : {}), plans, accountPlans, erasures })
+const server = createServer({ host, store, registry, renders, projects, assets, surveys, auth, mailer, authBypass, ai, printProviders, terms: TERMS,...(objects ? { objects } : {}), ...(staticDir ? { staticDir } : {}), ...(publicOrigin ? { publicOrigin } : {}), ...(appOrigin ? { appOrigin } : {}), ...(release ? { release } : {}), ...(contact ? { contact } : {}), ...(corpus ? { corpus } : {}), plans, accountPlans, erasures })
 server.listen(port, () => console.log(JSON.stringify({ msg: 'listening', port })))
 
 const evictor = setInterval(() => {
