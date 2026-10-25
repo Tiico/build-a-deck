@@ -1,3 +1,4 @@
+import { withQuery } from '../support/api.js'
 import { DESK } from '../support/devices.js'
 import { expect, test } from '../support/test.js'
 
@@ -11,7 +12,7 @@ test.describe('a double press on the table screen (#482)', () => {
 
   test('turns the card over whether it reads or not, and a single press still asks about one that does not', async ({ tableOf, open }) => {
     const table = await tableOf({ players: 2, counters: [], cards: 1, copies: 3 })
-    const { page } = await open(DESK, `${table.tableUrl}&lang=sv`)
+    const { page } = await open(DESK, withQuery(table.tableUrl, 'lang=sv'))
     const pile = page.locator('.byd-pile[data-zone="draw"]')
     await expect(pile).toHaveAttribute('data-count', '3')
     await pile.locator('.byd-pile-top').click()

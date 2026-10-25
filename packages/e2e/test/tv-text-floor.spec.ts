@@ -1,3 +1,4 @@
+import { withQuery } from '../support/api.js'
 import { TV } from '../support/devices.js'
 import { expect, test } from '../support/test.js'
 
@@ -12,7 +13,7 @@ for (const players of [2, 4, 8]) {
     const table = await tableOf({ players, counters: [{ name: 'Poäng', start: 0 }], cards: 30, copies: 1 })
     const dealer = await host(table)
     await dealer.send([{ v: 'draw', from: 'draw', to: 'table', count: 2 }, { v: 'deal', from: 'draw', to: ['hand:A'], each: 2 }])
-    const { page } = await open(TV, `${table.tvUrl}&lang=sv`)
+    const { page } = await open(TV, withQuery(table.tvUrl, 'lang=sv'))
     await expect(page.locator('.byd-card[data-component]').first()).toBeVisible()
     await expect(page.locator('[data-seat-plate]')).toHaveCount(players)
     await expect(page.locator('[data-seat-plate="A"]')).toContainText('2 kort')

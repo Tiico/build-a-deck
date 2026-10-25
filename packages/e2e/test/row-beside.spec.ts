@@ -3,7 +3,7 @@ import type { ActionTarget } from '@byd/protocol'
 import type { ProjectDoc } from '@byd/server'
 import { deckFromProject } from '@byd/server'
 import { setupFromProject } from '@byd/server/doc'
-import { tableOf as tableFromSetup } from '../support/api.js'
+import { tableOf as tableFromSetup, withQuery } from '../support/api.js'
 import { TV } from '../support/devices.js'
 import { gameDoc } from '../support/game.js'
 import { expect, test } from '../support/test.js'
@@ -51,7 +51,7 @@ test.describe('en regel som lägger ut korten bredvid högen (#1203)', () => {
   test('bredvid varandra till vänster: fyra kort i en rad, isär och på högens linje', async ({ request, open }) => {
     const doc = gameThatLaysOut({ at: 'beside', side: 'left', lay: 'row' })
     const table = await tableFromSetup(request, setupFromProject(doc), deckFromProject(doc))
-    const { page } = await open(TV, `${table.tvUrl}&lang=sv`, { facesReady: true })
+    const { page } = await open(TV, withQuery(table.tvUrl, 'lang=sv'), { facesReady: true })
     const { pile, cards } = await laidOut(page, doc.setup.deckZone)
 
     const byLeft = [...cards].sort((a, b) => a.left - b.left)
@@ -66,7 +66,7 @@ test.describe('en regel som lägger ut korten bredvid högen (#1203)', () => {
   test('omlott ovanför: raden centreras över högen, och varje kort syns till en del', async ({ request, open }) => {
     const doc = gameThatLaysOut({ at: 'beside', side: 'above', lay: 'overlap' })
     const table = await tableFromSetup(request, setupFromProject(doc), deckFromProject(doc))
-    const { page } = await open(TV, `${table.tvUrl}&lang=sv`, { facesReady: true })
+    const { page } = await open(TV, withQuery(table.tvUrl, 'lang=sv'), { facesReady: true })
     const { pile, cards } = await laidOut(page, doc.setup.deckZone)
 
     const byLeft = [...cards].sort((a, b) => a.left - b.left)

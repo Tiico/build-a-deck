@@ -34,7 +34,7 @@ async function bareMiddle(page: Page): Promise<{ x: number; y: number }> {
 test.describe('linsen i bordsläget (#720)', () => {
   test('hjulet över filten förstorar den, och «Visa hela bordet» ger bordet tillbaka', async ({ tableOf, open }) => {
     const table = await tableOf({ players: 4, counters: [], cards: 20, copies: 1 })
-    const { page } = await open({ name: 'laptop', viewport: { width: 1024, height: 768 } }, `${table.tableUrl}&lang=sv`)
+    const { page } = await open({ name: 'laptop', viewport: { width: 1024, height: 768 } }, withQuery(table.tableUrl, 'lang=sv'))
     await expect(page.locator('.byd-table-frame[data-mode="table"]')).toBeVisible()
     expect(await lens(page)).toBe(100)
     const at = await bareMiddle(page)

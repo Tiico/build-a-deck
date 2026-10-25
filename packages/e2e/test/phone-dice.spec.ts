@@ -1,3 +1,4 @@
+import { withQuery } from '../support/api.js'
 import { PHONE, TV } from '../support/devices.js'
 import { expect, test } from '../support/test.js'
 
@@ -9,7 +10,7 @@ import { expect, test } from '../support/test.js'
 test('throws 2d6 from the phone in one envelope, and the sheet, the log and the TV say the same throw', async ({ tableOf, player, open }) => {
   const table = await tableOf({ players: 2, dice: [{ faces: 6, count: 2, zone: 'table' }] })
   const ada = await player(table, { name: 'Ada', seat: table.seats[0]!, device: { ...PHONE, viewport: { width: 375, height: 667 } } })
-  const tv = await open(TV, `${table.tvUrl}&lang=sv`, { facesReady: true })
+  const tv = await open(TV, withQuery(table.tvUrl, 'lang=sv'), { facesReady: true })
   const page = ada.page
 
   // Among the counters, on «In front of me» (#1147).

@@ -1,3 +1,4 @@
+import { withQuery } from '../support/api.js'
 import { PHONE, TV } from '../support/devices.js'
 import { expect, test } from '../support/test.js'
 
@@ -10,7 +11,7 @@ test('draws, plays in front of her, finds the card on «Framför mig» and takes
   const table = await tableOf({ players: 2, cards: 12 })
   const seat = table.seats[0]!
   const ada = await player(table, { name: 'Ada', seat, device: PHONE })
-  const tv = await open(TV, `${table.tvUrl}&lang=sv`)
+  const tv = await open(TV, withQuery(table.tvUrl, 'lang=sv'))
   const page = ada.page
   const faceUp = tv.page.locator(`.byd-card[data-component][data-face="front"]`)
   await expect(tv.page.locator(`[data-area="mine:${seat}"]`)).toBeVisible()
