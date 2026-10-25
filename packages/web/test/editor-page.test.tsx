@@ -322,7 +322,7 @@ describe('the cards a phone cannot read, said once the table is up (#523)', () =
     fireEvent.click(screen.getByRole('button', { name: 'Visa på kortväggen' }))
     expect((await screen.findByRole('button', { name: /^Visning/ })).textContent).toContain('Telefonens läsvy')
     // The panel stands open on Visning, where the cards under the phone's floor are named (L81).
-    expect(screen.getByRole('tab', { name: 'Visning' }).getAttribute('aria-selected')).toBe('true')
+    expect(screen.getByRole('complementary', { name: 'Visning' })).toBeTruthy()
     // What the wall's own cards carry there is said once, in the panel.
     await waitFor(() => expect(document.querySelector('[data-legible]')?.textContent).toMatch(/^Minsta text i leken .* px, golvet 12 px\./))
   })

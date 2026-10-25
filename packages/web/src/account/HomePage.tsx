@@ -424,7 +424,7 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
       return w?.playtest && w.playtest.flags > 0 ? [{ game: p, rev: w.rev, ...w.playtest }] : []
     })
     .sort((a, b) => (b.at ?? '').localeCompare(a.at ?? ''))
-  const unanswered = (played ?? []).filter((p) => p.ended && !p.surveyed && !p.deleted)
+  const unanswered = surveysLeft(played ?? [])
   const savedByOthers = (projects ?? [])
     .flatMap((p) => {
       const w = waiting?.[p.id]
@@ -688,30 +688,48 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
             <section className="byd-home-all" aria-labelledby={hero ? 'byd-home-all' : undefined}>
               {hero && <h2 id="byd-home-all" className="byd-home-h2">{t('home.all.title')}</h2>}
               <div className="byd-home-grid" data-projects style={{ ['--byd-home-card-h' as string]: `${HOME_CARD_H}px` }}>
-                {rest.map((p) => (
-                  <div key={p.id} className="byd-home-game" data-project={p.id}>
-                    {/* The game's name leads the link's name, and the card comes last (#555): going
-                        through the page's links, the game is what is heard first. */}
-                    <a className="byd-home-open" aria-labelledby={`home-${p.id}-name home-${p.id}-line home-${p.id}-played home-${p.id}-card`} href={editorOf(p)} onClick={toEditor(p)}>
-                      <GameCard project={p.id} peek={p.card ?? null} face={cards?.[p.id] ?? null} lost={cardsLost} assetBase={http} t={t} />
-                      <span className="byd-home-row">
-                        <strong id={`home-${p.id}-name`}>{p.name}</strong>
-                        <span id={`home-${p.id}-line`} className="byd-muted">
-                          {factsLine(t, p)}
-                        </span>
-                        <span id={`home-${p.id}-played`} className="byd-muted">
-                          {playedLine(t, lang, p)}
-                        </span>
-                        {runningOf(p).slice(0, 1).map((table) => (
-                          <span key={table.id} className="byd-home-live">
-                            {t('home.row.live', { code: table.code })}
+                {rest.map((p) => {
+                  const live = runningOf(p).slice(0, 1)
+                  const flags = waiting?.[p.id]?.playtest?.flags ?? 0
+                  return (
+                    <div key={p.id} className="byd-home-game" data-project={p.id}>
+                      {/* The game's name leads the link's name, and the card comes last (#555): going
+                          through the page's links, the game is what is heard first. Its new flags are
+                          said before the card (#1282), since they are news about the game. */}
+                      <a className="byd-home-open" aria-labelledby={`home-${p.id}-name home-${p.id}-line home-${p.id}-played${flags > 0 ? ` home-${p.id}-flags` : ''} home-${p.id}-card`} href={editorOf(p)} onClick={toEditor(p)}>
+                        <GameCard project={p.id} peek={p.card ?? null} face={cards?.[p.id] ?? null} lost={cardsLost} assetBase={http} t={t} />
+                        <span className="byd-home-row">
+                          <strong id={`home-${p.id}-name`}>{p.name}</strong>
+                          <span id={`home-${p.id}-line`} className="byd-muted">
+                            {factsLine(t, p)}
                           </span>
-                        ))}
-                      </span>
-                    </a>
-                    {moreOf(p)}
-                  </div>
-                ))}
+                          <span id={`home-${p.id}-played`} className="byd-muted">
+                            {playedLine(t, lang, p)}
+                          </span>
+                          {/* What is going on with the game, as chips on one line (#1204, #1282): a table
+                              running, and the flags new on its newest version (G1), counted as «Väntar
+                              på dig» counts them and from the same answer. */}
+                          {(live.length > 0 || flags > 0) && (
+                            <span className="byd-home-chips">
+                              {live.map((table) => (
+                                <span key={table.id} className="byd-home-chip byd-home-live">
+                                  {t('home.row.live', { code: table.code })}
+                                </span>
+                              ))}
+                              {flags > 0 && (
+                                <span id={`home-${p.id}-flags`} className="byd-home-chip" data-new-flags="">
+                                  <FlagGlyph />
+                                  {t(flags === 1 ? 'home.waiting.flags.one' : 'home.waiting.flags.other', { n: flags })}
+                                </span>
+                              )}
+                            </span>
+                          )}
+                        </span>
+                      </a>
+                      {moreOf(p)}
+                    </div>
+                  )
+                })}
                 <a className="byd-home-game" data-new href={`/new?${suffix(new URLSearchParams())}`} onClick={(e) => { e.preventDefault(); void newGame() }}>
                   {t('home.new')}
                 </a>
@@ -729,21 +747,25 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
               <div key={table.id} className="byd-home-running-row" data-running={table.id}>
                 <b>{table.name}</b>
                 <strong>{table.code}</strong>
-                {/* The way to the game the table runs (#1217): «Pågår nu» led only to the table. */}
-                <a
-                  className="byd-home-running-game"
-                  href={`/editor?${suffix(new URLSearchParams({ project: table.project }))}`}
-                  aria-label={t('home.running.game.aria', { name: table.name })}
-                  onClick={(e) => {
-                    e.preventDefault()
-                    onNavigate(`/editor?${suffix(new URLSearchParams({ project: table.project }))}`)
-                  }}
-                >
-                  {t('home.running.game')}
-                </a>
-                <a {...tableWay(table, server, lang)} aria-label={t('home.running.open.aria', { code: table.code, name: table.name })}>
-                  {t('home.running.open')}
-                </a>
+                {/* The way to the game the table runs (#1217): «Pågår nu» led only to the table. The
+                    two ways share a line where both fit on it whole, and stand one under the other
+                    where they do not (#1282). */}
+                <span className="byd-home-running-ways">
+                  <a
+                    className="byd-home-running-game"
+                    href={`/editor?${suffix(new URLSearchParams({ project: table.project }))}`}
+                    aria-label={t('home.running.game.aria', { name: table.name })}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      onNavigate(`/editor?${suffix(new URLSearchParams({ project: table.project }))}`)
+                    }}
+                  >
+                    {t('home.running.game')}
+                  </a>
+                  <a {...tableWay(table, server, lang)} aria-label={t('home.running.open.aria', { code: table.code, name: table.name })}>
+                    {t('home.running.open')}
+                  </a>
+                </span>
               </div>
             ))}
           </section>
@@ -769,14 +791,15 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
                   </a>
                 )
               })}
-              {unanswered.map((p) => {
+              {unanswered.map(({ newest: p, count }) => {
                 const to = `/survey?${suffix(new URLSearchParams({ session: p.session }))}`
+                const at = when(t, lang, p.at)
                 return (
                   <a key={`survey-${p.session}`} href={to} onClick={go(to)} data-waiting="survey">
                     <span className="byd-home-waiting-icon"><PencilGlyph /></span>
                     <span className="byd-home-waiting-text">
-                      <b>{t('home.played.answer')}</b>
-                      <small>{t('home.waiting.survey.line', { game: p.game ?? t('home.played.some-table'), name: p.name })}</small>
+                      <b>{count === 1 ? t('home.played.answer') : t('home.waiting.surveys', { n: count })}</b>
+                      <small>{count === 1 ? t('home.waiting.survey.line', { game: p.game ?? t('home.played.some-table'), name: p.name }) : p.game === null ? t('home.waiting.surveys.some', { n: count, when: at }) : t('home.waiting.surveys.line', { game: p.game, n: count, when: at })}</small>
                     </span>
                     <span className="byd-home-waiting-arrow"><ChevronGlyph to="right" /></span>
                   </a>
@@ -983,6 +1006,24 @@ function playedLine(t: T, lang: Lang, p: ProjectSummary): string {
   if (tables === 0) return t('home.card.never')
   const at = p.lastPlayed ? t('home.card.last', { when: when(t, lang, p.lastPlayed) }) : t('home.card.nothing')
   return t(tables === 1 ? 'home.card.tables.one' : 'home.card.tables.other', { n: tables, at })
+}
+
+// The surveys left to answer in «Väntar på dig» (#1225), one row per game (#1282): two tables of one
+// game made two rows that said the same thing to the letter, so the panel holds to what its flags and
+// versions already do, one row of each kind per game. The row counts them and leads to the table sat
+// at last, the one best remembered; each table keeps its own tile, and its own way to its survey,
+// under «Bord du har spelat vid». The game is known here by the name the row says (`/me/played`
+// carries no game's id), so two games of one name are one row, as they would read as one anyway.
+// The tables of no game are counted together. In the order the first of each game stands in.
+function surveysLeft(played: readonly Played[]): { newest: Played; count: number }[] {
+  const games = new Map<string | null, { newest: Played; count: number }>()
+  for (const p of played) {
+    if (!p.ended || p.surveyed || p.deleted) continue
+    const seen = games.get(p.game)
+    if (!seen) games.set(p.game, { newest: p, count: 1 })
+    else games.set(p.game, { newest: p.at > seen.newest.at ? p : seen.newest, count: seen.count + 1 })
+  }
+  return [...games.values()]
 }
 
 // Seats are lettered from A; the colour follows the letter, as it does on the table.
