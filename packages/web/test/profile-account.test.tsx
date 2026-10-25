@@ -61,7 +61,7 @@ describe('the account and its two rights, in the Konto card (#1280)', () => {
     open()
     fireEvent.click(await screen.findByRole('button', { name: 'Ladda ner mina uppgifter' }))
     const done = await within(account()).findByRole('status')
-    expect(done.textContent).toMatch(/^✓deckster-uppgifter-\d{4}-\d{2}-\d{2}\.zip är nedladdad\. Den innehåller det som står ovan, och en LASMIG\.md som förklarar filen\.$/)
+    expect(done.textContent).toMatch(/^deckster-uppgifter-\d{4}-\d{2}-\d{2}\.zip är nedladdad\. Den innehåller det som står ovan, och en LASMIG\.md som förklarar filen\.$/)
     expect(saved.map((s) => s.name)).toEqual([done.querySelector('b')!.textContent])
   })
 
@@ -102,7 +102,7 @@ describe('the account and its two rights, in the Konto card (#1280)', () => {
     fireEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Ja, radera kontot' }))
     await screen.findByLabelText('E-post')
     const told = document.querySelector('.byd-login-done')
-    expect(told?.textContent).toBe('✓Ditt konto är raderat. Du är utloggad på alla enheter, och ett mejl till nicklas@example.com bekräftar det.')
+    expect(told?.textContent).toBe('Ditt konto är raderat. Du är utloggad på alla enheter, och ett mejl till nicklas@example.com bekräftar det.')
     expect(screen.getByLabelText('E-post')).toBeTruthy()
     expect(screen.queryByRole('heading', { name: 'Profil' })).toBeNull()
     expect((await (await fetch(`${run.http}/auth/me`)).json()) as { email: string | null }).toMatchObject({ email: null })

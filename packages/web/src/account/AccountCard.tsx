@@ -1,7 +1,7 @@
 import { useRef, useState, type ReactNode } from 'react'
 import { Question } from '../editor/Question.js'
 import { useLang, useT, type Lang } from '../i18n/index.js'
-import { ImportGlyph, TrashGlyph } from '../glyphs.js'
+import { CheckGlyph, ImportGlyph, TrashGlyph } from '../glyphs.js'
 import { marked } from './marked.js'
 import { deleteAccount, downloadMyData, myDeletion, type Deletion } from './api.js'
 import { logout } from './session.js'
@@ -38,7 +38,7 @@ export function AccountCard({ http, email, onLoggedOut, onErased }: { http: stri
         {data.state === 'done' ? (
           <p className="byd-profile-saved" role="status">
             <span className="byd-profile-tick" aria-hidden="true">
-              ✓
+              <CheckGlyph />
             </span>
             <span>{marked(t('profile.data.done'), { file: <b>{data.name}</b> })}</span>
           </p>

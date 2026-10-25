@@ -12,7 +12,7 @@ import { StatusNotice } from '../status/StatusNotice.js'
 import { noticeFor } from '../status/notice.js'
 import { usePageTitle } from '../status/DocumentTitle.js'
 import { LanguagePicker, useT } from '../i18n/index.js'
-import { ArrowGlyph } from '../glyphs.js'
+import { ArrowGlyph, CheckGlyph } from '../glyphs.js'
 import './account.css'
 import './profile.css'
 
@@ -78,7 +78,7 @@ export function ProfilePage({ onNavigate = (url) => location.assign(url) }: Prof
     const notice = erased === null ? undefined : (
       <p className="byd-login-done" role="status">
         <span className="byd-login-tick" aria-hidden="true">
-          ✓
+          <CheckGlyph />
         </span>
         <span>
           <b>{t('login.erased.title')}</b> {t('login.erased.body', { email: erased })}

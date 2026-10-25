@@ -481,7 +481,7 @@ export const svAccount = {
   // Kontots egna rättigheter (#1280, beslut A): utdraget som en fil och raderingen i samma kort, med
   // L9:s remsa som namnger varje spel. Orden är prototypens.
   'profile.data.title': 'Dina uppgifter',
-  'profile.data.lead': 'En fil med det Deckster har om dig: adress, namn, passkeys, nivå, dina spel och din roll i dem, borden du sparat med dina flaggor och enkätsvar, och inbjudningarna du skickat. Spelen själva exporterar du under ⋯ i Mina spel.',
+  'profile.data.lead': 'En fil med det Deckster har om dig: adress, namn, passkeys, nivå, dina spel och din roll i dem, borden du sparat med dina flaggor och enkätsvar, och inbjudningarna du skickat. Spelen själva exporterar du med «Exportera…» i Mina spel.',
   'profile.data.download': 'Ladda ner mina uppgifter',
   'profile.data.busy': 'Gör i ordning filen…',
   'profile.data.done': '{file} är nedladdad. Den innehåller det som står ovan, och en LASMIG.md som förklarar filen.',

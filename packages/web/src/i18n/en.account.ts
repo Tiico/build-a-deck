@@ -424,7 +424,7 @@ export const enAccount = {
   'profile.account.note': 'You can always sign in with the link mailed to the address, even if you lose a passkey.',
   'profile.account.logout': 'Log out',
   'profile.data.title': 'Your data',
-  'profile.data.lead': 'A file with what Deckster has about you: address, name, passkeys, tier, your games and your role in them, the tables you saved with your flags and survey answers, and the invitations you sent. You export the games themselves under ⋯ in My games.',
+  'profile.data.lead': 'A file with what Deckster has about you: address, name, passkeys, tier, your games and your role in them, the tables you saved with your flags and survey answers, and the invitations you sent. You export the games themselves with «Export…» in My games.',
   'profile.data.download': 'Download my data',
   'profile.data.busy': 'Preparing the file…',
   'profile.data.done': '{file} is downloaded. It holds what is listed above, and a LASMIG.md that explains the file.',
