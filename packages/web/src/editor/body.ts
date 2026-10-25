@@ -92,7 +92,7 @@ const SYMBOL_ROLE = 'data-role'
 // Vad en symbol ritas som i cellen: projektets egen bild när den har en, annars namnet. Bilden
 // får inget eget alternativ — chippet bär namnet i sitt attribut och läses upp av titeln — och
 // den är `contenteditable="false"`, så markören hoppar över den som ett tecken.
-export function symbolChip(document: Document, name: string, role: string | undefined, url: string | undefined): HTMLElement {
+export function symbolChip(document: Document, name: string, role: string | undefined, url: string | undefined, paper?: string): HTMLElement {
   const chip = document.createElement('span')
   chip.className = SYMBOL_CLASS
   chip.setAttribute(SYMBOL_NAME, name)
@@ -103,6 +103,9 @@ export function symbolChip(document: Document, name: string, role: string | unde
     const img = document.createElement('img')
     img.src = url
     img.alt = name
+    // On the card's paper, as every symbol the editor shows (L34, #1369): drawn in the card's ink, a
+    // symbol on the editor's dark ground is no symbol at all.
+    if (paper) img.style.background = paper
     chip.append(img)
   } else chip.textContent = name
   return chip
@@ -111,11 +114,11 @@ export function symbolChip(document: Document, name: string, role: string | unde
 // Strängen som element. Tomt är ett tomt stycke och inte ingenting: en `contenteditable` utan
 // blockelement låter webbläsaren hitta på ett eget när Enter trycks, och då är det inte längre
 // delmängden som skrivs.
-export function fillBody(el: HTMLElement, text: string, icons: Record<string, string> = {}): void {
+export function fillBody(el: HTMLElement, text: string, icons: Record<string, string> = {}, paper?: string): void {
   const doc = el.ownerDocument
   el.replaceChildren()
   const span = (nodes: readonly InlineNode[], into: Node) => {
-    for (const n of nodes) into.appendChild(inline(doc, n, icons))
+    for (const n of nodes) into.appendChild(inline(doc, n, icons, paper))
     if (!into.hasChildNodes()) into.appendChild(doc.createElement('br'))
   }
   for (const block of parseBody(text)) {
@@ -140,16 +143,16 @@ export function fillBody(el: HTMLElement, text: string, icons: Record<string, st
   }
 }
 
-function inline(doc: Document, n: InlineNode, icons: Record<string, string>): Node {
+function inline(doc: Document, n: InlineNode, icons: Record<string, string>, paper?: string): Node {
   switch (n.type) {
     case 'text':
       return doc.createTextNode(n.text)
     case 'icon':
-      return symbolChip(doc, n.name, n.role, icons[n.name])
+      return symbolChip(doc, n.name, n.role, icons[n.name], paper)
     case 'bold':
     case 'italic': {
       const el = doc.createElement(n.type === 'bold' ? 'strong' : 'em')
-      for (const c of n.children) el.appendChild(inline(doc, c, icons))
+      for (const c of n.children) el.appendChild(inline(doc, c, icons, paper))
       return el
     }
     // En referens (B7) hör regelboken till och når aldrig ett kort; `parseBody` läser inga, så

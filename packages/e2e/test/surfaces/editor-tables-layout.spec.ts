@@ -122,3 +122,33 @@ test.describe('the height the Bord tab works with', () => {
     expect(editorCss).toContain('.byd-setup {')
   })
 })
+
+// A row's buttons in the column's size (#1375): «Öppna bordet», the question that ends the table and
+// its two answers stood in 11 px beside «Starta nytt bord» in 13. The row carried the felt's own
+// attribute, `[data-table]`, and with it the felt's type.
+test.describe('the words on a table’s row', () => {
+  test.use({ viewport: { width: 1440, height: 900 } })
+  test('stand in the size «Starta nytt bord» does, the question to end the table too', async ({ page }) => {
+    await bordTab(page)
+    const row = page.locator('.byd-table-row').first()
+    // A table nobody has played lies under its fold, which stands open of itself only while its
+    // cards are drawn (#939); opened by a press, it stays open.
+    await expect(async () => {
+      if (!(await row.isVisible())) await page.locator('.byd-tables-fold').first().click()
+      await expect(row).toBeVisible({ timeout: 1000 })
+    }).toPass()
+    await row.getByRole('button', { name: /^Fler val för bordet / }).click()
+    await row.getByRole('menuitem', { name: /Avsluta bordet/ }).click()
+    const question = row.getByRole('alertdialog')
+    await expect(question).toBeVisible()
+    const size = (locator: ReturnType<Page['locator']>) => locator.evaluate((el) => getComputedStyle(el).fontSize)
+    const column = await size(page.locator('.byd-tables-new'))
+    const sizes = {
+      open: await size(row.getByRole('link', { name: /^Öppna bordet/ })),
+      question: await size(question.locator('p')),
+      yes: await size(question.getByRole('button', { name: 'Ja, avsluta' })),
+      cancel: await size(question.getByRole('button', { name: 'Avbryt' })),
+    }
+    expect(sizes).toEqual({ open: column, question: column, yes: column, cancel: column })
+  })
+})

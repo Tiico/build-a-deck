@@ -1769,6 +1769,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                     row={row}
                     t={t}
                     icons={gameIcons}
+                    paper={paper}
                     was={moved(changeOf(cardRef), f) ? String(wasCell(cardRef, f) ?? '') : null}
                     open={here?.cardRef === cardRef && here.field === f}
                     caretAt={caretAfter.current?.cardRef === cardRef && caretAfter.current.field === f ? caretAfter.current.at : null}

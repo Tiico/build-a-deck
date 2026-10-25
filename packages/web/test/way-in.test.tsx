@@ -62,7 +62,7 @@ async function rowOf(id: string): Promise<HTMLElement> {
   const user = userEvent.setup()
   return waitFor(async () => {
     for (const fold of [...document.querySelectorAll<HTMLElement>('.byd-tables-fold[aria-expanded="false"]')]) await user.click(fold)
-    const row = document.querySelector<HTMLElement>(`[data-table="${CSS.escape(id)}"]`)
+    const row = document.querySelector<HTMLElement>(`[data-session="${CSS.escape(id)}"]`)
     expect(row).not.toBeNull()
     return row!
   })

@@ -1844,6 +1844,13 @@ export const svEditor = {
   'history.diff.added.one': '1 nytt kort',
   'history.diff.removed.one': '1 borttaget',
   'history.diff.changed.one': '1 ändrat',
+  // Samma tal sagda som en mening med sitt substantiv (#1375), där sammanfattningen står ensam.
+  'history.summary.added.one': '{n} nytt kort',
+  'history.summary.added.other': '{n} nya kort',
+  'history.summary.removed.one': '{n} kort borttaget',
+  'history.summary.removed.other': '{n} kort borttagna',
+  'history.summary.changed.one': '{n} kort ändrat',
+  'history.summary.changed.other': '{n} kort ändrade',
   'history.day.today': 'I dag',
   'history.day.yesterday': 'I går',
   'history.day.versions.one': '{n} version',

@@ -8,7 +8,7 @@ import { tableTab } from '../ways.js'
 import { roomAddress } from '../table/roomAddress.js'
 import { rememberedStart, type StartAnswer } from './startAnswer.js'
 import { startInTab, tableWay, type Started } from '../startWay.js'
-import type { Seating } from '@byd/protocol'
+import { PHYSICAL_VERBS, type Seating } from '@byd/protocol'
 import { groupOf, tableGroups, type TableGroup, type TableGroupId } from './tableRows.js'
 import { placedProps, usePlacement } from './placement.js'
 import { useRoving } from './roving.js'
@@ -76,6 +76,15 @@ export function TablesTab({ client, server, started = null, onResults }: TablesT
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps -- a new language is no reason to ask for the tables again
   }, [client, asked])
+  // A tab the designer comes back to asks again (#1365): a table played in another window moves to the
+  // group it now belongs to, also when its row lay folded and had no connection of its own to hear it.
+  useEffect(() => {
+    const look = () => {
+      if (document.visibilityState === 'visible') setAsked((n) => n + 1)
+    }
+    document.addEventListener('visibilitychange', look)
+    return () => document.removeEventListener('visibilitychange', look)
+  }, [])
   // What came of each ended table (#1010), for the one line its row says it in. Asked beside the
   // list and with it, and only by someone who may read it (#524): a viewer's rows say nothing more.
   const [results, setResults] = useState<Record<string, PlaytestTable>>({})
@@ -97,7 +106,14 @@ export function TablesTab({ client, server, started = null, onResults }: TablesT
   // ended table has no menu left (#1286).
   useEffect(() => {
     if (revealed?.why !== 'ended' || !tables) return
-    const frame = requestAnimationFrame(() => document.querySelector<HTMLElement>(`[data-table="${CSS.escape(revealed.id)}"] .byd-tables-go > a`)?.focus())
+    // Only while the focus is still the end's: in the row, or dropped with the row it had. A list asked
+    // again later (#1365) does not take it from wherever the designer has gone since.
+    const frame = requestAnimationFrame(() => {
+      const row = document.querySelector<HTMLElement>(`[data-session="${CSS.escape(revealed.id)}"]`)
+      const at = document.activeElement
+      if (at && at !== document.body && !row?.contains(at)) return
+      row?.querySelector<HTMLElement>('.byd-tables-go > a')?.focus()
+    })
     return () => cancelAnimationFrame(frame)
   }, [tables, revealed])
 
@@ -261,6 +277,7 @@ export function TablesTab({ client, server, started = null, onResults }: TablesT
               setRevealed({ id, why: 'ended' })
               setAsked((n) => n + 1)
             }}
+            onPlayed={() => setAsked((n) => n + 1)}
             onUpdate={async (id) => {
               // An update the log refuses is a table that has ended meanwhile (#705): the list is
               // asked again either way, and files it where it now belongs.
@@ -288,7 +305,7 @@ export function TablesTab({ client, server, started = null, onResults }: TablesT
 // A folded group draws nothing at all, which is the whole point: a row that is not drawn opens no
 // WebSocket and renders no thumbnail, so what the list costs follows what is on the screen rather
 // than what the game has ever started.
-function TableGroupView({ group, server, rev, revealed, onEnded, onUpdate, results, onResults }: { group: TableGroup; server: string | null; rev: number; revealed: string | null; onEnded(id: string): void; onUpdate(id: string): Promise<void>; results: Record<string, PlaytestTable>; onResults?: (id: string) => void }) {
+function TableGroupView({ group, server, rev, revealed, onEnded, onPlayed, onUpdate, results, onResults }: { group: TableGroup; server: string | null; rev: number; revealed: string | null; onEnded(id: string): void; onPlayed(): void; onUpdate(id: string): Promise<void>; results: Record<string, PlaytestTable>; onResults?: (id: string) => void }) {
   const [chosen, setChosen] = useState(group.id === 'played')
   // A table this column just started or ended opens the group it is filed under (#480) — in the
   // same render that first draws it, so there is no folded frame for a click to land in, and a
@@ -318,7 +335,7 @@ function TableGroupView({ group, server, rev, revealed, onEnded, onUpdate, resul
   const rows = (
     <ul id={listId} className="byd-tables-list" aria-labelledby={headingId}>
       {group.tables.map((table) => (
-        <TableRow key={table.id} table={table} server={server} rev={rev} onEnded={() => onEnded(table.id)} onUpdate={() => onUpdate(table.id)} {...(watches ? { textures: textures[table.id] ?? null } : {})} {...(results[table.id] && onResults ? { result: results[table.id], onResults: () => onResults(table.id) } : {})} />
+        <TableRow key={table.id} table={table} server={server} rev={rev} onEnded={() => onEnded(table.id)} onPlayed={onPlayed} onUpdate={() => onUpdate(table.id)} {...(watches ? { textures: textures[table.id] ?? null } : {})} {...(results[table.id] && onResults ? { result: results[table.id], onResults: () => onResults(table.id) } : {})} />
       ))}
     </ul>
   )
@@ -507,12 +524,12 @@ const THUMBNAIL = { w: 640, h: 384 }
 // Live, as before: the same connection the TV makes (seatless, sees only what is public), so what
 // the row says about the table is what the table itself says. A row that is not drawn — a folded
 // group — makes no connection at all, which is what keeps the cost with what is on the screen.
-function TableRow({ table, server, rev, onEnded, onUpdate, textures: watched, result, onResults }: { table: TableSummary; server: string | null; rev: number; onEnded?: () => void; onUpdate?: () => Promise<void>; textures?: Textures | null; result?: PlaytestTable | undefined; onResults?: () => void }) {
+function TableRow({ table, server, rev, onEnded, onPlayed, onUpdate, textures: watched, result, onResults }: { table: TableSummary; server: string | null; rev: number; onEnded?: () => void; onPlayed?: () => void; onUpdate?: () => Promise<void>; textures?: Textures | null; result?: PlaytestTable | undefined; onResults?: () => void }) {
   const t = useT()
   // The day and the clock a last move is said in are the reader's, not `sv-SE`'s (#228).
   const { lang } = useLang()
   const url = server ? server.replace(/^http/, 'ws') : `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`
-  const { client, view, observers, room } = useTableClient({ url, sessionId: table.id, seat: null, owner: true })
+  const { client, view, observers, room, activity } = useTableClient({ url, sessionId: table.id, seat: null, owner: true })
   // Ending a table is the one thing here that cannot be looked at afterwards (C9), so it is
   // asked about first, and the question gives the focus back to what is still on the screen when
   // it closes — the menu is gone by then, so that is the button the menu hangs from.
@@ -553,7 +570,18 @@ function TableRow({ table, server, rev, onEnded, onUpdate, textures: watched, re
   const ended = table.ended || view?.ended === true
   // Which of the three this row is, said as a word and not only as a place in the column: a
   // reader who lands on the row itself never saw the heading it came under.
-  const state: TableGroupId = ended ? 'ended' : groupOf(table)
+  // The last move as the table itself says it, while the row is open (#1365): the list knows only the
+  // one it had when it was asked, and a table played since stood as «aldrig spelat» until a reload.
+  // A move heard on a table the list had as untouched asks for the list again, which files the row
+  // under the tables being played.
+  const heard = activity.findLast((line) => PHYSICAL_VERBS.includes(line.intent.v))?.at ?? null
+  const lastAt = table.lastAt === null || (heard !== null && heard > table.lastAt) ? heard : table.lastAt
+  const state: TableGroupId = ended ? 'ended' : lastAt === null ? 'untouched' : 'played'
+  const filedUntouched = groupOf(table) === 'untouched'
+  useEffect(() => {
+    if (filedUntouched && !ended && heard !== null) onPlayed?.()
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- once a move is first heard, not on every one
+  }, [filedUntouched, ended, heard !== null])
   // A table keeps the version it was refreshed to (C7): the project can move on without it, and
   // then the cards on the table are not the cards in the editor. The row has to say so — but not
   // about a table that has ended, which can never be updated again and is not behind anything.
@@ -585,8 +613,10 @@ function TableRow({ table, server, rev, onEnded, onUpdate, textures: watched, re
     ? []
     : [...(code ? [{ id: 'copy', label: 'tables.copy' as Key, press: copy }] : []), { id: 'end', label: 'tables.end' as Key, apart: true, press: () => setAsking(true) }]
 
+  // The row is `data-session` and never `data-table` (#1375): that is the felt's own attribute, and
+  // the row took the felt's type with it, 11 px, and was found by whatever looks for a felt.
   return (
-    <li className="byd-table-row" data-table={table.id} data-state={state} data-stale={stale} data-ended={ended}>
+    <li className="byd-table-row" data-session={table.id} data-state={state} data-stale={stale} data-ended={ended}>
       {/* The table itself, small: the very snapshot the TV is drawing from, through the one
           renderer for tables (K9). A picture of a live game says "this is being played" faster
           than any word, and the words beside it carry the same facts for a screen reader. */}
@@ -607,7 +637,7 @@ function TableRow({ table, server, rev, onEnded, onUpdate, textures: watched, re
         </p>
         {!ended && <p className="byd-tables-line">{seated(view?.seats ?? null, observers, t)}</p>}
         <p className="byd-tables-line">
-          {lastMoveWords(table.lastAt, Date.now(), lang, t)}
+          {lastMoveWords(lastAt, Date.now(), lang, t)}
           {full && ` · ${t('tables.full')}`}
         </p>
         {/* What came of an ended table, in one line, and the way to all of it (#1010, A:s rad). */}

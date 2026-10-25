@@ -56,7 +56,7 @@ test('the TV started from the editor leads back to the editor tab, and a way in 
   await online.waitForURL(/\/online\?/)
   await expect(online.locator('.byd-seat-name[data-me="true"]')).toBeAttached()
   const withSeat = page.context().pages().length
-  const mine = page.locator(`.byd-table-row[data-table="${new URL(online.url()).searchParams.get('session')}"]`).getByRole('link', { name: /^(Öppna bordet|Open the table)/ })
+  const mine = page.locator(`.byd-table-row[data-session="${new URL(online.url()).searchParams.get('session')}"]`).getByRole('link', { name: /^(Öppna bordet|Open the table)/ })
   await Promise.all([online.waitForEvent('load'), mine.click()])
   expect(page.context().pages(), 'the seat that has a tab opens in it').toHaveLength(withSeat)
   await expect(online.locator('.byd-seat-name[data-me="true"]')).toBeAttached()

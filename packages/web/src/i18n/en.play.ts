@@ -254,6 +254,7 @@ export const enPlay: Record<keyof typeof svPlay, string> = {
   'activity.session.end': 'The table was ended',
   'activity.version.change': 'The game was updated to {to}',
   'activity.undo.self': '{who} undid their last move',
+  'activity.undo.mine': 'You undid your last move',
   'activity.rewind.propose': '{who} proposed a rewind',
   'activity.rewind.confirm': '{who} approved the rewind',
   'activity.rewind.reject': '{who} turned the rewind down',
