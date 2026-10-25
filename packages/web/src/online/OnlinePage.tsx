@@ -91,9 +91,18 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
   const http = url.replace(/^ws/, 'http')
   const conn = useTableClient(sessionId && seat ? { url, sessionId, seat, ...(token ? { token } : {}), ...(owner ? { owner: true } : {}), connectTimeoutMs: timing.connectTimeoutMs, retryPlanMs: timing.retryPlanMs } : null)
   const { client, view, status, activity, observers, refused } = conn
-  // A guest sits down as the name her token was bought with, which the table tells her (#1278); the
-  // owner's own seat has no token, and its name is in its address.
-  const name = token === undefined ? params.get('name') : (client?.admitted ?? null)
+  // A guest sits down as the name her token was bought with, which the table tells her (#1278). The
+  // owner's own seat has no token and no name in its address (#1306): she sits down under the name
+  // she gave «Hur sitter ni?» in this browser (L77), else under her account's, which the table tells
+  // her, else as the designer.
+  // A link from before that named her in its query, and the name is taken out of the address in
+  // the same history entry, as a guest's is (#1278).
+  const [kept] = useState(() => {
+    if (!owner) return null
+    dropName()
+    return sessionId ? (hostSeatAt(sessionId)?.name ?? null) : null
+  })
+  const name = token === undefined ? (owner ? (kept ?? client?.admitted ?? (view ? t('online.designer') : null)) : null) : (client?.admitted ?? null)
   // A whole table on a whole screen: the message stands on the felt, like the TV's.
   const live = useLiveStatus(conn, 'table', timing)
   const links = statusLinks({ server: params.get('server'), code: params.get('code') })

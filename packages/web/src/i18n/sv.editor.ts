@@ -2005,7 +2005,6 @@ export const svEditor = {
   'zone.hand': 'Hand',
   'zone.new.pile': 'Hög {n}',
   'zone.new.area': 'Yta {n}',
-  'tables.designer': 'Designern',
   // Playtestets svar (#1010, beställarens val 2026-10-18): Bord-flikens andra vy, «Resultat».
   'results.switch': 'Bord-flikens vy',
   'results.switch.tables': 'Bord',

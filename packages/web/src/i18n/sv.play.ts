@@ -523,6 +523,9 @@ export const svPlay = {
 
   // Åskådaren (C8).
   'observer.name': 'observatör',
+  // What the owner is called at her own seat when neither this browser nor her account knows a name
+  // for her (#1306): the editor's word, in the language she works in (A4).
+  'online.designer': 'Designern',
   'observer.banner': 'Du är observatör och ser allas kort. Alla vet att du är här.',
   'observer.watching': '{name} tittar på och ser alla kort',
   // Fördjupningen bakom frågetecknet (L32:s tillägg, #305). Att hon syns för alla står kvar på
