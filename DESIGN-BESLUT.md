@@ -2513,11 +2513,33 @@ Ett konto kan ladda ner sina uppgifter och radera sig självt (art. 15 och 20); 
 En integritetspolicy med en förteckning över behandlingar och biträden står på «Villkor · Integritet» på #757:s rad.
 Kontots och gästens vägar är nya ytor och prototypas först.
 
+Byggt 2026-10-25 (#1279): raderingen i lagret, gallringen, liggaren och operatörsskriptet.
+Raderingen är `ErasureStore` i `packages/server/src/erase.ts`, i minnet och i Postgres (`pg.erasures()`), och den tar tre saker: ett inträde, ett bords gäster och ett spels bord.
+Ett inträde är en plats eller en betraktare som en gäst köpt med ett namn, och det heter efter bordet, platsen och stunden det gavs, eftersom en tokens hash byts när ett konto går tillbaka till bordet (#690).
+Hennes rader är de som skrivits från de gånger hon satt på platsen, och en betraktares är flaggorna med hennes namn.
+Att hon satt där avgörs av att hennes inträde levde när platsen togs, eftersom en plats har ett levande inträde åt gången (DRIFT §9); en `seat.claim` som inget inträdes livstid rymmer går till inträdena på platsen med samma namn.
+I hennes rader maskas personfälten med `redactLine`, hennes inträde står kvar under det maskade namnet, och hennes enkätsvar raderas.
+Ett bords gäster är alla rader och alla inträden vid bordet, och alla enkätsvar raderas.
+Ett spel är vart och ett av dess bord, medan sessionsraden och bäraren står kvar och kvoterna räknar samma bord som förut (#1196).
+Allt sker i en transaktion per begäran under bordets skrivlås, och en rad maskas som den skrevs: bara `intent` ändras, bara i personfälten, och raden behåller sin `schema_version`.
+Ett spel som tas bort i editorn maskar sina bord direkt efter att spelet gått; misslyckas maskningen står spelet borta, och sopningens nästa varv hittar det.
+Sopningen (`sweepErasures`, vid start och varje timme bredvid `sweepSpent`) maskar en gäst utan konto tolv kalendermånader efter att bordets logg slutade med `session.end`, och då står hennes enkätsvar kvar med siffrorna men utan namn och fritext.
+Ett claimat inträde rörs inte, och inte heller en rad som också är ett claimat inträdes.
+Samma sopning maskar borden efter spel som är borta och som liggaren inte har maskat, vilket första gången efter deployen är varje spel som någonsin tagits bort; ett andra varv ändrar ingenting.
+Ett bord som står laddat läser om sin logg när en radering har maskat den, vem som än raderade: appen själv, eller operatörens skript i en annan process, som Postgres berättar om med en notifiering när transaktionen går igenom.
+Varje anslutning får då en patch som efter vilken rad som helst, platsen står kvar som tagen under det maskade namnet, och en ny anslutning får den maskade loggen.
+Det en öppen telefon redan har visat av aktivitetsraderna ligger kvar i den webbläsaren tills den laddas om.
+Liggaren är tabellen `erasures`: id, när, vad (`guest`, `table` eller `game`), varför (`request`, `retention` eller `removed`), och bordet, platsen och stunden eller spelet; inget namn, ingen adress och ingen token.
+Operatörsskriptet är `pnpm --filter @byd/server erase`, med `table <session> [--seat <plats> | --name <namn>]`, `game <id>`, `ledger` och `replay [--from <fil>]`, och det säger vad det gjorde i en rad utan namn.
+`erase game` maskar ett spels bord och lämnar spelet, som är designerns att ta bort; `replay` tar bort ett spel igen bara när designern hade tagit bort det.
+Ytorna säger ännu inte det maskade värdet med egna ord: en maskad plats visar platshållaren som den är, och det hör till kontots och gästens skivor (#1280, #1281).
+Grinden är `packages/server/test/erase.test.ts`, mot båda lagren, med en återställning i Postgres som körs om ur liggaren.
+
 Skivorna (alla öppna 2026-10-24):
 - #1276 personfälten och kolumnerna som sluten, testad karta — byggd.
 - #1277 det som inte längre kan användas rensas — byggd.
-- #1278 gästens namn och token ur adressraden och `Referer` — pågår.
-- #1279 radering i lagret, gallring, raderingsliggare och operatörsskript — efter #1276.
+- #1278 gästens namn och token ur adressraden och `Referer` — byggd.
+- #1279 radering i lagret, gallring, raderingsliggare och operatörsskript — byggd.
 - #1280 kontot laddar ner sina uppgifter och raderar sig i Profil — efter #1279 och #1254, prototyp först.
 - #1281 gästens väg: meningen, radering från telefonen och integritetssidan — efter #1279 och villkorens rad (#1272), prototyp först.
 
@@ -7964,7 +7986,7 @@ Vid 375 ryms orden och står kvar (`player-viewport.test.tsx`); vid 360 gjorde d
 Den mäter också huvudet vid 360 och 320 med 25 kort och ett långt namn: högst 60 px, och båda ikonknapparna 44 × 44.
 Prototypen: `docs/ux-audits/2026-10-05-telefonen/prototyper/716/`.
 
-### L63. Delningen säger «Dela», i huvudet och i spelets ⋯ (prototypat och beslutat 2026-10-05, #727)
+### L63. Delningen säger «Dela», i huvudet och i spelets ⋯ (prototypat och beslutat 2026-10-05, #727; reviderat 2026-10-24, #1250)
 
 Speltestet 2026-10-02 fann att den enda vägen till «Vilka som har spelet» var en rund bricka med ägarens initial i huvudet.
 Den hade ett namn för skärmläsaren men inget synligt ord, inget plus och ingenting i någon ⋯-meny, så den som ville bjuda in någon fick gissa att trycka på sin egen initial.
@@ -7975,11 +7997,25 @@ Prototypen ritade den med en tunn kant; den står utan, eftersom huvudets dörra
 Ordet står först i knappens namn, «Dela · vilka som har spelet», som det står på knappen (WCAG 2.5.3).
 Spelets ⋯-meny i editorn har «Dela spelet…» före «Exportera…» och öppnar samma panel; menyn har därmed två val och inte ett.
 
-Bredden får inte växa med antalet som är inne: vid 1280 och bredare står högst tre ansikten, antalet och ordet.
-Mellan 1024 och 1279 är dörren ett ansikte, en tummyta bred, som förut, och «Dela spelet…» i ⋯ är vägen i ord där.
+Mellan 1024 och 1279 står ordet inte: dörren är ett ansikte, och «Dela spelet…» i ⋯ är vägen i ord där.
 Prototypen mätte en rad vid 1024 med Macens typsnitt, men med CI:s bredare klipptes spelets namn (`editor-header-fit.spec.ts`), och huvudet har ingen luft vid 1024 (#668).
 `share-panel.test.tsx` öppnar panelen från både knappen och menyn.
 Prototypen: `docs/ux-audits/2026-10-05-delningen/prototyper/727/`.
+
+Reviderat 2026-10-24 (#1250, beställarens beslut, variant B av tre): **dörren är ditt eget ansikte och «Dela» hur många som än är inne, och de andra hänger från huvudets underkant.**
+Dörren höll förut upp till tre ansikten och «2 online», och när en medredaktör kom in blev den omkring 70 px bredare.
+Raden flyttade då under pekaren: vid 1280 gled flikarna 58–81 px, och vid 1440 i CI:s typsnitt 69–89 px medan spelets namn klipptes till «S…».
+En flik som glider mellan tryck och släpp väljs inte (#1231), så kravet är att ingenting till vänster om «Dela» flyttar sig en pixel.
+De andra ritas som en stapel av ansikten på 20 px, med mitten på huvudets underkant: under ordet från 1280 och under ansiktet mellan 1024 och 1279.
+Stapeln når 9 px ned i det som står under huvudet, bordsremsan, notisen, läsbandet eller arbetet, och ritas över det.
+Den tar ingen bredd i raden och ingen höjd ur arbetet.
+Högst tre andra ritas, och från fyra andra är det sista «+N».
+Stapeln är en del av dörren, så ett tryck på den öppnar panelen, och den är dold för skärmläsaren: antalet står i dörrens namn, «Dela: vilka som har spelet, 2 online», och inte som ett ord i raden.
+Mellan 1024 och 1279 är dörren exakt en tummyta bred, sagt som en bredd och inte som ett tak.
+Ett ansikte är namnets initial och titeln hela namnet (#1254); dörren hittar sitt eget ansikte på anslutningen, och en andra flik för samma konto på adressen.
+De två andra varianterna var en fast ruta för tre ansikten, som kostade namnet 40 px också när man är ensam, och de andra i radens rest, som inte syntes alls i CI:s typsnitt vid 1280.
+`editor-here-door.test.tsx` lägger editorn med 1, 2, 4 och 8 inne vid 1024, 1280 och 1440, i Macens typsnitt och i Verdana, och kräver 0 px; `editor-here-still.spec.ts` gör samma sak med två riktiga redaktörer.
+Prototypen: `docs/ux-audits/2026-10-24-huvudet-star-still/prototyper/`.
 
 ### L64. Startsidan visar bord som pågår, och menyn öppnar dem före ett nytt (prototypat och beslutat 2026-10-05, #724)
 

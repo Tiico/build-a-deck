@@ -237,6 +237,15 @@ Därför skrivs varje radering och maskning i en raderingsliggare — vad, vilke
 Efter en återställning till en tidigare punkt körs liggaren om innan tjänsten släpps på igen, och RUNBOOK säger det i samma steg som återställningen (#1279).
 Det följer att liggaren inte får gå förlorad med den punkt som återställs: raderingarna efter den punkten måste gå att läsa.
 
+Byggt 2026-10-25 (#1279): liggaren är tabellen `erasures`, och den skrivs i samma transaktion som maskningen.
+En rad säger id, när, vad (`guest`, `table` eller `game`), varför (`request`, `retention` eller `removed`), och bordet, platsen och stunden inträdet gavs, eller spelet; inget namn, ingen adress och ingen token.
+Den har inga främmande nycklar, eftersom en rad ska överleva det den nämner och gå att skriva in igen efter en återställning där det den nämner är tillbaka.
+Att liggaren inte går förlorad med punkten löses med en kopia: `erase ledger` skriver ut den som JSON-rader innan en återställning, och `erase replay --from <fil>` kör om varje rad i den ordning den gjordes och skriver in de rader som saknas.
+Är databasen själv borta tas kopian ur en återställning till `LATEST` i en tillfällig katalog (`ops/restore.sh`), eftersom liggaren ligger i WAL som allt annat.
+En körning till ändrar ingenting, så liggaren går att köra om hur många gånger som helst.
+Gallringen behöver ingen kopia: sopningen gör den vid varje start, innan dörren öppnas.
+Stegen står i RUNBOOK §6.
+
 ### Huvudnyckeln för AI-nycklarna (#999)
 
 Designerns egen API-nyckel hos Anthropic eller OpenAI (E4) ligger i tabellen `ai_keys`, krypterad med AES-256-GCM under en huvudnyckel som heter `AI_KEY_SECRET`.
@@ -292,6 +301,8 @@ En radering eller en gallring byter `seat.claim.name`, `flag.note`, `flag.observ
 Maskningen är ingen migrering: raden behåller sin `schemaVersion`, och värdet byts mot ett av samma form, så upcasters och uppspelning läser den som förut.
 Loggen spelar därefter upp identiskt med avseende på spelet (D4), och fältlistan är densamma som korpusens anonymisering läser (#1276).
 Korpusens filer berörs inte: de är redan anonymiserade (#540) och bär inga personuppgifter.
+Byggt 2026-10-25 (#1279): maskningen läser raden som den ligger, byter personfälten i dess `intent` med `redactLine` och skriver tillbaka bara `intent`, under bordets skrivlås och i raderingens transaktion; `schema_version`, `outcome` och allt annat står kvar.
+Den maskade loggen spelar upp till samma spel och samma vyer, med namnen och texterna maskade (`packages/server/test/erase.test.ts`), och `ops/restore-test.sh` spelar upp den som förut.
 
 Ingen permanent staging på lådan.
 Grinden är replay-korpusen i CI: anonymiserade riktiga loggar som måste spela upp identiskt.

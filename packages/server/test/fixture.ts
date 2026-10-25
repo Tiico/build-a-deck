@@ -1,7 +1,8 @@
 import type { Server as SocketServer } from 'node:net'
 import type { Server } from 'node:http'
 import { CARD_STANDARD_63x88, TypeRegistry, type SetupDef, STANDARD_TYPES } from '@byd/engine'
-import { TableHost, createServer, MemoryLogStore, MemoryProjectStore, MemorySurveyStore, MemoryAuthStore, MemoryMailer, MemoryAssetStore, type SurveyStore } from '../src/index.js'
+import { TableHost, createServer, MemoryLogStore, MemoryProjectStore, MemorySurveyStore, MemoryAuthStore, MemoryMailer, MemoryAssetStore, PostgresLogStore, type SurveyStore } from '../src/index.js'
+import type { ErasureStore } from '../src/erase.js'
 import type { AssetStore } from '../src/assets.js'
 import type { ServerOptions } from '../src/server.js'
 import type { LogStore } from '../src/store.js'
@@ -150,6 +151,9 @@ export type Running = {
   host: TableHost
   projects: ProjectStore
   mail: MemoryMailer
+  // The erasure (#1279) over the run's own stores, as the box has it: what it masks, the run's loaded
+  // tables read again, told the way the app is told.
+  erasures: ErasureStore | null
   /**
    * What the raw door is knocked on with (#1194): the cookie of the run's own table bearer, an
    * account the fixture seats straight in the auth store, so that no mail is sent and no login is
@@ -176,7 +180,7 @@ const rooms = new Map<string, { code: string; hostKey: string }>()
 // `plans` and `accountPlans` are the tiers and who has which (#1193); without them nothing is limited.
 // `renders` is the render queue, for a test about who a rendering is counted against (#1197): the
 // render log is written by the queue, so the Postgres one has to be the one asked.
-export async function start(opts: { appOrigin?: string; authBypass?: boolean; objects?: ObjectStore; now?: () => Date; release?: string; contact?: string; projects?: ProjectStore; store?: LogStore; surveys?: SurveyStore; assets?: AssetStore; auth?: AuthStore | false; corpus?: Corpus; ai?: ServerOptions['ai']; plans?: Plans; accountPlans?: AccountPlanStore; renders?: RenderStore; printProviders?: ServerOptions['printProviders']; terms?: ServerOptions['terms']; screening?: ServerOptions['screening'] } = {}): Promise<Running> {
+export async function start(opts: { appOrigin?: string; authBypass?: boolean; objects?: ObjectStore; now?: () => Date; release?: string; contact?: string; projects?: ProjectStore; store?: LogStore; surveys?: SurveyStore; assets?: AssetStore; auth?: AuthStore | false; corpus?: Corpus; ai?: ServerOptions['ai']; plans?: Plans; accountPlans?: AccountPlanStore; renders?: RenderStore; printProviders?: ServerOptions['printProviders']; terms?: ServerOptions['terms']; erasures?: ErasureStore | false; screening?: ServerOptions['screening'] } = {}): Promise<Running> {
   const store = opts.store ?? new MemoryLogStore()
   const renders = opts.renders ?? new MemoryRenderStore(opts.objects)
   // One store for the app and the worker, as the box has one table and one bucket for both (#1028).
@@ -185,12 +189,15 @@ export async function start(opts: { appOrigin?: string; authBypass?: boolean; ob
   // The memory one weighs the pictures its games name in the same asset store (#1197).
   const projects = opts.projects ?? new MemoryProjectStore(assets)
   const host = new TableHost(registry, store, undefined, renders)
+  const surveys = opts.surveys ?? new MemorySurveyStore()
+  const erasures = opts.erasures === false ? null : (opts.erasures ?? (store instanceof PostgresLogStore ? store.erasures() : store instanceof MemoryLogStore && surveys instanceof MemorySurveyStore ? store.erasures(surveys, projects) : null))
+  const unlisten = erasures ? await erasures.listen((ids) => void host.reload(ids)) : null
   const mail = new MemoryMailer()
   const authBypass = opts.authBypass ? { authBypass: true } : {}
   // Accounts are on unless a test says the server has none, as a server started without them has.
   const auth = opts.auth === false ? null : (opts.auth ?? new MemoryAuthStore())
   let bearer: Promise<Record<string, string>> | null = null
-  const server = createServer({ host, store, registry, renders, projects, assets, surveys: opts.surveys ?? new MemorySurveyStore(), ...(auth ? { auth } : {}), mailer: mail, publicOrigin: 'http://test.local', ...(opts.appOrigin ? { appOrigin: opts.appOrigin } : {}), ...(opts.objects ? { objects: opts.objects } : {}), ...(opts.now ? { now: opts.now } : {}), ...(opts.release ? { release: opts.release } : {}), ...(opts.contact ? { contact: opts.contact } : {}), ...(opts.ai ? { ai: opts.ai } : {}), ...(opts.corpus ? { corpus: opts.corpus } : {}), ...(opts.plans ? { plans: opts.plans } : {}), ...(opts.accountPlans ? { accountPlans: opts.accountPlans } : {}), ...(opts.printProviders ? { printProviders: opts.printProviders } : {}), ...(opts.terms ? { terms: opts.terms } : {}), ...(opts.screening ? { screening: opts.screening } : {}), ...authBypass })
+  const server = createServer({ host, store, registry, renders, projects, assets, surveys, ...(erasures ? { erasures } : {}), ...(auth ? { auth } : {}), mailer: mail, publicOrigin: 'http://test.local', ...(opts.appOrigin ? { appOrigin: opts.appOrigin } : {}), ...(opts.objects ? { objects: opts.objects } : {}), ...(opts.now ? { now: opts.now } : {}), ...(opts.release ? { release: opts.release } : {}), ...(opts.contact ? { contact: opts.contact } : {}), ...(opts.ai ? { ai: opts.ai } : {}), ...(opts.corpus ? { corpus: opts.corpus } : {}), ...(opts.plans ? { plans: opts.plans } : {}), ...(opts.accountPlans ? { accountPlans: opts.accountPlans } : {}), ...(opts.printProviders ? { printProviders: opts.printProviders } : {}), ...(opts.terms ? { terms: opts.terms } : {}), ...(opts.screening ? { screening: opts.screening } : {}), ...authBypass })
   // Never hang up an idle connection from this end (#848): the `fetch` in this same process pools
   // it for its next request, and a worker held past Node's five seconds wakes with both due in one
   // turn. The client decides when a connection is done; `stop` closes this end.
@@ -203,6 +210,7 @@ export async function start(opts: { appOrigin?: string; authBypass?: boolean; ob
     host,
     projects,
     mail,
+    erasures,
     bearer: () => (bearer ??= auth ? seatBearer(auth) : Promise.resolve({})),
     // Runs a real Chromium over the queue, as the render container would.
     renderAll: async () => {
@@ -244,11 +252,13 @@ export async function start(opts: { appOrigin?: string; authBypass?: boolean; ob
       if (seat === null) return WireClient.connect(base, sessionId, null, undefined, { host: room.hostKey })
       return WireClient.connect(base, sessionId, seat, undefined, { token: await run.admit(sessionId, seat) })
     },
-    stop: () =>
-      new Promise((resolve) => {
+    stop: async () => {
+      await unlisten?.()
+      await new Promise<void>((resolve) => {
         server.closeAllConnections()
         server.close(() => resolve())
-      }),
+      })
+    },
   }
   bearers.set(run.http, run.bearer)
   return run

@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import type { Applied, Envelope, Presence, SeatId, ServerMessage, Snapshot } from '@byd/protocol'
+import { REDACTED, type Applied, type Envelope, type Presence, type SeatId, type ServerMessage, type Snapshot } from '@byd/protocol'
 import {
   apply,
   cryptoRng,
@@ -241,6 +241,38 @@ export class TableActor {
     await this.queue
   }
 
+  // The log read again after an erasure masked it in the store (#1279, G6): the table plays on from
+  // the same state with the names and the words masked, every connection is patched to it as after
+  // any line, and a connection opened from now on is told the masked log. Queued like an envelope,
+  // so no line is decided against the log as it was. An observer whose admission was masked is
+  // stamped with the placeholder from here on, and the roster says it; the host's own watch is her
+  // login's and never a guest's.
+  reread(): Promise<void> {
+    const run = this.queue.then(async () => {
+      const log = await this.store.read(this.id)
+      this.log.splice(0, this.log.length, ...log)
+      this.state = replay(this.initial, this.registry, log)
+      this.names.clear()
+      for (const line of log) tellAfter(this.names, line)
+      const watching = new Set((await this.store.guestsAt(this.id)).filter((g) => g.kind === 'observer' && g.revokedAt === undefined).map((g) => g.name))
+      let roster = false
+      for (const sub of this.subscribers.keys()) {
+        if (sub.observer === undefined || sub.host || watching.has(sub.observer)) continue
+        sub.observer = REDACTED
+        roster = true
+      }
+      for (const [sub, previous] of this.subscribers) {
+        const next = this.viewFor(sub)
+        const patch = diff(previous, next)
+        this.subscribers.set(sub, next)
+        if (patch.ops.length > 0) sub.send({ t: 'patch', patch })
+      }
+      if (roster) this.broadcastRoster()
+    })
+    this.queue = run.catch(() => undefined)
+    return run
+  }
+
   // Tells every connection to go away, e.g. on drain.
   farewell(reason: string): void {
     for (const sub of this.subscribers.keys()) sub.send({ t: 'bye', reason })
@@ -304,6 +336,15 @@ export class TableHost {
       this.actors.set(id, pending)
     }
     return pending
+  }
+
+  // The tables an erasure masked (#1279): each one that is loaded reads its log again. One that is
+  // not loaded has nothing to read again; it reads the masked log when it is loaded.
+  async reload(ids: readonly string[]): Promise<void> {
+    for (const id of new Set(ids)) {
+      const actor = await this.actors.get(id)
+      await actor?.reread()
+    }
   }
 
   async evictIdle(olderThanMs: number): Promise<string[]> {

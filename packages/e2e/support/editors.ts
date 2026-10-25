@@ -82,13 +82,11 @@ export async function twoEditors(
   return { ...project, bo, line, close: () => context.close() }
 }
 
-// Båda redaktörerna i spelet, och båda huvudena säger att båda är här (#1231). När Bo kommer in växer
-// de närvarande i Adas huvud, och vid skrivbordets 1440 i CI:s typsnitt går raden då över: spelets
-// namn krymper och alla flikar glider omkring 50 px åt vänster (#1250). Ett klick på en flik medan det
-// händer trycker ner på en flik och släpper över nästa, och ingen väljs. Så inget klickas förrän
-// huvudet har satt sig.
+// Båda redaktörerna i spelet, och båda huvudena säger att båda är här (#1231). Huvudet står still när
+// Bo kommer in sedan #1250 (L63: de andra hänger från huvudets kant), men resorna väntar ändå tills
+// båda vet om varandra, så att det de gör sedan sker med båda inne.
 export async function openTogether(ada: Page, bo: Page, url: string): Promise<void> {
   await ada.goto(url)
   await bo.goto(url)
-  for (const page of [ada, bo]) await expect(page.locator('[data-here] b')).toHaveText('2 online')
+  for (const page of [ada, bo]) await expect(page.locator('[data-here]')).toHaveAccessibleName(/, 2 online$/)
 }

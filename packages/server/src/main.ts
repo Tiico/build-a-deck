@@ -17,6 +17,7 @@ import { plansFromEnv, plansLine } from './quotas.js'
 import { printProvidersOf } from './print-providers.js'
 import { CURRENT_CLASSIFIER } from '@byd/screening'
 import { inviteKeepFrom, sweepSpent } from './sweep.js'
+import { sweepErasures, type ErasureStore } from './erase.js'
 
 // The tiers stop the start when they cannot be read (#1192): an error must never quietly become
 // unlimited, nor quietly become closed. Said in the log, then out — before anything else is opened,
@@ -88,6 +89,7 @@ let auth: AuthStore
 let assets: AssetStore
 let aiKeys: AiKeyStore
 let accountPlans: AccountPlanStore
+let erasures: ErasureStore
 let closeStore: () => Promise<void> = async () => undefined
 if (databaseUrl) {
   const pg = PostgresLogStore.connect(databaseUrl)
@@ -103,25 +105,33 @@ if (databaseUrl) {
   assets = pg.assets(objects)
   aiKeys = pg.aiKeys()
   accountPlans = pg.accountPlans()
+  erasures = pg.erasures()
   closeStore = async () => {
     await pg.close()
     await rq.close()
   }
   console.log(JSON.stringify({ msg: 'store', kind: 'postgres', assets: objects ? 'r2' : 'postgres' }))
 } else {
-  store = new MemoryLogStore()
+  const memory = new MemoryLogStore()
+  store = memory
   renders = new MemoryRenderStore()
   assets = new MemoryAssetStore()
   // Weighs the pictures its games name in the same asset store (#1197).
   projects = new MemoryProjectStore(assets)
-  surveys = new MemorySurveyStore()
+  const answers = new MemorySurveyStore()
+  surveys = answers
   auth = new MemoryAuthStore()
   aiKeys = new MemoryAiKeyStore()
   accountPlans = new MemoryAccountPlanStore()
+  erasures = memory.erasures(answers, projects)
   console.log(JSON.stringify({ msg: 'store', kind: 'memory', warning: 'log is not durable; textures render nowhere' }))
 }
 
 const host = new TableHost(registry, store, undefined, renders)
+// A table an erasure masked is read again if it is loaded (#1279, G6), whoever erased: this process,
+// or the operator's script in another, which Postgres tells about when it commits. The line says
+// which table, never whose.
+await erasures.listen((ids) => void host.reload(ids).catch((e: unknown) => void console.error(JSON.stringify({ msg: 'reload', tables: ids, error: (e as Error).message }))))
 const staticDir = process.env['STATIC_DIR']
 const publicOrigin = process.env['PUBLIC_ORIGIN']
 const appOrigin = process.env['WEB_ORIGIN']
@@ -148,7 +158,13 @@ console.log(JSON.stringify(plansLine(plans)))
 // What can no longer be used (#1277): swept once before the door opens, and every hour with the
 // stale tables below. The line says how many went from each table, never which (DRIFT §8). A sweep
 // that fails is said and does not keep the door shut: the next one comes within the hour.
-const sweep = () => sweepSpent({ auth, projects, store }, new Date(), inviteKeepMs).catch((e: unknown) => void console.error(JSON.stringify({ msg: 'sweep', error: (e as Error).message })))
+// The guests whose twelve months are over, and the tables of games taken away before #1279, are
+// masked in the same round (G6, F4); the first round after the deploy is the one-off run over every
+// game ever taken away, and every later one finds only what it has not done.
+const sweep = async () => {
+  await sweepSpent({ auth, projects, store }, new Date(), inviteKeepMs).catch((e: unknown) => void console.error(JSON.stringify({ msg: 'sweep', error: (e as Error).message })))
+  await sweepErasures(erasures, new Date()).catch((e: unknown) => void console.error(JSON.stringify({ msg: 'erase', error: (e as Error).message })))
+}
 await sweep()
 // Testtryckeriet stands where a print partner will (F1, F2, #1208): the print package is prepared
 // by it, so what the designer sees and downloads is what a partner would be sent.
@@ -156,7 +172,7 @@ const printProviders = printProvidersOf(STANDARD_TYPES)
 // Screening in shadow mode (F4, beslut 10; #1273): every new picture is queued for the render
 // worker's classifier, where there is a worker to drain the queue. Nothing waits for it or sees it.
 const screening = databaseUrl ? { screening: { classifier: CURRENT_CLASSIFIER } } : {}
-const server = createServer({ host, store, registry, renders, projects, assets, surveys, auth, mailer, authBypass, ai, printProviders,...(objects ? { objects } : {}), ...(staticDir ? { staticDir } : {}), ...(publicOrigin ? { publicOrigin } : {}), ...(appOrigin ? { appOrigin } : {}), ...(release ? { release } : {}), ...(contact ? { contact } : {}), ...(corpus ? { corpus } : {}), plans, accountPlans, ...screening })
+const server = createServer({ host, store, registry, renders, projects, assets, surveys, auth, mailer, authBypass, ai, printProviders,...(objects ? { objects } : {}), ...(staticDir ? { staticDir } : {}), ...(publicOrigin ? { publicOrigin } : {}), ...(appOrigin ? { appOrigin } : {}), ...(release ? { release } : {}), ...(contact ? { contact } : {}), ...(corpus ? { corpus } : {}), plans, accountPlans, erasures, ...screening })
 server.listen(port, () => console.log(JSON.stringify({ msg: 'listening', port })))
 
 const evictor = setInterval(() => {

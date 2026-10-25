@@ -65,15 +65,17 @@ describe('the history over the editor’s work (B4)', () => {
   })
 })
 
-// The faces in the header say how many are in when there are several, and the button's name says
-// it too (#556 E-18): a name without the words on the button cannot be spoken to it (2.5.3).
+// The door's name says how many are in when there are several (#556 E-18). The count is no longer
+// a word on the button: the others hang from the header's edge as faces, hidden from a reader, and
+// the name is where the number is said (L63, #1250). What the button does say, «Dela», still
+// begins the name (2.5.3).
 describe('the faces in the header, to a screen reader (#556)', () => {
-  it('names the count it shows', async () => {
+  it('names how many are in', async () => {
     await openEditor()
     const other = await ProjectClient.open({ http: run.http, id: run.projectId, name: 'Lo' })
     try {
       const here = await screen.findByRole('button', { name: 'Dela: vilka som har spelet, 2 online' })
-      expect(here.textContent).toContain('2 online')
+      expect(here.querySelector('.byd-editor-here-others')?.getAttribute('aria-hidden')).toBe('true')
     } finally {
       other.close()
     }
