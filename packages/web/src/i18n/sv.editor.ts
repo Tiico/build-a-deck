@@ -408,8 +408,8 @@ export const svEditor = {
   'wall.eye.read.desk.short': 'Bordet',
   'wall.eye.read.tv.short': 'TV:n',
   'wall.read.under': 'Minsta text {px} px · under golvet {floor} px',
-  // Väggens panel (L81): storleken, ögonen, guiden och läsbarheten, och kontrollen bredvid.
-  'wall.panel': 'Väggens visning och kontroll',
+  // Väggens panel (L81): storleken, ögonen, guiden och läsbarheten, eller kontrollen. Den heter
+  // som boxen som öppnade den (#1328).
   'wall.panel.close': 'Stäng panelen',
   'wall.size': 'Storlek',
   'wall.size.free': 'Fritt',
@@ -2005,7 +2005,6 @@ export const svEditor = {
   'zone.hand': 'Hand',
   'zone.new.pile': 'Hög {n}',
   'zone.new.area': 'Yta {n}',
-  'tables.designer': 'Designern',
   // Playtestets svar (#1010, beställarens val 2026-10-18): Bord-flikens andra vy, «Resultat».
   'results.switch': 'Bord-flikens vy',
   'results.switch.tables': 'Bord',

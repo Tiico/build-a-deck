@@ -7,7 +7,7 @@ import { compressible, encodedBytes, encodedCopy, precompressed, typeOf } from '
 import { sharedPage } from './share.js'
 import { WebSocketServer, type WebSocket } from 'ws'
 import { z } from 'zod'
-import { ASSET_MAX_BYTES, assetFormatsNamed, assetKindDeclared, ClientMessage, REDACTED, SEATINGS, TABLE_PROTOCOL, sniffAsset, tokenOfProtocols, type Applied, type Seating, type ServerMessage } from '@byd/protocol'
+import { ASSET_MAX_BYTES, assetFormatsNamed, assetKindDeclared, ClientMessage, REDACTED, SEATINGS, TABLE_PROTOCOL, hostKeyOfProtocols, offersTableProtocol, sniffAsset, tokenOfProtocols, type Applied, type Seating, type ServerMessage } from '@byd/protocol'
 import { CARD_STANDARD_63x88, validateSetup, type DeckFacts, type SetupDef, type TypeRegistry } from '@byd/engine'
 import { renderRules, Template, validateCard, type Issue } from '@byd/template'
 import { A5, bookletOf } from './booklet.js'
@@ -377,17 +377,17 @@ export function createServer(given: ServerOptions): Server {
     }
     const sessionId = decodeURIComponent(match[1] ?? '')
     const q = url.searchParams
-    // The token rides in the protocol header (#1278); an address with one is a page loaded before
-    // that, which still gets in.
-    const carried = tokenOfProtocols(req.headers['sec-websocket-protocol'])
+    // The token rides in the protocol header (#1278), and the host key beside it (#1306); an address
+    // with either is a page loaded before that, which still gets in.
+    const offered = req.headers['sec-websocket-protocol']
     const ask: Admission = {
       seat: q.get('seat'),
       role: q.get('role') === 'observer' ? 'observer' : q.get('role') === 'lobby' ? 'lobby' : null,
       name: q.get('name'),
-      token: carried ?? q.get('token'),
-      host: q.get('host'),
+      token: tokenOfProtocols(offered) ?? q.get('token'),
+      host: hostKeyOfProtocols(offered) ?? q.get('host'),
       owner: q.get('owner') === '1',
-      carried: carried !== null,
+      fresh: offersTableProtocol(offered),
     }
     wss.handleUpgrade(req, socket, head, (ws) => void attach(opts, req, ws, sessionId, ask))
   })
@@ -830,13 +830,15 @@ async function fileAt(path: string): Promise<string | null> {
   }
 }
 
-// What a connection asks to be (DRIFT §9), from its query string.
-type Admission = { seat: string | null; role: 'observer' | 'lobby' | null; name: string | null; token: string | null; host: string | null; owner: boolean; carried: boolean }
+// What a connection asks to be (DRIFT §9), from its query string and the protocols it offers.
+// `fresh` is a client that offers the table's protocol, and so knows `admitted` (#1278, #1306).
+type Admission = { seat: string | null; role: 'observer' | 'lobby' | null; name: string | null; token: string | null; host: string | null; owner: boolean; fresh: boolean }
 // Who it is allowed to be: the table (with the host key), a seat or an observer (with a token
 // bought for that), or a lobby that only looks. Anything else is refused.
 // `host` marks the project owner's own seat or watch (L77): not the table's screen, but hers.
-// `guest` is the name on the admission a token bought, for the connection to be told (#1278).
-type Admitted = { seat: string | null; observer?: string; lobby?: true; host?: true; guest?: string }
+// `told` is the name the connection is told it sits as: a guest's, on the admission her token bought
+// (#1278), and the owner's own seat's, the name she gave her account (#1306).
+type Admitted = { seat: string | null; observer?: string; lobby?: true; host?: true; told?: string }
 async function admit(opts: ServerOptions, req: IncomingMessage, session: SessionRecord, ask: Admission): Promise<Admitted | { refused: string }> {
   if (ask.role === 'lobby') return { seat: null, lobby: true }
   // An editor marks its project-owner connection explicitly. Accounts verify the cookie; when
@@ -855,7 +857,11 @@ async function admit(opts: ServerOptions, req: IncomingMessage, session: Session
       const own = opts.auth ? (await accountOf(opts.auth, req))?.name : null
       return { seat: null, observer: own ?? name, host: true }
     }
-    return ask.seat === null ? { seat: null } : { seat: ask.seat, host: true }
+    if (ask.seat === null) return { seat: null }
+    // Her seat sits down under a name her page knows, the one she gave «Hur sitter ni?» (L77); where
+    // it knows none, under the name she gave her account (#1254). Never one from the address.
+    const named = opts.auth ? (await accountOf(opts.auth, req))?.name : null
+    return { seat: ask.seat, host: true, ...(named ? { told: named } : {}) }
   }
   // The table's own view (DRIFT §9): the host key opens it, and so does the login of whoever may
   // open the game's tables (#748) — the server already knows who she is, so an owner who arrives
@@ -873,8 +879,8 @@ async function admit(opts: ServerOptions, req: IncomingMessage, session: Session
   const live = ask.token !== null
     ? await opts.store.activateGuest(session.id, hash(ask.token), now.toISOString(), new Date(now.getTime() + CODE_TTL_MS).toISOString())
     : null
-  if (ask.role === 'observer') return live?.kind === 'observer' ? { seat: null, observer: live.name, guest: live.name } : { refused: 'an observer needs a token' }
-  if (ask.seat !== null) return live?.kind === 'seat' && live.seat === ask.seat ? { seat: ask.seat, guest: live.name } : { refused: 'a seat needs its token' }
+  if (ask.role === 'observer') return live?.kind === 'observer' ? { seat: null, observer: live.name, told: live.name } : { refused: 'an observer needs a token' }
+  if (ask.seat !== null) return live?.kind === 'seat' && live.seat === ask.seat ? { seat: ask.seat, told: live.name } : { refused: 'a seat needs its token' }
   return { refused: 'the table needs the host key' }
 }
 
@@ -1140,7 +1146,7 @@ async function openTableDoor(opts: ServerOptions, req: IncomingMessage, ws: WebS
   }
   const seat = who.seat
   // Told before the snapshot, so the page has its name by the time it sees the seat it sits down in.
-  if (ask.carried && who.guest !== undefined) send({ t: 'admitted', name: who.guest })
+  if (ask.fresh && who.told !== undefined) send({ t: 'admitted', name: who.told })
   // The door shuts once this turn's answers have gone out. A seat that asks for its own way out
   // (#31) is emptied as part of that very commit, and is still owed the ack for it; `ws.close`
   // puts the socket into CLOSING at once, where `send` drops every later frame. Waiting a macro

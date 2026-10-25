@@ -227,15 +227,15 @@ describe('the physical checks on the wall (E5)', () => {
   })
 })
 
-// Väggens visning står på ett ställe (L81, #1256): en panel bredvid väggen med flikarna Visning och
-// Kontroll. Storleken är ett val och ögonen ett annat, så de går att se tillsammans, och läsbarheten
+// Väggens visning står på ett ställe (L81, #1256): en panel bredvid väggen, och boxarna Visning och
+// Fysisk kontroll öppnar var sin, utan flikar mellan dem. Storleken är ett val och ögonen ett annat, så de går att se tillsammans, och läsbarheten
 // sägs en gång i panelen i stället för under varje kort.
 describe('the wall’s panel: Visning and Kontroll beside the wall (L81, #1256)', () => {
   const wall = (doc = projectDoc()) => {
     render(<DeckWall doc={doc} face="front" selectedRow={null} onSelectRow={() => undefined} onSelectElement={() => undefined} />)
     return document.querySelector('[data-wall]') as HTMLElement
   }
-  const panel = () => screen.queryByRole('complementary', { name: 'Väggens visning och kontroll' })
+  const panel = (name: string | RegExp = /^(Visning|Fysisk kontroll)$/) => screen.queryByRole('complementary', { name })
   const viewBox = () => screen.getByRole('button', { name: /^Visning/ })
   const width = (el: HTMLElement) => el.style.getPropertyValue('--byd-wall-card')
   const tinyBody = () => {
@@ -245,22 +245,25 @@ describe('the wall’s panel: Visning and Kontroll beside the wall (L81, #1256)'
     return doc
   }
 
-  it('opens beside the wall on the tab its box names, and closes with its cross, its box and Escape', () => {
+  it('opens beside the wall as the box it was opened by, without tabs, and closes with its cross, its box and Escape', () => {
     wall()
     expect(panel()).toBeNull()
     openBox(/^Visning/)
-    expect(panel()).not.toBeNull()
+    expect(panel('Visning')).not.toBeNull()
     expect(viewBox().getAttribute('aria-expanded')).toBe('true')
-    expect(screen.getByRole('tab', { name: 'Visning' }).getAttribute('aria-selected')).toBe('true')
+    // The two boxes are the way between the two: the panel repeats neither as a tab (#1328).
+    expect(within(panel()!).queryAllByRole('tab')).toHaveLength(0)
+    expect(within(panel()!).getByRole('heading', { level: 2 }).textContent).toBe('Visning')
     // The deck stands where it stood: the panel is beside it, not a drawer over it.
     expect(document.querySelector('.byd-crown-drawer')).toBeNull()
     expect(panel()!.closest('.byd-wall-work')).not.toBeNull()
 
     openBox(/^Fysisk kontroll/)
-    expect(screen.getByRole('tab', { name: /^Kontroll/ }).getAttribute('aria-selected')).toBe('true')
+    expect(panel('Fysisk kontroll')).not.toBeNull()
+    expect(within(panel()!).queryAllByRole('tab')).toHaveLength(0)
     expect(viewBox().getAttribute('aria-expanded')).toBe('false')
-    fireEvent.click(screen.getByRole('tab', { name: 'Visning' }))
-    expect(screen.getByRole('tab', { name: 'Visning' }).getAttribute('aria-selected')).toBe('true')
+    openBox(/^Visning/)
+    expect(panel('Visning')).not.toBeNull()
 
     // A press on a card leaves it open: what is chosen in it is read on the cards.
     fireEvent.click(document.querySelector('[data-card-ref="knight"]')!)
@@ -386,7 +389,7 @@ describe('the wall’s panel: Visning and Kontroll beside the wall (L81, #1256)'
     doc.template.faces['front']!.base.push({ kind: 'text', id: 'flavour', x: 6, y: 70, w: 51, h: 10, bind: { field: 'flavour' }, font: { family: 'system-ui', sizePt: 5 }, color: '#111111' })
     wall(doc)
     fireEvent.click(within(document.querySelector('.byd-crown-foot') as HTMLElement).getByRole('button', { name: /anmärkning/ }))
-    expect(screen.getByRole('tab', { name: /^Kontroll/ }).getAttribute('aria-selected')).toBe('true')
+    expect(panel('Fysisk kontroll')).not.toBeNull()
     expect(screen.getByRole('list', { name: 'Fysisk kontroll' })).toBeTruthy()
   })
 })

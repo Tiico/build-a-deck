@@ -1,4 +1,4 @@
-import { ServerMessage, guestProtocols, type Activity, type PersonalHolds, type Envelope, type Intent, type Presence, type PresenceFrom, type SeatId, type Snapshot } from '@byd/protocol'
+import { ServerMessage, tableProtocols, type Activity, type PersonalHolds, type Envelope, type Intent, type Presence, type PresenceFrom, type SeatId, type Snapshot } from '@byd/protocol'
 import { applyPatch } from '@byd/engine'
 import { maskedWord, sayLine, sayView, type MaskedWords } from './masked.js'
 
@@ -289,11 +289,10 @@ export class TableClient {
       // none, names itself.
       if (token === undefined) q.set('name', observer)
     } else if (seat !== null) q.set('seat', seat)
-    const key = this.hostKey ?? host
-    if (key !== undefined) q.set('host', key)
     if (owner) q.set('owner', '1')
-    // The token is never in the address (#1278): it rides in the protocol header.
-    const ws = makeSocket(`${url}/sessions/${encodeURIComponent(sessionId)}${q.size > 0 ? `?${q.toString()}` : ''}`, token === undefined ? undefined : guestProtocols(token))
+    // Neither the token (#1278) nor the host key (#1306) is ever in the address: the upgrade is a
+    // request a proxy logs. They ride in the protocol header.
+    const ws = makeSocket(`${url}/sessions/${encodeURIComponent(sessionId)}${q.size > 0 ? `?${q.toString()}` : ''}`, tableProtocols({ token, host: this.hostKey ?? host }))
     ws.addEventListener('message', (ev) => this.receive(ServerMessage.parse(JSON.parse(String(ev.data)))))
     ws.addEventListener('close', () => this.dropped(ws))
     ws.addEventListener('error', () => undefined) // `close` follows; nothing to do here

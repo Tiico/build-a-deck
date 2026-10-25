@@ -464,6 +464,7 @@ export const enPlay: Record<keyof typeof svPlay, string> = {
   'masked.note': 'The note is removed.',
 
   'observer.name': 'spectator',
+  'online.designer': 'The designer',
   'observer.banner': 'You are a spectator and see everyone’s cards. Everyone knows you are here.',
   'observer.watching': '{name} is watching and sees every card',
   // The box behind the question mark (L32's addendum, #305).
