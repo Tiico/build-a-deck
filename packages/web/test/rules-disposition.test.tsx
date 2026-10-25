@@ -1,9 +1,11 @@
 // @vitest-environment jsdom
-// The empty rules tab (#131). It was a paragraph in the corner of an empty screen; it is now the
-// book's own disposition — the table of contents laid out as sections ready to be written in,
-// beside the column that stays there once the book is written. That is the whole point of the
-// decision: empty and written are one surface and not two, because the column the reader finds
-// her way with was the book's skeleton all along.
+// The empty rules tab (#131). It was a paragraph in the corner of an empty screen; it became the
+// book's own disposition — the template's five sections laid out in the page, marked «· tomt» in the
+// column beside them. #1258 (variant A) took that layout away: the empty tab is now the page the book
+// will be, offering its three ways in, each with a line on what it gives, and the five sections are
+// named in the line under the template's way rather than drawn as a book that is not there. What
+// #131 decided still holds — the ways in do what they say, the template is a proposal and not a
+// form, a way in is one step back, and the written book finds its way with the column.
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { EditorPage } from '../src/editor/EditorPage.js'
@@ -31,28 +33,30 @@ async function openRules(): Promise<void> {
 }
 
 const toc = () => screen.getByRole('navigation', { name: 'Innehåll' })
-const sheet = () => document.querySelector('.byd-rulebook') as HTMLElement
+const ways = () => screen.getByRole('region', { name: 'Reglerna hör till spelet' })
+const template = () => within(ways()).getByRole('button', { name: /^Fem avsnitt med frågor/ })
 
-describe('the empty rules tab is the book’s disposition (#131)', () => {
-  it('lays the five sections out ready to be written in, with the table of contents beside them', async () => {
+describe('the empty rules tab is the page the book will be (#131, #1258)', () => {
+  it('names the template’s five sections on its way in, and lays out no book that is not there', async () => {
     await openRules()
-    // Each entry says it is still empty, so a tab that looks like a book cannot be mistaken for
-    // one: what stands there is a proposal, and it says so where the reader is looking. The space
-    // between the name and the mark is the row's own gap and not a character, so it is not here.
-    expect(within(toc()).getAllByRole('link').map((a) => a.textContent)).toEqual(SECTIONS.map((s) => `${s}\u00b7 tomt`))
-    expect(
-      within(sheet())
-        .getAllByRole('heading', { level: 4 })
-        .map((h) => h.textContent),
-    ).toEqual(SECTIONS)
+    // The five are said in the line under the way that makes them, in the order they come.
+    const said = template().textContent ?? ''
+    const at = SECTIONS.map((section) => said.indexOf(section))
+    expect(at.every((i) => i >= 0)).toBe(true)
+    expect([...at].sort((a, b) => a - b)).toEqual(at)
+    // And nothing is drawn as though it were a book: no sections in the page, and no column of
+    // contents for a book that has none (#1258) — the «· tomt» marks went with them.
+    expect(within(ways()).queryAllByRole('heading', { level: 4 })).toEqual([])
+    expect(screen.queryByRole('navigation', { name: 'Innehåll' })).toBeNull()
+    expect(document.querySelector('[data-rulebook]')).toBeNull()
   })
 
-  it('says what the rules are for in one line above the disposition, and the rest behind its question mark', async () => {
+  it('says what the rules are for as the page’s heading, and the rest behind its question mark', async () => {
     await openRules()
-    // One short line and never a box of its own (#131); what the line used to go on to say —
-    // that the rules are versioned with the cards and where the players reach them — is the
-    // help behind the question mark beside it (L32, #303).
-    expect(screen.getByText('Reglerna hör till spelet.')).toBeTruthy()
+    // The page's own heading and never a box of its own (#131, #1258); what the line used to go on
+    // to say — that the rules are versioned with the cards and where the players reach them — is
+    // the help behind the question mark (L32, #303).
+    expect(within(ways()).getByRole('heading', { name: 'Reglerna hör till spelet' })).toBeTruthy()
     expect(screen.queryByText(/sparas med varje version/)).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Hjälp om reglerna' }))
     const help = await screen.findByRole('dialog', { name: 'Hjälp om reglerna' })
@@ -64,23 +68,23 @@ describe('the empty rules tab is the book’s disposition (#131)', () => {
 describe('the three ways in (#131)', () => {
   it('offers only the ways that work, so nothing on the surface is a promise nobody kept', async () => {
     await openRules()
-    expect(screen.getByRole('button', { name: 'Börja skriva reglerna' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Börja från en mall' })).toBeTruthy()
+    expect(within(ways()).getByRole('button', { name: /^Ett tomt blad/ })).toBeTruthy()
+    expect(template()).toBeTruthy()
     // The third arrived with the import itself (rules-import.test.tsx), and not before it.
-    expect(screen.getByLabelText('Importera från fil')).toBeTruthy()
+    expect(within(ways()).getByLabelText('Läs in en fil')).toBeTruthy()
   })
 
-  it('writes, from “Börja skriva reglerna”, a book of one section carrying a question', async () => {
+  it('writes, from “Ett tomt blad”, a book of one section carrying a question', async () => {
     await openRules()
-    fireEvent.click(screen.getByRole('button', { name: 'Börja skriva reglerna' }))
+    fireEvent.click(within(ways()).getByRole('button', { name: /^Ett tomt blad/ }))
     const written = await waitFor(() => document.querySelector('[data-rulebook]') as HTMLElement)
     expect(within(written).getAllByRole('heading', { level: 4 }).map((h) => h.textContent)).toEqual(['Översikt'])
     expect(within(written).getByText('Vad handlar spelet om, i två meningar? Hur många spelar, och hur länge?')).toBeTruthy()
   })
 
-  it('writes, from “Börja från en mall”, the five sections with the setup already in its own', async () => {
+  it('writes, from “Fem avsnitt med frågor”, the five sections with the setup already in its own', async () => {
     await openRules()
-    fireEvent.click(screen.getByRole('button', { name: 'Börja från en mall' }))
+    fireEvent.click(template())
     const written = await waitFor(() => document.querySelector('[data-rulebook]') as HTMLElement)
     expect(within(written).getAllByRole('heading', { level: 4 }).map((h) => h.textContent)).toEqual(SECTIONS)
     // Every section asks its question rather than standing as an empty line.
@@ -95,7 +99,7 @@ describe('the three ways in (#131)', () => {
 describe('a question a section carries (#131)', () => {
   it('is gone at the first character, because it is the field’s placeholder and never its value', async () => {
     await openRules()
-    fireEvent.click(screen.getByRole('button', { name: 'Börja från en mall' }))
+    fireEvent.click(template())
     const written = await waitFor(() => document.querySelector('[data-rulebook]') as HTMLElement)
     fireEvent.click(written.querySelector('[data-ask]') as HTMLElement)
     const field = (await within(written).findByLabelText(/^Text /)) as HTMLTextAreaElement
@@ -113,7 +117,7 @@ describe('a question a section carries (#131)', () => {
 describe('the template is a proposal and not a form (#131)', () => {
   it('takes a whole section away, question and all, before a word has been written in it', async () => {
     await openRules()
-    fireEvent.click(screen.getByRole('button', { name: 'Börja från en mall' }))
+    fireEvent.click(template())
     const written = await waitFor(() => document.querySelector('[data-rulebook]') as HTMLElement)
     const asked = written.querySelectorAll('[data-ask]').length
     fireEvent.click(within(within(written).getByRole('heading', { name: 'Handlingar' })).getByRole('button'))
@@ -126,35 +130,39 @@ describe('the template is a proposal and not a form (#131)', () => {
     expect(within(toc()).getAllByRole('link').map((a) => a.textContent)).toEqual(['Översikt', 'Uppställning', 'En tur', 'Spelet tar slut'])
   })
 
-  it('adds one of the designer’s own sections from the foot of the same column', async () => {
+  // It stood at the foot of the column; it is «＋ Avsnitt» in the row above the book now (#1258), and
+  // lands at the end of a book nobody has written in yet.
+  it('adds one of the designer’s own sections from the row above the book', async () => {
     await openRules()
-    fireEvent.click(screen.getByRole('button', { name: 'Börja från en mall' }))
+    fireEvent.click(template())
     const written = await waitFor(() => document.querySelector('[data-rulebook]') as HTMLElement)
-    fireEvent.click(within(toc()).getByRole('button', { name: '＋ Eget avsnitt' }))
+    const adding = within(document.querySelector('.byd-rules-bar') as HTMLElement).getByRole('group', { name: 'Lägg till' })
+    fireEvent.click(within(adding).getByRole('button', { name: '＋ Avsnitt' }))
     await waitFor(() => expect(within(toc()).getAllByRole('link')).toHaveLength(SECTIONS.length + 1))
     // It opens where it lands, so the name is written rather than found and clicked.
     const field = (await within(written).findByLabelText(/^Rubrik /)) as HTMLInputElement
     expect(field.value).toBe('Nytt avsnitt')
+    expect(within(toc()).getAllByRole('link').at(-1)?.textContent).toBe('Nytt avsnitt')
   })
 })
 
 describe('a way in is a step back (#131, B4, L14)', () => {
   it('leaves whoever picked the wrong one standing in the empty tab again', async () => {
     await openRules()
-    fireEvent.click(screen.getByRole('button', { name: 'Börja från en mall' }))
+    fireEvent.click(template())
     await waitFor(() => expect(document.querySelector('[data-rulebook]')).not.toBeNull())
     fireEvent.keyDown(document, { key: 'z', ctrlKey: true })
     await waitFor(() => expect(document.querySelector('[data-rulebook]')).toBeNull())
-    // And the disposition is standing there to choose from, not an empty screen.
-    expect(screen.getByRole('button', { name: 'Börja från en mall' })).toBeTruthy()
-    expect(within(toc()).getAllByRole('link')).toHaveLength(SECTIONS.length)
+    // And the three ways in are standing there to choose from again, not an empty screen.
+    expect(template()).toBeTruthy()
+    expect(within(ways()).getByRole('button', { name: /^Ett tomt blad/ })).toBeTruthy()
   })
 })
 
-describe('the written book finds its way with the column the empty tab already had (#131)', () => {
+describe('the written book finds its way with its column (#131)', () => {
   it('lists its sections in the same column, each an anchor to where its heading stands', async () => {
     await openRules()
-    fireEvent.click(screen.getByRole('button', { name: 'Börja från en mall' }))
+    fireEvent.click(template())
     await waitFor(() => expect(document.querySelector('[data-rulebook]')).not.toBeNull())
     const links = within(toc()).getAllByRole('link')
     expect(links.map((a) => a.textContent)).toEqual(SECTIONS)

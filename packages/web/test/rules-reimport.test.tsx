@@ -4,6 +4,10 @@
 // the file over again and again is a way of working to support, not an accident to guard against.
 // What that demands is that she is told — very clearly — what the book she has is about to lose,
 // before she presses anything.
+//
+// Since #1258 the import over a written book stands in the «Boken» box at the end of the row: «Läs in
+// <file> igen» when the book remembers a file, and «Ersätt med en annan fil…» (or «Ersätt med en
+// fil…», for a book that came from none) beside it. These tests open the box as a designer would.
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { EditorPage } from '../src/editor/EditorPage.js'
@@ -67,25 +71,36 @@ const bookIsThere = () =>
 // A book already standing in the tab, written out of a file so it is the same book every run.
 async function aWrittenBook(markdown = WRITTEN, name = 'skrivet.md'): Promise<HTMLElement> {
   await openRules()
-  pickFile(markdown, name, 'Importera från fil')
+  await pickFile(markdown, name, 'Läs in en fil')
   fireEvent.click(within(await screen.findByRole('region', { name: 'Vad importen gör med filen' })).getByRole('button', { name: 'Gör boken' }))
   return await bookIsThere()
 }
 
-const pickFile = (text: string, name: string, label: string) =>
-  fireEvent.change(screen.getByLabelText(label), { target: { files: [new File([text], name, { type: 'text/markdown' })] } })
+// The «Boken» box, opened the way a designer opens it, unless it already stands open.
+const openTheBook = async (): Promise<void> => {
+  const button = await screen.findByRole('button', { name: 'Boken' })
+  if (button.getAttribute('aria-expanded') !== 'true') fireEvent.click(button)
+}
+// The empty page's «Läs in en fil» stands in the page; every other picker is in the «Boken» box.
+const picker = async (label: string): Promise<HTMLElement> => {
+  if (label !== 'Läs in en fil') await openTheBook()
+  return await screen.findByLabelText(label)
+}
+const pickFile = async (text: string, name: string, label: string) =>
+  fireEvent.change(await picker(label), { target: { files: [new File([text], name, { type: 'text/markdown' })] } })
 
 describe('the import is offered over a book that is already written (#131)', () => {
-  it('stands in the bar of a written book, naming the file the book remembers', async () => {
+  it('stands in the «Boken» box of a written book, naming the file the book remembers', async () => {
     await aWrittenBook()
     // The second slice deliberately shipped no control here, because a control that overwrote a
     // whole book without saying what it took would have been a promise nobody kept. It is real now.
-    expect(await screen.findByLabelText('Importera samma fil igen: skrivet.md')).toBeTruthy()
+    expect(await picker('Läs in skrivet.md igen')).toBeTruthy()
+    expect(screen.getByLabelText('Ersätt med en annan fil…')).toBeTruthy()
   })
 })
 
 const reportOverTheBook = async (markdown = FILE, name = 'regler-v4.md'): Promise<HTMLElement> => {
-  pickFile(markdown, name, 'Importera samma fil igen: skrivet.md')
+  await pickFile(markdown, name, 'Läs in skrivet.md igen')
   return await screen.findByRole('region', { name: 'Vad importen gör med boken du har' })
 }
 
@@ -196,12 +211,12 @@ describe('the marks are never carried by colour or decoration alone (L12)', () =
 
   it('still says it at every section, so three sections going in a row are three tellings', async () => {
     await openRules()
-    fireEvent.click(screen.getByRole('button', { name: 'Börja från en mall' }))
+    fireEvent.click(await screen.findByRole('button', { name: /^Fem avsnitt med frågor/ }))
     await bookIsThere()
     // The template's five sections against a file that mentions one of them: four are going, three
     // of them one after another. A reader who hears "försvinner" once and then reads three struck
     // headings has been told once about three losses, which is being told worse.
-    pickFile(['# Skogens herrar', '', '# Uppställning', '', 'Var och en får fem guld.'].join('\n'), 'regler-v4.md', 'Importera över boken')
+    await pickFile(['# Skogens herrar', '', '# Uppställning', '', 'Var och en får fem guld.'].join('\n'), 'regler-v4.md', 'Ersätt med en fil…')
     await screen.findByRole('region', { name: 'Vad importen gör med boken du har' })
     expect([...proposedBook().querySelectorAll('.byd-rules-mark')].map((el) => el.textContent)).toEqual([
       'Försvinner',
@@ -222,7 +237,7 @@ describe('the two answers, over a book that is already written (#131)', () => {
     const written = await bookIsThere()
     expect(within(written).getAllByRole('heading', { level: 4 }).map((h) => h.textContent)).toEqual(['Översikt', 'En tur', 'Fusk och straff'])
     expect(written.querySelector('[data-mark]')).toBeNull()
-    expect(await screen.findByLabelText('Importera samma fil igen: skrivet.md')).toBeTruthy()
+    expect(await picker('Läs in skrivet.md igen')).toBeTruthy()
   })
 
   it('writes the book the proposal showed, and lays a version named for the file', async () => {
@@ -244,7 +259,7 @@ describe('the two answers, over a book that is already written (#131)', () => {
       expect(named).toEqual(['Importerad: regler-v4.md', 'Importerad: skrivet.md'])
     })
     // And the book remembers the file it now came out of, so the next re-import names that one.
-    expect(await screen.findByLabelText('Importera samma fil igen: regler-v4.md')).toBeTruthy()
+    expect(await picker('Läs in regler-v4.md igen')).toBeTruthy()
   })
 })
 
@@ -256,13 +271,13 @@ describe('the setup block can never be imported away (#131, B5)', () => {
 
   async function aTemplateBook(): Promise<void> {
     await openRules()
-    fireEvent.click(screen.getByRole('button', { name: 'Börja från en mall' }))
+    fireEvent.click(await screen.findByRole('button', { name: /^Fem avsnitt med frågor/ }))
     await bookIsThere()
   }
 
   it('draws it untouched in the middle of everything that is changing, and says so in words', async () => {
     await aTemplateBook()
-    pickFile(onlySetupSection, 'bara-uppstallning.md', 'Importera över boken')
+    await pickFile(onlySetupSection, 'bara-uppstallning.md', 'Ersätt med en fil…')
     await screen.findByRole('region', { name: 'Vad importen gör med boken du har' })
     const setup = proposedBook().querySelector('.byd-rules-setup')?.closest('[data-block]') as HTMLElement
     expect(setup.getAttribute('data-mark')).toBe('kept')
@@ -271,7 +286,7 @@ describe('the setup block can never be imported away (#131, B5)', () => {
 
   it('still stands in the book the import writes, though no file could ever have written it', async () => {
     await aTemplateBook()
-    pickFile(onlySetupSection, 'bara-uppstallning.md', 'Importera över boken')
+    await pickFile(onlySetupSection, 'bara-uppstallning.md', 'Ersätt med en fil…')
     fireEvent.click(within(await screen.findByRole('region', { name: 'Vad importen gör med boken du har' })).getByRole('button', { name: 'Gör boken' }))
     await waitFor(async () => {
       const book = document.querySelector('[data-rulebook]') as HTMLElement
@@ -301,9 +316,10 @@ describe('a proposal is read, not written in (#131, L12)', () => {
     // moment focus lands.
     await waitFor(() => expect(document.activeElement).toBe(report))
     // A page that could be typed into while it says what it is about to lose would be two things
-    // at once. The blocks stop being buttons, and the plus signs beside them are gone.
+    // at once. The blocks stop being buttons, and the row has no «Lägg till» while it lies there
+    // (#1258; it was a ＋ beside each block before).
     expect(proposedBook().querySelector('[role="button"]')).toBeNull()
-    expect(screen.queryByLabelText(/^Lägg till efter/)).toBeNull()
+    expect(screen.queryByRole('group', { name: 'Lägg till' })).toBeNull()
     fireEvent.keyDown(report, { key: 'Escape' })
     const written = await bookIsThere()
     // And the book she can type into is back, with the section the file never had.
@@ -322,7 +338,7 @@ describe('dropping a file over a written book (#293)', () => {
   it('stops at the report, keeps the book until it is answered, and lays the named version then', async () => {
     const before = await aWrittenBook()
     expect(before.textContent).toContain('Fusk och straff')
-    const control = screen.getByLabelText('Importera samma fil igen: skrivet.md').closest('label') as HTMLLabelElement
+    const control = (await picker('Läs in skrivet.md igen')).closest('label') as HTMLLabelElement
 
     fireEvent.drop(control, carrying([new File([FILE], 'regler-v4.md', { type: 'text/markdown' })]))
 
