@@ -69,6 +69,9 @@ export const PersonalData = z.object({
       survey: z.object({ at: When, answers: z.record(z.string(), z.unknown()) }).nullable(),
     }),
   ),
+  // The games gone from its Mina spel whose band it has not closed (#1334): each by its name, why it
+  // went and when, and never who owned it.
+  goneGames: z.array(z.object({ name: z.string(), why: z.enum(['removed', 'account']), at: When })),
   // What the account bears (A2): the tables started from its games or by it, and its renderings.
   borne: z.object({ tables: z.number().int(), renders: z.number().int() }),
 })
@@ -176,6 +179,7 @@ export async function personalDataOf(opts: ServerOptions, auth: AuthStore, accou
     invitesSent: await Promise.all(invites.sent.map(told)),
     invitesReceived: await Promise.all(invites.received.map(told)),
     tables,
+    goneGames: projects ? (await projects.goneFor(account.id)).map((g) => ({ name: g.name, why: g.why, at: g.at })) : [],
     borne: { tables: (await opts.store.tablesOf(account.id, new Date(0))).started, renders: opts.renders ? await opts.renders.rendersBy(account.id, 0) : 0 },
   }
 }
