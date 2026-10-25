@@ -4499,6 +4499,10 @@ Bordet ritar varje sort med sin egen silhuett uppifrån och större än den fysi
 Med den mindre toppytan måste «17» ritas en storlek mindre än alla andra tärningars siffror för att rymmas (#1170).
 `die-figure-fit.test.tsx` håller att varje värde ryms på sin toppyta, och att d20:ns tvåsiffriga värden är minst 0,85 av d12:ans höjd.
 Ett klick slår tärningen; den tumlar på stället i 0,7 s, och med `prefers-reduced-motion` landar värdet direkt med en ring i platsens färg.
+*Reviderat 2026-10-25 (#1288, beställarens beslut D efter [prototyp](https://github.com/Tiico/build-a-deck/blob/c63a310ee7a4a72a7be7446d567fd18a48dd9c93/docs/ux-audits/2026-10-25-tarningsslaget/prototyper/index.html)):* slaget ska gå fort och ändå kännas, så tärningen piskas två varv på 0,45 s med en hård inbromsning och ett litet bakslag, med tre efterbilder av silhuetten som släpar efter i snurret.
+Siffrorna hoppar allt långsammare och står still de sista 0,15 s, och när tärningen stannar drar en ring i platsens färg ihop sig om den.
+Hållet den snurrar åt följer slagets nummer i loggen, så att bordet och TV:n snurrar likadant.
+Ett jämnt varv på 0,7 s, ett kast med studsar, ett snurr som bromsar in i 1,1 s, en vältning i 3D, en smäll med chockvåg och ett utbrott med gnistor prövades; de långa kändes sega och de korta utan kraft i resultatet.
 Med tangentbordet slår Enter eller Space en fokuserad tärning, och M öppnar «Flytta till» med filtens ytor, så att tangentbordet når det pekaren når (K16; beställarens beslut 2026-10-23, #1169).
 Telefonen har «Tärningar · n» bland räknarna, och det öppnar ett ark med rutor, «Välj alla» och «Slå»; arket visar resultatet med summa.
 Att spara tärningar mellan slag som i Yatzy valdes bort; brickan och arket på bordet (C) och räknare per sort i editorn (B) likaså.
