@@ -410,6 +410,9 @@ const CORS_BASE: Record<string, string> = {
   'access-control-allow-methods': 'GET, POST, PUT, DELETE, OPTIONS',
   'access-control-allow-headers': 'content-type, authorization',
   'access-control-max-age': '86400',
+  // A zip is saved under the name the server gives it (#542, #1280), which a page on another
+  // origin, as in development, can read only when it is exposed.
+  'access-control-expose-headers': 'content-disposition',
 }
 
 function originOf(value: string | undefined): string | null {
