@@ -15,7 +15,7 @@ export function guestAddress(page: string, query: URLSearchParams, token: string
 // The token of the page being shown. An old link — one handed out before, with `?token=` and
 // `?name=` — is moved first: the token to the fragment and the name gone, in the same history
 // entry, so the old form is not left behind for Back to find. Only a guest's page asks: the owner's
-// own seat from the editor (`owner=1`) has no admission, and the name in its address is hers.
+// own seat from the editor (`owner=1`) has no admission, and drops an old name itself (`hostSeat.ts`).
 export function takeGuestToken(): string | undefined {
   const q = new URLSearchParams(location.search)
   const old = q.get('token')

@@ -34,7 +34,7 @@ test('a request never answered is read, with its Referer, and the watcher still 
   const context = await browser.newContext()
   try {
     const page = await context.newPage()
-    const requests = watchRequests(context, page)
+    const requests = watchRequests(context)
     // Not to `load`, which waits for the picture too.
     await page.goto(`${origin}/?mark=findme`, { waitUntil: 'domcontentloaded' })
     await askedFor

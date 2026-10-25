@@ -2,6 +2,7 @@ import type { SeatId, Seating } from '@byd/protocol'
 import type { Lang } from './i18n/index.js'
 import { onlineUrl, tvUrl } from './editor/tableLinks.js'
 import { rememberStart, type StartAnswer } from './editor/startAnswer.js'
+import { hostSeatAt, rememberHostSeat } from './hostSeat.js'
 import { tableTab } from './ways.js'
 
 // Every start of a table, wherever it is pressed (#1286, variant B): the editor's «Starta bord»,
@@ -21,7 +22,7 @@ export type Started = { id: string; code: string; hostKey: string; hostSeat?: Se
 export function startedWay(started: Started, answer: StartAnswer, server: string | null, lang?: Lang): { href: string; target: string } {
   if (answer.seating === 'computer' && started.hostSeat) {
     rememberHostSeat(started.id, { seat: started.hostSeat, name: answer.name })
-    return { href: onlineUrl(started.id, server, started.hostSeat, true, undefined, lang, { name: answer.name, code: started.code }), target: tableTab(started.id, 'online') }
+    return { href: onlineUrl(started.id, server, started.hostSeat, true, lang, { code: started.code }), target: tableTab(started.id, 'online') }
   }
   return { href: tvUrl(started.id, server, started.hostKey, false, lang), target: tableTab(started.id, 'tv') }
 }
@@ -57,27 +58,6 @@ export async function startInTab(
   return { started, way, opened: true }
 }
 
-// The host's own seat at a table of computers she started in this browser (L77, #1286): the seat
-// she sat down at and the name she sat under, by table. «Öppna bordet» leads her back to it. A
-// browser that refuses storage simply forgets, and the way in is then the room's own address.
-const HOST_SEATS = 'byd.hostSeat'
-type HostSeat = { seat: SeatId; name: string }
-const hostSeats = (): Record<string, HostSeat> => {
-  try {
-    return (JSON.parse(localStorage.getItem(HOST_SEATS) ?? 'null') as Record<string, HostSeat> | null) ?? {}
-  } catch {
-    return {}
-  }
-}
-export function rememberHostSeat(session: string, seat: HostSeat): void {
-  try {
-    localStorage.setItem(HOST_SEATS, JSON.stringify({ ...hostSeats(), [session]: seat }))
-  } catch {
-    // Forgotten, as everything else the tool remembers is in a browser without storage.
-  }
-}
-export const hostSeatAt = (session: string): HostSeat | null => hostSeats()[session] ?? null
-
 // A table as its ways in know it: how its people sit (#1286), when the host was asked, and the code
 // it is reached by while it lets people in.
 export type TableAt = { id: string; seating?: Seating | undefined; code?: string | undefined }
@@ -90,7 +70,7 @@ export type TableAt = { id: string; seating?: Seating | undefined; code?: string
 export function tableWay(table: TableAt, server: string | null, lang?: Lang): { href: string; target: string } {
   if (table.seating === 'computer') {
     const mine = hostSeatAt(table.id)
-    if (mine) return { href: onlineUrl(table.id, server, mine.seat, true, undefined, lang, { name: mine.name, ...(table.code ? { code: table.code } : {}) }), target: tableTab(table.id, 'online') }
+    if (mine) return { href: onlineUrl(table.id, server, mine.seat, true, lang, table.code ? { code: table.code } : {}), target: tableTab(table.id, 'online') }
     if (table.code) return { href: roomPath(table.code, server), target: tableTab(table.id, 'online') }
   }
   return { href: tvUrl(table.id, server, undefined, true, lang), target: tableTab(table.id, 'tv') }
