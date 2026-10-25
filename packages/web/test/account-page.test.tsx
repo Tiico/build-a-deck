@@ -780,7 +780,7 @@ describe('what waits for the account on the home page (#1225)', () => {
     await fetch(`${run.http}/auth/login`, { method: 'POST', headers: json, body: JSON.stringify({ email: 'ada@example.com' }) })
     expect((await fetch(`${run.http}/projects`, { method: 'POST', headers: json, body: JSON.stringify({ id: run.projectId, ...projectDoc() }) })).status).toBe(201)
     const sessions: string[] = []
-    for (const _ of [1, 2]) {
+    for (let i = 0; i < 2; i++) {
       const made = (await (await fetch(`${run.http}/projects/${run.projectId}/sessions`, { method: 'POST', headers: json, body: '{}' })).json()) as { id: string; code: string; hostKey: string }
       registerRoom(made.id, made)
       // A millisecond apart at least, so which table was sat at last is a fact and not a tie.
