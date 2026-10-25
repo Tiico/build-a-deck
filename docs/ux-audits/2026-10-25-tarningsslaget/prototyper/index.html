@@ -36,7 +36,7 @@ body { margin: 0; padding: 16px 16px 96px; background: #14161c; color: #e6ecfa; 
 </style>
 </head>
 <body>
-<div class="rubrik"><b>Tärningsslaget.</b> Samma tärningar, fyra sätt att slå dem. Klicka på en tärning, eller «Slå zonen» för ett slag med flera (ett kuvert, K3). Värdet är bestämt innan rörelsen börjar och syns först när tärningen ligger still (D4). Tärningen lämnar aldrig sin plats på filten: rörelsen är på stället, som i dag.</div>
+<div class="rubrik"><b>Tärningsslaget.</b> Samma tärningar, fyra sätt att slå dem: dagens och tre snabba (under 0,55 s) med olika sorts kraft — nedslaget, resultatet, farten. Klicka på en tärning, eller «Slå zonen» för ett slag med flera (ett kuvert, K3). Värdet är bestämt innan rörelsen börjar och syns först när tärningen ligger still (D4). Tärningen lämnar aldrig sin plats på filten: rörelsen är på stället, som i dag.</div>
 <div class="controls">
   <button id="all">Slå zonen (2d6)</button>
   <button id="every">Slå allt</button>
@@ -103,67 +103,59 @@ const V = [
       const p = anim(d.body, [{ transform: 'rotate(0) scale(1)' }, { transform: 'rotate(200deg) scale(1.15)', offset: 0.45 }, { transform: 'rotate(340deg) scale(0.95)', offset: 0.8 }, { transform: 'rotate(360deg) scale(1)' }], 700, 'cubic-bezier(0.3, 0.7, 0.4, 1)')
       await jump(d, Array(9).fill(70)); d.show(v); await p
     } },
-  { key: 'B', name: 'B — Kastet', ms: 950,
-    note: `<h2>B — Kastet</h2>Tärningen lyfts från filten (skuggan sjunker undan och blir mjuk), snurrar i luften åt ett slumpat håll, slår i med en tryckning och studsar två gånger allt lägre. Siffrorna byts bara i luften; värdet landar med första nedslaget, och ett dammmoln i filtens krita markerar var. Med ljud: en knack per studs.`,
+  { key: 'B', name: 'B — Smällen', ms: 480,
+    note: `<h2>B — Smällen (480 ms)</h2>Tärningen dras ihop ett ögonblick (laddning, 60 ms), skjuter upp till 1,3 med ett och ett halvt varvs snabbsnurr som bromsar hårt, och smäller ned: tryckt platt, en chockvåg i filtens krita och filten runt omkring rycker till ett par pixlar. Siffran byts fyra gånger i snurret och står klar vid smällen. Kraften sitter i kontrasten mellan laddningen och nedslaget.`,
     async roll(d, v) {
-      // Ett helt antal varv, så att tärningen ligger rätt när rörelsen släpps.
-      const turn = sign() * 360, up = 0.42
-      anim(d.shadow, [{ transform: 'scale(1)', opacity: 1, filter: 'blur(3px)' }, { transform: 'scale(0.6) translateY(4%)', opacity: 0.35, filter: 'blur(7px)', offset: 0.22 }, { transform: 'scale(0.6) translateY(4%)', opacity: 0.35, filter: 'blur(7px)', offset: 0.5 }, { transform: 'scale(1)', opacity: 1, filter: 'blur(3px)', offset: 0.58 }, { transform: 'scale(0.85)', opacity: 0.8, offset: 0.7 }, { transform: 'scale(1)', opacity: 1 }], 950)
+      const s = sign()
+      anim(d.shadow, [{ transform: 'scale(1)', opacity: 1 }, { transform: 'scale(1.1)', opacity: 1, offset: 0.12 }, { transform: 'scale(0.55)', opacity: 0.3, offset: 0.55 }, { transform: 'scale(1.3)', opacity: 1, offset: 0.7 }, { transform: 'scale(1)', opacity: 1 }], 480)
       const p = anim(d.body, [
-        { transform: 'translateY(0) rotate(0) scale(1)', easing: 'cubic-bezier(0.2, 0.8, 0.4, 1)' },
-        { transform: `translateY(${-up * 100}%) rotate(${turn * 0.5}deg) scale(1.28)`, offset: 0.3, easing: 'cubic-bezier(0.6, 0, 0.9, 0.5)' },
-        { transform: `translateY(0) rotate(${turn - sign() * 6}deg) scale(1.06, 0.9)`, offset: 0.56, easing: 'cubic-bezier(0.2, 0.7, 0.4, 1)' },
-        { transform: `translateY(-14%) rotate(${turn}deg) scale(1.04)`, offset: 0.68, easing: 'cubic-bezier(0.6, 0, 0.9, 0.5)' },
-        { transform: `translateY(0) rotate(${turn}deg) scale(1.02, 0.97)`, offset: 0.8, easing: 'ease-out' },
-        { transform: `translateY(-4%) rotate(${turn}deg) scale(1)`, offset: 0.88 },
-        { transform: `translateY(0) rotate(${turn}deg) scale(1)` },
-      ], 950)
-      await jump(d, [60, 60, 70, 80, 95, 110]) // ≈ 0,47 s, i luften
-      d.show(v); knock(0.7, 1)
-      d.fx.innerHTML = `<svg viewBox="0 0 100 100"><circle cx="50" cy="56" r="22" fill="none" stroke="#f3e9d6" stroke-width="3"/></svg>`
-      anim(d.fx.firstChild, [{ transform: 'scale(0.7)', opacity: 0.8 }, { transform: 'scale(1.5)', opacity: 0 }], 420, 'ease-out')
-      await wait(115); knock(0.35, 1.15); await wait(110); knock(0.15, 1.3)
+        { transform: 'rotate(0) scale(1)', easing: 'ease-in' },
+        { transform: `rotate(${-s * 12}deg) scale(0.86)`, offset: 0.12, easing: 'cubic-bezier(0.1, 0.9, 0.3, 1)' },
+        { transform: `rotate(${s * 500}deg) scale(1.3)`, offset: 0.55, easing: 'cubic-bezier(0.7, 0, 1, 0.6)' },
+        { transform: `rotate(${s * 540}deg) scale(1.12, 0.84)`, offset: 0.7, easing: 'cubic-bezier(0.2, 0.9, 0.3, 1.4)' },
+        { transform: `rotate(${s * 540}deg) scale(1)` },
+      ], 480)
+      await wait(60); await jump(d, [65, 65, 65, 70])
+      d.show(v); knock(0.8, 0.7)
+      d.fx.innerHTML = `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="30" fill="none" stroke="#f3e9d6" stroke-width="4"/></svg>`
+      anim(d.fx.firstChild, [{ transform: 'scale(0.8)', opacity: 0.9, strokeWidth: 4 }, { transform: 'scale(1.7)', opacity: 0 }], 360, 'cubic-bezier(0.1, 0.8, 0.3, 1)')
+      const felt = d.el.closest('.zone') ?? d.el.parentElement
+      felt.animate([{ transform: 'translate(0,0)' }, { transform: 'translate(0,3px)' }, { transform: 'translate(0,-2px)' }, { transform: 'translate(0,1px)' }, { transform: 'none' }], { duration: 140 * slow() })
       await p; d.body.getAnimations().forEach((a) => a.cancel()); d.shadow.getAnimations().forEach((a) => a.cancel())
     } },
-  { key: 'C', name: 'C — Snurret som saktar in', ms: 1100,
-    note: `<h2>C — Snurret som saktar in</h2>Ingen lyftning: tärningen snurrar hårt och bromsar in mot värdet, och siffrorna saktar in i takt med den, som ett lyckohjul (40 ms i början, 220 ms i slutet). Den gungar fram och tillbaka på sin kant innan den lägger sig, och värdet poppar: siffran stöts upp till 1,35 och toppytan blixtrar till i platsens färg. Med ljud: ett tick per siffra och ett tyngre slag sist.`,
+  { key: 'C', name: 'C — Utbrottet', ms: 520,
+    note: `<h2>C — Utbrottet (520 ms)</h2>Ett kort ryck på stället i stället för ett varv (skakas i handen, 220 ms, siffrorna flimrar), sedan stannar tärningen tvärt och värdet slås fram: siffran slår upp i 1,6 och sjunker på plats medan gnistor i platsens färg skjuts ut runt tärningen och toppytan blixtrar. Rörelsen är liten; effekten sitter i resultatet, där ögat ska vara.`,
     async roll(d, v) {
-      const turns = sign() * 720
       const p = anim(d.body, [
-        { transform: 'rotate(0) scale(1)', easing: 'cubic-bezier(0.15, 0.6, 0.25, 1)' },
-        { transform: `rotate(${turns + 10 * Math.sign(turns)}deg) scale(1.08)`, offset: 0.72, easing: 'ease-in-out' },
-        { transform: `rotate(${turns - 7 * Math.sign(turns)}deg) scale(1.02)`, offset: 0.84, easing: 'ease-in-out' },
-        { transform: `rotate(${turns + 3 * Math.sign(turns)}deg) scale(1)`, offset: 0.93, easing: 'ease-out' },
-        { transform: `rotate(${turns}deg) scale(1)` },
-      ], 1100)
-      const gaps = [40, 40, 45, 50, 60, 70, 85, 105, 130, 160]
-      for (const g of gaps) { d.show(1 + Math.floor(Math.random() * d.faces)); knock(0.12, 1.6); await wait(g) }
-      d.show(v); knock(0.6, 0.8)
-      const t = d.body.querySelector('text')
-      t.style.transformBox = 'fill-box'; t.style.transformOrigin = 'center'
-      anim(t, [{ transform: 'scale(1.35)' }, { transform: 'scale(0.94)', offset: 0.6 }, { transform: 'scale(1)' }], 300, 'ease-out')
-      d.fx.innerHTML = `<svg viewBox="0 0 100 100"><circle cx="50" cy="52" r="34" fill="var(--seat)"/></svg>`
-      anim(d.fx.firstChild, [{ opacity: 0.55, transform: 'scale(0.9)' }, { opacity: 0, transform: 'scale(1.25)' }], 380, 'ease-out')
+        { transform: 'translate(0,0) rotate(0)' }, { transform: 'translate(-6%,2%) rotate(-14deg)' }, { transform: 'translate(5%,-3%) rotate(11deg)' },
+        { transform: 'translate(-4%,-2%) rotate(-9deg)' }, { transform: 'translate(3%,3%) rotate(7deg)' }, { transform: 'translate(0,0) rotate(0)', offset: 0.42 },
+        { transform: 'scale(1.18)', offset: 0.5, easing: 'cubic-bezier(0.2, 0.9, 0.3, 1.3)' }, { transform: 'scale(1)' },
+      ], 520)
+      for (let i = 0; i < 5; i++) { d.show(1 + Math.floor(Math.random() * d.faces)); knock(0.15, 1.4 + Math.random() * 0.4); await wait(44) }
+      d.show(v); knock(0.7, 0.9)
+      const t = d.body.querySelector('text'); t.style.transformBox = 'fill-box'; t.style.transformOrigin = 'center'
+      anim(t, [{ transform: 'scale(1.6)' }, { transform: 'scale(0.92)', offset: 0.55 }, { transform: 'scale(1)' }], 280, 'ease-out')
+      const sparks = Array.from({ length: 10 }, (_, i) => { const a = (i / 10) * Math.PI * 2 + Math.random() * 0.3; return `<circle cx="50" cy="50" r="2.6" fill="var(--seat)" style="--x:${r2(Math.cos(a) * rnd(30, 44))}px;--y:${r2(Math.sin(a) * rnd(30, 44))}px"/>` }).join('')
+      d.fx.innerHTML = `<svg viewBox="0 0 100 100"><circle class="flash" cx="50" cy="50" r="30" fill="var(--seat)"/>${sparks}</svg>`
+      anim(d.fx.querySelector('.flash'), [{ opacity: 0.7, transform: 'scale(0.8)' }, { opacity: 0, transform: 'scale(1.3)' }], 300, 'ease-out')
+      d.fx.querySelectorAll('circle:not(.flash)').forEach((c) => { c.style.transformBox = 'fill-box'; anim(c, [{ transform: 'translate(0,0) scale(1)', opacity: 1 }, { transform: 'translate(var(--x), var(--y)) scale(0.3)', opacity: 0 }], rnd(260, 360), 'cubic-bezier(0.1, 0.8, 0.3, 1)') })
       await p; d.body.getAnimations().forEach((a) => a.cancel())
     } },
-  { key: 'D', name: 'D — Tärningen välter', ms: 900,
-    note: `<h2>D — Tärningen välter</h2>I stället för att snurra i planet välter tärningen över sina kanter, sett ovanifrån: toppytan viks bort i 3D och en ny sida viks upp, fyra gånger åt slumpade håll, varje vältning långsammare än den förra. Varje ny sida visar en ny siffra, och den sista vältningen landar med en dov duns: skuggan dras ihop och tärningen trycks ned ett ögonblick. Läser mest som en fysisk tärning, men mindre som «något hände» på avstånd.`,
+  { key: 'D', name: 'D — Piskan', ms: 450,
+    note: `<h2>D — Piskan (450 ms)</h2>Två varv på 0,3 s med en hård inbromsning, och efterbilder som släpar efter i snurret (rörelseoskärpa), så att farten syns fast den är kort. Tärningen stannar tvärt med ett litet bakslag och en ring i platsens färg som drar ihop sig om den, som när en snurra fångas. Det snabbaste av alla, och mest «spelautomat».`,
     async roll(d, v) {
-      d.body.style.transformStyle = 'preserve-3d'
-      const dirs = [['X', 1], ['Y', 1], ['X', -1], ['Y', -1]]
-      const steps = [120, 150, 190, 250]
-      for (let i = 0; i < steps.length; i++) {
-        const [ax, s0] = dirs[Math.floor(Math.random() * 4)], s = s0
-        const last = i === steps.length - 1
-        anim(d.shadow, [{ transform: 'scale(1)' }, { transform: 'scale(1.15, 0.9)', offset: 0.5 }, { transform: 'scale(1)' }], steps[i])
-        await anim(d.body, [{ transform: `perspective(220px) rotate${ax}(0) translateY(0)` }, { transform: `perspective(220px) rotate${ax}(${s * 90}deg) translateY(-8%)` }], steps[i] / 2, 'ease-in')
-        d.show(last ? v : 1 + Math.floor(Math.random() * d.faces))
-        knock(last ? 0.7 : 0.3, last ? 0.7 : 1.1)
-        await anim(d.body, [{ transform: `perspective(220px) rotate${ax}(${-s * 90}deg) translateY(-8%)` }, { transform: `perspective(220px) rotate${ax}(0) translateY(0)` }], steps[i] / 2, 'ease-out')
-      }
-      anim(d.shadow, [{ transform: 'scale(1.2)', opacity: 1 }, { transform: 'scale(0.92)', opacity: 1 }, { transform: 'scale(1)' }], 180, 'ease-out')
-      await anim(d.body, [{ transform: 'scale(1.05, 0.93)' }, { transform: 'scale(1)' }], 160, 'ease-out')
-      d.body.getAnimations().forEach((a) => a.cancel()); d.shadow.getAnimations().forEach((a) => a.cancel())
+      const s = sign(), ghosts = 3
+      const frames = (lag) => [{ transform: 'rotate(0) scale(1.15)' }, { transform: `rotate(${s * (720 - lag * 28)}deg) scale(1)` }]
+      d.fx.innerHTML = Array.from({ length: ghosts }, () => `<div style="position:absolute;inset:18.75%;opacity:0">${d.body.innerHTML}</div>`).join('')
+      ;[...d.fx.children].forEach((g, i) => g.animate([{ opacity: 0.35 - i * 0.09 }, { opacity: 0.35 - i * 0.09, offset: 0.55 }, { opacity: 0 }], { duration: 320 * slow(), fill: 'forwards' }) && anim(g, frames(i + 1), 320, 'cubic-bezier(0.05, 0.75, 0.25, 1)'))
+      const p = anim(d.body, [
+        { transform: 'rotate(0) scale(1)', easing: 'ease-out' }, { transform: 'scale(1.15)', offset: 0.08, easing: 'cubic-bezier(0.05, 0.75, 0.25, 1)' },
+        { transform: `rotate(${s * 728}deg) scale(1)`, offset: 0.72, easing: 'ease-in-out' }, { transform: `rotate(${s * 720}deg) scale(1)` },
+      ], 450)
+      await jump(d, [40, 45, 55, 70, 90]); d.show(v); knock(0.7, 1.2)
+      d.fx.insertAdjacentHTML('beforeend', `<svg viewBox="0 0 100 100" style="position:absolute;inset:0"><circle cx="50" cy="50" r="40" fill="none" stroke="var(--seat)" stroke-width="5"/></svg>`)
+      anim(d.fx.lastChild, [{ transform: 'scale(1.5)', opacity: 0 }, { transform: 'scale(1)', opacity: 1, offset: 0.5 }, { transform: 'scale(0.95)', opacity: 0 }], 300, 'ease-out')
+      await p; d.body.getAnimations().forEach((a) => a.cancel())
     } },
 ]
 
