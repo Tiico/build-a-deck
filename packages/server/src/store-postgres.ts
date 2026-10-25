@@ -1,12 +1,12 @@
 import { readFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import postgres from 'postgres'
-import type { ObjectStore } from '@byd/render'
+import { assetKey, outputKey, type ObjectStore } from '@byd/render'
 import { PHYSICAL_VERBS, REDACTED, type Applied, type Seating } from '@byd/protocol'
 import { liftLine, type SetupDef } from '@byd/engine'
-import { changesAt, maskedIntent, type Erased, type ErasureStore, type LedgerEntry } from './erase.js'
+import { ACCOUNT_SWEEP_DAYS, NOTHING_ERASED, changesAt, maskedIntent, type Erased, type ErasureStore, type LedgerEntry } from './erase.js'
 import { SeqConflictError, type Deck, type GuestRecord, type LogStore, type SessionInfo, type SessionRecord, type SessionSummary, type PlayedRecord } from './store.js'
-import { checkedHistory, liftDoc, stamp, type Ceilings, type ProjectDoc, type ProjectRecord, type ProjectRow, type ProjectStore, type ProjectSummary, type RestoredVersion, type VersionSummary } from './projects.js'
+import { checkedHistory, liftDoc, stamp, type Ceilings, type InviteRecord, type ProjectDoc, type ProjectRecord, type ProjectRow, type ProjectStore, type ProjectSummary, type RestoredVersion, type VersionSummary } from './projects.js'
 import { peekCard } from './names.js'
 import { PostgresAssetStore, assetHashesOf } from './assets.js'
 import { PostgresAiKeyStore } from './ai-keys.js'
@@ -15,7 +15,7 @@ import { QuotaReached, growth, startThatFrees, tableGrowth, withFrees, type Limi
 import type { AppliedEdit } from './project-actor.js'
 import type { EditIntent } from './edits.js'
 import type { Role } from './roles.js'
-import type { Account, AuthStore, TermsAcceptance } from './auth.js'
+import type { Account, AccountFacts, AuthStore, TermsAcceptance } from './auth.js'
 import type { PasskeyRecord } from './passkeys.js'
 
 type AccountRow = { id: string; email: string; name: string | null; name_asked: boolean }
@@ -72,6 +72,17 @@ export class PostgresAuthStore implements AuthStore {
   }
   async deleteSession(sessionHash: string): Promise<void> {
     await this.sql`delete from auth_sessions where session_hash = ${sessionHash}`
+  }
+  async accountFacts(accountId: string): Promise<AccountFacts | null> {
+    const [row] = await this.sql<{ created_at: Date; email: string }[]>`select created_at, email from accounts where id = ${accountId}`
+    if (!row) return null
+    const sessions = await this.sql<{ expires_at: Date }[]>`select expires_at from auth_sessions where account_id = ${accountId} order by expires_at`
+    const links = await this.sql<{ expires_at: Date; used_at: Date | null }[]>`select expires_at, used_at from login_tokens where email = ${row.email} order by expires_at`
+    return {
+      createdAt: row.created_at.toISOString(),
+      sessions: sessions.map((s) => ({ expiresAt: s.expires_at.toISOString() })),
+      loginLinks: links.map((l) => ({ expiresAt: l.expires_at.toISOString(), usedAt: l.used_at?.toISOString() ?? null })),
+    }
   }
   async addPasskey(p: PasskeyRecord): Promise<void> {
     await this.sql`
@@ -180,6 +191,12 @@ export class PostgresLogStore implements LogStore {
   // The designer's own AI key (#999): sealed, one per account.
   aiKeys(): PostgresAiKeyStore {
     return new PostgresAiKeyStore(this.sql)
+  }
+
+  // The sweep of what a deleted account's games named (#1280, G6, DRIFT §4), over this database and
+  // the object store the bytes are in.
+  assetSweep(objects?: ObjectStore): PostgresAssetSweep {
+    return new PostgresAssetSweep(this.sql, objects)
   }
 
   // The project's images (E1): in the object store when there is one, else in this database.
@@ -673,6 +690,16 @@ export class PostgresProjectStore implements ProjectStore {
     return row?.project_id ?? null
   }
 
+  async invitesOf(account: string, email: string): Promise<{ sent: InviteRecord[]; received: InviteRecord[] }> {
+    const rows = await this.sql<{ project_id: string; email: string; role: string; invited_by: string | null; created_at: Date; expires_at: Date; accepted_at: Date | null }[]>`
+      select project_id, email, role, invited_by::text, created_at, expires_at, accepted_at from project_invites
+      where invited_by::text = ${account} or lower(email) = lower(${email})
+      order by created_at, token_hash
+    `
+    const told = (r: (typeof rows)[number]): InviteRecord => ({ project: r.project_id, email: r.email, role: r.role as Role, sentAt: r.created_at.toISOString(), expiresAt: r.expires_at.toISOString(), acceptedAt: r.accepted_at?.toISOString() ?? null })
+    return { sent: rows.filter((r) => r.invited_by === account).map(told), received: rows.filter((r) => r.email.toLowerCase() === email.toLowerCase()).map(told) }
+  }
+
   async sweepInvites(before: string): Promise<number> {
     const rows = await this.sql`
       delete from project_invites
@@ -762,10 +789,11 @@ export class PostgresProjectStore implements ProjectStore {
 // back, so the app reads a table again exactly when there is a masked log to read.
 export const ERASED_CHANNEL = 'byd_erased'
 
-type LedgerRow = { id: string; at: Date; kind: 'guest' | 'table' | 'game'; reason: LedgerEntry['reason']; session_id: string | null; seat: string | null; issued_at: Date | null; project_id: string | null }
+type LedgerRow = { id: string; at: Date; kind: LedgerEntry['kind']; reason: LedgerEntry['reason']; session_id: string | null; seat: string | null; issued_at: Date | null; project_id: string | null; account_id: string | null }
 const ledgerOf = (r: LedgerRow): LedgerEntry => {
   const base = { id: r.id, at: r.at.toISOString(), reason: r.reason }
   if (r.kind === 'game') return { ...base, kind: 'game', project: r.project_id ?? '' }
+  if (r.kind === 'account') return { ...base, kind: 'account', account: r.account_id ?? '' }
   if (r.kind === 'table') return { ...base, kind: 'table', session: r.session_id ?? '' }
   return { ...base, kind: 'guest', session: r.session_id ?? '', seat: r.seat, issuedAt: r.issued_at?.toISOString() ?? '' }
 }
@@ -781,13 +809,16 @@ export class PostgresErasureStore implements ErasureStore {
   // only in the personal fields, and the row keeps its `schema_version`.
   async erase(entries: readonly LedgerEntry[]): Promise<Erased> {
     return this.sql.begin(async (tx) => {
-      const sum: Erased = { sessions: [], lines: 0, guests: 0, surveys: 0 }
+      const sum: Erased = { ...NOTHING_ERASED, sessions: [] }
       for (const e of entries) {
-        const sessions = e.kind === 'game' ? (await tx<{ id: string }[]>`select id from sessions where project = ${e.project} order by id`).map((r) => r.id) : [e.session]
-        for (const session of sessions) await this.at(tx, session, e, sum)
+        if (e.kind === 'account') await this.account(tx, e, sum)
+        else {
+          const sessions = e.kind === 'game' ? (await tx<{ id: string }[]>`select id from sessions where project = ${e.project} order by id`).map((r) => r.id) : [e.session]
+          for (const session of sessions) await this.at(tx, session, e, sum)
+        }
         await tx`
-          insert into erasures (id, at, kind, reason, session_id, seat, issued_at, project_id)
-          values (${e.id}, ${e.at}, ${e.kind}, ${e.reason}, ${e.kind === 'game' ? null : e.session}, ${e.kind === 'guest' ? e.seat : null}, ${e.kind === 'guest' ? e.issuedAt : null}, ${e.kind === 'game' ? e.project : null})
+          insert into erasures (id, at, kind, reason, session_id, seat, issued_at, project_id, account_id)
+          values (${e.id}, ${e.at}, ${e.kind}, ${e.reason}, ${e.kind === 'guest' || e.kind === 'table' ? e.session : null}, ${e.kind === 'guest' ? e.seat : null}, ${e.kind === 'guest' ? e.issuedAt : null}, ${e.kind === 'game' ? e.project : null}, ${e.kind === 'account' ? e.account : null})
           on conflict (id) do nothing
         `
       }
@@ -797,7 +828,44 @@ export class PostgresErasureStore implements ErasureStore {
     })
   }
 
-  private async at(tx: postgres.TransactionSql, session: string, e: LedgerEntry, sum: Erased): Promise<void> {
+  // An account that deleted itself (#1280, G6): its tables claimed masked as a guest's are, then
+  // every row that says its id or its address goes, or forgets it — its games with their history
+  // (the tables were ended and are masked by the `game` entries beside this one), what it bore, the
+  // versions and edits it made in other people's games, the invitations it sent and those to its
+  // address, its login links, and the account with everything that hangs on it (passkeys, sessions,
+  // AI key, tier, terms, memberships). What only its games named is put down for the sweep first,
+  // while the games are still there to say it. Run again after a restore, it does it all again.
+  private async account(tx: postgres.TransactionSql, e: Extract<LedgerEntry, { kind: 'account' }>, sum: Erased): Promise<void> {
+    const id = e.account
+    const [found] = await tx<{ email: string }[]>`select email from accounts where id::text = ${id}`
+    const due = new Date(Date.parse(e.at) + ACCOUNT_SWEEP_DAYS * 24 * 3600_000).toISOString()
+    await tx`
+      insert into asset_sweeps (hash, kind, due_at)
+      select distinct a.hash, 'asset', ${due}::timestamptz from project_assets a join projects p on p.id = a.project_id where p.owner = ${id}
+      on conflict (hash, kind) do nothing
+    `
+    const [renderLog] = await tx<{ there: boolean }[]>`select to_regclass('render_log') is not null as there`
+    if (renderLog?.there) {
+      await tx`
+        insert into asset_sweeps (hash, kind, due_at) select distinct hash, 'render', ${due}::timestamptz from render_log where account_id = ${id}
+        on conflict (hash, kind) do nothing
+      `
+      await tx`delete from render_log where account_id = ${id}`
+    }
+    const claimed = await tx<{ session_id: string; seat: string | null; issued_at: Date }[]>`select session_id, seat, issued_at from guest_tokens where account_id = ${id} order by session_id, issued_at`
+    for (const g of claimed) await this.at(tx, g.session_id, { id: e.id, at: e.at, reason: 'request', kind: 'guest', session: g.session_id, seat: g.seat, issuedAt: g.issued_at.toISOString() }, sum)
+    await tx`update guest_tokens set account_id = null where account_id = ${id}`
+    await tx`delete from projects where owner = ${id}`
+    await tx`update project_versions set saved_by = null where saved_by = ${id}`
+    await tx`update project_events set by_account = null where by_account = ${id}`
+    await tx`update sessions set account_id = null where account_id = ${id}`
+    await tx`delete from project_invites where invited_by::text = ${id} or lower(email) = lower(${found?.email ?? ''})`
+    if (found) await tx`delete from login_tokens where lower(email) = lower(${found.email})`
+    const gone = await tx`delete from accounts where id::text = ${id} returning 1`
+    sum.accounts += gone.length
+  }
+
+  private async at(tx: postgres.TransactionSql, session: string, e: Exclude<LedgerEntry, { kind: 'account' }>, sum: Erased): Promise<void> {
     await tx`select pg_advisory_xact_lock(hashtext(${session}))`
     const [exists] = await tx`select 1 from sessions where id = ${session}`
     if (!exists) return
@@ -824,7 +892,7 @@ export class PostgresErasureStore implements ErasureStore {
   }
 
   async ledger(): Promise<LedgerEntry[]> {
-    return (await this.sql<LedgerRow[]>`select id, at, kind, reason, session_id, seat, issued_at, project_id from erasures order by at, id`).map(ledgerOf)
+    return (await this.sql<LedgerRow[]>`select id, at, kind, reason, session_id, seat, issued_at, project_id, account_id from erasures order by at, id`).map(ledgerOf)
   }
 
   async retained(endedBefore: string): Promise<{ kind: 'guest'; session: string; seat: string | null; issuedAt: string }[]> {
@@ -866,5 +934,60 @@ function played(row: GuestRow): PlayedRecord {
     expiresAt: row.expires_at.toISOString(),
     ...(row.revoked_at ? { revokedAt: row.revoked_at.toISOString() } : {}),
     ...(row.account_id ? { accountId: row.account_id } : {}),
+  }
+}
+
+// What a deleted account's games named, swept when its day comes (#1280, G6, F4, DRIFT §4): the 30
+// days after the account went, so a restore inside them, or a designer who imports her export into a
+// new account, finds the bytes still there. A picture or a typeface goes when no game there is names
+// it and no table whose game is still there plays with it, nor a job waiting to be drawn; a rendering
+// goes when no other account bore it. The tables of the account's own games are not asked: their
+// games are gone, so they are never drawn again. A hash named again is no longer the account's and
+// is left for good. Each goes in a transaction of its own, the row before the bytes, so bytes that
+// cannot be deleted leave the row to be tried again next round.
+export type AssetSweep = { sweep(now: Date): Promise<{ assets: number; renders: number; kept: number }> }
+export class PostgresAssetSweep implements AssetSweep {
+  constructor(
+    private readonly sql: postgres.Sql,
+    private readonly objects?: ObjectStore,
+  ) {}
+
+  async sweep(now: Date): Promise<{ assets: number; renders: number; kept: number }> {
+    const done = { assets: 0, renders: 0, kept: 0 }
+    const due = await this.sql<{ hash: string; kind: 'asset' | 'render' }[]>`select hash, kind from asset_sweeps where due_at <= ${now.toISOString()} order by due_at, hash`
+    const [queue] = await this.sql<{ there: boolean }[]>`select to_regclass('render_jobs') is not null and to_regclass('render_log') is not null as there`
+    for (const { hash, kind } of due) {
+      await this.sql.begin(async (tx) => {
+        const named = `%asset:${hash}%`
+        const [still] =
+          kind === 'asset'
+            ? await tx<{ yes: boolean }[]>`
+                select exists (select 1 from project_assets where hash = ${hash})
+                  or exists (select 1 from sessions s where s.deck::text like ${named} and (s.project is null or exists (select 1 from projects p where p.id = s.project)))
+                  or exists (select 1 from session_decks d join sessions s on s.id = d.session_id where d.deck::text like ${named} and (s.project is null or exists (select 1 from projects p where p.id = s.project)))
+                  ${queue?.there ? tx`or exists (select 1 from render_jobs where state in ('queued', 'running') and compiled::text like ${named})` : tx``}
+                  as yes`
+            : queue?.there
+              ? await tx<{ yes: boolean }[]>`select exists (select 1 from render_log where hash = ${hash}) as yes`
+              : [{ yes: true }]
+        await tx`delete from asset_sweeps where hash = ${hash} and kind = ${kind}`
+        if (still?.yes) {
+          done.kept++
+          return
+        }
+        if (kind === 'asset') {
+          await tx`delete from assets where hash = ${hash}`
+          await this.objects?.delete(assetKey(hash))
+          done.assets++
+        } else {
+          await tx`delete from render_outputs where hash = ${hash}`
+          await tx`delete from render_jobs where hash = ${hash}`
+          await this.objects?.delete(outputKey(hash))
+          done.renders++
+        }
+      })
+    }
+    console.log(JSON.stringify({ msg: 'swept-assets', ...done }))
+    return done
   }
 }

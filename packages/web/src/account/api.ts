@@ -383,3 +383,32 @@ export function initialOf(name: string): string {
   const first = new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(name)[Symbol.iterator]().next().value?.segment ?? ''
   return first.toLocaleUpperCase()
 }
+
+// The account's own extract (#1280, art. 15 och 20): a zip in the reader's language, called what
+// the server calls it, which is the day it was made.
+export async function downloadMyData(http: string, lang: string): Promise<{ file: Blob; name: string }> {
+  const res = await fetch(`${http}/me/data?lang=${encodeURIComponent(lang)}`, withCredentials())
+  if (res.status === 401) throw new Unauthorized()
+  if (!res.ok) throw new Error(`could not read the extract: ${res.status}`)
+  return { file: await res.blob(), name: zipName(res.headers.get('content-disposition'), 'deckster-uppgifter') }
+}
+
+// What «Radera kontot…» names (#1280): the games that go, who else loses each, the tables playing,
+// the games the account leaves, and how many tables it claimed.
+export type Deletion = {
+  games: { id: string; name: string; others: string[]; playing: number }[]
+  leaving: { id: string; name: string; owner: string | null }[]
+  tables: number
+}
+export async function myDeletion(http: string): Promise<Deletion> {
+  const res = await fetch(`${http}/me/deletion`, withCredentials())
+  if (res.status === 401) throw new Unauthorized()
+  if (!res.ok) throw new Error(`could not ask what goes: ${res.status}`)
+  return (await res.json()) as Deletion
+}
+
+// «Ja, radera kontot» (#1280, art. 17): the last letter is written in the reader's language.
+export async function deleteAccount(http: string, lang: string): Promise<void> {
+  const res = await fetch(`${http}/me?lang=${encodeURIComponent(lang)}`, withCredentials({ method: 'DELETE' }))
+  if (!res.ok) throw new Error(`could not delete the account: ${res.status}`)
+}

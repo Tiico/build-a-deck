@@ -1,3 +1,4 @@
+import { withQuery } from '../support/api.js'
 import { PHONE, TV } from '../support/devices.js'
 import { expect, test } from '../support/test.js'
 
@@ -11,7 +12,7 @@ test('a card read on one phone is held up on the television for the room', async
   const table = await tableOf({ players: 2, cards: 16 })
   const ada = await player(table, { name: 'Ada', seat: 'A', device: PHONE })
   const bo = await player(table, { name: 'Bo', seat: 'B', device: PHONE })
-  const tv = await open(TV, `${table.tvUrl}&lang=sv`)
+  const tv = await open(TV, withQuery(table.tvUrl, 'lang=sv'))
 
   await ada.page.locator('[data-zone-draw="draw"]').click()
   await expect(ada.page.locator('[data-hand-card]')).toHaveCount(1)

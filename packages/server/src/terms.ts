@@ -57,7 +57,8 @@ export function termsStanding(register: TermsRegister, accepted: readonly string
 // 5): it can read, export and log out, and nothing else. Reading is every GET, and logging out is
 // `/auth/`, which the gate never reaches. Beyond those, the decided list: accepting the terms and the
 // name before them (the welcome card's two steps, #1254); taking the AI key away, which removes and
-// adds nothing; exporting a game and drawing its print PDF, which is the export's to take away (G5);
+// adds nothing; deleting the account itself (#1280, G6), which is her right whatever she has agreed to;
+// exporting a game and drawing its print PDF, which is the export's to take away (G5);
 // a guest's own ways, since a guest has no terms (G6) and an account that plays is a guest at that
 // table; and the table's host, who may hold its key and no account at all. Every other write is
 // closed, a way added later included, until this list says otherwise.
@@ -65,6 +66,7 @@ export const OPEN_WRITES: readonly (readonly [string, RegExp])[] = [
   ['POST', /^\/me\/terms$/],
   ['PUT', /^\/me\/name$/],
   ['DELETE', /^\/me\/ai-key$/],
+  ['DELETE', /^\/me$/],
   ['POST', /^\/projects\/[^/]+\/export$/],
   ['POST', /^\/projects\/[^/]+\/print$/],
   ['POST', /^\/rooms\/[^/]+\/join$/],

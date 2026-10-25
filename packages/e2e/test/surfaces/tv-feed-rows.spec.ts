@@ -1,4 +1,4 @@
-import { join } from '../../support/api.js'
+import { join, withQuery } from '../../support/api.js'
 import { PHONE, TV } from '../../support/devices.js'
 import type { Page } from '@playwright/test'
 import type { Host } from '../../support/host.js'
@@ -21,7 +21,7 @@ test.describe('the room’s stage on a television (#1290)', () => {
   // Measured once the cards are drawn (#1125): while they wait the floor carries «Laddar kort».
   test('holds up the latest card with its line, and nothing lies over them', async ({ tableOf, open, host, request }) => {
     const table = await tableOf({ players: 4, cards: 12, copies: 2 })
-    const tv = await open(TV, `${table.tvUrl}&lang=sv`, { facesReady: true })
+    const tv = await open(TV, withQuery(table.tvUrl, 'lang=sv'), { facesReady: true })
     const dealer = await host(table)
     await turnOneUp(tv.page, dealer)
     const watcher = await join(request, table, { name: 'Tittaren' })
@@ -55,7 +55,7 @@ test.describe('the room’s stage on a television (#1290)', () => {
   // felt, and the line under the stage's card.
   test('says who holds what and what just happened large enough for the sofa', async ({ tableOf, open, host }) => {
     const table = await tableOf({ players: 4, cards: 12, copies: 2 })
-    const tv = await open(TV, `${table.tvUrl}&lang=sv`)
+    const tv = await open(TV, withQuery(table.tvUrl, 'lang=sv'))
     const dealer = await host(table)
     await turnOneUp(tv.page, dealer)
     await expect(tv.page.locator('.byd-tv-stage figcaption')).toHaveText(/^Bordet vände /)
@@ -79,7 +79,7 @@ test.describe('the room’s stage on a television (#1290)', () => {
   for (const players of [6, 8] as const) {
     test(`stands every one of ${players} seats whole on its plate`, async ({ tableOf, open, host }) => {
       const table = await tableOf({ players, cards: 12, copies: 2 })
-      const tv = await open(TV, `${table.tvUrl}&lang=sv`)
+      const tv = await open(TV, withQuery(table.tvUrl, 'lang=sv'))
       const dealer = await host(table)
       for (let i = 0; i < 4; i++) await dealer.send([{ v: 'draw', from: 'draw', to: 'discard', count: 1 }])
       await expect(tv.page.locator('[data-seat-plate]')).toHaveCount(players)

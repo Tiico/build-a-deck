@@ -80,7 +80,7 @@ export function HandGrid({ view, selected, onToggle, onOpen, onReorder, faces, t
 
   // A hand with nothing in it (UX-16): where the cards would be, the grid says what fills it — and
   // with no card in any pile it does not ask for one (#751).
-  if (hand.length === 0) return <p className="byd-grid-empty" data-hand>{nothingToDraw(view) ? t('player.hand.empty.none') : emptyHand(view, t)}</p>
+  if (hand.length === 0) return <p className="byd-grid-empty" data-hand>{emptyHandText(view, t)}</p>
 
   return (
     <div className="byd-grid" data-hand ref={grid}>
@@ -147,7 +147,12 @@ function nothingToDraw(view: Snapshot): boolean {
   return view.zones.filter((z) => z.kind === 'pile').every((z) => (z.mode === 'count' ? z.count : z.order.length) === 0)
 }
 
-// What an empty hand says, naming the pile it fills from (#714).
+// What an empty hand says, naming the pile it fills from (#714) — and with no card in any pile it
+// does not ask for one (#751). The desk's row says the same (#1310).
+export function emptyHandText(view: Snapshot, t: T): string {
+  return nothingToDraw(view) ? t('player.hand.empty.none') : emptyHand(view, t)
+}
+
 function emptyHand(view: Snapshot, t: T): string {
   const pile = returnPile(view, view.seat)
   return pile ? t('player.hand.empty', { pile }) : t('player.hand.empty.any')

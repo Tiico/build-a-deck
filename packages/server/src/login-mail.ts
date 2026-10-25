@@ -47,5 +47,5 @@ export function loginMail(to: string, link: string, lang: Lang = 'sv', contact?:
     lang === 'en'
       ? `Hello!\n\nClick to sign in: ${link}\n\n${c.fine}${textFoot(site, contact, c.contact)}`
       : `Hej!\n\nKlicka för att logga in: ${link}\n\n${c.fine}${textFoot(site, contact, c.contact)}`
-  return { to, subject: c.subject, text, html: bands({ lang, ...c, contactWord: c.contact, link, contact }) }
+  return { to, subject: c.subject, text, html: bands({ lang, subject: c.subject, pre: c.pre, hello: c.hello, lead: c.lead, fine: c.fine, action: { button: c.button, pasteIt: c.pasteIt, link }, contactWord: c.contact, contact }) }
 }

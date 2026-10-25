@@ -36,6 +36,9 @@ export type QuestionProps = {
   // A second answer that cannot be undone, which goes further than `confirm` ("Sparka och byt kod",
   // #679). It stands after `confirm`, in the same red, and the question never opens on it.
   further?: { label: string; onChoose(): void }
+  // What the question goes on to say under its sentence, when one sentence cannot name everything
+  // an answer costs (#1280, «Radera kontot?» names every game): a list, set beside the sentence.
+  more?: ReactNode
 }
 
 // Who wants to know that a question is standing (#698). The editor's line about what just happened
@@ -56,7 +59,7 @@ type Answer = {
   onChoose(): void
 }
 
-export function Question({ label, className, children, confirm, onConfirm, onCancel, cancel, keep, further }: QuestionProps) {
+export function Question({ label, className, children, confirm, onConfirm, onCancel, cancel, keep, further, more }: QuestionProps) {
   const t = useT()
   const asking = useContext(Asking)
   // Before the paint, so the question is never drawn with the line still over its answers.
@@ -83,7 +86,14 @@ export function Question({ label, className, children, confirm, onConfirm, onCan
         onCancel()
       }}
     >
-      <p>{children}</p>
+      {more === undefined ? (
+        <p>{children}</p>
+      ) : (
+        <div>
+          <p>{children}</p>
+          {more}
+        </div>
+      )}
       {answers.map((answer) => (
         <button
           key={answer.key}

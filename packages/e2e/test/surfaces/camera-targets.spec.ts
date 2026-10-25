@@ -1,3 +1,4 @@
+import { withQuery } from '../../support/api.js'
 import { TV } from '../../support/devices.js'
 import { expect, test } from '../../support/test.js'
 
@@ -10,7 +11,7 @@ test.describe('the camera cluster on the television (#482)', () => {
 
   test('takes a press anywhere on a 44 px target around each button', async ({ tableOf, open }) => {
     const table = await tableOf({ players: 2, counters: [], cards: 2 })
-    const { page } = await open(TV, `${table.tvUrl}&lang=sv`)
+    const { page } = await open(TV, withQuery(table.tvUrl, 'lang=sv'))
     // The cluster stands only while the view is the viewer's own (#325): one step in makes it so.
     await expect(page.locator('.byd-pile').first()).toBeVisible()
     await page.keyboard.press('+')

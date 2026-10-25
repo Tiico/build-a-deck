@@ -38,7 +38,7 @@ describe('the asset store (E1, DRIFT §4): the project\'s images, once each, by 
     const hash = await store.put(PNG, 'image/png')
     // The bytes are the render worker's to read; the deck only names them.
     let reads = 0
-    const counted = new MemoryAssetStore({ ...objects, put: objects.put.bind(objects), link: objects.link.bind(objects), check: objects.check.bind(objects), get: (key) => (reads++, objects.get(key)) })
+    const counted = new MemoryAssetStore({ ...objects, put: objects.put.bind(objects), delete: objects.delete.bind(objects), link: objects.link.bind(objects), check: objects.check.bind(objects), get: (key) => (reads++, objects.get(key)) })
     await counted.put(PNG, 'image/png')
     const { rows } = await resolveAssets([{ id: 'drake', fields: { title: 'Drake', art: `asset:${hash}`, cost: 5 } }, { id: 'torn', fields: { title: 'Torn', art: 'asset:' + '0'.repeat(64) } }], counted)
     expect(rows[0]?.fields).toEqual({ title: 'Drake', art: `asset:${hash}`, cost: 5 })
@@ -568,6 +568,7 @@ describe('bytesen genom servern, för den som ska mäta dem (#469)', () => {
   const linking = (objects: MemoryObjectStore): ObjectStore => ({
     put: (key, bytes, contentType) => objects.put(key, bytes, contentType),
     get: (key) => objects.get(key),
+    delete: (key) => objects.delete(key),
     check: () => objects.check(),
     link: async (key) => `https://objects.example/${key}?signed`,
   })

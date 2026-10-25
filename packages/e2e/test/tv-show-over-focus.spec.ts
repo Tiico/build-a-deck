@@ -1,3 +1,4 @@
+import { withQuery } from '../support/api.js'
 import { TV } from '../support/devices.js'
 import { expect, test } from '../support/test.js'
 
@@ -9,7 +10,7 @@ test('the shown card lies over the card the keyboard is standing on', async ({ t
   const table = await tableOf({ players: 2, counters: [], cards: 4, copies: 1 })
   const dealer = await host(table)
   await dealer.send([{ v: 'draw', from: 'draw', to: 'table', count: 1 }])
-  const tv = await open(TV, `${table.tvUrl}&lang=sv`)
+  const tv = await open(TV, withQuery(table.tvUrl, 'lang=sv'))
   const page = tv.page
   const card = page.locator('.byd-card[data-component][data-kbd]').first()
   await expect(card).toBeVisible()

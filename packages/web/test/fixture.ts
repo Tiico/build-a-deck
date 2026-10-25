@@ -2,7 +2,7 @@ import { createServer as createHttpServer, type Server } from 'node:http'
 import { randomBytes } from 'node:crypto'
 import { connect as connectSocket, createServer as createSocketServer, type Server as SocketServer, type Socket } from 'node:net'
 import { CARD_STANDARD_63x88, TOKEN_COUNTER, TypeRegistry, type SetupDef, STANDARD_TYPES } from '@byd/engine'
-import { TableHost, createServer, MemoryLogStore, MemoryProjectStore, MemorySurveyStore, MemoryAuthStore, MemoryMailer, MemoryAssetStore, COOKIE, SESSION_TTL_MS, hash } from '@byd/server'
+import { TableHost, createServer, MemoryLogStore, MemoryProjectStore, MemorySurveyStore, MemoryAuthStore, MemoryMailer, MemoryAssetStore, COOKIE, SESSION_TTL_MS, hash, memoryForgetting } from '@byd/server'
 import { openingSetup, type Recipe } from '@byd/server/doc'
 import { MemoryRenderStore } from '@byd/render/queue'
 import { AiKeyVault, MemoryAiKeyStore } from '../../server/src/ai-keys.js'
@@ -295,9 +295,6 @@ export async function startServer(opts: { auth?: boolean; authBypass?: boolean; 
   const projects = new MemoryProjectStore(assets)
   const renders = new MemoryRenderStore()
   const surveys = new MemorySurveyStore()
-  // A guest's own erasure (#1281) is a door on the server like any other, and the erasure in the
-  // store is #1279's.
-  const erasures = store.erasures(surveys, projects)
   const mail = new MemoryMailer()
   const auth = opts.auth ? new MemoryAuthStore() : undefined
   let http = ''
@@ -308,6 +305,9 @@ export async function startServer(opts: { auth?: boolean; authBypass?: boolean; 
   const fakeUrl = fakeServer ? `http://127.0.0.1:${await claim(fakeServer)}` : ''
   const vault = fake ? new AiKeyVault(new MemoryAiKeyStore(), randomBytes(32)) : null
   const ai = vault ? { vault, providers: providersFromEnv({ AI_ANTHROPIC_URL: `${fakeUrl}/anthropic`, AI_OPENAI_URL: `${fakeUrl}/openai` }) } : null
+  // A guest's own erasure (#1281) is a door on the server like any other, and the erasure in the
+  // store is #1279's; an account that deletes itself (#1280) is forgotten in every store here too.
+  const erasures = store.erasures(surveys, projects, memoryForgetting({ auth: auth ?? null, projects, vault }))
   const make = () => {
     const made = createServer({ host: new TableHost(registry, store, undefined, renders), store, registry, renders, projects, assets, surveys, erasures, ...(auth ? { auth, mailer: mail, publicOrigin: http, authBypass: opts.authBypass } : {}), ...(opts.appOrigin ? { appOrigin: opts.appOrigin } : {}), ...(ai ? { ai } : {}), ...(opts.plans ? { plans: opts.plans } : {}), ...(opts.print ? { printProviders: printProvidersOf(STANDARD_TYPES) } : {}), ...(opts.terms ? { terms: opts.terms } : {}) })
     // Never hang up an idle connection from this end (#848). Node does after five seconds, and the
