@@ -8590,11 +8590,12 @@ C lade väggens utseende över korten den visar.
 Boxen Visning säger storleken och, när de är på, ögat och snittet: «Visning: 150 px», «Visning: Telefonens läsvy · Deuteranopi».
 
 **Panelen står bredvid väggen och trycker aldrig ner korten.**
-Den har två flikar, Visning och Kontroll, och boxarna Visning och Fysisk kontroll öppnar var sin.
+Boxarna Visning och Fysisk kontroll öppnar den som var sin, och panelen heter som boxen som öppnade den.
+Reviderat 2026-10-25 (#1328): panelen har inga flikar. Beställaren: Visning och Fysisk kontroll behöver inte stå i samma panel, och flikarna upprepade bara krönets två boxar. Boxarna är vägen mellan de två.
 Den stängs med sitt kryss, med Escape och med samma box igen, men inte av ett tryck i väggen, eftersom det man ändrar i den ska synas på korten medan panelen står öppen.
 Där väggen är för smal för både spalt, kort och panel lägger sig panelen över väggens högerkant.
-Antalet anmärkningar i foten är en knapp till fliken Kontroll.
-Korten en anmärkning ramar in är inramade så länge fliken Kontroll visas, som de var så länge lådan stod öppen (#477).
+Antalet anmärkningar i foten är en knapp som öppnar panelen på kontrollen.
+Korten en anmärkning ramar in är inramade så länge panelen visar kontrollen, som de var så länge lådan stod öppen (#477).
 
 **Storlek är ett val, och ögonen ett annat.**
 Storleken är fri (täthetens stege, #128), «På armlängds avstånd» (90 px) eller en av de tre läsvyerna (294, 341 och 672 px, K26).
@@ -8611,7 +8612,7 @@ Ett kort under golvet bär en ram på väggen och säger det i sitt namn till en
 Raden under varje kort tas bort.
 «Visa på kortväggen» från bordet (#523) öppnar väggen i telefonens läsvy med panelen på Visning, så att korten under golvet står listade.
 
-`deck-wall.test.tsx` mäter panelen, flikarna, storleken och ögonen var för sig och tillsammans, läsbarheten och foten; `wall-crown-beside.spec.ts` mäter krönet och panelen i den byggda appen bredvid AI-panelen.
+`deck-wall.test.tsx` mäter panelen, storleken och ögonen var för sig och tillsammans, läsbarheten och foten; `wall-crown-beside.spec.ts` mäter krönet och panelen i den byggda appen bredvid AI-panelen.
 
 ### L82. En miniatyr visar hela bilden, på en ljusare grund och med en kant där bilden slutar (prototypat och beslutat 2026-10-24, #1257)
 
