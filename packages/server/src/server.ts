@@ -45,6 +45,7 @@ import { DEFAULT_PLANS, QuotaReached, YOU, growth, limitOf, tableWindowFrom, typ
 import { planOf, usageOf, type AccountPlanStore } from './account-plans.js'
 import { NO_CARDS, cardGrowth, cardsUsed, type CardMeasure } from './quota-cards.js'
 import { checkRegister, openToTheDue, termsInForce, termsStanding, type TermsRegister, type TermsStanding } from './terms.js'
+import { entry, type ErasureStore } from './erase.js'
 
 // `staticDir`: the built web app, served from the same origin as the API (README, DRIFT §1).
 // `auth` and `mailer` turn on accounts (G1): projects then belong to whoever made them.
@@ -103,6 +104,9 @@ export type ServerOptions = {
   // The terms' versions (#1270, `terms.ts`): the box runs with `TERMS` (`main.ts`), and a test with
   // its own. Without one no terms apply, as without `auth` there are no accounts.
   terms?: TermsRegister
+  // The erasure (#1279, G6): a game taken away masks its tables with it. Without it a game's tables
+  // are masked by the sweeper's next round, which finds the tables of every game that is gone.
+  erasures?: ErasureStore
 }
 const BOOKLET: RenderKind = { kind: 'booklet' }
 const clock = (opts: ServerOptions): Date => (opts.now ?? (() => new Date()))()
@@ -2075,6 +2079,17 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     // that no longer exists. Ended before the game goes, so a table is never left behind.
     for (const table of await opts.store.sessionsOf(gate.rec.id)) await opts.host.end(table.id)
     const removed = await projects.remove(gate.rec.id)
+    // And the people at them with it (G6, F4, #1279): every table's names, words and answers are
+    // masked as the game goes, while the tables themselves stay for the quotas (#1196). After the
+    // game, so that a masking that fails leaves a game that is gone, which the sweeper's next round
+    // finds and masks; never a game that is there with its tables masked.
+    if (opts.erasures && removed) {
+      try {
+        await opts.host.reload((await opts.erasures.erase([entry({ kind: 'game', project: gate.rec.id }, 'removed', clock(opts))])).sessions)
+      } catch (err) {
+        console.error(JSON.stringify({ msg: 'erase-failed', project: gate.rec.id, error: err instanceof Error ? err.message : String(err) }))
+      }
+    }
     // Everyone who has the game open is told it is gone, and the actor goes with it (#485).
     const host = editors(opts, projects)
     ;(await host.running(gate.rec.id))?.shutDown()

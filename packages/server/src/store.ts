@@ -1,5 +1,7 @@
-import { PHYSICAL_VERBS, type Applied, type GameVersionId, type Seating } from '@byd/protocol'
-import type { SetupDef } from '@byd/engine'
+import { PHYSICAL_VERBS, REDACTED, type Applied, type GameVersionId, type Seating } from '@byd/protocol'
+import { redactLine, type SetupDef } from '@byd/engine'
+import { changesAt, type Erased, type Erasure, type ErasureStore, type LedgerEntry } from './erase.js'
+import type { MemorySurveyStore } from './surveys.js'
 import type { Deck } from './faces.js'
 import { QuotaReached, startThatFrees, tableGrowth, withFrees, type TableCeilings, type TableUse } from './quotas.js'
 
@@ -118,6 +120,9 @@ export class MemoryLogStore implements LogStore {
   private readonly logs = new Map<string, Applied[]>()
   private readonly createdAt = new Map<string, number>()
   private readonly guests = new Map<string, GuestRecord[]>()
+  // The erasure's ledger (#1279) and who is told what an erasure masked, one of each per store.
+  private readonly ledger: LedgerEntry[] = []
+  private readonly erased = new Set<(sessions: string[]) => void>()
 
   // Counted and written with no wait between them, so no other request can come in between.
   async createSession(record: SessionRecord, ceilings?: TableCeilings): Promise<void> {
@@ -294,6 +299,63 @@ export class MemoryLogStore implements LogStore {
       this.guests.set(sessionId, kept)
     }
     return n
+  }
+
+  // The erasure in memory (#1279): the same changes Postgres makes, over these maps and the survey
+  // store's, with nothing to wait for between them. `projects` says whether a game is still there.
+  erasures(surveys: MemorySurveyStore, projects?: { load(id: string): Promise<unknown> } | null): ErasureStore {
+    const ledger = this.ledger
+    const listeners = this.erased
+    const at = async (session: string, erasure: Erasure, reason: LedgerEntry['reason'], sum: Erased): Promise<void> => {
+      const log = this.logs.get(session)
+      if (!log) return
+      const guests = this.guests.get(session) ?? []
+      const answers = await surveys.list(session)
+      const changes = changesAt({ log, guests, surveys: answers }, erasure, reason)
+      log.splice(0, log.length, ...log.map((l) => (changes.seqs.includes(l.seq) ? redactLine(l) : l)))
+      for (const [i, g] of guests.entries()) if (changes.guests.includes(i)) g.name = REDACTED
+      surveys.rewrite(session, (r, i) => (changes.drop.includes(i) ? null : (changes.mask.find((m) => m.index === i)?.record ?? r)))
+      if (changes.seqs.length + changes.guests.length + changes.drop.length + changes.mask.length > 0 || erasure.kind !== 'guest') sum.sessions.push(session)
+      sum.lines += changes.seqs.length
+      sum.guests += changes.guests.length
+      sum.surveys += changes.drop.length + changes.mask.length
+    }
+    return {
+      erase: async (entries) => {
+        const sum: Erased = { sessions: [], lines: 0, guests: 0, surveys: 0 }
+        for (const e of entries) {
+          const sessions = e.kind === 'game' ? [...this.sessions.values()].filter((r) => r.project === e.project).map((r) => r.id) : [e.session]
+          for (const session of sessions) await at(session, e, e.reason, sum)
+          if (!ledger.some((l) => l.id === e.id)) ledger.push(structuredClone(e))
+        }
+        sum.sessions = [...new Set(sum.sessions)]
+        for (const fn of listeners) fn(sum.sessions)
+        return sum
+      },
+      ledger: async () => structuredClone(ledger).sort((a, b) => Date.parse(a.at) - Date.parse(b.at)),
+      retained: async (endedBefore) => {
+        const out: Extract<Erasure, { kind: 'guest' }>[] = []
+        for (const [session, log] of this.logs) {
+          const last = log.at(-1)
+          if (last?.intent.v !== 'session.end' || Date.parse(last.at) >= Date.parse(endedBefore)) continue
+          for (const g of this.guests.get(session) ?? []) if (g.accountId === undefined && !g.name.startsWith(REDACTED)) out.push({ kind: 'guest', session, seat: g.seat, issuedAt: g.issuedAt })
+        }
+        return out
+      },
+      orphans: async () => {
+        if (!projects) return []
+        const gone = new Set<string>()
+        for (const r of this.sessions.values()) {
+          if (r.project === undefined || gone.has(r.project) || ledger.some((l) => l.kind === 'game' && l.project === r.project)) continue
+          if ((await projects.load(r.project)) === null) gone.add(r.project)
+        }
+        return [...gone]
+      },
+      listen: async (fn) => {
+        listeners.add(fn)
+        return async () => void listeners.delete(fn)
+      },
+    }
   }
 
   async revokeGuests(sessionId: string, seat: string | null, at: string): Promise<number> {

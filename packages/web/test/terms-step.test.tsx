@@ -248,11 +248,13 @@ describe('/villkor (#1272)', () => {
     for (const { version } of TERMS) expect(TEXTS[version]?.version).toBe(version)
   })
 
-  // The privacy text says what is true today (beställarens beslut 3): the slices that bring deletion
-  // after twelve months, from the phone and from Profil are not built, so it promises none of them.
+  // The privacy text says what is true today (beställarens beslut 3): the masking after twelve months
+  // is built (#1279), and the ways from the phone and from Profil are not (#1280, #1281), so it
+  // promises neither of them.
   it('promises no way to erase that is not built yet', () => {
     const all = JSON.stringify(textOf('2026-10-25').privacy)
-    expect(all).not.toMatch(/12 månader|tolv månader|Radera kontot|från telefonen|på din egen telefon/)
+    expect(all).toContain('12 månader efter att bordet avslutades')
+    expect(all).not.toMatch(/Radera kontot|från telefonen|på din egen telefon|Ladda ner/)
     expect(all).toContain('{contact}')
   })
 })

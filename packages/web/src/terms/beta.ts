@@ -148,11 +148,11 @@ const terms: Document = {
   ],
 }
 
-// What is true today (beställarens beslut 3, 2026-10-24). What can no longer be used is swept (#1277).
-// The masking after twelve months, the deletion of a game's tables, the erasure ledger (#1279),
-// Profil's download and erase (#1280) and the guest's own way from her phone (#1281) are not built,
-// so the text does not say them: erasure is a letter to Kontakt. Each slice brings its own line in
-// here when it lands.
+// What is true today (beställarens beslut 3, 2026-10-24). What can no longer be used is swept (#1277),
+// and a guest's names and free text are masked after twelve months and with a game taken away, with
+// the ledger run again after a restore (#1279). Profil's download and erase (#1280) and the guest's
+// own way from her phone (#1281) are not built, so the text does not say them: any other erasure is a
+// letter to Kontakt. Each slice brings its own line in here when it lands.
 const privacy: Document = {
   title: 'Integritet i Decksters beta',
   sections: [
@@ -192,18 +192,20 @@ const privacy: Document = {
     },
     {
       h: 'Hur länge vi sparar',
-      ks: 'I betan sparas det du och gästerna lämnar tills det raderas. Vill du att något raderas, skriv till oss.',
+      ks: 'En gästs namn och fritext tas bort efter ett år, och direkt när spelet tas bort. Vill du att något annat raderas, skriv till oss.',
       body: [
         {
           list: [
             '**Ditt konto och dina spel:** så länge kontot finns. Ett konto som inte används raderas inte under betan.',
-            '**Det gäster lämnar vid ett bord:** tills det raderas. Skriv till {contact} så raderar vi det.',
+            '**Gäst utan konto:** namn och fritext tas bort 12 månader efter att bordet avslutades. Spelet och enkätens siffror står kvar utan namn.',
+            '**Gäst som sparat till ett konto:** så länge kontot finns.',
+            '**Ett borttaget spel:** namnen och fritexten vid dess bord, och enkätsvaren, tas bort direkt.',
             '**Inloggningslänkar och kakor:** en länk gäller i 15 minuter och kakan i 30 dagar, och vi tar bort dem när de inte längre går att använda.',
             '**Inbjudningar:** 30 dagar efter att de använts eller gått ut.',
-            '**Säkerhetskopior:** åtta dagar.',
+            '**Säkerhetskopior:** åtta dagar. Efter en återställning tar vi bort det som raderats igen.',
           ],
         },
-        'Vill du att något raderas, ditt konto, ett spel eller det du lämnat som gäst, skriver du till {contact}. Den här texten ändras när det finns fler vägar.',
+        'Vill du att något raderas tidigare, ditt konto eller det du lämnat som gäst, skriver du till {contact}. Den här texten ändras när det finns fler vägar.',
       ],
     },
     {
