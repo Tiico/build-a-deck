@@ -1786,7 +1786,11 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
       onPointerCancelCapture={lensOn ? pinchUp : undefined}
     >
       {placed ? (
-        <div className="byd-camera-world" style={{ left: placed.left, top: placed.top, width: px(floorRect.w), height: px(floorRect.h) }}>
+        // While the names and plates are decided the felt is drawn at its fitted scale, and it stands
+        // where a fitted felt stands — in the middle of its frame — and not where the camera has it:
+        // what the frame shows of it is what they are laid out in, and a camera zoomed in or still
+        // gliding from another frame would hide part of it (#1312).
+        <div className="byd-camera-world" style={{ ...(deciding && size ? { left: (size.w - px(floorRect.w)) / 2, top: (size.h - px(floorRect.h)) / 2 } : { left: placed.left, top: placed.top }), width: px(floorRect.w), height: px(floorRect.h) }}>
           {felt}
         </div>
       ) : (
