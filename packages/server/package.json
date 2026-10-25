@@ -13,6 +13,7 @@
     "seed:project": "tsx scripts/seed-project.ts",
     "plan": "tsx scripts/plan.ts",
     "usage": "tsx scripts/usage.ts",
+    "erase": "tsx scripts/erase.ts",
     "screening": "tsx scripts/screening.ts"
   },
   "dependencies": {

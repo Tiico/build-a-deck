@@ -163,9 +163,9 @@ Målet är att kunna ta betalt och lämna ifrån sig allt.
 - 🔶 Passkeys och OAuth som bekvämlighet; passkey-återställning som UX (DRIFT §11). Passkeys är byggda (#1180, L78): bandet på Mina spel efter länken, knappen och förslaget på inloggningskortet och kortet på profilen, med mejlet som återställning; OAuth återstår.
 - ✅ Kontots eget namn: ett välkomststeg efter första inloggningen med förslaget ur adressen, ett band på Mina spel för konton som fanns före det, kortet «Namn» i Profil, och namnet i Dela, i editorns huvud, för ägaren som tittar på vid bordet, i inbjudningsmejlet och i kvotraden med «spelets ägare» som reserv (#1254, L85).
 - ✅ Behörighetsroller: ägare, medredigerare, testledare, betraktare, med inbjudan per adress; byggt med D3 i fas 2.
-- ⬜ GDPR för gäster och konton: Deckster är personuppgiftsansvarig, lagringstider, maskning på plats i loggen, radering för gäst och konto, och registerutdrag (G6, beslutat 2026-10-24, #1269).
-  Inget är byggt än.
-  Skivorna: personfälten som sluten karta (#1276) och rensningen av det som inte längre kan användas (#1277) är byggda; namn och token ur adressraden (#1278) pågår; radering i lagret med liggare och operatörsskript (#1279) väntar på #1276; kontots väg i Profil (#1280) och gästens väg med integritetssidan (#1281) väntar på #1279 och på prototyper.
+- 🔶 GDPR för gäster och konton: Deckster är personuppgiftsansvarig, lagringstider, maskning på plats i loggen, radering för gäst och konto, och registerutdrag (G6, beslutat 2026-10-24, #1269).
+  Raderingen i lagret är byggd (#1279): ett inträde, ett bords gäster och ett borttaget spels bord maskas på plats, gästen utan konto gallras tolv månader efter att bordet slutade, liggaren körs om efter en återställning, och operatören raderar med `erase`.
+  Skivorna: personfälten som sluten karta (#1276), rensningen av det som inte längre kan användas (#1277), namn och token ur adressraden (#1278) och raderingen i lagret (#1279) är byggda; kontots väg i Profil (#1280) och gästens väg med integritetssidan (#1281) väntar på prototyper.
 - ⬜ Villkor med garantiklausul om IP, godkända i ett eget steg efter första inloggningen; korta betavillkor i betan och en releaseversion på ett aktiebolag (F4, reviderad 2026-10-24, #1268).
   Villkorsversion och godkännande på servern (#1270) pågår; texten, sidan och steget (#1272) prototypas efter #1270.
 

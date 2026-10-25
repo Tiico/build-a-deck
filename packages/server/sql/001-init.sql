@@ -299,3 +299,19 @@ create table if not exists terms_acceptances (
   accepted_at  timestamptz not null,
   primary key (account_id, version)
 );
+
+-- The erasure ledger (#1279, G6, DRIFT §5): every erasure and every masking, written in the
+-- transaction that does it — what, which id, when and why, and never a name, an address or a token.
+-- An admission is named by its table, its seat (null for an observer) and when it was given; a game
+-- by its id. No foreign keys: an entry must outlive what it names, and must be writable after a
+-- restore to a point where what it names is back, or not yet there. `erase replay` runs it again.
+create table if not exists erasures (
+  id          text primary key,
+  at          timestamptz not null,
+  kind        text not null check (kind in ('guest', 'table', 'game')),
+  reason      text not null check (reason in ('request', 'retention', 'removed')),
+  session_id  text,
+  seat        text,
+  issued_at   timestamptz,
+  project_id  text
+);
