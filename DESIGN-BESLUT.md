@@ -4564,6 +4564,36 @@ Följdkrav:
 `packages/server/test/wire.test.ts` visar att turen når varje vy i en patch.
 Webbens tester håller raden i Bord, kanten och knappen på filten och brickan på telefonen.
 
+### K31. Materialets plats: tärningar och räknare dras dit de ska ligga (prototypat och beslutat 2026-10-25, #1292)
+
+Beställaren: «Det ska gå att välja vart tärningar och annat material ska läggas på brädet.»
+En tärningsrad valde en yta (K28), och bordet lade raden i ytans fria mitt; räknarna låg alltid i räknarytan, i spår som receptet räknade ut.
+Designern kunde alltså välja yta men aldrig plats.
+Tre varianter prototypades på bordets riktiga geometri ([`index.html`](https://github.com/Tiico/build-a-deck/blob/e0671ede5aaadbb034e521fd7ae1b5553bf88d44/docs/ux-audits/2026-10-25-materialets-plats/prototyper/index.html)): A dra fritt, B ett läge 3 × 3 i ytan, C x och y i fält som en yta.
+Beställaren valde A.
+
+**En bit ligger i en yta och på en punkt.**
+En tärningsrad och en räknare har `at: { x, y }`, mitten på biten i ytans egna millimeter.
+En rad med flera tärningar ligger i en rad med sin mitt på punkten, och biten hålls inne i ytan.
+Utan `at` lägger bordet som förut, så ett spel och en logg från före beslutet läggs likadant.
+Ytan finns kvar för att «en per plats» ska betyda något: en punkt i en yta varje plats har (`role`) sägs från plats A:s stol, längs kanten från platsens vänster och inåt från den bortre sidan, och vänds mot varje plats kant.
+Kanten är `seatEdgeOf` i `packages/engine`, samma regel som projektionen härleder platsens kant med, så att bordet och vyn inte kan vara oense om var en plats sitter.
+
+**Räknarna är material som tärningarna.**
+En räknare har `role`, en yta varje plats har, och räknarytan när den saknas; utan `at` lägger räknarytan sina brickor längs kanten som förut.
+En räknare är varje plats per natur, så den kan bara ligga i en yta varje plats har; släppt i en delad yta ligger den kvar där den låg.
+
+**I editorn dras biten i filten.**
+Varje bit som bordet läggs med har ett handtag i fliken Bords filt, ur samma lista som bordet läggs ur (`layMaterial`), så det designern tar i är det spelarna får.
+En rads tärningar i en yta är ett handtag, och varje plats kopia är sitt eget handtag; den dras vid vilken plats som helst och läses tillbaka från den platsens stol.
+Den innersta ytan under bitens mitt blir dess yta (`placeLine`), och den lyser medan biten dras.
+Ett grepp är ett steg tillbaka (L14).
+Pilarna flyttar en fokuserad bit 10 mm, Skift 50, och sidan säger var den hamnade.
+Att byta yta i radens väljare tar bort punkten, eftersom en punkt i en yta inte betyder något i en annan.
+
+**Nya typer väntar.**
+Meeple, kub och bricka visades i prototypen för att se att listan rymmer dem, men varje typ är ett eget registerbeslut som tärningen var (B1–B3), och de byggs inte här.
+
 ## L. Editorn (grillad 2026-09-06)
 
 E1, E2 och E3 gav principerna; det här är hur de blir konkreta.

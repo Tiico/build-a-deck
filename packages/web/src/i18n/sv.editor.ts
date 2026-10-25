@@ -1466,6 +1466,11 @@ export const svEditor = {
   // falskt för den andra — och en mening som nämner fel zon är en mening formgivaren får leta i.
   'setup.noRoom': 'Det finns ingen ledig plats på bordet för en ny yta. Flytta eller ta bort en zon först.',
   'setup.noRoomPile': 'Det finns ingen ledig plats på bordet för en ny hög. Flytta eller ta bort en zon först.',
+  'setup.material.handle': '{what} i {zone}',
+  'setup.material.die': 'Tärning {n}, {kind}',
+  'setup.material.counter': 'Räknare {name}',
+  'setup.material.moved': '{what} i {zone} · {x}, {y} mm',
+  'setup.material.keys': 'Pilarna flyttar biten (Skift fem steg i taget). Där den släpps blir dess yta, och en yta vid platserna ger varje plats biten.',
   'setup.moved': '{name} · {x}, {y} mm',
   'setup.handle.keys': 'Enter väljer zonen. Pilarna flyttar den (Skift fem steg i taget, Alt ändrar storleken) och Delete tar bort den.',
   'setup.zoneAt.of': 'Var {name} står',

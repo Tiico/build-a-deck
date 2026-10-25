@@ -1,6 +1,6 @@
 import { matches } from '@byd/protocol'
 import { CARD_STANDARD_63x88, DICE, TOKEN_COUNTER, type SetupDef } from '@byd/engine'
-import { counterSpots, diceSpots } from './recipe.js'
+import { layMaterial } from './material.js'
 import type { ProjectDoc } from './projects.js'
 
 // Imported by the editor as well as the server, so this module stays free of anything Node.
@@ -20,36 +20,19 @@ export function setupFromProject(doc: Pick<ProjectDoc, 'rows' | 'setup'>): Setup
     const zone = asked.find((z) => matches(z.fill ?? [], fields))?.id ?? doc.setup.deckZone
     for (let i = 0; i < copies; i++) components.push({ type, cardRef, zone, face: 'back' })
   }
-  // A seat's counters (C4) live in its counters zone, when the setup has one, and where in that
-  // zone is the recipe's answer and not this function's (#89): one chip to a slot along the rim
-  // while there are one or two, one pile once there is a third.
+  // The game's material (#1292): every seat's counters (C4) at their start values, and the dice
+  // (K5, #1136) one side up. The side is the document's and not a roll: a table is laid the same
+  // way every time, and the first roll is a line in the log like every other (D4). Where each piece
+  // lies is `layMaterial`'s answer, which the editor's felt asks too.
   const token = { id: TOKEN_COUNTER.id, version: TOKEN_COUNTER.version }
-  for (const seat of doc.setup.seats) {
-    const zone = doc.setup.zones.find((z) => z.id === `counters:${seat}`)
-    if (!zone) continue
-    const counters = doc.setup.counters ?? []
-    const spots = counterSpots(zone.geometry, counters.length)
-    counters.forEach((c, i) => components.push({ type: token, cardRef: c.name, zone: zone.id, face: 'front', counter: c.start, ...(spots[i] ?? { x: 0, y: 0 }) }))
-  }
-  // The game's dice (K5, #1136), side by side in the area each is put in and clear of what stands
-  // in it (the floor's piles, #1137), one side up. The side is
-  // the document's and not a roll: a table is laid the same way every time, and the first roll is
-  // a line in the log like every other (D4). A die put in a zone that is gone lies nowhere.
-  const byZone = new Map<string, number[]>()
-  const put = (zone: string, faces: number, count: number) => byZone.set(zone, [...(byZone.get(zone) ?? []), ...Array<number>(count).fill(faces)])
-  for (const d of doc.setup.dice ?? []) {
-    if (d.role !== undefined) for (const seat of doc.setup.seats) put(`${d.role}:${seat}`, d.faces, d.count)
-    else if (d.zone !== undefined) put(d.zone, d.faces, d.perSeat ? d.count * doc.setup.seats.length : d.count)
-  }
-  for (const [zoneId, kinds] of byZone) {
-    const zone = doc.setup.zones.find((z) => z.id === zoneId)
-    if (!zone) continue
-    const spots = diceSpots(zone.geometry, kinds.length, doc.setup.zones.filter((z) => z.id !== zoneId))
-    kinds.forEach((faces, i) => {
-      const def = DICE.find((t) => t.behaviours.rollable !== false && t.behaviours.rollable.faces === faces)
-      const at = spots[i] ?? { x: 0, y: 0 }
-      if (def) components.push({ type: { id: def.id, version: def.version }, cardRef: `d${faces}`, zone: zoneId, face: 'front', counter: 1, ...at })
-    })
+  for (const piece of layMaterial(doc.setup)) {
+    const at = { x: piece.x, y: piece.y }
+    if (piece.line.kind === 'counter') {
+      components.push({ type: token, cardRef: piece.name ?? '', zone: piece.zone, face: 'front', counter: piece.counter ?? 0, ...at })
+      continue
+    }
+    const def = DICE.find((t) => t.behaviours.rollable !== false && t.behaviours.rollable.faces === piece.faces)
+    if (def) components.push({ type: { id: def.id, version: def.version }, cardRef: `d${piece.faces}`, zone: piece.zone, face: 'front', counter: 1, ...at })
   }
   // Optional keys that are present but undefined are dropped: the engine's types are exact.
   const zones: SetupDef['zones'] = doc.setup.zones.map((z) => ({

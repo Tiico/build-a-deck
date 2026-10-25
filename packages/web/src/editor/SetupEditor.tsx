@@ -10,7 +10,7 @@ import { previewOf } from '../setup/preview.js'
 import { MIN_MM, NUDGE_MM, onTableOf, sizedBy } from './zone-geometry.js'
 import { useNumberDraft } from './number-draft.js'
 import { Stepper } from '../Stepper.js'
-import { MAX_PLAYERS, counterId, newAreaSpot, newPileSpot, pasteSpot, titleOfRow, type Counter, type Die, type Geometry, type Setup, type Zone } from '@byd/server/doc'
+import { MAX_PLAYERS, counterId, layMaterial, newAreaSpot, newPileSpot, pasteSpot, placeLine, titleOfRow, type Counter, type Die, type Geometry, type MaterialLine, type Setup, type Zone } from '@byd/server/doc'
 import type { ProjectClient } from './ProjectClient.js'
 import type { ZonePatch } from '@byd/server/doc'
 import { useT, type Key, type T } from '../i18n/index.js'
@@ -374,6 +374,7 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside, lead }: Se
             }}
             onGeometry={(id, geometry, gesture) => client.patchZone(id, { geometry }, gesture)}
             onRemove={remove}
+            onPlace={client.mayEdit ? (line, center, gesture) => place(client, setup, t, line, center, gesture) : undefined}
           />
         ) : (
           <p role="alert" className="byd-setup-invalid">{t('setup.invalid')}</p>
@@ -450,7 +451,7 @@ function SeatsPanel({ client, setup }: { client: ProjectClient; setup: Setup }) 
   // Counters lie in the seats' counters zones (C4). A game whose seats have none draws no chips,
   // however long the list is, so the panel says so where the list is rather than leaving the
   // designer to wonder why the table looks the same.
-  const homeless = recipe.counters.length > 0 && !setup.seats.some((s) => setup.zones.some((z) => z.id === `counters:${s}`))
+  const homeless = recipe.counters.some((c) => c.role === undefined) && !setup.seats.some((s) => setup.zones.some((z) => z.id === `counters:${s}`))
   const dice = setup.dice ?? []
   // A die just added takes the focus in its own row, so that the key that added it is followed by
   // the row it made rather than by nothing: the first «＋ Tärning» leaves the page with the first die.
@@ -535,9 +536,10 @@ function diePlaces(setup: Setup): { table: DiePlace[]; seats: DiePlace[] } {
 }
 const placeOf = (die: Die): string => (die.role !== undefined ? `role:${die.role}` : `zone:${die.zone ?? ''}`)
 // A die moved to another place keeps what its count meant: «per spelare» in a seat's area is
-// «per spelare» on the table too, and a seat's area has no other meaning to carry back.
+// «per spelare» on the table too, and a seat's area has no other meaning to carry back. The point
+// it was dragged to was a point in the old zone (#1292), so the new one lays it where it finds room.
 function movedTo(die: Die, value: string): Die {
-  const { zone: _zone, role: _role, perSeat, ...rest } = die
+  const { zone: _zone, role: _role, at: _at, perSeat, ...rest } = die
   if (value.startsWith('role:')) return { ...rest, role: value.slice('role:'.length) }
   const seated = die.role !== undefined || perSeat === true
   return { ...rest, zone: value.slice('zone:'.length), ...(seated ? { perSeat: true } : {}) }
@@ -971,6 +973,7 @@ function Felt({
   onSelect,
   onGeometry,
   onRemove,
+  onPlace,
 }: {
   view: NonNullable<ReturnType<typeof previewOf>>
   doc: ProjectDoc
@@ -983,6 +986,8 @@ function Felt({
   onSelect(id: string | null): void
   onGeometry(id: string, geometry: Geometry, gesture?: string): void
   onRemove(zone: Zone): void
+  // Where a piece of material was taken to (#1292); a reader has no hand on it.
+  onPlace?: ((line: MaterialLine, center: { x: number; y: number }, gesture?: string) => boolean) | undefined
 }) {
   const t = useT()
   const say = useSay()
@@ -1134,9 +1139,66 @@ function Felt({
       </div>
     )
   }
+  // The game's material on the felt (#1292, beslut A): a handle on every piece the table is laid
+  // with, from the same list it is laid from, so what is taken hold of is what the players get.
+  // A line's pieces in one zone are one handle — a row of dice moves as the row it is — and every
+  // seat's copy is a handle of its own, read back from that seat's chair.
+  const material = useMemo(() => materialHandles(setup), [setup])
+  const placing = useGesture('material')
+  const carried = useRef<{ key: string; line: MaterialLine; start: { x: number; y: number }; center: { x: number; y: number }; gesture: string } | null>(null)
+  const [target, setTarget] = useState<string | null>(null)
+  const carry = (e: RPointerEvent, h: MaterialHandle) => {
+    if (e.button !== 0 || !onPlace) return
+    e.stopPropagation()
+    e.preventDefault()
+    const el = e.currentTarget as HTMLElement
+    if (typeof el.setPointerCapture === 'function') el.setPointerCapture(e.pointerId)
+    carried.current = { key: h.key, line: h.line, start: toMm(e), center: h.center, gesture: placing.begin() }
+  }
+  const carrying = (e: RPointerEvent) => {
+    const c = carried.current
+    if (!c || !onPlace) return
+    const p = toMm(e)
+    const center = { x: c.center.x + snap(p.x - c.start.x), y: c.center.y + snap(p.y - c.start.y) }
+    if (onPlace(c.line, center, c.gesture)) setTarget(areaUnder(setup, center)?.id ?? null)
+  }
+  const put = () => {
+    carried.current = null
+    setTarget(null)
+  }
+  const shift = (e: RKeyboardEvent, h: MaterialHandle) => {
+    const step = e.shiftKey ? NUDGE_MM * 5 : NUDGE_MM
+    const d = e.key === 'ArrowLeft' ? { x: -step, y: 0 } : e.key === 'ArrowRight' ? { x: step, y: 0 } : e.key === 'ArrowUp' ? { x: 0, y: -step } : e.key === 'ArrowDown' ? { x: 0, y: step } : null
+    if (!d || !onPlace) return
+    e.preventDefault()
+    const center = { x: h.center.x + d.x, y: h.center.y + d.y }
+    if (!onPlace(h.line, center)) return
+    const area = areaUnder(setup, center)
+    if (area) say?.('polite', t('setup.material.moved', { what: whatOf(h, t), zone: area.name, x: Math.round(center.x - area.geometry.x), y: Math.round(center.y - area.geometry.y) }))
+  }
+  const pieces = (fit: FeltFit) =>
+    material.map((h) => (
+      <div
+        key={h.key}
+        className="byd-setup-material"
+        role="button"
+        tabIndex={onPlace ? 0 : -1}
+        aria-label={t('setup.material.handle', { what: whatOf(h, t), zone: h.zoneName })}
+        aria-describedby={onPlace ? materialKeysId : undefined}
+        data-material={h.key}
+        style={{ left: fit.left(h.box.x), top: fit.top(h.box.y), width: fit.px(h.box.w), height: fit.px(h.box.h) }}
+        onPointerDown={(e) => carry(e, h)}
+        onPointerMove={carrying}
+        onPointerUp={put}
+        onPointerCancel={put}
+        onKeyDown={(e) => shift(e, h)}
+      />
+    ))
+  const materialKeysId = useId()
   const overlay = (fit: FeltFit) => (
     <>
       {handles(fit)}
+      {pieces(fit)}
       {landing(fit)}
     </>
   )
@@ -1187,6 +1249,9 @@ function Felt({
       <span id={keysId} className="byd-offscreen">
         {t('setup.handle.keys')}
       </span>
+      <span id={materialKeysId} className="byd-offscreen">
+        {t('setup.material.keys')}
+      </span>
       {/* The handles carry no names of their own (K19): the felt underneath already names every
           area and every pile, and `seatNames` asks it for the one name this surface would
           otherwise be missing — whose hand is whose, which the played TV gets from its dock. The
@@ -1196,7 +1261,7 @@ function Felt({
         ref={table}
         view={view}
         mode="tv"
-        lit={lit}
+        lit={target ? new Set([...lit, target]) : lit}
         // A card's width of dark around the table (L30): the outline that says a pile lays its
         // cards off the table has to be drawn *off the table*, and was clipped by the felt's edge
         // until the felt left room for it.
@@ -1236,6 +1301,42 @@ function boxOf(z: Zone): { x: number; y: number; w: number; h: number } {
   return z.kind === 'pile' ? { x: g.x - CARD_MM.w / 2, y: g.y - CARD_MM.h / 2, w: CARD_MM.w, h: CARD_MM.h } : { x: g.x, y: g.y, w: g.w, h: g.h }
 }
 const snap = (mm: number) => Math.round(mm / SNAP_MM) * SNAP_MM
+
+// One handle for a line's pieces in one zone (#1292): the box around them on the felt, and the
+// middle a drag or an arrow moves.
+type MaterialHandle = { key: string; line: MaterialLine; zoneName: string; faces?: number; name?: string; box: { x: number; y: number; w: number; h: number }; center: { x: number; y: number } }
+function materialHandles(setup: Setup): MaterialHandle[] {
+  const byKey = new Map<string, MaterialHandle>()
+  for (const p of layMaterial(setup)) {
+    const zone = setup.zones.find((z) => z.id === p.zone)
+    if (!zone) continue
+    const key = `${p.line.kind}:${p.line.index}@${p.zone}`
+    const x = zone.geometry.x + p.x
+    const y = zone.geometry.y + p.y
+    const was = byKey.get(key)
+    const box = was ? { x: Math.min(was.box.x, x), y: Math.min(was.box.y, y), w: Math.max(was.box.x + was.box.w, x + p.size) - Math.min(was.box.x, x), h: Math.max(was.box.y + was.box.h, y + p.size) - Math.min(was.box.y, y) } : { x, y, w: p.size, h: p.size }
+    byKey.set(key, { key, line: p.line, zoneName: zone.name, ...(p.faces !== undefined ? { faces: p.faces } : {}), ...(p.name !== undefined ? { name: p.name } : {}), box, center: { x: box.x + box.w / 2, y: box.y + box.h / 2 } })
+  }
+  return [...byKey.values()]
+}
+const whatOf = (h: MaterialHandle, t: T): string => (h.line.kind === 'die' ? t('setup.material.die', { n: h.line.index + 1, kind: `d${h.faces ?? 6}` }) : t('setup.material.counter', { name: h.name ?? '' }))
+// The innermost area under a point on the felt, the one a piece let go there lies in.
+function areaUnder(setup: Setup, p: { x: number; y: number }): Zone | undefined {
+  const g = (z: Zone) => z.geometry
+  return setup.zones
+    .filter((z) => z.kind === 'area' && p.x >= g(z).x && p.y >= g(z).y && p.x <= g(z).x + g(z).w && p.y <= g(z).y + g(z).h)
+    .sort((a, b) => g(a).w * g(a).h - g(b).w * g(b).h)[0]
+}
+// A piece taken to a point (#1292): its line written where `placeLine` says it lies now, the dice
+// as the whole list and a counter as the recipe it is part of, each one step back per grab (L14).
+// False when nothing under the point can hold it, and the piece stays where it was.
+function place(client: ProjectClient, setup: Setup, t: T, line: MaterialLine, center: { x: number; y: number }, gesture?: string): boolean {
+  const next = placeLine(setup, line, center)
+  if (!next) return false
+  if (line.kind === 'die') client.setDice((setup.dice ?? []).map((d, i) => (i === line.index ? (next as Die) : d)), gesture)
+  else client.setRecipe({ ...client.recipe, counters: client.recipe.counters.map((c, i) => (i === line.index ? (next as Counter) : c)) }, recipeWords(t), gesture)
+  return true
+}
 
 // What a zone is, opened inside its row. Everything about it is the designer's — its name, its
 // verb on the phone, whose it is and who sees into it — because the table is theirs; a hand is the
