@@ -4,7 +4,7 @@ import { render, screen } from '@testing-library/react'
 import { WebSocket as WsClient } from 'ws'
 import { TABLE_PROTOCOL } from '@byd/protocol'
 import { ObserverPage } from '../src/observer/ObserverPage.js'
-import { createSession, startServer } from './fixture.js'
+import { createNamedSession, startServer } from './fixture.js'
 import { onlineUrl, tvUrl } from '../src/editor/tableLinks.js'
 import { takeHostKey } from '../src/table/hostKey.js'
 import { TableClient, setWebSocketImplementation, type WebSocketCtor } from '../src/client.js'
@@ -114,7 +114,7 @@ describe('the owner’s own watch (#1335)', () => {
   it('takes no name from the address, and drops the one an old link carried', async () => {
     const run = await startServer()
     try {
-      const id = await createSession(run)
+      const id = await createNamedSession(run, 'Skogens herrar')
       history.replaceState({ kept: 1 }, '', `/observe?session=${id}&name=Vera&owner=1&server=${encodeURIComponent(run.url)}`)
       const before = history.length
       render(<ObserverPage />)
