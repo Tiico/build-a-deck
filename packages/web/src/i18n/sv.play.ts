@@ -625,4 +625,8 @@ export const svPlay = {
 
   // Lånat från editorn men sagt på spelytorna också, och därför i den katalog de hämtar (#760).
   'rules.caption.placeholder': 'Bildtext…',
+
+  // Raden där en gäst ansluter och där hon sparar (#757, #1272): villkoren och integriteten.
+  'trust.terms': 'Villkor',
+  'trust.privacy': 'Integritet',
 } as const

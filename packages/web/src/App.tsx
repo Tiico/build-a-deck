@@ -91,6 +91,8 @@ function fetchPage(path: string): Promise<ComponentType> {
   if (path === '/claim') return surface(import('./account/ClaimPage.js').then((m) => m.ClaimPage), ['account'])
   if (path === '/survey') return surface(import('./account/SurveyPage.js').then((m) => m.SurveyPage), ['account', 'play'])
   if (path === '/profile') return surface(import('./account/ProfilePage.js').then((m) => m.ProfilePage), ['account', 'editor'])
+  // The beta's terms and privacy text (#1272), open to everyone and linked from the phone's row too.
+  if (path === '/villkor') return surface(import('./terms/TermsPage.js').then((m) => m.TermsPage), ['account'])
   if (path === '/print-package') return surface(import('./account/PrintPackagePage.js').then((m) => m.PrintPackagePage), ['account', 'editor'])
   if (path.startsWith('/invites/')) return surface(import('./account/InvitePage.js').then((m) => m.InvitePage), ['account'])
   if (path === '/') return surface(import('./account/HomePage.js').then((m) => m.HomePage), ['account', 'editor'])

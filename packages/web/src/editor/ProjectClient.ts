@@ -17,6 +17,7 @@ import type { EditorMessage, Presence } from '@byd/server'
 import { canDelete, canEdit, canStartTables, type Role } from '@byd/server/doc'
 import { translate, type Key, type T } from '../i18n/index.js'
 import { Said, saidOr } from '../i18n/said.js'
+import { termsDueIn } from '../account/terms-due.js'
 import { UNDO_STEPS, whatOf } from './undo.js'
 import { readTextures, type Textures } from '../table/textures.js'
 import { DEFAULT_TIMING } from '../status/connection.js'
@@ -82,7 +83,8 @@ export type StepDrop = { dir: 'undo' | 'redo'; fields: string[] }
 // save travelled and what answered it, and nothing past this point reads the server's words.
 // `offline`: no answer came — the line went, the request never left, or the actor stayed silent.
 // `failed`: an answer came and it was no, for a reason none of the others name.
-export type SaveFailure = 'conflict' | ProjectFault | 'failed'
+// `terms`: the account has the terms to accept first (#1272), and nothing was saved.
+export type SaveFailure = 'conflict' | ProjectFault | 'failed' | 'terms'
 // `quota` is the ceiling a save would have crossed (#1197), for the editor to say in its words (#1198).
 export type SaveResult = { ok: true; rev: number } | { ok: false; reason: SaveFailure; quota?: Quota }
 // The actor's refusal of a save, read as one of those words. Only the two the actor itself says
@@ -109,7 +111,9 @@ export type TableSummary = { id: string; version: string; ended: boolean; lastAt
 // with (#993).
 // `step` is set when the edit is a step back or forward (#1056): what the actor refuses then is the
 // designer's own step, and it is said as one. `taken` is the step it put on the other stack.
-type Waiting = { ask: number; intent: EditIntent; step?: StepRefusal & { taken: Step } }
+// `held` is an edit made while the account has the terms to accept (#1272): it is applied here and
+// kept, and sent only once the terms are accepted — or taken off again if they are put off.
+type Waiting = { ask: number; intent: EditIntent; step?: StepRefusal & { taken: Step }; held?: true }
 
 // The project as the editor holds it, and its end of the actor (D3): the document, who else has
 // it open, and one socket the edits go both ways over. An edit is applied here at once and sent;
@@ -146,6 +150,16 @@ export class ProjectClient {
   // names that number, so an answer takes off the edit it is about and never the one beside it.
   private pending: Waiting[] = []
   private asks = 0
+  // The terms (#1272, variant B): while the account has not accepted the version in force, an edit is
+  // applied and held here rather than sent, and a write that sends bytes waits; `termsAsked` says a
+  // write is waiting, for the page to open the step as a dialog. Accepted, everything held goes; put
+  // off, it is taken back. The server is what says so (`refused` with `why: 'terms'`), and a page
+  // that knows it first holds from the start (`holdForTerms`).
+  private termsHeld = false
+  private termsWaiters: { resolve(): void; reject(err: unknown): void }[] = []
+  private stepsBeforeHold = 0
+  public termsAsked = false
+  public termsCurrent: string | null = null
   // How many of this editor's edits the actor has refused (#993). An edit the actor refuses is
   // taken off this editor again, and the designer is told that it did not go through: it vanished
   // from the screen without a word, which reads as the tool having lost it.
@@ -388,6 +402,16 @@ export class ProjectClient {
         // own «saved» to nobody, or to the next save. A refused edit ends no wait: the actor sends
         // the document with it, so nothing has to be asked for again. A server from before the
         // address names none, and its refusal is read the way it always was, as the save's.
+        // The terms (#1272): not a refusal of the edit but of the account until it accepts. The edit
+        // is kept, with every other one on the line, and the page asks; accepted, they go again.
+        if (message.why === 'terms') {
+          this.holdForTerms(message.current ?? '', this.pending.length)
+          for (const waiting of this.pending) waiting.held = true
+          if (message.to !== 'edit') this.finishSave({ ok: false, reason: 'terms' })
+          this.termsAsked = true
+          this.notify()
+          return
+        }
         const quota = message.why === 'quota' ? quotaIn(message.quota) : null
         if (message.to !== 'edit') {
           this.finishSave({ ok: false, reason: refusedSave(message.why), ...(quota ? { quota } : {}) })
@@ -577,8 +601,66 @@ export class ProjectClient {
   private send(intent: EditIntent, next: ProjectDoc = applyEdit(this.doc, intent), step?: Waiting['step']): void {
     this.commit(next)
     const ask = ++this.asks
+    if (this.termsHeld) {
+      this.pending.push({ ask, intent, ...(step ? { step } : {}), held: true })
+      this.termsAsked = true
+      this.notify()
+      return
+    }
     this.pending.push({ ask, intent, ...(step ? { step } : {}) })
     this.post(JSON.stringify({ t: 'edit', intent, ask }))
+  }
+
+  // The account has the terms to accept (#1272): from here on an edit is held and not sent. `unsent`
+  // is how many of the steps on the stack were already on the line and are held with it.
+  holdForTerms(current: string, unsent = 0): void {
+    this.termsCurrent = current
+    if (this.termsHeld) return
+    this.termsHeld = true
+    this.stepsBeforeHold = Math.max(0, this.past.length - unsent)
+  }
+
+  // Accepted (#1272): what was held goes, in the order it was made, and what waited goes on.
+  releaseTerms(): void {
+    this.termsHeld = false
+    this.termsAsked = false
+    for (const waiting of this.pending) {
+      if (!waiting.held) continue
+      delete waiting.held
+      this.post(JSON.stringify({ t: 'edit', intent: waiting.intent, ask: waiting.ask }))
+    }
+    for (const w of this.termsWaiters.splice(0)) w.resolve()
+    this.notify()
+  }
+
+  // Put off (#1272, «Inte nu»): what was held is taken back — the document is the actor's again, with
+  // what was sent before the hold on top — and its steps go with it. The next edit asks again.
+  dropHeld(t: T = swedish): void {
+    this.termsAsked = false
+    const kept = this.pending.filter((waiting) => !waiting.held)
+    let doc = this.held
+    for (const waiting of kept) {
+      try {
+        doc = applyEdit(doc, waiting.intent)
+      } catch {
+        // The actor will refuse it too; there is nothing to keep.
+      }
+    }
+    this.pending = kept
+    this.doc = doc
+    this.past = this.past.slice(0, this.stepsBeforeHold)
+    this.future = []
+    this.gesture = null
+    for (const w of this.termsWaiters.splice(0)) w.reject(new Said(t('terms.later')))
+    this.notify()
+  }
+
+  // A write that sends something before it edits — bytes, a whole game — waits for the terms (#1272).
+  private termsCleared(): Promise<void> {
+    if (!this.termsHeld) return Promise.resolve()
+    this.termsAsked = true
+    this.notify()
+    return new Promise((resolve, reject) => this.termsWaiters.push({ resolve, reject }))
   }
 
   get canUndo(): boolean {
@@ -874,6 +956,7 @@ export class ProjectClient {
   // language she was working in and then stays put.
   async importRules(rules: RuleDoc, file: string, t: T = swedish): Promise<void> {
     this.mustBeAbleToEdit(t)
+    await this.termsCleared()
     // The one edit from the editor that writes the whole book: what the file makes of it is the book.
     this.edit({ v: 'setRules', rules: { ...rules, source: { file, at: new Date().toISOString() } } })
     const saved = await this.save()
@@ -987,6 +1070,7 @@ export class ProjectClient {
 
   private async beginIcon(svg: string, wanted: string, credit: ProjectCredit | undefined, t: T, gesture?: string): Promise<{ name: string; stored: Promise<void> }> {
     this.mustBeAbleToEdit(t)
+    await this.termsCleared()
     const file = svgBytes({ svg })
     // The reference first, off the bytes themselves (#310). It is the name the service will give
     // them, so the question the next line asks — does the game already have this symbol? — is
@@ -1197,6 +1281,7 @@ export class ProjectClient {
   // A licence is not in the file: only the designer knows it, and it is stated beside the family.
   async useFont(file: File, t: T = swedish): Promise<string> {
     this.mustBeAbleToEdit(t)
+    await this.termsCleared()
     // The reference first, off the bytes themselves (#339, as #310 did for the symbol): whether
     // the game already has this typeface is a question about a name, and the name is known here.
     const ref = await assetRefOfFile(file)
@@ -1250,6 +1335,7 @@ export class ProjectClient {
   // symbol (#344, L37).
   async useTheme(theme: Theme, t: T = swedish): Promise<void> {
     this.mustBeAbleToEdit(t)
+    await this.termsCleared()
     const wanted = themeFamilies(theme).filter((family) => !this.doc.fonts?.[family.family]?.asset)
     const files = await Promise.all(wanted.map(async (family) => ({ family, file: await catalogFile(family, t) })))
     const fetched = await Promise.all(files.map(async ({ family, file }) => ({ family, file, ref: await assetRefOfFile(file) })))
@@ -1316,6 +1402,7 @@ export class ProjectClient {
   // comes into the library under its file name instead of as a hash nobody named.
   async addPicture(file: File, t: T = swedish, onto?: { cardRef: string; field: string }): Promise<string> {
     this.mustBeAbleToEdit(t)
+    await this.termsCleared()
     // Before the bytes are even hashed: a file the gate is certain to refuse touches neither the
     // document nor the wire (#742). The refusal names the picture as a taken-back one does (L37),
     // because in a batch it is one line among several and has to say which file it is about —
@@ -1365,6 +1452,7 @@ export class ProjectClient {
   // arrive and a met one is said where the designer uploaded, rather than at the next save.
   async uploadAsset(file: Blob, kind: AssetKind, t: T = swedish): Promise<string> {
     this.mustBeAbleToEdit(t)
+    await this.termsCleared()
     await this.mustBeTakeable(file, kind, t)
     const res = await fetch(`${this.http}/assets?${new URLSearchParams({ project: this.id }).toString()}`, withCredentials({ method: 'POST', headers: { 'content-type': assetTypeDeclaring(kind) }, body: file }))
     if (res.status === 401) throw new Unauthorized()
@@ -1430,6 +1518,14 @@ export class ProjectClient {
     return turn
   }
   private async saveNow(): Promise<SaveResult> {
+    // A save while the terms are held waits for them (#1272), and is not made if they are put off.
+    if (this.termsHeld) {
+      const cleared = await this.termsCleared().then(
+        () => true,
+        () => false,
+      )
+      if (!cleared) return { ok: false, reason: 'terms' }
+    }
     if (this.socket) {
       const answered = new Promise<SaveResult>((resolve) => {
         this.saving = resolve
@@ -1456,7 +1552,7 @@ export class ProjectClient {
     if (res.status === 409) return { ok: false, reason: 'conflict' }
     if (res.status === 404) return { ok: false, reason: 'missing' }
     if (res.status === 401) return { ok: false, reason: 'loggedOut' }
-    if (res.status === 403) return { ok: false, reason: 'forbidden' }
+    if (res.status === 403) return { ok: false, reason: (await termsDueIn(res)) !== null ? 'terms' : 'forbidden' }
     if (!res.ok) return { ok: false, reason: 'failed' }
     const { rev } = (await res.json()) as { rev: number }
     this.rev = rev

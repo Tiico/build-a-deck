@@ -165,8 +165,9 @@ Målet är att kunna ta betalt och lämna ifrån sig allt.
 - ⬜ GDPR för gäster och konton: Deckster är personuppgiftsansvarig, lagringstider, maskning på plats i loggen, radering för gäst och konto, och registerutdrag (G6, beslutat 2026-10-24, #1269).
   Inget är byggt än.
   Skivorna: personfälten som sluten karta (#1276), rensning av det som inte längre kan användas (#1277) och namn och token ur adressraden (#1278) pågår; radering i lagret med liggare och operatörsskript (#1279) väntar på #1276; kontots väg i Profil (#1280) och gästens väg med integritetssidan (#1281) väntar på #1279 och på prototyper.
-- ⬜ Villkor med garantiklausul om IP, godkända i ett eget steg efter första inloggningen; korta betavillkor i betan och en releaseversion på ett aktiebolag (F4, reviderad 2026-10-24, #1268).
-  Villkorsversion och godkännande på servern (#1270) pågår; texten, sidan och steget (#1272) prototypas efter #1270.
+- 🔶 Villkor med garantiklausul om IP, godkända i ett eget steg efter första inloggningen; korta betavillkor i betan och en releaseversion på ett aktiebolag (F4, reviderad 2026-10-24, #1268).
+  Villkorsversionen och godkännandet på servern (#1270) och betavillkoren med sidan, steget, läsläget och grinden (#1272) är byggda.
+  Releaseversionen på aktiebolaget återstår.
 
 ## Fas 4 — Drift i produktion
 
@@ -204,7 +205,9 @@ Betan är öppen för alla, utan kvoter, och dess sessioner når korpusen med sa
 - ⬜ Extern pulskoll mot `/health`, uppsatt av beställaren (DRIFT §8).
 - ✅ Tjänsten heter Deckster och ligger på deckster.se (A5): namnet är bytt överallt en användare läser det, och produktionen flyttade 2026-10-22 från `deck.ockelberg.com`, som svarar 301 till den nya adressen med sökväg och query kvar (#1080).
 - ✅ Ett märke, handen (A6): tre kort i bärnsten, grönt och papper i fliken, på hemskärmen, på landningssidan och i inloggningskortet, ritade från en enda ritning (#1082), i en delad länk och överst i rummets TV-spalt (#1084).
-- ⬜ Korta betavillkor, och godkännandet i ett eget steg efter första inloggningen, samordnat med välkomststeget för visningsnamnet (F4, #1270, #1272, #1254).
+- 🔶 Korta betavillkor, och godkännandet i ett eget steg efter första inloggningen, samordnat med välkomststeget för visningsnamnet (F4, #1270, #1272, #1254).
+  Byggt (#1272): `/villkor` med villkor och integritet, villkoren som välkomstkortets andra steg, bandet för befintliga konton, läsläget och grinden på servern.
+  Kvar före inbjudningarna: uppgifterna om «vi» i hakparenteser, som beställaren fyller i på ett ställe (`packages/web/src/terms/operator.ts`).
 - ⬜ En release från main med allt ovan, och tre till fem designers inbjudna med samtyckesfrågan.
 
 ## Fas 5 — Tryck

@@ -99,6 +99,9 @@ try {
       const login = await fetch(`${origin}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: `load-ai-${i}-${process.pid}@example.com` }) })
       const cookie = (login.headers.get('set-cookie') ?? '').split(';')[0] ?? ''
       const headers = { cookie, 'content-type': 'application/json' }
+      // The terms in force first (#1272): the box closes every way that writes until they are accepted.
+      const { current } = (await (await fetch(`${origin}/terms`)).json()) as { current: { version: string } | null }
+      if (current) await fetch(`${origin}/me/terms`, { method: 'POST', headers, body: JSON.stringify({ version: current.version }) })
       const saved = await fetch(`${origin}/me/ai-key`, { method: 'PUT', headers, body: JSON.stringify({ provider: 'anthropic', key: KEY }) })
       if (!saved.ok) throw new Error(`the key was not saved: ${saved.status}`)
       const made = await fetch(`${origin}/projects`, { method: 'POST', headers, body: JSON.stringify({ ...doc, name: `Saloonen ${i + 1}` }) })

@@ -350,6 +350,10 @@ export function JoinPage({ onSit = (url) => location.assign(url), onOpen = (url)
         </label>
         {/* What a guest leaves behind, said where she sits down (#757): tied to the table, not to her. */}
         <p className="byd-muted">{t('guest.kept')}</p>
+        {/* The row's first two (#757, #1272): the terms and the privacy text, on a page of their own. */}
+        <p className="byd-muted byd-trust">
+          <a href="/villkor">{t('trust.terms')}</a> · <a href="/villkor#integritet">{t('trust.privacy')}</a>
+        </p>
         {/* Villkoret, sagt en gång per skärm och vid fältet — inte en gång per knapp. Det föds
             efter trycket, så det föds som en levande region: en `alert` som kommer till
             dokumentet läses upp när den kommer, och fältet pekar på den. */}

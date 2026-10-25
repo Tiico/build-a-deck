@@ -40,7 +40,10 @@ export type EditorMessage =
   // when the editor owns the game, `owner` when its owner does, with `ownerName` when she has given
   // her account a name (#1198, #1254) and never the address. An addition as `to` and `ask` were:
   // a page from before it reads the refusal by `why`, as it does any other.
-  | { v: 'refused'; why: string; to?: 'edit' | 'save'; ask?: number; quota?: QuotaMet & Bearer }
+  //
+  // `current` is the version of the terms the account has to accept first, on a refusal whose `why`
+  // is `terms` (#1272): the editor holds the edit and asks, and sends it again once accepted.
+  | { v: 'refused'; why: string; to?: 'edit' | 'save'; ask?: number; quota?: QuotaMet & Bearer; current?: string }
 // `name` is what the others call the editor: the account's own name, or its address when it has
 // given none (#1254). `email` is the account's address, beside it so that a face keeps its colour
 // when the name is changed; it goes only to those who share the game, who see it in Dela already.

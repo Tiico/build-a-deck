@@ -50,6 +50,12 @@ export function Survey({ who, version, onSubmit, saveUrl, remember, rulebook, sa
           {saved ? <span>{t('survey.saved')}</span> : saveUrl && <a className="byd-survey-save" href={saveUrl}>{t('survey.save')}</a>}
           {/* What a guest leaves behind, said where she saves it (#757). */}
           {!saved && saveUrl && <p className="byd-muted">{t('guest.kept')}</p>}
+          {/* The row's first two (#757, #1272), where she saves what she left. */}
+          {!saved && saveUrl && (
+            <p className="byd-muted byd-trust">
+              <a href="/villkor">{t('trust.terms')}</a> · <a href="/villkor#integritet">{t('trust.privacy')}</a>
+            </p>
+          )}
           {onward}
         </div>
         <div />

@@ -7,6 +7,7 @@ import { useT } from '../i18n/index.js'
 import { loginUrl } from './session.js'
 import { NAME_MAX, myAccount, saveName, suggestedName, type Me } from './api.js'
 import { safeNext } from './next.js'
+import { TermsStep } from './TermsStep.js'
 import './account.css'
 
 // /login?step=name&next=… — the step after the first link (#1254, beställarens beslut 2026-10-24, variant C),
@@ -16,6 +17,12 @@ import './account.css'
 //
 // It replaces itself in the history, as the claim's page does, so Back never lands on a question
 // that has been answered.
+//
+// `step=terms` is the card's second step (#1272, beställarens beslut 2026-10-24, variant B): for an
+// account that has not accepted the terms in force, the name is «Steg 1 av 2» and the terms are
+// «Steg 2 av 2», in the same card, with «← Namnet» back to the first. The address says which step
+// stands, so a reload opens the same one; the step only ever follows the name, and an account that
+// was there before the terms meets them in a band on Mina spel instead.
 export type WelcomePageProps = { onNavigate?(url: string): void }
 
 export function WelcomePage({ onNavigate = (url) => location.replace(url) }: WelcomePageProps) {
@@ -30,6 +37,15 @@ export function WelcomePage({ onNavigate = (url) => location.replace(url) }: Wel
   const [attempt, setAttempt] = useState(0)
   const [name, setName] = useState('')
   const [state, setState] = useState<'open' | 'busy' | 'failed'>('open')
+  const [step, setStep] = useState<'name' | 'terms'>(() => (params.get('step') === 'terms' ? 'terms' : 'name'))
+  // The step stands in the address, replaced and never pushed, so Back leaves the card altogether.
+  const goTo = (to: 'name' | 'terms') => {
+    const q = new URLSearchParams(location.search)
+    q.set('step', to)
+    history.replaceState(history.state, '', `${location.pathname}?${q.toString()}${location.hash}`)
+    setState('open')
+    setStep(to)
+  }
   useEffect(() => {
     let live = true
     setOffline(false)
@@ -37,10 +53,14 @@ export function WelcomePage({ onNavigate = (url) => location.replace(url) }: Wel
       (account) => {
         if (!live) return
         // Nobody signed in has nobody to name: the login, and back here after it. An account that has
-        // answered goes on to where it was going.
+        // answered goes on to where it was going, by the terms when it has them to accept.
         if (account === null) return onNavigate(loginUrl(next, server))
-        if (account.asked) return onNavigate(next)
-        setName(suggestedName(account.email) ?? '')
+        if (step === 'terms' && !account.terms.due) return onNavigate(next)
+        if (step === 'name' && account.asked) {
+          if (!account.terms.due) return onNavigate(next)
+          goTo('terms')
+        }
+        setName(account.name ?? (account.asked ? '' : (suggestedName(account.email) ?? '')))
         setMe(account)
       },
       () => live && setOffline(true),
@@ -59,11 +79,29 @@ export function WelcomePage({ onNavigate = (url) => location.replace(url) }: Wel
   const answer = async (given: string | null) => {
     setState('busy')
     try {
-      if ((await saveName(http, given)) === false) return setState('failed')
-      onNavigate(next)
+      const saved = await saveName(http, given)
+      if (saved === false) return setState('failed')
+      if (!me.terms.due) return onNavigate(next)
+      setMe({ ...me, name: saved.name, asked: true })
+      goTo('terms')
     } catch {
       setState('failed')
     }
+  }
+  if (step === 'terms' && me.terms.current !== null) {
+    return (
+      <main className="byd-account" data-page="welcome">
+        <TermsStep
+          http={http}
+          version={me.terms.current}
+          title={t('terms.step.title')}
+          step={{ n: 2, total: 2, onBack: () => goTo('name') }}
+          focusOnOpen
+          onAccepted={() => onNavigate(next)}
+          onLater={() => onNavigate(next)}
+        />
+      </main>
+    )
   }
   const go = (e: FormEvent) => {
     e.preventDefault()
@@ -77,6 +115,14 @@ export function WelcomePage({ onNavigate = (url) => location.replace(url) }: Wel
           <DecksterMark className="byd-login-mark" edge="#171a23" />
           {t('welcome.title')}
         </h1>
+        {/* «Steg 1 av 2» when the terms follow the name (#1272, variant B). */}
+        {me.terms.due && (
+          <p className="byd-terms-steps">
+            <i data-now="" />
+            <i />
+            <span>{t('terms.step.of', { n: 1, total: 2 })}</span>
+          </p>
+        )}
         <p className="byd-welcome-as">{t('welcome.as', { email: me.email })}</p>
         <form noValidate onSubmit={go}>
           <label className="byd-login-email">

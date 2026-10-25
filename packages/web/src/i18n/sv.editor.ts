@@ -95,6 +95,7 @@ export const svEditor = {
   'editor.save.forbidden': 'Du har inte längre rätt att ändra spelet, så det gick inte att spara. Dina ändringar finns kvar här.',
   'editor.save.loggedOut': 'Du är utloggad, så det gick inte att spara. Dina ändringar finns kvar här.',
   'editor.save.offline': 'Servern svarade inte, så det gick inte att spara. Dina ändringar finns kvar här, så försök igen.',
+  'editor.save.terms': 'Inte sparat. Godkänn villkoren för betan för att spara.',
   'editor.save.failed': 'Det gick inte att spara. Dina ändringar finns kvar här, så försök igen.',
   // Bandet under huvudet som säger det som inte kunde hända stängs med ett × (#1073).
   'editor.notice.close': 'Stäng meddelandet',
@@ -251,6 +252,8 @@ export const svEditor = {
   'ai.error.network.text': 'Anslutningen bröts innan svaret var klart. Försök igen om en stund.',
   'ai.error.timeout': 'Svaret tog för lång tid',
   'ai.error.timeout.text': 'Det avbröts efter tre minuter. Försök igen, gärna med en kortare fråga.',
+  'ai.error.terms': 'Godkänn villkoren för betan först.',
+  'ai.error.terms.text': 'Frågan går iväg när villkoren är godkända. Läs och godkänn dem på Mina spel.',
   'ai.error.busy': 'Ett svar är redan på väg',
   'ai.error.busy.text': 'Vänta tills det är klart, i den här eller en annan flik, och fråga sedan igen.',
   'ai.error.offline': 'Ingen kontakt med servern',

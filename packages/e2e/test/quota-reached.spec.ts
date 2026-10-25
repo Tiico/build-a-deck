@@ -2,6 +2,7 @@ import { expect, test } from '../support/test.js'
 import { gameDoc } from '../support/game.js'
 import { DESK } from '../support/devices.js'
 import { serverWith } from '../support/stack.js'
+import { acceptTerms } from '../support/api.js'
 
 test.use({ viewport: DESK.viewport, locale: 'sv-SE' })
 
@@ -24,6 +25,7 @@ test('a designer who reaches her ceilings is told each one where she pressed, an
   const at = (path: string) => `${planned.origin}${path}`
   const email = `e2e-${crypto.randomUUID()}@example.com`
   expect((await page.request.post(at('/auth/login'), { data: { email } })).ok()).toBe(true)
+  await acceptTerms(page.request, planned.origin)
   const made = await page.request.post(at('/projects'), { data: gameDoc({ name: 'Skogens råd', cards: 4 }) })
   expect(made.status()).toBe(201)
   const { id } = (await made.json()) as { id: string }

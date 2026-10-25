@@ -7,6 +7,7 @@ import { translate, type T } from '../i18n/index.js'
 import { Said } from '../i18n/said.js'
 import { Unauthorized, pageLang, withCredentials } from './session.js'
 import { QuotaReached, quotaOf, type Quota } from './quota.js'
+import { refusedForTerms, termsDueIn } from './terms-due.js'
 export { Unauthorized, claimGuest, claimUrl, loginUrl, logout, requestLink, whoAmI, withCredentials } from './session.js'
 
 // What went wrong is said to the reader, in their language (A4). A caller that has no `t` — a
@@ -68,6 +69,7 @@ export async function projectMembers(http: string, project: string, t: T = swedi
 export async function inviteToProject(http: string, project: string, email: string, role: Role, t: T = swedish): Promise<void> {
   const res = await fetch(`${http}/projects/${encodeURIComponent(project)}/invites`, withCredentials({ method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email, role, ...pageLang() }) }))
   if (res.status === 401) throw new Unauthorized()
+  await refusedForTerms(res, t)
   if (res.status === 403) throw new Said(t('error.invite.notOwner'))
   // What the service could not do, said as the reason and not as its number (#477).
   if (res.status === 400) throw new Said(t('error.invite.address'))
@@ -92,6 +94,7 @@ export async function waitingInvites(http: string, project: string, t: T = swedi
 export async function withdrawInvite(http: string, project: string, email: string, t: T = swedish): Promise<void> {
   const res = await fetch(`${http}/projects/${encodeURIComponent(project)}/invites/${encodeURIComponent(email)}`, withCredentials({ method: 'DELETE' }))
   if (res.status === 401) throw new Unauthorized()
+  await refusedForTerms(res, t)
   // Already followed or already gone: what the owner wanted is true either way.
   if (!res.ok && res.status !== 404) throw new Said(t('error.withdraw.failed', { email }))
 }
@@ -99,6 +102,7 @@ export async function withdrawInvite(http: string, project: string, email: strin
 export async function unshareProject(http: string, project: string, email: string, t: T = swedish): Promise<void> {
   const res = await fetch(`${http}/projects/${encodeURIComponent(project)}/members/${encodeURIComponent(email)}`, withCredentials({ method: 'DELETE' }))
   if (res.status === 401) throw new Unauthorized()
+  await refusedForTerms(res, t)
   if (res.status === 403) throw new Said(t('error.unshare.notOwner'))
   if (!res.ok) throw new Said(t('error.unshare.failed', { email }))
 }
@@ -119,6 +123,7 @@ export async function invitedTo(http: string, token: string): Promise<string | n
 export async function acceptInvite(http: string, token: string, t: T = swedish): Promise<{ project: string; role: Role } | 'not-logged-in' | 'spent'> {
   const res = await fetch(`${http}/invites/${encodeURIComponent(token)}`, withCredentials({ method: 'POST' }))
   if (res.status === 401) return 'not-logged-in'
+  await refusedForTerms(res, t)
   if (res.status === 404) return 'spent'
   if (!res.ok) throw new Said(t('error.join.failed'))
   return (await res.json()) as { project: string; role: Role }
@@ -129,6 +134,7 @@ export async function acceptInvite(http: string, token: string, t: T = swedish):
 export async function startTable(http: string, project: string, t: T = swedish): Promise<{ id: string; code: string; hostKey: string }> {
   const res = await fetch(`${http}/projects/${encodeURIComponent(project)}/sessions`, withCredentials({ method: 'POST' }))
   if (res.status === 401) throw new Unauthorized()
+  await refusedForTerms(res, t)
   // Every role but a viewer may start one (D3); the page does not offer it to a viewer (#689),
   // so a refusal is an answer that changed under the page, said as what it means.
   if (res.status === 403) throw new Said(t('error.startTable.viewer'))
@@ -154,6 +160,7 @@ export async function runningTables(http: string, project: string): Promise<Runn
 export async function removeProject(http: string, project: string, t: T = swedish): Promise<void> {
   const res = await fetch(`${http}/projects/${encodeURIComponent(project)}`, withCredentials({ method: 'DELETE' }))
   if (res.status === 401) throw new Unauthorized()
+  await refusedForTerms(res, t)
   if (res.status === 403) throw new Said(t('error.removeGame.notOwner'))
   if (res.status === 404) throw new Said(t('error.game.gone'))
   if (!res.ok) throw new Said(t('error.removeGame.failed'))
@@ -165,6 +172,7 @@ export async function duplicateProject(http: string, project: string, t: T = swe
   const q = new URLSearchParams(pageLang())
   const res = await fetch(`${http}/projects/${encodeURIComponent(project)}/duplicate?${q.toString()}`, withCredentials({ method: 'POST' }))
   if (res.status === 401) throw new Unauthorized()
+  await refusedForTerms(res, t)
   if (res.status === 404) throw new Said(t('error.game.gone'))
   // The copy is the account's own and is held to its own ceilings (#1193); the page says which (#1198).
   const quota = await quotaOf(res)
@@ -178,6 +186,7 @@ export async function duplicateProject(http: string, project: string, t: T = swe
 export async function renameProject(http: string, project: string, name: string, t: T = swedish): Promise<void> {
   const res = await fetch(`${http}/projects/${encodeURIComponent(project)}/name`, withCredentials({ method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name }) }))
   if (res.status === 401) throw new Unauthorized()
+  await refusedForTerms(res, t)
   if (res.status === 404) throw new Said(t('error.game.gone'))
   if (!res.ok) throw new Said(t('error.renameGame.failed'))
 }
@@ -278,10 +287,13 @@ export function zipName(disposition: string | null, fallback: string): string {
 // the window says in the reader's words.
 export type ImportProblem = { code: string; values?: Record<string, string | number> }
 // A ceiling the import met (#1193, #1198) is no problem of the zip's, and comes back as the ceiling.
-export async function importGame(http: string, file: Blob): Promise<{ ok: true; id: string } | { ok: false; problems: ImportProblem[] } | { ok: false; quota: Quota }> {
+// The terms (#1272) are no problem of the zip's either: the account has to accept them first.
+export async function importGame(http: string, file: Blob): Promise<{ ok: true; id: string } | { ok: false; problems: ImportProblem[] } | { ok: false; quota: Quota } | { ok: false; terms: string }> {
   const q = new URLSearchParams(pageLang())
   const res = await fetch(`${http}/projects/import?${q.toString()}`, withCredentials({ method: 'POST', headers: { 'content-type': 'application/zip' }, body: file }))
   if (res.status === 201) return { ok: true, id: ((await res.json()) as { id: string }).id }
+  const terms = await termsDueIn(res)
+  if (terms !== null) return { ok: false, terms }
   if (res.status === 413) return { ok: false, problems: [{ code: 'too-big' }] }
   const quota = await quotaOf(res.clone())
   if (quota) return { ok: false, quota }
@@ -308,15 +320,28 @@ export async function myUsage(http: string): Promise<Usage | null> {
 export { NAME_MAX, suggestedName } from '@byd/server/account-name'
 
 // Who is signed in, with the name the account goes by to others (#1254) and whether it has been asked
-// for one; null for nobody.
-export type Me = { email: string; name: string | null; asked: boolean }
+// for one, and where it stands against the terms (#1270, #1272); null for nobody.
+export type TermsStanding = { current: string | null; accepted: string | null; due: boolean }
+export type Me = { email: string; name: string | null; asked: boolean; terms: TermsStanding }
 export async function myAccount(http: string): Promise<Me | null> {
   const res = await fetch(`${http}/auth/me`, withCredentials())
   if (!res.ok) throw new Error(`could not read the account: ${res.status}`)
-  const me = (await res.json()) as { email: string | null; name?: string | null; asked?: boolean }
+  const me = (await res.json()) as { email: string | null; name?: string | null; asked?: boolean; terms?: Partial<TermsStanding> }
   // A server from before the name has asked nobody and has nowhere to keep an answer, so its
-  // accounts are taken as asked rather than sent to a step that could not be saved.
-  return me.email === null ? null : { email: me.email, name: me.name ?? null, asked: me.asked ?? true }
+  // accounts are taken as asked rather than sent to a step that could not be saved. One from before
+  // the terms asks nothing of them either.
+  const terms: TermsStanding = { current: typeof me.terms?.current === 'string' ? me.terms.current : null, accepted: typeof me.terms?.accepted === 'string' ? me.terms.accepted : null, due: me.terms?.due === true }
+  return me.email === null ? null : { email: me.email, name: me.name ?? null, asked: me.asked ?? true, terms }
+}
+
+// Accepting the version in force (#1270, #1272). `changed` with the version now in force when the
+// one the page showed is not it any more — the page shows the new one rather than accepting it unread.
+export async function acceptTerms(http: string, version: string): Promise<'accepted' | { changed: string | null }> {
+  const res = await fetch(`${http}/me/terms`, withCredentials({ method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ version }) }))
+  if (res.status === 401) throw new Unauthorized()
+  if (res.status === 409) return { changed: ((await res.json().catch(() => ({}))) as { current?: string | null }).current ?? null }
+  if (!res.ok) throw new Error(`could not accept the terms: ${res.status}`)
+  return 'accepted'
 }
 
 // The account's name (#1254), or none: either is the answer to the question, which is not put again.

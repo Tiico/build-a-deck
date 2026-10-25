@@ -506,4 +506,7 @@ export const enPlay: Record<keyof typeof svPlay, string> = {
   'rules.setup.seat.empty': 'No zones of its own at this seat.',
 
   'rules.caption.placeholder': 'Caption…',
+
+  'trust.terms': 'Terms',
+  'trust.privacy': 'Privacy',
 }
