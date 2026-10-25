@@ -170,8 +170,20 @@ export function TvChrome({ view, activity, roomCode, joinUrl, host, title, versi
         </div>
       )}
       {(roomCode || joinUrl) && !view.ended && (
-        <div className="byd-tv-join byd-help-row">
-          <span>{t('tv.join')}</span>
+        <div className="byd-tv-join">
+          {/* The one help pattern (L32, #305), on the row's own heading (#1343, beställarens beslut
+              A): «Öppna på telefonen ?» at every width. After the square it took a line of its own
+              where the stage stands on its 360 px floor, since the code, the square and the ring
+              need 361 px of the foot's 320; on the heading the code and the square have their line
+              to themselves. The heading's line is the box's anchor, and the row says the help is
+              about the code and the square under it, so the box never lands on them. */}
+          <div className="byd-help-row" data-join-head data-help-explains="[data-tv] .byd-tv-join">
+            <span>{t('tv.join')}</span>
+            <Help topic={t('tv.join.help.topic')}>
+              <p>{t('tv.join.help.how')}</p>
+              <p>{t('tv.join.help.phone')}</p>
+            </Help>
+          </div>
           {/* The code is the address (#675, beslut C): the host on its own line, and `/KOD` on the
               line under it, large, as the rest of one address — what a phone types is what the
               room reads, and it lands in the seat picker. The host is the screen's own origin, so
@@ -186,15 +198,6 @@ export function TvChrome({ view, activity, roomCode, joinUrl, host, title, versi
           {/* One line of the TV's own heading, and nobody presses a television: the code stays a
               picture there (#225). The room's code stands beside it in plain figures anyway. */}
           {joinUrl && <QrCode text={joinUrl} label={t('qr.join.alt', { code: roomCode ?? '', url: joinUrl })} size={52} enlarge={false} />}
-          {/* The one help pattern (L32, #305), after the code and the square rather than in
-              front of them: what the room reads from across it comes first, and what a joined
-              phone becomes is behind the question mark instead of on a second line over the
-              felt. The row is the box's anchor, so a box that turns upward clears the code and
-              not merely the ring. */}
-          <Help topic={t('tv.join.help.topic')}>
-            <p>{t('tv.join.help.how')}</p>
-            <p>{t('tv.join.help.phone')}</p>
-          </Help>
         </div>
       )}
     </>

@@ -294,11 +294,17 @@ describe('the same box on the phone, the distance view and the table screen (#30
           const ask = document.querySelector('.byd-help-ask')!
           const box = document.querySelector('.byd-help-box') as HTMLElement
           const row = ask.closest(ROW)
-          return { ask: rect(ask), row: row ? rect(row) : null, boxWants: { w: box.offsetWidth, h: box.scrollHeight } }
+          // What the row's help is about, read as the component's `explainsOf` reads it: the way in
+          // on the television names its code and square, which stand under its heading (#1343).
+          const sel = row?.getAttribute('data-help-explains')
+          const rs = sel ? [...document.querySelectorAll(sel)].map(rect) : []
+          const x = Math.min(...rs.map((r) => r.x)), y = Math.min(...rs.map((r) => r.y))
+          const explains = rs.length ? { x, y, w: Math.max(...rs.map((r) => r.x + r.w)) - x, h: Math.max(...rs.map((r) => r.y + r.h)) - y } : null
+          return { ask: rect(ask), row: row ? rect(row) : null, explains, boxWants: { w: box.offsetWidth, h: box.scrollHeight } }
         },
         { rectOf, ROW },
       )
-      const placed = helpPlacement(helpAnchor(raw.ask, raw.row), raw.boxWants, view)
+      const placed = helpPlacement(helpAnchor(raw.ask, raw.row), raw.boxWants, view, raw.explains)
       // Awaited and not returned: a `return` inside the `try` hands back the promise, and the
       // `finally` closes the page out from under it.
       return await page.evaluate(
@@ -349,7 +355,7 @@ describe('the same box on the phone, the distance view and the table screen (#30
   // same 260 px, the column beside the felt is narrow, and what it must not cover is the code and
   // the square the room joins by — the very thing it is about.
   it('stands clear of the code it is about on the table screen', async () => {
-    const { box, plays, under } = await laid(await tv(), '.byd-tv-join > span, .byd-tv-join strong, .byd-tv-join img', { w: 1280, h: 800 })
+    const { box, plays, under } = await laid(await tv(), '.byd-tv-join [data-join-head] > span, .byd-tv-join strong, .byd-tv-join img', { w: 1280, h: 800 })
     expect(plays.length).toBeGreaterThan(1)
     expect(plays.filter((p) => overlaps(box, p.rect)).map((p) => p.what)).toEqual([])
     expect(inside(box, 1280, 800)).toBe(true)
