@@ -10,7 +10,9 @@ import { parseBody, type InlineNode } from './inline.js'
 export type MeasureFont = { family: string; sizePt: number; weight: number; lineHeight: number; letterSpacing?: number }
 export type Measure = (text: string, font: MeasureFont, widthMm: number) => number
 
-export const PT_TO_MM = 25.4 / 72
+import { PT_TO_MM } from './units.js'
+
+export { PT_TO_MM }
 const STEP_PT = 0.5
 
 // Radavståndet ett element har när mallen inte säger något. Det står här, bredvid räkningen som

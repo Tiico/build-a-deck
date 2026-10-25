@@ -1,5 +1,5 @@
 import { CARD_STANDARD_63x88 } from '@byd/engine'
-import { PT_TO_MM } from '@byd/template'
+import { PT_TO_MM } from '@byd/template/units'
 import { LIFT_GAP, LIFT_SHARE } from './table/lift-share.js'
 
 // Måttstocken (K26, #506): vad läsbar korttext är på skärm, skrivet på ett ställe.

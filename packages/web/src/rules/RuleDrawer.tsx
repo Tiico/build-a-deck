@@ -1,5 +1,6 @@
 import { Suspense, createContext, lazy, useContext, useEffect, useRef, useState, type Ref } from 'react'
-import { ruleEm, type RefKind, type RenderedBlock, type RenderedNode, type RenderedRules } from '@byd/template'
+import type { RefKind, RenderedBlock, RenderedNode, RenderedRules } from '@byd/template'
+import { ruleEm } from '@byd/template/units'
 import { zoneTally, type ZoneTally } from '@byd/engine'
 import type { ZoneView } from '@byd/protocol'
 import { SetupOverview } from './SetupOverview.js'
