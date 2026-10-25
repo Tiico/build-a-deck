@@ -228,6 +228,11 @@ input.byd-code-field { font: 700 22px/1 ui-monospace, Menlo, monospace; letter-s
 .byd-home-running-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: 10px 12px; padding: 14px 16px; border-radius: 16px; background: #1b2a22; color: #d8ffe8; }
 .byd-home-running-row b { font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .byd-home-running-row strong { justify-self: end; font: 700 22px ui-monospace, Menlo, monospace; letter-spacing: 4px; color: #fff; }
+/* The two ways under the name and the code (#1282): side by side and of one width where both fit
+   whole, and one under the other, each the band's width, where they do not — at 1024 the side
+   column is 300 px, and «Öppna bordet» broke over two lines in half of it. */
+.byd-home-running-ways { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 10px 12px; }
+.byd-home-running-ways > a { flex: 1 1 0; min-width: max-content; white-space: nowrap; }
 .byd-home-running-row a { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 12px; border-radius: 10px; background: #7dd3a0; color: #0f1117; font-weight: 700; text-decoration: none; text-align: center; }
 /* The way to the game is the row's second action (#1217): outlined, as L13 has every second one. */
 .byd-home-running-row a.byd-home-running-game { background: transparent; box-shadow: inset 0 0 0 1px #7dd3a088; color: #d8ffe8; }

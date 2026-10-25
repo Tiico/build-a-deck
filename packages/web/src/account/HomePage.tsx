@@ -747,21 +747,25 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
               <div key={table.id} className="byd-home-running-row" data-running={table.id}>
                 <b>{table.name}</b>
                 <strong>{table.code}</strong>
-                {/* The way to the game the table runs (#1217): «Pågår nu» led only to the table. */}
-                <a
-                  className="byd-home-running-game"
-                  href={`/editor?${suffix(new URLSearchParams({ project: table.project }))}`}
-                  aria-label={t('home.running.game.aria', { name: table.name })}
-                  onClick={(e) => {
-                    e.preventDefault()
-                    onNavigate(`/editor?${suffix(new URLSearchParams({ project: table.project }))}`)
-                  }}
-                >
-                  {t('home.running.game')}
-                </a>
-                <a {...tableWay(table, server, lang)} aria-label={t('home.running.open.aria', { code: table.code, name: table.name })}>
-                  {t('home.running.open')}
-                </a>
+                {/* The way to the game the table runs (#1217): «Pågår nu» led only to the table. The
+                    two ways share a line where both fit on it whole, and stand one under the other
+                    where they do not (#1282). */}
+                <span className="byd-home-running-ways">
+                  <a
+                    className="byd-home-running-game"
+                    href={`/editor?${suffix(new URLSearchParams({ project: table.project }))}`}
+                    aria-label={t('home.running.game.aria', { name: table.name })}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      onNavigate(`/editor?${suffix(new URLSearchParams({ project: table.project }))}`)
+                    }}
+                  >
+                    {t('home.running.game')}
+                  </a>
+                  <a {...tableWay(table, server, lang)} aria-label={t('home.running.open.aria', { code: table.code, name: table.name })}>
+                    {t('home.running.open')}
+                  </a>
+                </span>
               </div>
             ))}
           </section>
