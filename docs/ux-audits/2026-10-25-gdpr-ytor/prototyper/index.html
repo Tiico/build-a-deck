@@ -1,0 +1,868 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp — GDPR-ytorna (#1280, #1281)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* ── Frågan ──────────────────────────────────────────────────────────────────────────────
+     #1280: kontot laddar ner sina uppgifter och raderar sig i Profil.
+     #1281: gästens väg — meningen, radering från telefonen, hur en maskad plats syns.
+     Besluten som ligger fast (G6, #1269): Deckster är ansvarig; ett raderat konto försvinner
+     direkt och dess assets sopas efter 30 dygn; en gäst raderar själv med sin token eller via
+     Kontakt; en gäst utan konto maskas efter 12 månader; backuperna lever åtta dygn.
+     Varje yta är ritad för hand med kontots och telefonens egna färger och mått (account.css,
+     profile.css, player.css, join.css) och produktens egna strängar där de finns.
+     PROTOTYP. Slängs när beslutet står i DESIGN-BESLUT.md.
+     ────────────────────────────────────────────────────────────────────────────────────── */
+  body { display: flex; flex-direction: column; min-height: 100vh; overflow: auto; }
+  .protorad { position: relative; z-index: 20; }
+  .protorad .flikar { display: flex; gap: 4px; flex-wrap: wrap; }
+  .protorad .flikar button[aria-pressed='true'] { background: #ffd98a; color: #2a2417; }
+  .protorad .grupp { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .protorad .grupp > span { color: #c8b98d; }
+  .protorad .grupp[hidden] { display: none; }
+  main.scen { flex: 1 1 auto; display: flex; flex-wrap: wrap; gap: 28px; justify-content: safe center; align-content: start; align-items: start; padding: 20px 16px 60px; background: #15171c; }
+  .ram { display: grid; gap: 6px; }
+  .sida { position: relative; outline: 1px solid #3a3f4b; box-shadow: 0 10px 40px rgb(0 0 0 / 45%); overflow: hidden; }
+  .sida[data-bredd='dator'] { width: 1040px; min-height: 680px; }
+  .sida[data-bredd='375'] { width: 375px; min-height: 740px; }
+  .sida[data-bredd='320'] { width: 320px; min-height: 568px; }
+  .sida[data-fast][data-bredd='375'] { height: 740px; }
+  .sida[data-fast][data-bredd='320'] { height: 568px; }
+  .sida[data-bredd='tv'] { width: 640px; min-height: 300px; }
+  .etikett { color: var(--quiet-2); font-size: 11px; margin: 0; }
+  .etikett b { color: #e6ecfa; }
+
+  /* ── Glyfer ─────────────────────────────────────────────────────────────────────────────── */
+  .g { width: 16px; height: 16px; flex: none; }
+  .med { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+
+  /* ── Kontot (account.css, profile.css, buttons.css) ───────────────────────────────────────── */
+  .acc { --bg: #0f1117; --card: #171a23; --field: #14161c; --edge: #262a35; --muted: #9aa3b8; --soft: #c3cbdd; --ok: #7dd3a0; --ok-ink: #0b2a18; --sec-line: #6f7a90; --sec-ink: #dce3f2;
+    min-height: inherit; background: var(--bg); color: #e6e6e6; font: 14px system-ui, sans-serif; box-sizing: border-box; position: relative; }
+  .acc :focus-visible { outline: 3px solid #9cc6ff; outline-offset: 2px; }
+  .acc button { font: inherit; cursor: pointer; }
+  .prim { min-height: 44px; padding: 0 18px; border: 0; border-radius: 10px; background: var(--ok); color: var(--ok-ink); font-weight: 700 !important; }
+  .sek { min-height: 44px; padding: 0 16px; border: 1px solid var(--sec-line); border-radius: 10px; background: transparent; color: var(--sec-ink); font-weight: 600 !important; font-size: 14px; }
+  .sek:disabled, .prim:disabled { opacity: .45; cursor: default; }
+  .farlig { min-height: 44px; padding: 0 16px; border: 1px solid #7a3243; border-radius: 10px; background: #7a3243; color: #ffe4ea; font-weight: 700 !important; }
+  .farlig:disabled { opacity: .45; cursor: default; }
+  .muted { color: var(--muted); font-size: 14px; line-height: 1.5; margin: 0; }
+  .acc.topp { padding: 40px 20px; display: grid; justify-content: center; align-content: start; }
+  .sida:not([data-bredd='dator']) .acc.topp { padding: 16px 16px 32px; }
+  .profil { width: 640px; display: grid; gap: 16px; }
+  .sida[data-bredd='375'] .profil { width: 343px; }
+  .sida[data-bredd='320'] .profil { width: 288px; }
+  .tillbaka { display: inline-flex; align-items: center; gap: 6px; justify-self: start; min-height: 44px; color: var(--muted); font-size: 14px; }
+  .profil-head { display: grid; gap: 4px; margin-bottom: 8px; }
+  .profil-head h1 { margin: 0; font-size: 28px; }
+  .profil-head p { overflow-wrap: anywhere; }
+  .pkort { display: grid; gap: 12px; padding: 24px; border-radius: 16px; border: 1px solid var(--edge); background: var(--card); color: #e6ecfa; font-size: 14px; }
+  .sida:not([data-bredd='dator']) .pkort { padding: 16px; }
+  .pkort h2 { margin: 0; font-size: 18px; font-weight: 750; }
+  .pkort h3 { margin: 4px 0 0; font-size: 15px; font-weight: 700; }
+  .pkort[data-ihop] { opacity: .55; }
+  .pkort[data-ihop] h2::after { content: ' · befintligt kort'; color: #6b7387; font-size: 12px; font-weight: 500; }
+  .lead { margin: 0; line-height: 1.5; color: var(--soft); }
+  .liten { margin: 0; font-size: 13px; line-height: 1.5; color: var(--muted); }
+  .facts { margin: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 16px; }
+  .facts dt { color: var(--muted); }
+  .facts dd { margin: 0; overflow-wrap: anywhere; }
+  .rad { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .skiljare { height: 1px; background: var(--edge); margin: 4px 0; }
+  .okrad { margin: 0; display: flex; gap: 10px; align-items: flex-start; color: #d8ffe8; font-size: 13px; line-height: 1.5; }
+  .bock { display: inline-grid; place-items: center; width: 22px; height: 22px; flex: none; border-radius: 50%; background: var(--ok); color: #0b2a18; font-size: 13px; font-weight: 800; }
+  .about { margin: 8px 0 0; color: var(--muted); font-size: 12px; text-align: center; }
+  .about u { text-underline-offset: 3px; }
+  .falt { display: grid; gap: 8px; font-size: 13px; }
+  .falt > span { font-weight: 650; }
+  .falt input { min-height: 44px; box-sizing: border-box; border-radius: 8px; border: 1px solid var(--sec-line); background: var(--field); color: #fff; font: inherit; font-size: 14px; padding: 0 12px; width: 100%; }
+  /* L9:s remsa: bärnstensgrund, det säkra svaret först och med fokus, det som inte kan ångras i rött och i ord. */
+  .fraga { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 12px; border-radius: 8px; background: #3b3222; color: #ffeccc; }
+  .fraga > div { flex: 1 1 240px; display: grid; gap: 6px; line-height: 1.45; }
+  .fraga p { margin: 0; }
+  .fraga ul { margin: 0; padding-left: 18px; display: grid; gap: 2px; }
+  .fraga button { min-height: 44px; padding: 0 16px; border-radius: 10px; border: 1px solid #a39a86; background: transparent; color: var(--sec-ink); font-weight: 600; }
+  .fraga button[data-kind='danger'] { border-color: #7a3243; background: #7a3243; color: #ffe4ea; font-weight: 700; }
+  .fraga .avbryt { box-shadow: 0 0 0 3px #9cc6ff; }
+  /* Radera-sidan (B) och dialogen (C) */
+  .steg { display: grid; gap: 10px; }
+  .steg > h2 { display: flex; gap: 10px; align-items: baseline; }
+  .steg > h2 i { font-style: normal; color: var(--muted); font-size: 14px; font-weight: 600; }
+  .spellista { list-style: none; margin: 0; padding: 0; display: grid; }
+  .spellista > li { display: grid; gap: 6px; padding: 12px 0; border-top: 1px solid var(--edge); }
+  .spellista > li:first-child { border-top: 0; padding-top: 0; }
+  .spellista b { font-size: 15px; }
+  .spellista .vad { color: var(--muted); font-size: 13px; }
+  .spellista .ut { color: #ffb4c4; font-size: 13px; }
+  .spellista .kvar { color: var(--ok); font-size: 13px; }
+  .val { display: grid; gap: 4px; }
+  .val label { display: flex; gap: 10px; align-items: center; min-height: 44px; padding: 0 12px; border: 1px solid var(--sec-line); border-radius: 8px; cursor: pointer; }
+  .val label:has(input:checked) { box-shadow: inset 0 -3px 0 var(--ok); }
+  .val input { accent-color: var(--ok); width: 16px; height: 16px; margin: 0; }
+  .forsvinner { margin: 0; padding-left: 18px; display: grid; gap: 4px; color: var(--soft); line-height: 1.45; }
+  .farokort { border-color: #4a2a33; }
+  .skymning { position: absolute; inset: 0; z-index: 5; display: grid; place-items: start center; padding: 60px 16px; background: rgb(5 7 12 / 72%); }
+  .dialog { width: min(480px, 100%); box-sizing: border-box; display: grid; gap: 14px; padding: 24px; border-radius: 20px; background: var(--card); border: 1px solid #343a4a; box-shadow: 0 20px 60px rgb(0 0 0 / 60%); }
+  .sida:not([data-bredd='dator']) .dialog { padding: 18px; }
+  .dialog h2 { margin: 0; font-size: 20px; }
+  .dialog .knappar { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+  .skickat { padding: 16px; border-radius: 14px; background: #1b2a22; color: #d8ffe8; display: grid; gap: 6px; font-size: 14px; line-height: 1.5; }
+  .skickat strong { font-size: 16px; }
+  .forlopp { height: 6px; border-radius: 3px; background: #262a35; overflow: hidden; }
+  .forlopp i { display: block; height: 100%; width: 60%; background: var(--ok); }
+  /* Utdraget */
+  .fil { display: grid; gap: 14px; }
+  .trad { margin: 0; padding: 14px 16px; border-radius: 12px; background: #11141b; border: 1px solid var(--edge); font: 13px/1.6 ui-monospace, Menlo, monospace; color: #c3cbdd; white-space: pre; overflow-x: auto; }
+  .trad em { font-style: normal; color: #7dd3a0; }
+  .trad s { text-decoration: none; color: #6b7387; }
+  /* Efteråt */
+  .login { width: min(420px, 100%); background: var(--card); border: 1px solid var(--edge); border-radius: 20px; padding: 28px; display: grid; gap: 14px; box-sizing: border-box; }
+  .login h1 { margin: 0; font-size: 26px; display: flex; align-items: center; gap: 12px; }
+  .hand { width: 32px; height: 32px; }
+  .band { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 10px 14px; padding: 14px 16px; border-radius: 12px; background: #1b2a22; color: #d8ffe8; line-height: 1.5; }
+  .band p { flex: 1 1 220px; margin: 0; }
+  .band b { color: #fff; }
+  .mejl { width: min(520px, 100%); background: #f6f4ef; color: #1d1d1f; border-radius: 12px; padding: 28px; display: grid; gap: 12px; font: 15px/1.55 system-ui, sans-serif; box-sizing: border-box; }
+  .mejl .hd { color: #6b6b72; font-size: 12px; border-bottom: 1px solid #ddd8cc; padding-bottom: 10px; }
+  .mejl h2 { margin: 0; font-size: 20px; }
+  .mejl p { margin: 0; }
+  .mejl .fot { color: #6b6b72; font-size: 12px; border-top: 1px solid #ddd8cc; padding-top: 10px; }
+  .home { display: grid; gap: 16px; width: 640px; }
+  .sida:not([data-bredd='dator']) .home { width: 100%; }
+  .home header { display: flex; justify-content: space-between; align-items: baseline; }
+  .home h1 { margin: 0; font-size: 28px; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .sida:not([data-bredd='dator']) .grid { grid-template-columns: 1fr 1fr; }
+  .spel { background: var(--card); border: 1px solid var(--edge); border-radius: 16px; padding: 14px; display: grid; gap: 6px; color: #fff; }
+  .spel i { display: block; height: 96px; aspect-ratio: 63 / 88; border-radius: 4px; background: var(--c); }
+  .spel small { color: var(--muted); }
+
+  /* ── Telefonen (player.css, join.css) ─────────────────────────────────────────────────────── */
+  .tel { --bg: #14161c; --surface: #1b1e27; --control: #242938; --ink: #eee; --strong: #fff; --muted: #9aa3b8; --quiet: #7d8597; --accent: #7dd3a0; --on-accent: #0b2a18; --warn: #ffd98a; --warn-bg: #2a2417; --danger: #ff9a9a; --rule: #262a35; --rule-soft: #1f2330; --line: #2c3242;
+    position: relative; height: 100%; min-height: inherit; background: var(--bg); color: var(--ink); font: 14px system-ui, sans-serif; box-sizing: border-box; }
+  .tel button { font: inherit; cursor: pointer; }
+  .tel :focus-visible { outline: 3px solid #9cc6ff; outline-offset: 2px; }
+  .spelvy { display: flex; flex-direction: column; height: 100%; }
+  .spelvy > header { flex: none; display: flex; align-items: center; gap: 10px; padding: 6px 16px; min-height: 52px; box-sizing: border-box; border-bottom: 1px solid var(--rule); color: var(--muted); font-size: 13px; }
+  .vem { flex: 1 1 0; min-width: 0; display: grid; line-height: 1.2; }
+  .vem > * { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .vem strong { color: var(--strong); font-size: 15px; }
+  .vem strong[data-maskad] { font-style: italic; color: var(--soft-ink, #c3cbdd); }
+  .vem span { font-size: 12px; }
+  .angra { min-width: 44px; min-height: 44px; border: 0; border-radius: 10px; background: var(--control); color: var(--strong); display: grid; place-items: center; opacity: .35; }
+  .tur { flex: none; display: flex; align-items: center; gap: 8px; padding: 8px 16px; font-size: 13px; color: var(--muted); }
+  .tur b { display: inline-flex; align-items: center; gap: 8px; color: var(--strong); }
+  .tur b::before { content: ''; width: 10px; height: 10px; border-radius: 50%; background: #3b82d6; }
+  .paneler { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+  .panel { display: grid; gap: 14px; align-content: start; padding: 14px 16px 20px; }
+  .paneltitel { margin: 6px 0 0; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); font-weight: 600; }
+  .panel ol { list-style: none; margin: 0; padding: 0; font-size: 13px; color: var(--muted); }
+  .panel li { padding: 8px 0; border-bottom: 1px solid var(--rule-soft); }
+  .panel li em { font-style: normal; color: var(--ink); }
+  .panel li em[data-maskad] { font-style: italic; color: #c3cbdd; }
+  .hjalprad { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0; min-height: 44px; color: var(--muted); font-size: 14px; }
+  .fragetecken { width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--line); background: transparent; color: var(--muted); font-weight: 700 !important; }
+  .merknapp { width: 100%; min-height: 52px; padding: 0 16px; border: 0; border-radius: 14px; box-sizing: border-box; display: flex; align-items: center; gap: 12px; background: var(--control); color: var(--strong); font: 700 16px system-ui, sans-serif !important; text-align: left; }
+  .merknapp .g { width: 18px; height: 18px; }
+  .merknapp[data-tyst] { background: transparent; border: 1px solid var(--line); color: #c3cbdd; font-weight: 600 !important; }
+  .merknapp:disabled { opacity: .5; cursor: default; }
+  .flikrad { flex: none; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-top: 1px solid var(--rule); background: var(--bg); }
+  .flikrad button { min-height: 56px; padding: 6px 2px; border: 0; background: none; color: var(--muted); font-size: 12px; font-weight: 600; display: grid; justify-items: center; align-content: center; gap: 4px; }
+  .flikrad button[aria-selected='true'] { color: var(--strong); box-shadow: inset 0 3px 0 var(--accent); }
+  .flikrad .tal { min-width: 18px; padding: 0 5px; border-radius: 9px; background: var(--control); color: var(--strong); font-size: 11px; line-height: 18px; box-sizing: border-box; }
+  .flikrad .tom { height: 18px; }
+  .toast { flex: none; margin: 0; padding: 10px 16px; background: #1b2a22; color: #d8ffe8; font-size: 14px; line-height: 1.45; border-top: 1px solid #2b4a38; }
+  /* Arket från nederkanten (Lämna-arkets form) */
+  .ark-skym { position: absolute; inset: 0; z-index: 6; background: rgb(5 7 12 / 65%); display: flex; align-items: flex-end; }
+  .ark { width: 100%; box-sizing: border-box; display: grid; gap: 10px; padding: 18px 16px 20px; border-radius: 18px 18px 0 0; background: var(--surface); border-top: 1px solid var(--line); max-height: 92%; overflow-y: auto; }
+  .ark h2 { margin: 0 0 2px; font-size: 18px; color: var(--strong); }
+  .ark p { margin: 0; line-height: 1.45; color: #c3cbdd; font-size: 14px; }
+  .ark ul { margin: 0; padding-left: 18px; display: grid; gap: 3px; color: #c3cbdd; line-height: 1.4; font-size: 14px; }
+  .val-knapp { display: grid; gap: 2px; text-align: left; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--line); background: var(--control); color: var(--strong); }
+  .val-knapp b { font-size: 16px; }
+  .val-knapp span { font-size: 13px; color: #c3cbdd; font-weight: 400; line-height: 1.4; }
+  .val-knapp[data-ny] { border-color: #6f5a2c; }
+  .tel .farlig { min-height: 48px; border-radius: 12px; font-size: 16px; }
+  .tel .sek2 { min-height: 48px; border-radius: 12px; border: 1px solid var(--line); background: transparent; color: var(--strong); font-size: 16px; font-weight: 600; }
+  .tel .sek2.fokus { box-shadow: 0 0 0 3px #9cc6ff; }
+  /* Enkätens tack */
+  .tack { position: absolute; inset: 0; display: grid; grid-template-rows: 1fr auto 1fr; padding: 22px 20px; box-sizing: border-box; background: var(--bg); overflow-y: auto; }
+  .tack-mitt { display: grid; place-items: center; align-content: center; text-align: center; gap: 8px; }
+  .tack-mitt strong.stor { font-size: 24px; color: var(--strong); }
+  .tack-mitt .muted { font-size: 14px; }
+  .spara { display: inline-flex; align-items: center; min-height: 44px; color: #7dd3a0; font-weight: 700; }
+  .tillit { margin: 0; font-size: 13px; color: var(--muted); }
+  .tillit u { text-underline-offset: 3px; }
+  .tyst-lank { min-height: 44px; border: 0; background: none; color: #c3cbdd; text-decoration: underline; text-underline-offset: 3px; font-size: 14px; padding: 0 6px; }
+  .tel .fraga { text-align: left; }
+  .tel .fraga button { color: #eee; }
+  .klar { display: grid; gap: 8px; justify-items: center; padding: 14px; border-radius: 14px; background: #1b2a22; color: #d8ffe8; line-height: 1.5; }
+  .klar strong { color: #fff; font-size: 16px; }
+  /* Anslutningssidan */
+  .join { padding: 10px 20px 24px; display: grid; gap: 14px; align-content: start; }
+  .join-topp { display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: var(--muted); }
+  .join-topp u { color: #c3cbdd; text-underline-offset: 3px; }
+  .join h1 { margin: 0; font-size: 24px; color: var(--strong); }
+  .join .rum { font-size: 13px; color: var(--muted); margin: 2px 0 0; }
+  .filt { position: relative; height: 150px; margin: 18px 22px; border-radius: 18px; background: radial-gradient(ellipse at center, #2e6b45, #1d4a30); border: 10px solid #4a2f1f; }
+  .pill { position: absolute; width: 76px; height: 46px; border-radius: 23px; display: grid; place-items: center; align-content: center; color: #0d0f14; font-size: 12px; font-weight: 700; line-height: 1.15; text-align: center; }
+  .pill b { font-size: 14px; }
+  .pill[data-vald] { box-shadow: 0 0 0 3px #fff; }
+  .join .falt span { color: var(--strong); }
+  .join .falt input { min-height: 52px; border-radius: 12px; border: 1px solid #6f7a90; background: #1b1e27; font-size: 17px; color: #fff; padding: 0 14px; width: 100%; box-sizing: border-box; }
+  .mening { margin: 0; color: #e6e6e6; font-size: 15px; line-height: 1.5; }
+  .mening u { color: #c3cbdd; text-underline-offset: 3px; }
+  .mening-dl { margin: 0; display: grid; grid-template-columns: auto minmax(0,1fr); gap: 4px 10px; font-size: 14px; line-height: 1.45; color: #e6e6e6; }
+  .mening-dl dt { color: var(--muted); }
+  .mening-dl dd { margin: 0; }
+  .sitt { min-height: 56px; border: 0; border-radius: 14px; background: var(--accent); color: var(--on-accent); font-size: 18px !important; font-weight: 800 !important; }
+  .sitt2 { min-height: 52px; border: 1px solid #6f7a90; border-radius: 12px; background: transparent; color: var(--strong); font-weight: 700 !important; }
+  /* Kvar-skärmen (C) */
+  .lamnat { position: absolute; inset: 0; display: grid; align-content: center; gap: 12px; padding: 24px 20px; text-align: center; justify-items: center; }
+  .lamnat h1 { margin: 0; font-size: 22px; color: var(--strong); }
+  /* TV:ns platser */
+  .tvfilt { position: relative; height: 240px; margin: 24px 60px; border-radius: 26px; background: radial-gradient(ellipse at center, #2e6b45, #1d4a30); border: 14px solid #4a2f1f; }
+  .tvfilt .pill { width: auto; min-width: 76px; padding: 0 14px; }
+  .pill i { font-style: italic; font-weight: 600; }
+  /* Resultat (editorn) */
+  .ed { --bg: #0f1117; --card: #171a23; --edge: #262a35; --muted: #9aa3b8; min-height: inherit; background: var(--bg); color: #e6e6e6; font: 14px system-ui, sans-serif; padding: 24px 32px; box-sizing: border-box; display: grid; gap: 16px; align-content: start; }
+  .ed h1 { margin: 0; font-size: 22px; }
+  .ed .kort { background: var(--card); border: 1px solid var(--edge); border-radius: 14px; padding: 18px 20px; display: grid; gap: 10px; }
+  .ed h2 { margin: 0; font-size: 16px; }
+  .ed h3 { margin: 6px 0 0; font-size: 13px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted); }
+  .ed ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+  .ed li { line-height: 1.45; }
+  .ed li small { display: block; color: var(--muted); font-size: 12px; }
+  .ed .maskad { font-style: italic; color: #c3cbdd; }
+  .ed .notis { color: var(--muted); font-size: 13px; display: flex; gap: 8px; align-items: center; }
+  .ed .notis .g { color: var(--muted); }
+  /* Integritetstexten (terms-page.css) */
+  .villkor { padding: 12px; display: grid; gap: 12px; background: #0f1117; min-height: inherit; color: #e6e6e6; font: 14px system-ui, sans-serif; box-sizing: border-box; }
+  .villkor .fl { display: flex; gap: 6px; }
+  .villkor .fl span { min-height: 44px; display: grid; place-items: center; padding: 0 14px; border-radius: 10px; color: #c3cbdd; font-weight: 700; }
+  .villkor .fl span[data-pa] { background: #242938; color: #fff; }
+  .villkor h1 { margin: 6px 0 0; font-size: 22px; }
+  .avsnitt { display: grid; grid-template-columns: 24px minmax(0,1fr); gap: 4px 10px; padding: 14px; border-radius: 12px; border: 1px solid #262a35; background: #171a23; }
+  .avsnitt > span { color: #6b7387; font-weight: 700; }
+  .avsnitt h2 { margin: 0; font-size: 16px; }
+  .avsnitt > div { grid-column: 2; display: grid; gap: 8px; line-height: 1.5; color: #c3cbdd; }
+  .avsnitt p, .avsnitt ul { margin: 0; }
+  .avsnitt ul { padding-left: 18px; display: grid; gap: 4px; }
+  .avsnitt ins { text-decoration: none; background: #1b2a22; color: #d8ffe8; border-radius: 4px; padding: 0 2px; }
+  .avsnitt del { color: #9a6b75; }
+  .avsnitt .ks { color: #e6e6e6; }
+</style>
+</head>
+<body>
+<div class="protorad" role="region" aria-label="Prototypens rad (inte en del av förslaget)">
+  <div class="fraga" style="all:unset;flex:1 1 320px;min-width:0">
+    <p><b>PROTOTYP #1280 + #1281 — kontots och gästens väg (GDPR, G6).</b> Allt går att klicka: nedladdningen, frågan, raderingen och det som syns efteråt.</p>
+    <p>Växla variant med A/B/C eller ← →. Varianten gäller det issue som är valt; «Börja om ytan» nollställer.</p>
+  </div>
+  <div class="grupp"><span>Issue</span><div class="flikar" id="iss"></div></div>
+  <div class="vaxlare" role="group" aria-label="Variant" id="vaxlare"></div>
+  <div class="grupp"><span>Yta</span><div class="flikar" id="ytor"></div></div>
+  <div class="grupp" id="breddgrupp"><span>Bredd</span><div class="flikar" id="bredd"></div></div>
+  <div class="grupp" id="spraakgrupp"><span>Språk</span><div class="flikar" id="lang"></div></div>
+  <div class="grupp" id="ordgrupp"><span>Maskad plats heter</span><div class="flikar" id="ord"></div></div>
+  <div class="grupp" id="fasgrupp"><span>Telefonen</span><div class="flikar" id="fas"></div></div>
+  <button type="button" id="omstart">Börja om ytan</button>
+  <p class="anteckning" id="anteckning"></p>
+</div>
+<main class="scen" id="scen"></main>
+
+<script>
+// ── Glyferna: #1083:s hand, 16-rutnät, 1,6 rund linje ────────────────────────────────────────────
+const P = {
+  down: 'M8 2.5v8M4.75 7.25 8 10.5l3.25-3.25M3 13.25h10',
+  trash: 'M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.5 9h6l.5-9M6.75 7v4.25M9.25 7v4.25',
+  left: 'M13 8H3M7 4 3 8l4 4',
+  exit: 'M9.5 2.75H4a1 1 0 0 0-1 1v8.5a1 1 0 0 0 1 1h5.5M6.5 8h7M11 5.25 13.75 8 11 10.75',
+  flag: 'M3.75 14V2.5M3.75 3h8l-1.75 3 1.75 3h-8',
+  book: 'M2.75 3.25h4a1.25 1.25 0 0 1 1.25 1.25v9a1 1 0 0 0-1-1h-4.25zM13.25 3.25h-4A1.25 1.25 0 0 0 8 4.5v9a1 1 0 0 1 1-1h4.25z',
+  undo: 'M5.5 6H10a3 3 0 0 1 0 6H6M7.75 3.75 5.5 6l2.25 2.25',
+  eraser: 'M9.5 2.75 13.25 6.5 7.5 12.25H4.25L2.75 10.75zM6.25 6l3.75 3.75M7.5 12.25h5.75',
+  mail: 'M2.5 4h11v8h-11zM2.75 4.25 8 8.5l5.25-4.25',
+  info: 'M8 7.25V11M8 5v.01',
+  hand: 'M3 13h10',
+  tables: 'M2.5 5h11M2.5 11h11M4 5v6M12 5v6',
+}
+const Cc = { info: [[8, 8, 6]] }
+const g = (n) => `<svg class="g" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="${P[n]}"/>${(Cc[n] ?? []).map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}"/>`).join('')}</svg>`
+const HAND = `<svg class="hand" viewBox="0 0 32 32" aria-hidden="true"><rect x="5" y="8" width="13" height="18" rx="2" transform="rotate(-14 11 17)" fill="#e0a73a" stroke="#171a23" stroke-width="1.5"/><rect x="10" y="6" width="13" height="18" rx="2" fill="#3f8f5f" stroke="#171a23" stroke-width="1.5"/><rect x="15" y="8" width="13" height="18" rx="2" transform="rotate(14 21 17)" fill="#efe8d8" stroke="#171a23" stroke-width="1.5"/></svg>`
+
+// ── Varianterna ──────────────────────────────────────────────────────────────────────────────────
+const V = {
+  konto: {
+    A: { namn: 'A — Konto-kortet bär båda, frågan i remsan · rekommenderas',
+      not: '<b>Nedladdningen</b> är en knapp i Konto-kortet som ger en fil direkt: utdraget som JSON med schema och LASMIG.md, som G5. Spelen själva exporteras som förut i Mina spel. <b>Raderingen</b> är «Radera kontot…» i samma kort, och frågan är L9:s remsa på plats, som namnger varje spel och vad som händer med det. <b>Spel med medredigerare tas bort</b>, som när ägaren tar bort dem ett och ett, och remsan säger vilka som förlorar dem. <span class="plus">+ minst ny yta, samma remsa som nyckeln och passkeyn, och samma regel som «Ta bort spelet»</span> <span class="minus">− Kim förlorar Skogens råd utan att ha valt det; ägaren måste själv exportera och skicka zippen</span>' },
+    B: { namn: 'B — en egen sida, ett beslut per spel',
+      not: '<b>Nedladdningen</b> är «allt i en fil»: utdraget och varje spel hon äger som G5-zip, förberett med förlopp. <b>Raderingen</b> är en egen sida, /profile/radera, i tre steg: ta med dig det först, välj per spel med medredigerare om det <b>lämnas till en medredigerare</b> eller tas bort, och skriv din adress för att bekräfta. <span class="plus">+ inget spel försvinner för någon annan utan ett val; varje följd står där den gäller</span> <span class="minus">− ägarbyte finns inte i dag och är en ny väg i servern (Dela, roller, kvoter); den stora filen ritar tryckfiler i minuter</span>' },
+    C: { namn: 'C — utdraget på sidan, raderingen via mejl',
+      not: '<b>Nedladdningen</b> börjar som en läsbar lista i Profil: «Det Deckster har om dig», med en rad per sak och «Ladda ner som fil» under. <b>Raderingen</b> är ett eget kort sist och en dialog som skickar en <b>raderingslänk</b>; kontot försvinner när länken följs. Spel med medredigerare <b>går till den som varit medredigerare längst</b>, och dialogen säger vem. <span class="plus">+ registerutdraget syns utan att öppna en fil; en lånad inloggad dator kan inte radera kontot</span> <span class="minus">− ett steg i mejlet till; ägarbytet sker utan att någon valt det, åt båda hållen</span>' },
+  },
+  gast: {
+    A: { namn: 'A — under tacket, remsan på plats',
+      not: '<b>Vägen</b> står bara under enkätens tack, för spelare och observatör: «Ta bort mitt namn och mina svar». <b>Frågan</b> är L9:s remsa i tacket. <b>Efteråt</b> ersätter ett grönt besked tacket och «Spara till ditt konto» försvinner. <b>Andra</b> ser «Borttagen gäst». <span class="plus">+ minst ny yta; vägen står där F5 föreslog den; Mer-fliken orörd</span> <span class="minus">− den som lämnar före slutet, eller vars bord aldrig avslutas, har bara Kontakt</span>' },
+    B: { namn: 'B — i Mer, hela tiden',
+      not: '<b>Vägen</b> är en rad i Mer, «Ta bort mitt namn…», medan bordet pågår och under tacket efteråt. <b>Frågan</b> är ett ark från nederkanten, i Lämna-arkets form. <b>Efteråt</b> sitter hon kvar: huvudet visar platsens namn och telefonen säger att det är gjort. <b>Andra</b> ser «Plats B». <span class="plus">+ alltid nåbar så länge telefonen har länken</span> <span class="minus">− att spela vidare utan namn är ett nytt läge för alla ytor; en femte rad i Mer, och raden frestar mitt i spelet</span>' },
+    C: { namn: 'C — där man lämnar · rekommenderas',
+      not: '<b>Vägen</b> står där man går: Lämna-arket får «Lämna och ta bort mitt namn», och tacket får samma rad som i A. <b>Frågan</b> är ett andra steg i samma ark. <b>Efteråt</b> en egen skärm: «Du har lämnat bordet, och ditt namn är borttaget.» <b>Andra</b> ser «Utan namn». <span class="plus">+ båda stunderna då en gäst tänker på det, och inget läge där man spelar utan namn</span> <span class="minus">− Lämna-arket, som är testat och prövat, får ett tredje val</span>' },
+  },
+}
+const YTOR = {
+  konto: { profil: 'Profil', utdrag: 'Utdraget', efter: 'Efteråt' },
+  gast: { join: 'Sätta sig', telefon: 'Telefonen', andra: 'Andra vid bordet', resultat: 'Resultat', integritet: 'Integritetstexten' },
+}
+const ORDEN = { gast: ['Borttagen gäst', 'Removed guest'], plats: ['Plats B', 'Seat B'], utan: ['Utan namn', 'No name'] }
+const ORD_DEFAULT = { A: 'gast', B: 'plats', C: 'utan' }
+
+const q = new URLSearchParams(location.search)
+let iss = q.get('iss') || 'konto'
+let v = (q.get('v') || (iss === 'konto' ? 'A' : 'C')).toUpperCase()
+let yta = q.get('yta') || Object.keys(YTOR[iss])[0]
+let bredd = q.get('bredd') || (iss === 'konto' ? 'dator' : '375')
+let lang = q.get('lang') || 'sv'
+let ord = q.get('ord') || ORD_DEFAULT[v]
+let fas = q.get('fas') || 'tack'
+let st = {}
+const omstart = () => { st = { k: 'vila', dl: 'vila', b: { skog: 'kim' }, typ: '', g: 'vila', ark: null, lamna: false } }
+omstart()
+const en = () => lang === 'en'
+const L = (sv, eng) => (en() ? eng : sv)
+const W = () => ORDEN[ord][en() ? 1 : 0]
+
+// ════════════════════════════════════════════════════════════════════════════════════════════════
+// #1280 — KONTOT
+// ════════════════════════════════════════════════════════════════════════════════════════════════
+const EPOST = 'ockelberg@gmail.com'
+const SPEL = [
+  { id: 'stjarn', namn: 'Stjärnhandel', roll: 'ägare', andra: [], c: '#3f6fb0' },
+  { id: 'skog', namn: 'Skogens råd', roll: 'ägare', andra: [['Kim', 'medredigerare'], ['Ada', 'testledare']], c: '#3f8f5f' },
+  { id: 'hamn', namn: 'Hamnen', roll: 'ägare', andra: [], pagar: '78R466', c: '#b0703f' },
+  { id: 'varg', namn: 'Vargtimmen', roll: 'medredigerare', agare: 'Sara', c: '#7a4fb0' },
+]
+const forsvinner = `<ul class="forsvinner">
+  <li>Din adress, ditt namn, dina passkeys, din AI-nyckel och din nivå.</li>
+  <li>Inloggningen på alla enheter, också den här.</li>
+  <li>De inbjudningar du skickat som inte använts.</li>
+  <li>Ditt namn vid de 5 bord du sparat till kontot. Dragen står kvar utan namn.</li>
+</ul>`
+const efterLine = `<p class="liten">Bilder och typsnitt som bara dina spel använde tas bort inom 30 dagar. Det som finns i säkerhetskopiorna försvinner inom åtta dagar.</p>`
+
+function ihop(rubrik, rad) { return `<section class="pkort" data-ihop><h2>${rubrik}</h2><p class="liten">${rad}</p></section>` }
+function profilRam(inne) {
+  return `<div class="acc topp"><div class="profil">
+    <span class="tillbaka">${g('left')} Mina spel</span>
+    <header class="profil-head"><h1>Profil</h1><p class="muted">${EPOST}</p></header>
+    ${ihop('Namn', 'Nicklas Ockelberg · så står du i Dela')}
+    ${ihop('AI-nyckel', 'Anthropic · nyckeln som slutar på x7Qd')}
+    ${ihop('Passkeys', 'iCloud-nyckelring · Google Lösenordshanterare')}
+    ${ihop('Språk', 'Svenska')}
+    ${inne}
+    <p class="about"><u>Villkor</u> · <u>Integritet</u> · <u>Kontakt</u> · version 0.9.4</p>
+  </div></div>`
+}
+const kontoFakta = `<dl class="facts"><dt>E-post</dt><dd>${EPOST}</dd></dl>`
+const loggaUt = `<button class="sek">Logga ut</button>`
+
+function dlKnapp(text = 'Ladda ner mina uppgifter') {
+  if (st.dl === 'hamtad') return `<p class="okrad"><span class="bock">✓</span><span><b>deckster-uppgifter-2026-10-25.zip</b> är nedladdad. Den innehåller det som står ovan, och en LASMIG.md som förklarar filen.</span></p>`
+  return `<div class="rad"><button class="sek med" data-do="dl">${g('down')} ${text}</button></div>`
+}
+
+function profilA() {
+  const fraga = st.k === 'fraga' ? `<div class="fraga" role="alertdialog" aria-label="Radera kontot?"><div>
+      <p><b>Radera kontot?</b> Det går inte att ångra.</p>
+      <ul>
+        <li><b>Stjärnhandel</b>, <b>Skogens råd</b> och <b>Hamnen</b> tas bort med alla versioner och bord, som när du tar bort dem ett och ett.</li>
+        <li>Kim och Ada förlorar Skogens råd. Vill de ha det kvar, exportera det först och ge dem zippen.</li>
+        <li>Bordet som pågår i Hamnen avslutas.</li>
+        <li>Du lämnar Vargtimmen, som är Saras.</li>
+        <li>Du loggas ut överallt, och ditt namn tas bort vid borden du sparat.</li>
+      </ul></div>
+      <button class="avbryt" data-do="avbryt">Avbryt</button><button data-kind="danger" data-do="radera">Ja, radera kontot</button></div>` : ''
+  return profilRam(`<section class="pkort"><h2>Konto</h2>${kontoFakta}
+    <p class="liten">Du loggar in med länken i mejlet eller med en passkey.</p>
+    <div class="rad">${loggaUt}</div>
+    <div class="skiljare"></div>
+    <h3>Dina uppgifter</h3>
+    <p class="lead">En fil med det Deckster har om dig: adress, namn, passkeys, nivå, dina spel och din roll i dem, borden du sparat med dina flaggor och enkätsvar, och inbjudningarna du skickat. Spelen själva exporterar du under ⋯ i Mina spel.</p>
+    ${dlKnapp()}
+    <div class="skiljare"></div>
+    <h3>Radera kontot</h3>
+    <p class="liten">Kontot och dina spel försvinner direkt. Du får ett mejl som bekräftar det.</p>
+    ${st.k === 'fraga' ? fraga : `<div class="rad"><button class="sek med" data-do="fraga">${g('trash')} Radera kontot…</button></div>`}
+  </section>`)
+}
+
+function profilB() {
+  return profilRam(`<section class="pkort"><h2>Konto</h2>${kontoFakta}<div class="rad">${loggaUt}</div></section>
+    <section class="pkort"><h2>Dina uppgifter och kontot</h2>
+      <p class="lead">Ta med dig allt du har i Deckster, eller radera kontot.</p>
+      ${dlBStor()}
+      <div class="rad"><button class="sek med" data-do="sida">${g('trash')} Radera kontot…</button></div>
+    </section>`)
+}
+function dlBStor() {
+  if (st.dl === 'hamtar') return `<div class="steg"><p class="liten">Förbereder tryckfilerna för dina spel… 2 av 3 spel</p><div class="forlopp"><i></i></div><div class="rad"><button class="sek" data-do="dl-klar">(prototyp: klar)</button></div></div>`
+  if (st.dl === 'hamtad') return `<p class="okrad"><span class="bock">✓</span><span><b>deckster-allt-2026-10-25.zip</b> är nedladdad: dina uppgifter och dina 3 spel, varje spel som en export du kan importera igen.</span></p>`
+  return `<div class="rad"><button class="sek med" data-do="dl-stor">${g('down')} Ladda ner allt</button></div><p class="liten">Dina uppgifter och varje spel du äger, med tryckfiler. Det tar en stund.</p>`
+}
+function raderaSidaB() {
+  const skog = st.b.skog
+  const kan = st.typ.trim().toLowerCase() === EPOST
+  return `<div class="acc topp"><div class="profil">
+    <span class="tillbaka">${g('left')} Profil</span>
+    <header class="profil-head"><h1>Radera kontot</h1><p class="muted">${EPOST}</p></header>
+    <section class="pkort steg"><h2><i>1</i> Ta med dig det först</h2>
+      <p class="lead">När kontot är raderat går ingenting att få tillbaka.</p>${dlBStor()}</section>
+    <section class="pkort steg"><h2><i>2</i> Dina spel</h2>
+      <ul class="spellista">
+        <li><b>Stjärnhandel</b><span class="vad">Bara du</span><span class="ut">Tas bort med versioner och bord</span></li>
+        <li><b>Skogens råd</b><span class="vad">Kim (medredigerare) · Ada (testledare)</span>
+          <div class="val" role="radiogroup" aria-label="Skogens råd">
+            <label><input type="radio" name="skog" data-skog="kim" ${skog === 'kim' ? 'checked' : ''}> Lämna det till Kim</label>
+            <label><input type="radio" name="skog" data-skog="bort" ${skog === 'bort' ? 'checked' : ''}> Ta bort det</label>
+          </div>
+          <span class="${skog === 'kim' ? 'kvar' : 'ut'}">${skog === 'kim' ? 'Kim blir ägare och Ada står kvar som testledare. Borden följer med.' : 'Kim och Ada förlorar det.'}</span></li>
+        <li><b>Hamnen</b><span class="vad">Bara du · 1 bord pågår (78R466)</span><span class="ut">Tas bort, och bordet avslutas för dem som sitter vid det</span></li>
+        <li><b>Vargtimmen</b><span class="vad">Saras · du är medredigerare</span><span class="kvar">Står kvar hos Sara; du lämnar det</span></li>
+      </ul></section>
+    <section class="pkort steg"><h2><i>3</i> Bekräfta</h2>
+      <p class="lead">Det här försvinner direkt:</p>${forsvinner}${efterLine}
+      <label class="falt"><span>Skriv din adress för att radera kontot</span><input data-typ value="${st.typ}" placeholder="${EPOST}" autocomplete="off"></label>
+      <div class="rad"><button class="sek" data-do="avbryt-sida">Avbryt</button><button class="farlig" data-do="radera" ${kan ? '' : 'disabled'}>Radera kontot</button></div>
+      ${kan ? '' : '<p class="liten">(prototyp: skriv adressen, eller <button class="sek" data-do="fyll" style="min-height:28px;padding:0 8px">fyll i</button>)</p>'}
+    </section>
+  </div></div>`
+}
+
+function profilC() {
+  const dialog = st.k === 'dialog' || st.k === 'mejlat' ? `<div class="acc skymning"><div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dlgC">
+      <h2 id="dlgC">Radera kontot?</h2>
+      ${st.k === 'mejlat' ? `<div class="skickat" role="status"><strong>Kolla din mejl</strong><span>Vi har skickat en raderingslänk till ${EPOST}. Den gäller i 15 minuter. Kontot raderas när du följer den, inte förrän dess.</span></div><div class="knappar"><button class="sek" data-do="avbryt">Stäng</button><button class="sek" data-do="lank">(prototyp: följ länken i mejlet)</button></div>` : `
+      <p class="lead">Vi skickar en länk till ${EPOST}. Kontot raderas när du följer den.</p>
+      <ul class="spellista">
+        <li><b>Stjärnhandel · Hamnen</b><span class="ut">Tas bort med versioner och bord. Bordet som pågår i Hamnen avslutas.</span></li>
+        <li><b>Skogens råd</b><span class="kvar">Går till Kim, som varit medredigerare längst. Ada står kvar som testledare.</span></li>
+        <li><b>Vargtimmen</b><span class="kvar">Står kvar hos Sara; du lämnar det.</span></li>
+      </ul>
+      ${forsvinner}
+      <div class="knappar"><button class="sek" data-do="avbryt" style="box-shadow:0 0 0 3px #9cc6ff">Avbryt</button><button class="farlig" data-do="mejla">Skicka raderingslänken</button></div>`}
+    </div></div>` : ''
+  return profilRam(`<section class="pkort"><h2>Konto</h2>${kontoFakta}<div class="rad">${loggaUt}</div></section>
+    <section class="pkort"><h2>Det Deckster har om dig</h2>
+      <dl class="facts">
+        <dt>Adress</dt><dd>${EPOST}</dd>
+        <dt>Namn</dt><dd>Nicklas Ockelberg</dd>
+        <dt>Konto skapat</dt><dd>30 augusti 2026 · villkoren godkända 25 oktober</dd>
+        <dt>Passkeys</dt><dd>2, senast använd i dag</dd>
+        <dt>AI-nyckel</dt><dd>Anthropic, krypterad</dd>
+        <dt>Nivå</dt><dd>Beta</dd>
+        <dt>Spel</dt><dd>4 · äger 3, medredigerare i 1</dd>
+        <dt>Bord du sparat</dt><dd>5 · med 3 flaggor och 4 enkätsvar</dd>
+        <dt>Inbjudningar</dt><dd>3 skickade · 1 väntar</dd>
+      </dl>
+      <p class="liten">Spelen själva exporterar du under ⋯ i Mina spel.</p>
+      ${dlKnapp('Ladda ner som fil')}
+    </section>
+    <section class="pkort farokort"><h2>Radera kontot</h2>
+      <p class="lead">Kontot och de spel du äger ensam försvinner. Spel du delar går till en medredigerare.</p>
+      <div class="rad"><button class="sek med" data-do="dialog">${g('trash')} Radera kontot…</button></div>
+    </section>`) + dialog
+}
+function lankC() {
+  return `<div class="acc topp" style="justify-content:center"><div class="login" style="margin-top:40px"><h1>${HAND}Deckster</h1>
+    <p class="lead"><b>Radera kontot ${EPOST}?</b></p>
+    <p class="liten">Stjärnhandel och Hamnen tas bort. Skogens råd går till Kim. Det går inte att ångra.</p>
+    <button class="sek" style="box-shadow:0 0 0 3px #9cc6ff">Avbryt, behåll kontot</button>
+    <button class="farlig" data-do="radera">Radera kontot nu</button>
+  </div></div>`
+}
+
+function profil() {
+  if (st.k === 'raderat') return efter(true)
+  if (v === 'A') return profilA()
+  if (v === 'B') return st.k === 'sida' ? raderaSidaB() : profilB()
+  return st.k === 'lank' ? lankC() : profilC()
+}
+
+function utdrag() {
+  const tradB = v === 'B'
+  const trad = `deckster-${tradB ? 'allt' : 'uppgifter'}-2026-10-25.zip
+├── <em>uppgifter.json</em>        allt Deckster har om kontot
+├── <em>schema.json</em>           dess JSON Schema, ur samma zod-schema
+├── <em>LASMIG.md</em>             filen förklarad, på ditt språk (A4)${tradB ? `
+└── spel/
+    ├── Stjarnhandel.zip     en G5-export: spel.json, assets/, tryck/
+    ├── Skogens-rad.zip
+    └── Hamnen.zip` : ''}`
+  const json = `{
+  "format": "deckster-personal-data/1",
+  "exported": "2026-10-25T14:02:11Z",
+  "account": {
+    "email": "${EPOST}",
+    "name": "Nicklas Ockelberg",
+    "created": "2026-08-30T19:44:02Z",
+    "language": "sv",
+    "plan": "beta",
+    "terms": { "version": "2026-10-25", "accepted": "2026-10-25T09:12:40Z" }
+  },
+  "passkeys": [
+    { "label": "iCloud-nyckelring", "browser": "Safari på Mac",
+      "aaguid": "fbfc3007-…", "created": "2026-10-23", "lastUsed": "2026-10-25" }
+  ],
+  "aiKey": { "provider": "anthropic", "endsWith": "x7Qd" },   <s>// nyckeln själv aldrig</s>
+  "games": [
+    { "name": "Skogens råd", "role": "owner", "created": "2026-09-02", "versions": 4,
+      "members": [{ "name": "Kim", "role": "editor" }, { "name": "Ada", "role": "tester" }] },
+    { "name": "Vargtimmen", "role": "editor", "owner": "Sara" }
+  ],
+  "tables": [
+    { "game": "Vargtimmen", "version": 7, "ended": "2026-10-19T21:40:00Z",
+      "seat": "B", "name": "Nicklas",
+      "flags": [{ "at": "21:12", "comment": "Kortet säger två, regeln säger tre" }],
+      "notes": [{ "text": "Kolla tärningsslaget" }],
+      "survey": { "fun": 4, "clarity": 3, "balance": 4, "change": "Färre kort i starthanden" } }
+  ],
+  "invites": [
+    { "email": "kim@exempel.se", "game": "Skogens råd", "role": "editor",
+      "sent": "2026-09-03", "used": "2026-09-03" }
+  ]
+}`
+  const lasmig = `# Dina uppgifter i Deckster
+
+Filen uppgifter.json innehåller allt Deckster har sparat om ditt konto
+den 25 oktober 2026, i ett format som schema.json beskriver.
+
+- account: din adress, ditt namn, när kontot skapades, ditt språk och din nivå.
+- passkeys: varje passkey, utan själva nyckeln.
+- games: dina spel och din roll i dem. Spelen själva exporterar du i Mina spel.
+- tables: borden du sparat till kontot, med det du skrev där.
+- invites: inbjudningarna du skickat.
+
+Dragen vid borden finns inte här: de hör till bordet och spelets ägare.`
+  return `<div class="acc topp"><div class="profil fil">
+    <p class="etikett"><b>Filen</b>${tradB ? ' · variant B: utdraget och spelen i en fil' : ' · variant A och C: utdraget, spelen exporteras för sig'}</p>
+    <pre class="trad">${trad}</pre>
+    <p class="etikett"><b>uppgifter.json</b> (utdrag) · fältnamnen är formatets och översätts aldrig (G5)</p>
+    <pre class="trad">${json}</pre>
+    <p class="etikett"><b>LASMIG.md</b> på exportörens språk</p>
+    <pre class="trad" style="white-space:pre-wrap">${lasmig}</pre>
+  </div></div>`
+}
+
+function efter(direkt = false) {
+  const kimsSpel = v === 'A'
+    ? `<div class="band"><span class="bock" style="background:#9aa3b8">i</span><p><b>Skogens råd är borttaget.</b> Ägaren raderade sitt konto.</p></div>`
+    : `<div class="band"><span class="bock">✓</span><p><b>Skogens råd är ditt nu.</b> Ägaren raderade sitt konto och ${v === 'B' ? 'lämnade spelet till dig' : 'du var medredigerare längst'}. Ada står kvar som testledare.</p></div>`
+  const kimGrid = (v === 'A' ? [['Fyrtornet', '#b04f6f']] : [['Skogens råd', '#3f8f5f'], ['Fyrtornet', '#b04f6f']]).map(([n, c]) => `<div class="spel"><i style="--c:${c}"></i><strong>${n}</strong><small>${n === 'Skogens råd' ? 'du är ägare' : 'ändrat i går'}</small></div>`).join('')
+  const landar = `<div class="acc topp" style="justify-content:center"><div class="login"><h1>${HAND}Deckster</h1>
+    <div class="band" role="status"><span class="bock">✓</span><p><b>Ditt konto är raderat.</b> Du är utloggad på alla enheter. Ett mejl till ${EPOST} bekräftar det.</p></div>
+    <p class="muted">Logga in för att komma till dina spel.</p>
+    <label class="falt"><span>E-post</span><input placeholder="din@epost.se"></label>
+    <button class="prim">Skicka inloggningslänk</button>
+    <p class="about"><u>Villkor</u> · <u>Integritet</u> · <u>Kontakt</u></p></div></div>`
+  const mejl = `<div class="mejl"><div class="hd">Från Deckster · Till ${EPOST} · Ämne: Ditt konto hos Deckster är raderat</div>
+    <h2>Ditt konto är raderat</h2>
+    <p>Hej! Kontot ${EPOST} är raderat i dag den 25 oktober 2026 klockan 14.06.</p>
+    <p>Stjärnhandel och Hamnen är borttagna med alla versioner och bord.${v === 'A' ? ' Skogens råd också.' : ' Skogens råd har gått till Kim.'}</p>
+    <p>Bilder och typsnitt som bara dina spel använde tas bort inom 30 dagar. Säkerhetskopiorna sparas i åtta dagar och används bara för att återställa tjänsten; raderar vi något därifrån raderas ditt konto igen.</p>
+    <p>Var det inte du? Svara på det här mejlet.</p>
+    <p class="fot">Deckster · Kontakt: hej@deckster.se · Det här är det sista mejlet du får från oss.</p></div>`
+  const kim = `<div class="acc topp"><div class="home"><header><h1>Mina spel</h1><span class="muted" style="font-size:13px">kim@exempel.se</span></header>${kimsSpel}<div class="grid">${kimGrid}</div></div></div>`
+  if (direkt) return landar
+  return [['Där hon landar', landar], ['Mejlet (L72:s form)', mejl], ['Kims Mina spel efteråt', kim]]
+}
+
+// ════════════════════════════════════════════════════════════════════════════════════════════════
+// #1281 — GÄSTEN
+// ════════════════════════════════════════════════════════════════════════════════════════════════
+const MENING = {
+  A: () => `<p class="mening">${L('Ditt namn, dina drag, anteckningar, flaggor och enkätsvar sparas vid bordet. Alla här ser dem nu, och spelets ägare efteråt. Namnet och det du skriver tas bort efter ett år, eller när du själv tar bort det.', 'Your name, moves, notes, flags and survey answers are saved with the table. Everyone here sees them now, and the game’s owner afterwards. Your name and what you write are removed after a year, or when you remove them yourself.')}</p>`,
+  B: () => `<p class="mening">${L('Spelets ägare läser ditt namn och det du skriver och svarar här. Det tas bort efter ett år.', 'The game’s owner reads your name and what you write and answer here. It is removed after a year.')} <u>${L('Integritet', 'Privacy')}</u></p>`,
+  C: () => `<dl class="mening-dl"><dt>${L('Sparas', 'Saved')}</dt><dd>${L('ditt namn, dina drag, anteckningar, flaggor och enkätsvar', 'your name, moves, notes, flags and survey answers')}</dd><dt>${L('Ser det', 'Seen by')}</dt><dd>${L('alla vid bordet nu, spelets ägare efteråt', 'everyone at the table now, the game’s owner afterwards')}</dd><dt>${L('Hur länge', 'How long')}</dt><dd>${L('namnet och det du skriver i ett år, eller tills du tar bort det', 'your name and what you write for a year, or until you remove them')}</dd></dl>`,
+}
+const MENING_SPARA = () => L('Sparar du bordet till ett konto står ditt namn och dina svar kvar så länge kontot finns, i stället för ett år.', 'If you save the table to an account, your name and answers stay as long as the account does, instead of a year.')
+
+function join() {
+  return `<div class="tel"><div class="join">
+    <div class="join-topp"><span><u>${L('Villkor', 'Terms')}</u> · <u>${L('Integritet', 'Privacy')}</u></span><span>${g('left')} ${L('Till startsidan', 'Start page')}</span></div>
+    <div><p class="rum" style="margin:0">${L('Du går med i', 'You are joining')}</p><h1>Skogens råd</h1><p class="rum">${L('Rum 78R466 · Plats B vald', 'Room 78R466 · Seat B chosen')}</p></div>
+    <div class="filt">
+      <span class="pill" style="background:#e05d4f;left:calc(50% - 38px);bottom:-30px">A<br>Ada</span>
+      <span class="pill" data-vald style="background:#3b82d6;left:calc(50% - 38px);top:-30px"><b>B</b>${L('ledig', 'free')}</span>
+      <span class="pill" style="background:#e0a73a;right:-46px;top:calc(50% - 23px)"><b>C</b>Bo</span>
+    </div>
+    <label class="falt"><span>${L('Ditt namn', 'Your name')}</span><input value="Kim"></label>
+    ${MENING[v]()}
+    <button class="sitt">${L('Sätt dig', 'Sit down')}</button>
+    <button class="sitt2">${L('Spela på den här skärmen', 'Play on this screen')}</button>
+    <button class="sitt2">${L('Bara titta (du ser allt, alla ser dig)', 'Just watch (you see everything, everyone sees you)')}</button>
+  </div></div>`
+}
+
+const RADERA = () => L('Ta bort mitt namn och mina svar', 'Remove my name and my answers')
+// En begärd radering tar bort enkätsvaren helt (G6, #1279); bara gallringen efter ett år lämnar siffrorna.
+const KVAR = () => L(`Dragen står kvar vid bordet under «${W()}».`, `Your moves stay at the table under “${W()}”.`)
+
+function fragaRemsa() {
+  return `<div class="fraga" role="alertdialog"><div>
+    <p><b>${L('Ta bort ditt namn och dina svar från bordet?', 'Remove your name and your answers from the table?')}</b></p>
+    <p>${L('Namnet, anteckningarna, flaggornas kommentarer och enkätsvaren tas bort.', 'Your name, notes, flag comments and survey answers are removed.')} ${KVAR()} ${L('Det går inte att ångra.', 'It cannot be undone.')}</p></div>
+    <button class="avbryt" data-do="g-avbryt">${L('Avbryt', 'Cancel')}</button><button data-kind="danger" data-do="g-radera">${L('Ja, ta bort', 'Yes, remove')}</button></div>`
+}
+function klarRuta() {
+  return `<div class="klar" role="status"><span class="bock">✓</span><strong>${L('Ditt namn och dina svar är borttagna.', 'Your name and your answers are removed.')}</strong><span>${KVAR()} ${L('Säkerhetskopiorna glömmer dem inom åtta dagar.', 'The backups forget them within eight days.')}</span></div>`
+}
+function tack() {
+  const gjort = st.g === 'klar'
+  let vag = ''
+  if (!gjort) {
+    if (v === 'A') vag = st.g === 'fraga' ? fragaRemsa() : `<button class="tyst-lank" data-do="g-fraga">${RADERA()}</button>`
+    if (v === 'B') vag = `<button class="merknapp" data-tyst data-do="g-ark" style="margin-top:8px">${g('eraser')} ${L('Ta bort mitt namn…', 'Remove my name…')}</button>`
+    if (v === 'C') vag = `<button class="tyst-lank" data-do="g-ark">${RADERA()}…</button>`
+  }
+  return `<div class="tack"><div></div><div class="tack-mitt">
+    ${gjort ? `<strong class="stor">${L('Tack.', 'Thank you.')}</strong>` : `<strong class="stor">${L('Tack, Kim.', 'Thank you, Kim.')}</strong>`}
+    <span class="muted">${L('Dina svar är kopplade till version 4.', 'Your answers are tied to version 4.')}</span>
+    ${gjort ? klarRuta() : `<a class="spara">${L('Spara till ditt konto', 'Save to your account')}</a>
+    <p class="muted" style="font-size:13px">${MENING_SPARA()}</p>
+    <p class="tillit"><u>${L('Villkor', 'Terms')}</u> · <u>${L('Integritet', 'Privacy')}</u></p>
+    ${vag}`}
+  </div><div></div></div>`
+}
+
+function spelvy() {
+  const maskad = v === 'B' && st.g === 'klar'
+  const radB = v === 'B' ? (maskad
+    ? `<p class="liten" style="color:#9aa3b8;margin:0">${L('Ditt namn är borttaget från bordet. Du sitter kvar på plats B.', 'Your name is removed from the table. You are still in seat B.')}</p>`
+    : `<button class="merknapp" data-do="g-ark">${g('eraser')} ${L('Ta bort mitt namn…', 'Remove my name…')}</button>`) : ''
+  return `<div class="tel"><div class="spelvy">
+    <header><span class="vem"><strong ${maskad ? 'data-maskad' : ''}>${maskad ? W() : 'Kim'}</strong><span>${L('5 kort', '5 cards')}</span></span><button class="angra" aria-label="${L('Ångra', 'Undo')}">${g('undo')}</button></header>
+    <div class="tur"><b>${L('Adas tur', 'Ada’s turn')}</b></div>
+    <div class="paneler"><section class="panel">
+      <p class="hjalprad"><span>${L('Så fungerar handen', 'How the hand works')}</span><button class="fragetecken">?</button></p>
+      <button class="merknapp">${g('book')} ${L('Regler', 'Rules')}</button>
+      <button class="merknapp">${g('flag')} ${L('Flagga…', 'Flag…')}</button>
+      ${radB}
+      <button class="merknapp" data-do="g-lamna">${g('exit')} ${L('Lämna…', 'Leave…')}</button>
+    </section></div>
+    ${maskad ? `<p class="toast" role="status">${L('Ditt namn är borttaget. Du sitter kvar på plats B.', 'Your name is removed. You are still in seat B.')}</p>` : ''}
+    <div class="flikrad" role="tablist">
+      <button role="tab"><span class="tal">5</span>${L('Handen', 'Hand')}</button>
+      <button role="tab"><span class="tal">2</span>${L('Framför mig', 'In front')}</button>
+      <button role="tab"><span class="tom"></span>${L('Bordet', 'Table')}</button>
+      <button role="tab" aria-selected="true"><span class="tom"></span>${L('Mer', 'More')}</button>
+    </div>
+  </div></div>`
+}
+
+function ark() {
+  if (!st.ark) return ''
+  if (st.ark === 'lamna') {
+    return `<div class="ark-skym"><div class="ark" role="dialog" aria-modal="true">
+      <h2>${L('Lämna bordet?', 'Leave the table?')}</h2>
+      <button class="val-knapp" data-do="g-stang"><b>${L('Lämna bordet', 'Leave the table')}</b><span>${L('Din plats blir ledig och dina kort läggs tillbaka i leken. De andra kan spela vidare.', 'Your seat becomes free and your cards go back to the deck. The others can play on.')}</span></button>
+      ${v === 'C' ? `<button class="val-knapp" data-ny data-do="g-ark-lamna"><b>${L('Lämna och ta bort mitt namn', 'Leave and remove my name')}</b><span>${L('Som ovan, och ditt namn, dina anteckningar och flaggornas kommentarer tas bort från bordet.', 'As above, and your name, notes and flag comments are removed from the table.')}</span></button>` : ''}
+      <button class="val-knapp"><b>${L('Avsluta för alla', 'End for everyone')}</b><span>${L('Spelet avslutas för alla och enkäten skickas ut. Du får bekräfta först.', 'The game ends for everyone and the survey goes out. You confirm first.')}</span></button>
+      <button class="sek2 fokus" data-do="g-stang">${L('Avbryt', 'Cancel')}</button>
+    </div></div>`
+  }
+  const underSpel = fas === 'spel'
+  const lamnar = st.lamna
+  const rubrik = lamnar ? L('Lämna och ta bort ditt namn?', 'Leave and remove your name?') : underSpel ? L('Ta bort ditt namn från bordet?', 'Remove your name from the table?') : L('Ta bort ditt namn och dina svar?', 'Remove your name and your answers?')
+  return `<div class="ark-skym"><div class="ark" role="alertdialog" aria-modal="true">
+    <h2>${rubrik}</h2>
+    <p>${L('Det här tas bort från bordet:', 'This is removed from the table:')}</p>
+    <ul><li>${L('namnet du satt under, Kim', 'the name you sat under, Kim')}</li><li>${L('det du skrivit i anteckningsblocket och i flaggor', 'what you wrote on the notepad and in flags')}</li>${underSpel ? '' : `<li>${L('dina enkätsvar', 'your survey answers')}</li>`}</ul>
+    <p>${KVAR()}${underSpel && !lamnar ? ' ' + L('Du sitter kvar och kan spela vidare.', 'You stay seated and can play on.') : ''} ${L('Det går inte att ångra.', 'It cannot be undone.')}</p>
+    <button class="sek2 fokus" data-do="g-stang">${L('Avbryt', 'Cancel')}</button>
+    <button class="farlig" data-do="g-radera">${lamnar ? L('Ja, lämna och ta bort', 'Yes, leave and remove') : L('Ja, ta bort mitt namn', 'Yes, remove my name')}</button>
+  </div></div>`
+}
+
+function telefon() {
+  if (v === 'C' && st.g === 'klar' && st.lamna) {
+    return `<div class="tel"><div class="lamnat"><span class="bock" style="width:32px;height:32px;font-size:16px">✓</span>
+      <h1>${L('Du har lämnat bordet, och ditt namn är borttaget.', 'You have left the table, and your name is removed.')}</h1>
+      <p class="muted">${L('Anteckningarna och flaggornas kommentarer är borttagna.', 'Your notes and flag comments are removed.')} ${KVAR()}</p>
+      <p class="muted">${L('Säkerhetskopiorna glömmer dem inom åtta dagar.', 'The backups forget them within eight days.')}</p>
+      <button class="sitt2" style="padding:0 18px">${L('Till startsidan', 'To the start page')}</button></div></div>`
+  }
+  const bas = fas === 'spel' ? spelvy() : `<div class="tel">${tack()}</div>`
+  return bas.replace(/<\/div>$/, ark() + '</div>')
+}
+
+// Andra vid bordet: Adas telefon, Bordet-fliken, och TV:ns platser.
+const maskOrd = () => `<em data-maskad>${W()}</em>`
+function andra() {
+  const satt = ord === 'plats' ? L('Plats B togs', 'Seat B was taken') : `${maskOrd()} ${L('satte sig på plats B', 'sat down in seat B')}`
+  const tel = `<div class="tel"><div class="spelvy">
+    <header><span class="vem"><strong>Ada</strong><span>${L('4 kort', '4 cards')}</span></span><button class="angra">${g('undo')}</button></header>
+    <div class="tur"><b>${L('Din tur', 'Your turn')}</b></div>
+    <div class="paneler"><section class="panel">
+      <p class="paneltitel">${L('Platser', 'Seats')}</p>
+      <ol><li><em>A · Ada</em> — ${L('5 kort', '5 cards')}</li><li>B · ${maskOrd()} — ${L('5 kort', '5 cards')}</li><li><em>C · Bo</em> — ${L('3 kort', '3 cards')}</li></ol>
+      <p class="paneltitel">${L('Senaste dragen', 'Latest moves')}</p>
+      <ol>
+        <li>${maskOrd()} ${L('drog ett kort från Skogen', 'drew a card from the Forest')}</li>
+        <li><em>Bo</em> ${L('slog 4', 'rolled 4')}</li>
+        <li>${maskOrd()} ${L('flaggade ett ögonblick', 'flagged a moment')}${ord === 'gast' ? '' : ''}</li>
+        <li><em>${L('Du', 'You')}</em> ${L('spelade Skogsvaktaren till Gläntan', 'played the Ranger to the Glade')}</li>
+        <li>${satt}</li>
+      </ol>
+      <p class="liten" style="color:#7d8597;font-size:12px;margin:0">${L('(prototyp: det Adas telefon redan visat står kvar tills den laddas om, #1279)', '(prototype: what Ada’s phone already showed stays until reload, #1279)')}</p>
+    </section></div>
+    <div class="flikrad"><button><span class="tal">4</span>${L('Handen', 'Hand')}</button><button><span class="tal">1</span>${L('Framför mig', 'In front')}</button><button aria-selected="true"><span class="tom"></span>${L('Bordet', 'Table')}</button><button><span class="tom"></span>${L('Mer', 'More')}</button></div>
+  </div></div>`
+  const pillB = ord === 'plats' ? `<b>B</b>&nbsp;` : `<b>B</b><i>${W()}</i>`
+  const tv = `<div class="tel" style="padding:8px 0"><div class="tvfilt">
+    <span class="pill" style="background:#e05d4f;left:calc(50% - 50px);bottom:-30px"><b>A</b>Ada</span>
+    <span class="pill" style="background:#3b82d6;left:calc(50% - 60px);top:-30px">${pillB}</span>
+    <span class="pill" style="background:#e0a73a;right:-50px;top:calc(50% - 23px)"><b>C</b>Bo</span>
+  </div></div>`
+  return [[`${L('Adas telefon', 'Ada’s phone')} · ${bredd}`, tel, bredd, true], [L('TV:ns platser', 'The TV’s seats'), tv, 'tv']]
+}
+
+function resultat() {
+  const m = `<span class="maskad">${W()}</span>`
+  const notis = v === 'A' ? `<p class="notis">${g('info')} ${L('En gäst tog bort sitt namn och sina svar.', 'A guest removed their name and answers.')}</p>` : ''
+  return `<div class="ed">
+    <h1>Skogens råd · ${L('Resultat', 'Results')}</h1>
+    <div class="kort">
+      <h2>${L('Bord 78R466 · avslutat i dag 21:40 · 2 av 3 svarade', 'Table 78R466 · ended today 21:40 · 2 of 3 answered')}</h2>
+      ${notis}
+      <p class="muted" style="color:#9aa3b8">${L('Svarade inte', 'Did not answer')}: ${m}${v === 'C' ? ` <small style="color:#7d8597">(${L('namnet och svaren borttagna', 'name and answers removed')})</small>` : ''}.</p>
+      <h3>${L('Vad skulle du ändra?', 'What would you change?')}</h3>
+      <ul><li>«${L('Starten tar för lång tid', 'The setup takes too long')}»<small>Ada, ${L('plats A', 'seat A')}</small></li><li>«${L('Färre kort i Skogen', 'Fewer cards in the Forest')}»<small>Bo, ${L('plats C', 'seat C')}</small></li></ul>
+      <h3>${L('Flaggor', 'Flags')}</h3>
+      <ul>
+        <li>21:12 · ${m} · ${L('Skogsvaktaren', 'The Ranger')}<small>${L('kommentaren är borttagen', 'the comment is removed')}</small></li>
+        <li>21:20 · Bo · ${L('Gläntan', 'The Glade')}<small>«${L('Vem drar först här?', 'Who draws first here?')}»</small></li>
+      </ul>
+    </div>
+  </div>`
+}
+
+function integritet() {
+  const gastVag = {
+    A: L('under tacket när bordet har avslutats', 'under the thanks once the table has ended'),
+    B: L('under Mer, när som helst medan telefonen har bordets länk', 'under More, at any time while the phone has the table’s link'),
+    C: L('när du lämnar bordet, eller under tacket när det har avslutats', 'when you leave the table, or under the thanks once it has ended'),
+  }[v]
+  return `<div class="villkor">
+    <div class="fl"><span>${L('Villkor', 'Terms')}</span><span data-pa>${L('Integritet', 'Privacy')}</span></div>
+    <h1>${L('Integritet i Decksters beta', 'Privacy in the Deckster beta')}</h1>
+    <section class="avsnitt"><span>3</span><h2>${L('Om du är gäst vid ett bord', 'If you are a guest at a table')}</h2><div>
+      <p class="ks">${L('Namnet du skriver, dina drag, anteckningar, flaggor och enkätsvar. Alla vid bordet ser dem medan ni spelar, och spelets ägare efteråt.', 'The name you write, your moves, notes, flags and survey answers. Everyone at the table sees them while you play, and the game’s owner afterwards.')} <ins>${L('Namnet och det du skriver tas bort efter ett år, eller när du ber om det.', 'Your name and what you write are removed after a year, or when you ask.')}</ins></p></div></section>
+    <section class="avsnitt"><span>4</span><h2>${L('Hur länge vi sparar', 'How long we keep it')}</h2><div>
+      <ul><li><ins><b>${L('Ett raderat konto:', 'A deleted account:')}</b> ${L('försvinner direkt. Bilder och typsnitt som bara dess spel använde tas bort inom 30 dagar.', 'is gone at once. Images and fonts only its games used are removed within 30 days.')}</ins></li></ul>
+      <p><del>${L('Vill du att något raderas tidigare, ditt konto eller det du lämnat som gäst, skriver du till {contact}. Den här texten ändras när det finns fler vägar.', 'If you want something erased sooner, write to {contact}. This text changes when there are more ways.')}</del></p>
+      <p><ins>${L(`Vill du att något raderas tidigare gör du det själv: kontot i Profil, och som gäst på telefonen ${gastVag}. Har telefonen inte länken kvar, skriv till {contact}.`, `If you want something erased sooner, you do it yourself: your account in Profile, and as a guest on your phone ${gastVag}. If the phone no longer has the link, write to {contact}.`)}</ins></p></div></section>
+    <section class="avsnitt"><span>7</span><h2>${L('Dina rättigheter', 'Your rights')}</h2><div>
+      <p><b>${L('Med konto:', 'With an account:')}</b> <del>${L('skriv till {contact}.', 'write to {contact}.')}</del> <ins>${L('i Profil laddar du ner det vi har om dig och raderar kontot.', 'in Profile you download what we have about you and delete your account.')}</ins> ${L('Ditt namn kan du själv ändra eller ta bort i Profil.', 'You can change or remove your name in Profile.')}</p>
+      <p><b>${L('Som gäst:', 'As a guest:')}</b> <ins>${L(`ta bort ditt namn och dina svar på telefonen, ${gastVag}. Annars`, `remove your name and answers on your phone, ${gastVag}. Otherwise`)}</ins> ${L('skriv till {contact} med spelets namn, ungefär när ni spelade och namnet du satt under.', 'write to {contact} with the game’s name, roughly when you played and the name you sat under.')}</p></div></section>
+  </div>`
+}
+
+// ── Ritningen ───────────────────────────────────────────────────────────────────────────────────
+const scen = document.getElementById('scen')
+const ram = (etikett, html, b = bredd, fast = false) => `<div class="ram"><p class="etikett">${etikett}</p><div class="sida" data-bredd="${b}" ${fast ? 'data-fast' : ''}>${html}</div></div>`
+function render() {
+  const gast = iss === 'gast'
+  const ytor = YTOR[iss]
+  if (!ytor[yta]) yta = Object.keys(ytor)[0]
+  const breddVal = gast ? (yta === 'resultat' ? [['dator', 'Dator']] : [['375', '375'], ['320', '320']]) : [['dator', 'Dator'], ['375', '375'], ['320', '320']]
+  if (!breddVal.some(([k]) => k === bredd)) bredd = breddVal[0][0]
+  document.getElementById('iss').innerHTML = [['konto', 'Kontot #1280'], ['gast', 'Gästen #1281']].map(([k, n]) => `<button aria-pressed="${k === iss}" data-iss="${k}">${n}</button>`).join('')
+  document.getElementById('vaxlare').innerHTML = Object.keys(V[iss]).map((k) => `<button aria-pressed="${k === v}" data-v="${k}">${k}</button>`).join('')
+  document.getElementById('ytor').innerHTML = Object.entries(ytor).map(([k, n]) => `<button aria-pressed="${k === yta}" data-yta="${k}">${n}</button>`).join('')
+  document.getElementById('bredd').innerHTML = breddVal.map(([k, n]) => `<button aria-pressed="${k === bredd}" data-bredd="${k}">${n}</button>`).join('')
+  document.getElementById('lang').innerHTML = [['sv', 'Svenska'], ['en', 'English']].map(([k, n]) => `<button aria-pressed="${k === lang}" data-lang="${k}">${n}</button>`).join('')
+  document.getElementById('ord').innerHTML = Object.keys(ORDEN).map((k) => `<button aria-pressed="${k === ord}" data-ord="${k}">${ORDEN[k][0]}</button>`).join('')
+  document.getElementById('fas').innerHTML = [['spel', 'Mer-fliken, under spel'], ['tack', 'Tacket, efter enkäten']].map(([k, n]) => `<button aria-pressed="${k === fas}" data-fas="${k}">${n}</button>`).join('')
+  document.getElementById('spraakgrupp').hidden = !gast
+  document.getElementById('ordgrupp').hidden = !gast || !['telefon', 'andra', 'resultat'].includes(yta)
+  document.getElementById('fasgrupp').hidden = !gast || yta !== 'telefon'
+  document.getElementById('breddgrupp').hidden = breddVal.length < 2 || (!gast && yta === 'efter' && false)
+  document.getElementById('anteckning').innerHTML = `<b>${V[iss][v].namn}.</b> ${V[iss][v].not}`
+  let html = ''
+  if (!gast) {
+    if (yta === 'profil') html = ram(`<b>Profil</b> · variant ${v} · ${bredd === 'dator' ? '1040 px' : bredd + ' px'}`, profil())
+    if (yta === 'utdrag') html = ram(`<b>Utdraget</b> · variant ${v}`, utdrag())
+    if (yta === 'efter') html = efter().map(([e, h]) => ram(`<b>${e}</b> · variant ${v}`, h)).join('')
+  } else {
+    const lbl = `${ytor[yta]}</b> · variant ${v} · ${bredd === 'dator' ? '1040 px' : bredd + ' px'} · ${lang}`
+    if (yta === 'join') html = ram(`<b>${lbl}`, join())
+    if (yta === 'telefon') html = ram(`<b>${lbl}`, telefon(), bredd, true)
+    if (yta === 'andra') html = andra().map(([e, h, b, f]) => ram(`<b>${e}</b> · variant ${v} · ${lang}`, h, b, f)).join('')
+    if (yta === 'resultat') html = ram(`<b>${lbl} · ${L('designerns', 'the designer’s')}`, resultat(), 'dator')
+    if (yta === 'integritet') html = ram(`<b>${lbl} · ${L('ändringarna markerade', 'changes marked')}`, integritet())
+  }
+  scen.innerHTML = html
+  history.replaceState(null, '', `?iss=${iss}&v=${v}&yta=${yta}&bredd=${bredd}${gast ? `&lang=${lang}&ord=${ord}&fas=${fas}` : ''}`)
+}
+
+document.querySelector('.protorad').addEventListener('click', (e) => {
+  const b = e.target.closest('button')
+  if (!b) return
+  if (b.dataset.iss) { iss = b.dataset.iss; v = iss === 'konto' ? 'A' : 'C'; ord = ORD_DEFAULT[v]; yta = Object.keys(YTOR[iss])[0]; bredd = iss === 'konto' ? 'dator' : '375'; omstart() }
+  if (b.dataset.v) { v = b.dataset.v; ord = ORD_DEFAULT[v]; omstart() }
+  if (b.dataset.yta) { yta = b.dataset.yta; omstart() }
+  if (b.dataset.bredd) bredd = b.dataset.bredd
+  if (b.dataset.lang) lang = b.dataset.lang
+  if (b.dataset.ord) ord = b.dataset.ord
+  if (b.dataset.fas) { fas = b.dataset.fas; omstart() }
+  if (b.id === 'omstart') omstart()
+  render()
+})
+scen.addEventListener('input', (e) => {
+  if (e.target.matches('[data-typ]')) { st.typ = e.target.value; const pos = e.target.selectionStart; render(); const i = scen.querySelector('[data-typ]'); i.focus(); i.setSelectionRange(pos, pos) }
+})
+scen.addEventListener('change', (e) => {
+  if (e.target.dataset.skog) { st.b.skog = e.target.dataset.skog; render() }
+})
+scen.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-do]')
+  if (!b) return
+  const d = b.dataset.do
+  // Kontot
+  if (d === 'dl') st.dl = 'hamtad'
+  if (d === 'dl-stor') st.dl = 'hamtar'
+  if (d === 'dl-klar') st.dl = 'hamtad'
+  if (d === 'fraga') st.k = 'fraga'
+  if (d === 'avbryt') st.k = 'vila'
+  if (d === 'sida') st.k = 'sida'
+  if (d === 'avbryt-sida') st.k = 'vila'
+  if (d === 'fyll') st.typ = EPOST
+  if (d === 'dialog') st.k = 'dialog'
+  if (d === 'mejla') st.k = 'mejlat'
+  if (d === 'lank') st.k = 'lank'
+  if (d === 'radera') st.k = 'raderat'
+  // Gästen
+  if (d === 'g-fraga') st.g = 'fraga'
+  if (d === 'g-avbryt') st.g = 'vila'
+  if (d === 'g-ark') { st.ark = 'radera'; st.lamna = false }
+  if (d === 'g-lamna') st.ark = 'lamna'
+  if (d === 'g-ark-lamna') { st.ark = 'radera'; st.lamna = true }
+  if (d === 'g-stang') { st.ark = null; st.lamna = false }
+  if (d === 'g-radera') { st.g = 'klar'; st.ark = null }
+  render()
+})
+addEventListener('keydown', (e) => {
+  if (e.target.closest('input, textarea, select, [contenteditable]')) return
+  const ks = Object.keys(V[iss])
+  if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+    v = ks[(ks.indexOf(v) + (e.key === 'ArrowRight' ? 1 : ks.length - 1)) % ks.length]
+    ord = ORD_DEFAULT[v]; omstart(); render()
+  }
+})
+render()
+</script>
+</body>
+</html>
