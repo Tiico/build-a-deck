@@ -451,7 +451,6 @@ export const enPlay: Record<keyof typeof svPlay, string> = {
   'forget.cancel': 'Cancel',
   'forget.leave.yes': 'Yes, leave and remove',
   'forget.thanks.yes': 'Yes, remove',
-  'forget.failed': 'The name could not be removed. Try again.',
   'forget.left.title': 'You have left the table, and your name is removed.',
   'forget.left.body': 'Your notes and flag comments are removed. Your moves stay at the table under “{masked}”.',
   'forget.backups': 'The backups forget them within eight days.',
@@ -459,9 +458,6 @@ export const enPlay: Record<keyof typeof svPlay, string> = {
   'forget.done': 'Your name and your answers are removed.',
   'forget.done.body': 'Your moves stay at the table under “{masked}”. The backups forget them within eight days.',
   'forget.thanks.after': 'Thank you.',
-  'masked.name': 'No name',
-  'masked.comment': 'The comment is removed.',
-  'masked.note': 'The note is removed.',
 
   'observer.name': 'spectator',
   'online.designer': 'The designer',

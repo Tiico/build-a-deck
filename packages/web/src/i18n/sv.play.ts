@@ -545,7 +545,6 @@ export const svPlay = {
   'forget.cancel': 'Avbryt',
   'forget.leave.yes': 'Ja, lämna och ta bort',
   'forget.thanks.yes': 'Ja, ta bort',
-  'forget.failed': 'Det gick inte att ta bort namnet. Försök igen.',
   'forget.left.title': 'Du har lämnat bordet, och ditt namn är borttaget.',
   'forget.left.body': 'Anteckningarna och flaggornas kommentarer är borttagna. Dragen står kvar vid bordet under «{masked}».',
   'forget.backups': 'Säkerhetskopiorna glömmer dem inom åtta dagar.',
@@ -553,11 +552,6 @@ export const svPlay = {
   'forget.done': 'Ditt namn och dina svar är borttagna.',
   'forget.done.body': 'Dragen står kvar vid bordet under «{masked}». Säkerhetskopiorna glömmer dem inom åtta dagar.',
   'forget.thanks.after': 'Tack.',
-  // En maskad plats, kommentar eller anteckning (G6, #1279), som läsaren ser den i stället för
-  // platshållaren.
-  'masked.name': 'Utan namn',
-  'masked.comment': 'Kommentaren är borttagen.',
-  'masked.note': 'Anteckningen är borttagen.',
 
   // Åskådaren (C8).
   'observer.name': 'observatör',
