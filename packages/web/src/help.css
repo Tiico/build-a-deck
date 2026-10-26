@@ -37,10 +37,15 @@
 .byd-help-row:has(> h2) { margin-bottom: var(--byd-s2, 8px); }
 
 /* On the room's own television the question mark is at K26's floor too (#573): read from the sofa. */
-/* In the room's stage foot (#1290) the «?» stands on the code's line, after the square, rather than
-   taking the whole line the way in gives every other span in it. */
+/* In the room's stage foot (#1290) the «?» stands on the way in's heading (#1343, beslut A), beside
+   its words rather than taking the whole line the way in gives every other span in it. */
 [data-tv] .byd-tv-foot .byd-help-row > .byd-help { flex: 0 0 auto; }
 [data-tv][data-room] .byd-help-ask > span { width: 36px; height: 36px; font-size: 24px; }
 /* And the target shrinks to that ring's footprint, not to the 22 px one's: drawn to 22 px the 36 px
    ring hung 7 px outside the edge of the column it stands in (#921). */
 [data-tv][data-room] .byd-help .byd-help-ask { margin: calc((36px - var(--byd-tap, 44px)) / 2); }
+/* The 36 px ring stands on the heading's 24 px line without making it taller (#1343): every pixel
+   the foot grows comes off the stage's card, which holds K26's 24 px of body text at 1920 × 1080
+   with less than a pixel to spare. The target keeps its 44 px; only its share of the line shrinks,
+   and the ring hangs a few pixels into the foot's padding above and the row's gap below. */
+[data-tv][data-room] .byd-tv-join > [data-join-head] .byd-help .byd-help-ask { margin-block: calc((24px - var(--byd-tap, 44px)) / 2); }

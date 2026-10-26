@@ -2930,6 +2930,19 @@ Kortet på filten räknas inom kamerans overscan (C5, #322), som `onFit` inte r�
 
 Grindarna: `packages/web/test/tv-stage-width.test.ts` (bredden mot kortets golv), `tv-chrome.test.tsx` (scenen, raden, foten och observatörens spalt), `tv-show.test.tsx` (scenens kort mot K26:s golv vid 1920 × 1080 och skrivbordets vid 1280 × 800), och `packages/e2e/test/surfaces/tv-feed-rows.spec.ts` på det byggda bordet.
 
+Reviderat 2026-10-25 (#1343, beställarens beslut A, [prototyp](https://github.com/Tiico/build-a-deck/blob/d63f44f46ad040fa9bd1edc753e7b5d7637e96e8/docs/ux-audits/2026-10-25-tv-hjalpen/README.md)): **hjälpens «?» på vägen in står på radens rubrik**, «Öppna på telefonen ?», vid alla bredder.
+Förut stod den efter koden och rutan (#305).
+Vid 1024 och 1280 står scenen på sitt golv på 360 px, och foten har 320 px innehåll, men koden (237 px), rutan (52), ringen (36) och två mellanrum på 18 behövde 361.
+«?» stod därför ensam på en egen rad under koden.
+Tre former prototypades: «?» på rubriken (A), «?» efter värden (B), och en tätare kodplatta vid golvet (C). A valdes.
+- Det är L32:s egen form, rubriken och dess frågetecken, och den står på samma plats vid varje bredd.
+- Koden och rutan är orörda (K26) och har sin rad för sig, med 13 px över vid golvet.
+- Foten blir 44 px lägre vid golvet och är lika hög som förut vid 1440 och 1920.
+  Ringen på 36 px står på rubrikens rad på 24 px utan att göra den högre: prototypens 8 px skulle ha tagits från scenens kort, och det kortet håller K26:s 24 px brödtext vid 1920 × 1080 med mindre än en bildpunkt till godo på Linux. Träffytan är kvar på 44 px.
+- B hade lagt ringen på raden vars längd beror på värdens namn, och C krympte kodens platta med 32 px och lämnade 7 px.
+
+Grinden: `packages/e2e/test/surfaces/tv-join-help-fit.spec.ts`, vid 1024, 1280, 1440 och 1920 på sv och en, i maskinens typsnitt och med Verdana/DejaVu på allt utom koden, som har ett typsnitt med fast bredd på varje maskin.
+
 ### K9. Bordsvyns utseende: filtbord som renderare, sändningslayout som TV-omgivning (prototypat 2026-09-06)
 
 Tre prototyper byggdes och jämfördes: planritning, filtbord med perspektiv, och en mörk sändningslayout.
@@ -6675,6 +6688,7 @@ Inventeringen räknade bort 19 sådana strängar (1 515 tecken) innan något ann
 Mönstret är editorns och gäller hela produkten: #304, #305, #297, #298 och #302 använder det och hittar inte på ett eget.
 *Tillagt 2026-10-20 (#695):* frågetecknet står också i ett tabellhuvud — på den kolumn mallen grupperas av, efter märket «kortgrupp» — och lådan säger vad kolumnen styr och att utseendet ändras i Mall under Kortgrupper (L4).
 Ringens träffyta står 11 px utanför ringen, och en rubrik klipper sitt eget spill, så raden lämnar plats för den.
+*Ändrat 2026-10-25 (#1343):* på rummets TV står frågetecknet för att gå med på vägen ins rubrik, «Öppna på telefonen ?», och inte längre efter koden och QR-rutan som #305 satte det. Vid scenens golv rymdes de tre inte på en rad (K8).
 
 **Prövat vid 390 px (2026-09-20, #305): lådan är densamma på telefonen.**
 Tre former mättes i spelarvyn — samma låda, ett ark från nederkanten, och helskärm:
