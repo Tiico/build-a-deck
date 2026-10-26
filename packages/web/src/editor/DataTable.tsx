@@ -31,7 +31,7 @@ import type { ProposalView } from './proposals.js'
 import type { Cell } from './ProjectClient.js'
 import { exportCardsCsv, importCardsCsv } from './csv.js'
 import { keepOrder, nextSort, sortRows, type SortState, cellOf } from './sorting.js'
-import { deckValues, dragScroll, fitColumns, markValues, widthKind } from './columns.js'
+import { deckValues, dragScroll, fitColumns, markValues, takesSymbols, widthKind } from './columns.js'
 import { TAP_FLOOR, heldWidths, rememberWidths } from './widths.js'
 import { countLabel, discreteColumns, filterRows, isFiltering, noFilter, toggleValue, typedColumn, type FilterState } from './filtering.js'
 import { duplicateRows, keepRows, markRows, noSelection, removeRows, selectionLabel, setColumn, toggleRow, type Selection } from './selection.js'
@@ -1895,8 +1895,9 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                       wall of braces on screen, and a hundred stops in the tab order.
                       It stands after the field and not before it: the field, and then the control
                       that belongs to it, which is the order they are read in (#140). On the screen
-                      it is a tab on the field's top right corner (#593). */}
-                  {onSymbol && f !== 'antal' && here?.cardRef === cardRef && here.field === f && (
+                      it is a tab on the field's top right corner (#593), and only in a column a
+                      symbol can stand in: never in one that holds nothing but numbers (#1370). */}
+                  {onSymbol && here?.cardRef === cardRef && here.field === f && takesSymbols(doc, f) && (
                     <button
                       type="button"
                       className="byd-data-icon"

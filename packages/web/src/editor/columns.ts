@@ -17,6 +17,15 @@ export function widthKind(doc: ProjectDoc, field: string): WidthKind {
   return columnKind(doc.rows, field)
 }
 
+// Whether a symbol can stand in a column, and so whether its cells offer «Sätt in en ikon» (#1370).
+// A column where every filled cell is a number is a number column by the same reading sorting and
+// the widths make, and the tab there would cover most of the narrow cell above it for a control
+// with nothing to do. One cell with a symbol, as `{mynt} 3`, makes the column text, and an empty
+// column is text until something is written in it.
+export function takesSymbols(doc: ProjectDoc, field: string): boolean {
+  return field !== ANTAL && widthKind(doc, field) === 'text'
+}
+
 // Every value the deck holds, by the column it stands in.
 //
 // Read off `doc.rows`, and deliberately never off the rows that happen to be on screen: sorting
