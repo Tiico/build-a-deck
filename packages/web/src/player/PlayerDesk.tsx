@@ -15,7 +15,7 @@ import { RuleDrawer } from '../rules/RuleDrawer.js'
 import { Help } from '../editor/HelpDrawer.js'
 import { Texture } from '../table/Texture.js'
 import { hue } from '../table/hue.js'
-import { cardName, cardWord } from '../table/keyboard.js'
+import { cardName, cardWord, floorName } from '../table/keyboard.js'
 import { isPiece } from '../components.js'
 import { seatColor } from '../table/seatColor.js'
 import { Refusal, type RefusalHandle } from '../status/Refusal.js'
@@ -151,7 +151,7 @@ export function deskTargets(view: Snapshot, t: T): { lead: DeskTarget[]; mine: D
   const all = tiles.filter((z) => z.kind === 'pile')
   const first = all.find((z) => z.id === back) ?? all[0]
   const piles = first ? [first, ...all.filter((z) => z !== first)] : []
-  const floor: DeskTarget = { id: view.floor, name: t('play.table'), at: 'top', kind: 'area', count: view.components.filter((c) => c.zone === view.floor && !isPiece(c)).length, mine: false }
+  const floor: DeskTarget = { id: view.floor, name: floorName(view, t), at: 'top', kind: 'area', count: view.components.filter((c) => c.zone === view.floor && !isPiece(c)).length, mine: false }
   return {
     lead: piles.slice(0, 1),
     mine: tiles.filter((z) => z.kind === 'area' && z.mine),

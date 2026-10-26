@@ -956,6 +956,8 @@ Utan fönster att fråga, som i jsdom, är sidan telefonens.
 
 Huvudet bär namnet och antalet kort, räknarna och tärningarna, vems tur det är (K30), «Bordet står på TV:n · Senast: …», Ångra, hjälpen, regelboken, Flagga och Lämna.
 Ovanför handen står målen i fyra grupper från vänster: den hög handen återgår till (`returnTo`, vid wizardens bord draghögen), det som ligger framför en, de andra högarna, och resten av bordet med golvet sist som «Bordet».
+Golvet heter sedan 2026-10-26 det setupen kallar det, till exempel «Spelyta», här som i telefonens ark, adresspanelen, loggen och på TV:n (#1367, beställarens beslut 2026-10-25); bara ett golv setupen inte namnger heter «Bordet» / «The table».
+Det följer språkgränsen: dokumentets ord står kvar.
 Ingen hög gissas fram ur sitt namn eller id (#79): den första är den designern sagt att handen återgår till, och en uppställning utan `returnTo` börjar med sin första hög.
 En annan plats yta är ett mål, eftersom beslutet i #1308 räknar upp den och eftersom filten redan låter ett kort släppas där (#65); telefonens ark erbjuder den fortfarande inte.
 Ett klick på en hög drar dess översta kort till handen, med samma ord och villkor som telefonens bricka (#79).
@@ -7496,6 +7498,26 @@ Ordningen är orörd — det nyaste kortet ligger fortfarande överst — och in
 En fjäder utan ledig plats svarar som förut, på tolvans millimeter.
 
 Grinden är `card-lands-in-area.test.ts`, som nu mäter alla tre vägarna: telefonens, tangentbordets och pekarens, med kortens ordning läst ur `project`, och med en mätning av att pekarens punkt är orörd.
+
+Reviderat 2026-10-26 (#1368, beställarens beslut 2026-10-25): **ett kort som läggs fritt från en plats landar framför platsen, mot filtens mitt.**
+Golvet är en yta som alla andra, så «lägg fritt» fjädrade kortet från golvets eget hörn.
+Kortet låg vid filtens vänsterkant, långt från högarna och platserna, och TV:ns kamera ramade om för att ta med det, så att varje skylt och kort på skärmen blev mindre för ett enda kort.
+Regeln för golvet är därför en egen, och den gäller bara en läsare som har en plats.
+Kortet läggs mitt för platsens egna ytor, med sin mitt halvvägs mellan ytornas inre kant och filtens mittlinje, och aldrig närmare ytorna än receptets mellanrum på 10 mm.
+Halvvägs och inte tätt intill ytorna, eftersom TV:ns skylt för platsen står där (K26, #683), i pixlar.
+Bandet ligger inom det kameran redan ramar, eftersom platsernas ytor och högarna är det som är i spel (C5), så kameran behöver inte rama om.
+Nästa kort läggs ett handsteg (26 mm) åt sidan, växelvis till höger och vänster om det första, så att fjädern står kvar mitt för platsen.
+Ett steg är inte ledigt om ett kort redan ligger där, om kortet skulle täcka en bricka (#1202), eller om det skulle ligga på en hög eller på orden under den.
+Orden hänger i pixlar, så deras ruta är mätt där de tar mest filt: på den minsta TV:n, 1280 × 720 med tre platser, når «Draghög» 37 mm under kortet och är 90 mm bred.
+Ordningen är orörd, och det nyaste kortet ligger överst.
+Ingenting som redan ligger flyttas (K2).
+Bordets egen skärm har ingen plats, och dess kort till golvet läggs som förut.
+Telefonens och tangentbordets väg ger samma kuvert, och båda frågar `laidIn`.
+
+Uttryckligen inte löst: vid fem platser är bandet mellan högarnas ord och platsens skylt smalare än ett kort (47 px mot 66 px vid 1920 × 1080), så ingen plats i millimeter är fri vid varje skärm.
+Vad som ger plats där är en egen fråga till beställaren (#1389).
+
+Grindarna är `card-lands-in-area.test.ts`, som mäter platsen vid 2–`MAX_PLAYERS` platser från varje plats, och `packages/e2e/test/free-card-near-seat.spec.ts`, som spelar kortet från telefonen och mäter på ägarens TV att kameran står still och att ingen skylt eller hög står på kortet.
 
 ### L48. Ytan framför en plats är publik, och översikten frågar synlighet där arket frågar ägarskap (prototypat och beslutat 2026-09-22, #414; fliken delad från raden 2026-09-24, #465)
 

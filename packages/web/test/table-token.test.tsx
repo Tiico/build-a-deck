@@ -4,7 +4,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react'
 import { TypeRegistry, initialState, project, STANDARD_TYPES } from '@byd/engine'
 import type { Snapshot } from '@byd/protocol'
 import { TableRenderer, type TableMode } from '../src/table/TableRenderer.js'
-import { feltLabels, thingsOn } from '../src/table/keyboard.js'
+import { feltLabels, labelOf, thingsOn } from '../src/table/keyboard.js'
 import { ActionPanel } from '../src/table/ActionPanel.js'
 import { Language, translate, type Lang, type T } from '../src/i18n/index.js'
 import { openingSetup, setupFromProject } from '@byd/server/doc'
@@ -116,7 +116,7 @@ const stops = (labels: ReadonlyMap<string, string>) => ({
 const saysCard = /\bkort|\bcard/i
 
 describe.each<[Lang, string, string]>([
-  ['sv', 'Liv, räknare i Räknare A, värde 20. Enter öppnar handlingar.', 'Räknare i Räknare A, värde 20. Enter öppnar handlingar.'],
+  ['sv', 'Liv i Räknare A, värde 20. Enter öppnar handlingar.', 'Räknare i Räknare A, värde 20. Enter öppnar handlingar.'],
   ['en', 'Liv, counter in Räknare A, value 20. Enter opens actions.', 'Counter in Räknare A, value 20. Enter opens actions.'],
 ])('what a reader is told a chip is, in %s (A4, C4)', (lang, said, saidUnnamed) => {
   it('says it is a counter, with its value, and never calls it a card', () => {
@@ -148,6 +148,22 @@ describe.each<[Lang, string, string]>([
     const label = chipOf(id).getAttribute('aria-label')
     expect(label).toBe(saidUnnamed)
     expect(label).not.toMatch(saysCard)
+  })
+})
+
+// «Poäng, räknare i Räknare A, värde 0» said «räknare» twice (#1375): the zone a seat's counters
+// stand in is called «Räknare A», and its name already says what the chip is. The kind word is
+// said where the zone's name does not say it, and only there, so a chip is always called a counter
+// once and a card never.
+describe('a counter’s sentence says the kind once (#1375)', () => {
+  const t: T = (key, params) => translate('sv', key, params)
+  it('leaves the kind out where the zone’s name says it, and keeps it where it does not', () => {
+    const v = table()
+    const id = livId(v)
+    const thing = (zone: string) => ({ key: `counter:${id}`, kind: 'counter' as const, id, name: 'Liv', zone, value: 20, owner: 'A' })
+    expect(labelOf(v, thing('counters:A'), t)).toBe('Liv i Räknare A, värde 20')
+    expect(labelOf(v, thing(v.floor), t)).toBe(`Liv, räknare i ${v.zones.find((z) => z.id === v.floor)!.name}, värde 20`)
+    expect(labelOf(v, thing('counters:A'), (key, params) => translate('en', key, params))).toBe('Liv, counter in Räknare A, value 20')
   })
 })
 

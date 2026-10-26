@@ -217,6 +217,8 @@ export const svPlay = {
   // Namnet på en räknare är designerns (B5) och kan saknas i en vy som inte får se den. Ett korts
   // reservord är `Dolt kort`, och det skulle smuggla tillbaka `kort` i en brickas mening.
   'kbd.counter.unnamed': 'Räknare i {zone}, värde {n}',
+  'kbd.counter.kindInZone': '{name} i {zone}, värde {n}',
+  'kbd.counter.kind': 'räknare',
   // En tärning (#1137) heter sin sort, «d6», som vid ett bord, och sidan upp är det den visar. Enter slår
   // den direkt i stället för att öppna en panel, så meningen säger det och inte «öppnar handlingar».
   'kbd.die': '{kind}, visar {n}, i {zone}. Enter slår tärningen, M flyttar den.',
@@ -244,7 +246,6 @@ export const svPlay = {
   'kbd.hint.counter.set': 'skriv ett tal',
   'kbd.hand.my': 'Min hand',
   'kbd.hand.other': '{name:s} hand',
-  'kbd.place.floor': 'Bordet',
   'kbd.place.floor.hint': 'fri yta',
   'kbd.place.onCard': 'På {name}',
   'kbd.place.nth': '{label} {n}',

@@ -3,6 +3,7 @@ import type { Snapshot } from '@byd/protocol'
 import { isCounter } from '../components.js'
 import { Refusal, type RefusalHandle } from '../status/Refusal.js'
 import { translate, useT, type Key, type T } from '../i18n/index.js'
+import { floorName } from '../table/keyboard.js'
 
 // Without a language given, the catalogue's own: `targetsOf` is a plain function and is read
 // outside React too, where the tool speaks Swedish like every unprovided surface does.
@@ -73,7 +74,7 @@ export function sheetPlaces(view: Snapshot, t: T = swedish): SheetPlace[] {
 
 export function targetsOf(view: Snapshot, t: T = swedish) {
   const mine = (z: Snapshot['zones'][number]) => z.owner === undefined || z.owner === view.seat
-  const table = t('play.table')
+  const table = floorName(view, t)
   return [...tilesOf(view, mine), { id: view.floor, name: table, label: table, at: 'top' as Placement, kind: 'area' as const, count: 0 }]
 }
 

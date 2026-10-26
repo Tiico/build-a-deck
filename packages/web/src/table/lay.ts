@@ -74,6 +74,10 @@ export function laidIn(view: Snapshot, zone: string, nth = 0, piece = false): La
   if (!z || z.kind !== 'area') return null
   const held = z.mode === 'order' ? z.order.length : z.count
   const i = held + nth
+  if (zone === view.floor && !piece) {
+    const before = beforeSeat(view, z, nth)
+    if (before) return { ...before, index: i }
+  }
   const g = z.geometry
   const along = alongIsWidth(g)
   const here = view.components.filter((c) => c.zone === zone)
@@ -95,6 +99,101 @@ export function laidIn(view: Snapshot, zone: string, nth = 0, piece = false): La
   }
   const { x, y } = at(step)
   return { x, y, index: i }
+}
+
+// Ett kort som läggs fritt från en plats, alltså på golvet, landar framför platsen och mot filtens
+// mitt (#1368, beställarens beslut 2026-10-25; L47 reviderad). Golvet är en yta som alla andra, så
+// fjädern lades från golvets eget hörn: kortet låg vid filtens vänsterkant, långt från högarna och
+// platserna, och TV:ns kamera ramade om för att ta med det.
+//
+// Kortet läggs i stället mitt för platsen, med sin mitt halvvägs mellan platsens egna ytor och
+// filtens mittlinje, och aldrig närmare ytorna än receptets mellanrum mellan en plats ytor (10 mm).
+// Halvvägs och inte tätt intill ytorna: där står TV:ns skylt för platsen (K26, #683), i pixlar, och
+// ett kort tätt intill låg under den vid 1280. Bandet ligger redan inom det kameran ramar —
+// platsernas ytor och högarna är det som är i spel (C5) — så ingenting behöver ramas om. Nästa kort
+// läggs ett handsteg åt sidan, växelvis till höger och vänster om det första, så att fjädern står
+// kvar mitt för platsen; ett steg där ett kort redan ligger, eller där kortet skulle täcka en bricka
+// (#1202), är inte ledigt. Ingenting som redan ligger flyttas (K2).
+//
+// Ett steg som skulle lägga kortet på en hög eller på orden under den är inte heller ledigt. Orden
+// hänger i pixlar och inte i millimeter, så rutan är mätt där de tar mest filt: på den minsta TV:n,
+// 1280 × 720 med tre platser, når «Draghög» 37 mm under kortet och är 90 mm bred.
+//
+// Bara en läsare med en plats har ett «framför sig». Bordets egen skärm har ingen plats, och dess
+// kort läggs som förut; `null` säger det.
+const BEFORE_GAP_MM = 10
+const PILE_WORDS_MM = { w: 90, below: 37 }
+
+function beforeSeat(view: Snapshot, floor: ZoneView, nth: number): { x: number; y: number } | null {
+  const seat = view.seat
+  if (seat === null) return null
+  const own = view.zones.filter((z) => z.owner === seat && z.kind === 'area').map((z) => z.geometry)
+  const hand = view.zones.find((z) => z.owner === seat && z.kind === 'hand')?.geometry
+  const box = bounds(own.length > 0 ? own : hand ? [hand] : [])
+  if (!box) return null
+  const g = floor.geometry
+  const centre = { x: g.x + g.w / 2, y: g.y + g.h / 2 }
+  const mid = { x: box.x + box.w / 2, y: box.y + box.h / 2 }
+  const edge = view.seats.find((s) => s.id === seat)?.edge ?? edgeToward(mid, centre)
+  // The card's corner at the first step, in the table's millimetres: its middle halfway from the
+  // zones' inner edge to the felt's middle line, and never nearer the zones than the gap.
+  const first = (() => {
+    switch (edge) {
+      case 'N': {
+        const inner = box.y + box.h
+        return { x: mid.x - CARD_MM.w / 2, y: Math.max((inner + centre.y) / 2 - CARD_MM.h / 2, inner + BEFORE_GAP_MM) }
+      }
+      case 'E':
+        return { x: Math.min((box.x + centre.x) / 2 - CARD_MM.w / 2, box.x - BEFORE_GAP_MM - CARD_MM.w), y: mid.y - CARD_MM.h / 2 }
+      case 'W': {
+        const inner = box.x + box.w
+        return { x: Math.max((inner + centre.x) / 2 - CARD_MM.w / 2, inner + BEFORE_GAP_MM), y: mid.y - CARD_MM.h / 2 }
+      }
+      default:
+        return { x: mid.x - CARD_MM.w / 2, y: Math.min((box.y + centre.y) / 2 - CARD_MM.h / 2, box.y - BEFORE_GAP_MM - CARD_MM.h) }
+    }
+  })()
+  const across = edge === 'E' || edge === 'W' ? { x: 0, y: 1 } : { x: 1, y: 0 }
+  const at = (k: number): Rect => {
+    const s = (k % 2 === 1 ? 1 : -1) * Math.ceil(k / 2) * HAND_STEP_MM
+    return { x: mm(first.x + s * across.x - g.x), y: mm(first.y + s * across.y - g.y), ...CARD_MM }
+  }
+  const here = view.components.filter((c) => c.zone === floor.id)
+  const taken = here.filter((c) => !isPiece(c)).map((c) => ({ x: c.x, y: c.y }))
+  const pieces = here.filter(isPiece).map(rectOf)
+  // A pile and the words that hang under it, which a card in front of a seat is not laid on.
+  const piles = view.zones
+    .filter((z) => z.kind === 'pile')
+    .flatMap((z) => [
+      { x: z.geometry.x - CARD_MM.w / 2 - g.x, y: z.geometry.y - CARD_MM.h / 2 - g.y, ...CARD_MM },
+      { x: z.geometry.x - PILE_WORDS_MM.w / 2 - g.x, y: z.geometry.y + CARD_MM.h / 2 - g.y, w: PILE_WORDS_MM.w, h: PILE_WORDS_MM.below },
+    ])
+  const clear = (r: Rect) => [...pieces, ...piles].every((p) => !overlaps(r, p))
+  const free = (r: Rect) => taken.every((p) => Math.abs(p.x - r.x) >= HAND_STEP_MM / 2 || Math.abs(p.y - r.y) >= HAND_STEP_MM / 2)
+  const steps = Array.from({ length: FAN_MAX }, (_, k) => at(k))
+  let chosen = at(0)
+  for (let k = 0; k <= nth; k++) {
+    const open = steps.filter(free)
+    chosen = open.find(clear) ?? open[0] ?? at(FAN_MAX - 1)
+    taken.push({ x: chosen.x, y: chosen.y })
+  }
+  return { x: chosen.x, y: chosen.y }
+}
+
+// The edge a seat without one of its own sits at: the side of the felt its zones lie nearest to.
+function edgeToward(p: { x: number; y: number }, centre: { x: number; y: number }): 'N' | 'E' | 'S' | 'W' {
+  const dx = p.x - centre.x
+  const dy = p.y - centre.y
+  return Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'E' : 'W') : dy > 0 ? 'S' : 'N'
+}
+
+function bounds(boxes: readonly Rect[]): Rect | null {
+  if (boxes.length === 0) return null
+  const x0 = Math.min(...boxes.map((b) => b.x))
+  const y0 = Math.min(...boxes.map((b) => b.y))
+  const x1 = Math.max(...boxes.map((b) => b.x + b.w))
+  const y1 = Math.max(...boxes.map((b) => b.y + b.h))
+  return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 }
 }
 
 type Rect = { x: number; y: number; w: number; h: number }

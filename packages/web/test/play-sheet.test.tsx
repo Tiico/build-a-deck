@@ -2,20 +2,36 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { PlaySheet, targetsOf } from '../src/player/PlaySheet.js'
+import { deskTargets } from '../src/player/PlayerDesk.js'
+import { translate, type T } from '../src/i18n/index.js'
 import { buildScene } from './scene.js'
 
 describe('PlaySheet (C4 zone shortcuts)', () => {
-  it('offers every non-hand zone as a target by its shortcut, says where a card goes, the floor last as "Bordet", and reports the choice', () => {
+  it('offers every non-hand zone as a target by its shortcut, says where a card goes, the floor last by the setup’s name for it, and reports the choice', () => {
     const { view } = buildScene()
     const onPlay = vi.fn()
     render(<PlaySheet view={view('A')} count={1} label="dragon" onPlay={onPlay} onClose={() => undefined} />)
     const buttons = screen.getAllByRole('button').map((b) => b.textContent)
-    expect(buttons).toEqual([expect.stringMatching(/^Kasta3 kort · överst i Kasthög$/), expect.stringMatching(/^Lägg underst3 kort · underst i Draghög$/), expect.stringMatching(/^Bordetlägg fritt$/)])
+    // The floor is called what the setup calls it (#1367): «Spelyta», as the log and the TV say.
+    expect(buttons).toEqual([expect.stringMatching(/^Kasta3 kort · överst i Kasthög$/), expect.stringMatching(/^Lägg underst3 kort · underst i Draghög$/), expect.stringMatching(/^Spelytalägg fritt$/)])
     expect(screen.getByText(/dragon/)).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: /Kasta/ }))
     expect(onPlay).toHaveBeenCalledWith('discard', 'top')
     fireEvent.click(screen.getByRole('button', { name: /Lägg underst/ }))
     expect(onPlay).toHaveBeenCalledWith('draw', 'bottom')
+  })
+
+  // Only a floor the setup has not named takes the tool's word (#1367), on the sheet and on the
+  // computer's own surface alike.
+  it('calls a floor the setup gave no name «Bordet», on the sheet and on the computer', () => {
+    const { view } = buildScene()
+    const v = view('A')
+    const unnamed = { ...v, zones: v.zones.map((z) => (z.id === v.floor ? { ...z, name: '' } : z)) }
+    const t: T = (key, params) => translate('sv', key, params)
+    const floorOf = (x: typeof v) => targetsOf(x, t).find((z) => z.id === x.floor)?.label
+    const deskFloorOf = (x: typeof v) => deskTargets(x, t).rest.find((z) => z.id === x.floor)?.name
+    expect([floorOf(v), deskFloorOf(v)]).toEqual(['Spelyta', 'Spelyta'])
+    expect([floorOf(unnamed), deskFloorOf(unnamed)]).toEqual(['Bordet', 'Bordet'])
   })
 
   it('a zone without a shortcut is offered by its name, on top', () => {

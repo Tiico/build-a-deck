@@ -52,8 +52,8 @@ async function online(held = 2, room: Size = LANDSCAPE) {
 }
 
 describe('the distance view is played with the same model as the felt and the phone (#2)', () => {
-  // The point is the floor's own answer (L47, #449): one card already lies there, so this one is
-  // fanned one step along and centred across the 600 mm deep felt, on top of what is there.
+  // The point is the floor's own answer (L47, #449, #1368): Ada has a seat, so the card lands in
+  // front of it, halfway from her zones to the felt's middle, and on top of what is there.
   it('makes the fan real controls and plays a card to a named place with the point that place gives it', async () => {
     const { id, table } = await online()
     const user = userEvent.setup()
@@ -63,10 +63,10 @@ describe('the distance view is played with the same model as the felt and the ph
     screen.getByRole('button', { name: /^dragon, i min hand/ }).focus()
     await user.keyboard('{Enter}')
     const panel = await screen.findByRole('dialog', { name: 'Handlingar för dragon' })
-    await user.click(within(panel).getByRole('button', { name: /^Bordet/ }))
+    await user.click(within(panel).getByRole('button', { name: /^Spelyta/ }))
     await waitFor(async () =>
       expect((await run.store.read(id)).slice(-2).map((l) => l.intent)).toEqual([
-        { v: 'move', component: 'c0', to: 'table', x: 26, y: 256, index: 1 },
+        { v: 'move', component: 'c0', to: 'table', x: 469, y: 416, index: 1 },
         { v: 'flip', component: 'c0', face: 'front' },
       ]),
     )
@@ -82,7 +82,7 @@ describe('the distance view is played with the same model as the felt and the ph
     screen.getByRole('button', { name: /^dragon, i min hand/ }).focus()
     await user.keyboard('{Enter}')
     const panel = await screen.findByRole('dialog', { name: 'Handlingar för dragon' })
-    await user.click(within(panel).getByRole('button', { name: /^Bordet/ }))
+    await user.click(within(panel).getByRole('button', { name: /^Spelyta/ }))
     await waitFor(() => expect(document.querySelector('.byd-online-felt [data-component="c0"]')).not.toBeNull())
     await waitFor(() => expect((document.activeElement as HTMLElement | null)?.getAttribute('data-kbd')).toBe('card:c0'))
     expect(loose).not.toBe('c0')
@@ -137,7 +137,7 @@ describe('turning a card over in the distance view’s hand (#1133)', () => {
     expect(card.getAttribute('data-turned')).toBe('true')
     panel = screen.getByRole('dialog', { name: 'Handlingar för dragon' })
     expect(within(panel).getByRole('button', { name: 'Vänd upp' })).toBeTruthy()
-    await user.click(within(panel).getByRole('button', { name: /^Bordet/ }))
+    await user.click(within(panel).getByRole('button', { name: /^Spelyta/ }))
     await waitFor(async () => expect((await run.store.read(id)).slice(-1).map((l) => l.intent.v)).toEqual(['move']))
     expect((await run.store.read(id)).some((l) => l.intent.v === 'flip' && l.intent.component === 'c0'), 'never turned face up').toBe(false)
     await waitFor(() => expect(table.view!.components.find((c) => c.id === 'c0')).toMatchObject({ zone: 'table', face: 'back', cardRef: null }))
@@ -241,7 +241,7 @@ describe('the whole hand stays one tab stop with the arrows inside it, however b
     await waitFor(() => expect(document.activeElement?.getAttribute('data-spread-card')).toBe('c0'))
     await user.keyboard('{Enter}')
     const panel = await screen.findByRole('dialog', { name: /^Handlingar för/ })
-    await user.click(within(panel).getByRole('button', { name: /^Bordet/ }))
+    await user.click(within(panel).getByRole('button', { name: /^Spelyta/ }))
     await waitFor(() => expect(screen.queryByRole('dialog', { name: /Hela handen/ })).toBeNull())
     expect(spread.isConnected).toBe(false)
     await waitFor(() => expect((document.activeElement as HTMLElement | null)?.getAttribute('data-kbd')).toBe('card:c0'))
