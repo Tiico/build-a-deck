@@ -2515,7 +2515,7 @@ button.byd-picture-tile[aria-expanded='true'] { box-shadow: 0 0 0 2px #9cc6ff; }
 /* Symbolen som chip: det designern ser är bilden eller namnet, och det strängen får är `{namn}`
    ur chipets eget attribut (`body.ts`). */
 .byd-body-symbol { display: inline-flex; align-items: center; gap: 2px; vertical-align: -2px; }
-.byd-body-symbol img { width: 1.1em; height: 1.1em; object-fit: contain; }
+.byd-body-symbol img { width: 1.1em; height: 1.1em; object-fit: contain; border-radius: 3px; }
 /* Öppen: taket lyfts, uttoningen tas bort, och skrivytan får plats att skriva i. */
 .byd-data-bodycell[data-open] .byd-data-body { max-height: none; min-height: calc(var(--byd-data-body-line) * 3em); }
 .byd-data-bodycell[data-open] .byd-data-body[data-more]::after { content: none; }

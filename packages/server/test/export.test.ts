@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto'
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import { start, twoSeatSetup, type Running } from './fixture.js'
 import { template } from './deck.js'
-import { ProjectExport, assetHashesOf, exportDisposition, printFileOf } from '../src/export.js'
+import { ProjectExport, assetHashesOf, exportDisposition, printFileOf, readmeOf } from '../src/export.js'
 
 // Full export of a game (G5, #527): the designer's data, whole, in a documented format they can
 // open without the tool — the document with its every version, every asset as a file, and the
@@ -145,6 +145,10 @@ describe('exporting a whole game (G5, #527)', () => {
     // The data is the designer's whether or not it can go to a printer (G5).
     expect(manifest.versions).toHaveLength(3)
     expect(Object.keys(files).filter((f) => f.startsWith('tryck/') && f !== manifest.print.rulebook)).toEqual([])
+    // The window that hands the zip over says what LASMIG says (#1356): which version, and how many
+    // findings stopped its print files, read by a page on another origin too.
+    expect(JSON.parse(res.headers.get('x-byd-export') ?? 'null')).toEqual({ rev: 3, errors: manifest.print.errors.length, failed: 0 })
+    expect(res.headers.get('access-control-expose-headers') ?? '').toMatch(/x-byd-export/)
   }, 90_000)
 
   it('is the owner’s and the co-editors’, and nobody else’s', async () => {
@@ -193,6 +197,44 @@ describe('what the export collects and what it names things (#527)', () => {
     // The version by the word people read, «v3», never the id «rev-3» (#703).
     expect(exportDisposition('Skogens härskare', 3)).toBe(`attachment; filename="Skogens h_rskare v3.zip"; filename*=UTF-8''${encodeURIComponent('Skogens härskare v3.zip')}`)
   })
+
+  // LASMIG names only what the zip holds (#1356): a game with no pictures has no `assets/`, a game
+  // the print checks stop has no card PDFs, and a game without a rulebook has no «regelhäftet».
+  const finding = { cardRef: 'dragon', face: 'front', element: 'title', code: 'text-too-small', severity: 'error' as const, values: {} }
+  const stopped = (errors: number, extra: { assets?: ProjectExport['assets']; absent?: string[]; rulebook?: string; cards?: ProjectExport['print']['cards']; failed?: string[] } = {}): ProjectExport =>
+    ProjectExport.parse({
+      format: 'byd-export',
+      formatVersion: 1,
+      exportedAt: '2026-10-25T12:00:00.000Z',
+      project: { id: 'p1', name: 'Skogens herrar' },
+      current: { rev: 2 },
+      versions: [],
+      assets: extra.assets ?? [],
+      absent: extra.absent ?? [],
+      print: { rev: 2, cards: extra.cards ?? [], ...(extra.rulebook ? { rulebook: extra.rulebook } : {}), credits: [], warnings: [], errors: Array.from({ length: errors }, () => finding), failed: extra.failed ?? [] },
+    })
+  for (const lang of ['sv', 'en'] as const) {
+    it(`says in ${lang} why the print files are left out, and names no folder the zip lacks`, () => {
+      const readme = readmeOf(lang, stopped(12, { absent: [h(1)] }))
+      expect(readme).not.toMatch(/assets\//)
+      expect(readme).not.toMatch(/tryck\//)
+      expect(readme).not.toMatch(/regelhäfte|rulebook/i)
+      expect(readme).toMatch(/print\.errors/)
+      expect(readme).toMatch(/\b12\b/)
+      // What the server did not have is still said, without a folder it would be in.
+      expect(readme).toMatch(/absent/)
+    })
+    it(`says in ${lang} that the rulebook came along when only it did`, () => {
+      const readme = readmeOf(lang, stopped(3, { rulebook: 'tryck/regelhafte.pdf' }))
+      expect(readme).toMatch(/tryck\//)
+      expect(readme).toMatch(lang === 'sv' ? /regelhäfte/ : /rulebook/)
+      expect(readme).not.toMatch(lang === 'sv' ? /en per sida av varje kort/ : /one per face of each card/)
+    })
+    it(`names in ${lang} the print files that could not be made`, () => {
+      const readme = readmeOf(lang, stopped(0, { cards: [{ cardRef: 'dragon', faces: { front: 'tryck/dragon-front.pdf' } }], failed: ['tryck/dragon-front.pdf'] }))
+      expect(readme).toMatch(/print\.failed/)
+    })
+  }
 })
 
 // Bringing an export back (G5, #528): a new game, owned by whoever brings it, with the document,

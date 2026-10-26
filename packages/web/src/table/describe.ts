@@ -131,8 +131,9 @@ export function describeActivity(line: Said, view: Snapshot, t: T): string {
       return t('activity.session.end')
     case 'version.change':
       return t('activity.version.change', { to: versionWord(it.to, t) })
+    // The reader's own undo has its own sentence (#1366): «you» takes «your», not «their».
     case 'undo.self':
-      return t('activity.undo.self', { who })
+      return mine ? t('activity.undo.mine') : t('activity.undo.self', { who })
     case 'rewind.propose':
       return t('activity.rewind.propose', { who })
     case 'rewind.confirm':

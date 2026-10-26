@@ -90,7 +90,7 @@ describe('the Bord tab (#19)', () => {
     await openTables()
 
     const table = await onlyRow()
-    expect(table.getAttribute('data-table')).toBe(id)
+    expect(table.getAttribute('data-session')).toBe(id)
     expect(table.textContent).toContain('v1')
     expect(table.textContent).toContain('inga drag än')
   })
@@ -241,7 +241,7 @@ describe('the name and the update of a row (#706)', () => {
     await user.click(screen.getByRole('button', { name: 'Starta nytt bord' }))
     await answerStart()
     const row = await onlyRow()
-    const id = row.getAttribute('data-table')!
+    const id = row.getAttribute('data-session')!
     const listed = (await (await fetch(`${run.http}/projects/${run.projectId}/sessions`)).json()) as { id: string; code?: string }[]
     const code = listed.find((t) => t.id === id)?.code
     expect(code).toBeTruthy()
@@ -261,8 +261,8 @@ describe('the name and the update of a row (#706)', () => {
     const update = within(row).getByRole('button', { name: `Uppdatera bordet ${roomOf(id).code} till version 2` })
     expect(update.textContent).toBe('Uppdatera till version 2')
     await user.click(update)
-    await waitFor(() => expect(document.querySelector(`[data-table="${id}"]`)!.getAttribute('data-stale')).toBe('false'))
-    const after = document.querySelector<HTMLElement>(`[data-table="${id}"]`)!
+    await waitFor(() => expect(document.querySelector(`[data-session="${id}"]`)!.getAttribute('data-stale')).toBe('false'))
+    const after = document.querySelector<HTMLElement>(`[data-session="${id}"]`)!
     expect(after.textContent).toContain('v2')
     expect(within(after).queryByRole('button', { name: /Uppdatera/ })).toBeNull()
   })
@@ -298,6 +298,29 @@ describe('the thumbnail of a table (#19, K9)', () => {
     await ada.send({ v: 'draw', from: 'draw', to: 'table', count: 2 })
     await waitFor(() => expect(draw()).toBe('2'))
     expect(row.querySelectorAll('[data-component]')).toHaveLength(2)
+    ada.close()
+  })
+})
+
+// The row follows the table while the editor stands open (#1365): it said «aldrig spelat · inga drag
+// än» under «Startade, aldrig spelade» until a reload, while the table was being played.
+describe('a row that is played while the editor stands open (#1365)', () => {
+  it('says «i spel» and the last move, and moves under «Bord som spelas», without a reload', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    const id = await startTable()
+    await openTables()
+    const row = await onlyRow()
+    expect(row.textContent).toContain('aldrig spelat')
+    await waitFor(() => expect(row.querySelector('[data-zone="draw"]')?.getAttribute('data-count')).toBe('4'))
+
+    const ada = TableClient.connect(await asSeat(run, id, 'A', 'Ada'))
+    await ada.ready()
+    await ada.send({ v: 'draw', from: 'draw', to: 'table', count: 1 })
+    const now = () => document.querySelector<HTMLElement>(`.byd-table-row[data-session="${id}"]`)
+    await waitFor(() => expect(now()?.getAttribute('data-state')).toBe('played'), { timeout: 5000 })
+    expect(now()?.textContent).toContain('i spel')
+    expect(now()?.textContent).toMatch(/senaste drag i dag/)
+    await waitFor(() => expect(now()?.closest('[data-group]')?.getAttribute('data-group')).toBe('played'), { timeout: 5000 })
     ada.close()
   })
 })
@@ -452,7 +475,7 @@ describe('starting a table from the Bord tab (#19, L5, #299, L31)', () => {
     await answerStart()
     const row = await onlyRow()
     const started = (await (await fetch(`${run.http}/projects/${run.projectId}/sessions`, { method: 'GET' })).json()) as { id: string }[]
-    expect(started.map((t) => t.id)).toEqual([row.getAttribute('data-table')])
+    expect(started.map((t) => t.id)).toEqual([row.getAttribute('data-session')])
     expect(row.textContent).toContain('v1')
     // Ingen navigering: designern står kvar i Bord och ser bordet dyka upp (L31).
     expect(screen.getByRole('tab', { name: 'Bord' }).getAttribute('aria-selected')).toBe('true')
@@ -679,7 +702,7 @@ describe('the shortcut to the table from every other tab (#19, variant B)', () =
     // the row is waited for, not read out of the frame the menu opened in.
     const shortcut = await screen.findByRole('group', { name: 'Bordet' })
     const row = await within(shortcut).findByRole('listitem')
-    expect(row.getAttribute('data-table')).toBe(newest)
+    expect(row.getAttribute('data-session')).toBe(newest)
     expect(await within(row).findByRole('link', { name: `Öppna bordet ${roomOf(newest).code} (öppnas i bordets egen flik)` })).toBeTruthy()
 
     await user.keyboard('{Escape}')
@@ -694,7 +717,7 @@ describe('the shortcut to the table from every other tab (#19, variant B)', () =
     expect(screen.queryByRole('group', { name: 'Bordet' })).toBeNull()
     const both = await rows()
     expect(both).toHaveLength(2)
-    expect(both[0]!.getAttribute('data-table')).toBe(newest)
+    expect(both[0]!.getAttribute('data-session')).toBe(newest)
   })
 })
 

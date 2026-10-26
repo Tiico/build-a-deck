@@ -1,7 +1,8 @@
 import { useEffect, useLayoutEffect, useRef, useState, type DragEvent, type KeyboardEvent } from 'react'
 import { ASSET_PREFIX, isAssetRef } from './assets.js'
 import type { Element } from './types.js'
-import { useT } from '../i18n/index.js'
+import { useT, type T } from '../i18n/index.js'
+import { fieldLabel } from './fields.js'
 import { useSay } from '../status/StatusLive.js'
 import { ChevronGlyph, GripGlyph, KindGlyph, LockGlyph } from '../glyphs.js'
 
@@ -55,14 +56,19 @@ export function layerName(el: Element): string {
 //
 // A picture the element carries by itself (#320) is a reference and not a word, so what is said
 // is the picture's name, asked of the caller who knows the library; an empty frame says nothing.
-export function layerShows(el: Element, pictureName?: (hash: string) => string): string | null {
+//
+// A column is said by the word the table heads it with (#1375): the guide keeps the title under the
+// key `title` and calls the layer «Titel», and the row said «Titel · title».
+export function layerShows(el: Element, pictureName?: (hash: string) => string, t?: T): string | null {
   if (!('bind' in el)) return null
   if ('literal' in el.bind && el.kind === 'image') {
     if (!isAssetRef(el.bind.literal)) return el.bind.literal === '' ? null : el.bind.literal
     return pictureName ? pictureName(el.bind.literal.slice(ASSET_PREFIX.length)) : null
   }
-  const shows = 'literal' in el.bind ? el.bind.literal : el.bind.field
-  return shows === layerName(el) ? null : shows
+  if ('literal' in el.bind) return el.bind.literal === layerName(el) ? null : el.bind.literal
+  const field = el.bind.field
+  const word = t ? fieldLabel(field, t) : field
+  return field === layerName(el) || word === layerName(el) ? null : word
 }
 
 // The two columns a row has. Focus lives on a cell, which is what a grid means (APG).
@@ -139,7 +145,7 @@ export function LayerList({ layers, selected, onSelect, onReorder, onLock, onRen
         // A condition nobody has named is written out whole and wraps (#699); a named one says its
         // condition after its name, the way any other layer says what it shows.
         const wraps = condition !== null && !el.name
-        const shows = el.kind === 'if' ? (condition && el.name ? `${condition.words} · ${condition.cards}` : null) : layerShows(el, pictureName)
+        const shows = el.kind === 'if' ? (condition && el.name ? `${condition.words} · ${condition.cards}` : null) : layerShows(el, pictureName, t)
         const folder = el.kind === 'if' ? el : null
         // A condition layer is a folder (#478) that opens when it is chosen (#699, variant D): the
         // button that opened it without choosing it took 44 px of the 220 the row has, and the

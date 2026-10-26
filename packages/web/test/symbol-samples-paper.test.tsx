@@ -18,6 +18,7 @@ import { revealThemeSection, ThemePanel } from '../src/editor/ThemePanel.js'
 import type { ProjectClient } from '../src/editor/ProjectClient.js'
 import type { CatalogIcon } from '../src/editor/icon-catalog.js'
 import { projectDoc } from './project-doc.js'
+import { painted } from './painted.js'
 
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
 const DESK = { w: 1440, h: 900 }
@@ -134,6 +135,42 @@ describe.each([
       // And the ink reads on it — the plain picture in the card's ink as much as a painted copy.
       expect(s.ink).not.toBe('none')
       expect(contrastRatio(s.ink, s.paper), `${s.ink} on ${s.paper}`).toBeGreaterThanOrEqual(LEGIBLE)
+    }
+  }, 60_000)
+})
+
+// The rules text cell draws the symbols it holds (#1369): «Få 2 {svärd}.» stood as «Få 2 .» in
+// Tabell, the library's dark symbol on the cell's dark ground. What is measured is what was painted
+// inside the picture's own box: its darkest twentieth is the symbol, its lightest what it stands on.
+describe('a symbol in the rules text cell, at 1440×900 (#1369)', () => {
+  function cellMarkup(): string {
+    const doc = {
+      ...projectDoc(),
+      icons: { svärd: `data:image/svg+xml;utf8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#1c1c1c"><path d="M4 20l3-1 10-10 2-6-6 2L3 15l-1 3z"/></svg>')}` },
+      rows: [{ id: 'dragon', fields: { title: 'Drake', body: 'Få 2 {svärd}.', antal: 1 } }],
+    }
+    const { container, unmount } = render(
+      <DataTable doc={doc} selectedRow={null} onSelectRow={() => undefined} onCell={() => undefined} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={() => undefined} onAddField={() => undefined} onRemoveField={() => undefined} onMoveField={() => undefined} />,
+    )
+    try {
+      return container.innerHTML
+    } finally {
+      unmount()
+    }
+  }
+  it('stands out from what it is drawn on by at least 3:1', async () => {
+    const page = await browser.newPage({ viewport: { width: DESK.w, height: DESK.h } })
+    try {
+      await page.setContent(shellOf(cellMarkup()), { waitUntil: 'load' })
+      const img = page.locator('.byd-body-symbol img')
+      expect(await img.count()).toBe(1)
+      // Loaded, so what is measured is the picture and not a broken one.
+      expect(await img.evaluate((el: HTMLImageElement) => el.decode().then(() => el.naturalWidth))).toBeGreaterThan(0)
+      const { symbol } = await painted(page, [{ what: 'symbol', inside: '.byd-body-symbol img', inset: 0 }])
+      const [dark, , light] = symbol!.shades
+      expect(contrastRatio(dark, light), `${dark} on ${light}`).toBeGreaterThanOrEqual(LEGIBLE)
+    } finally {
+      await page.close()
     }
   }, 60_000)
 })

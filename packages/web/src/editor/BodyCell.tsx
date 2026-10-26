@@ -32,6 +32,9 @@ export type BodyCellProps = {
   open: boolean
   // Projektets egna symboler som bilder, efter det namn `{namn}` skriver.
   icons: Record<string, string>
+  // Kortets papper, som symbolerna står mot (L34, #1369): bibliotekets symboler är mörka, och mot
+  // cellens mörka grund syntes de inte alls.
+  paper?: string
   // Vad designern skrev, läst ur elementen av `tillStrang` och ingenting annat. `at` är var
   // markören står räknat i strängens tecken, vilket klammerns symbollista frågar efter.
   onWrite(text: string, at: number): void
@@ -53,7 +56,7 @@ export type BodyCellProps = {
   children?: ReactNode
 }
 
-export function BodyCell({ label, head, value, open, icons, onWrite, onOpen, onClose, onListKey, onSymbol, caretAt, aria, tabIndex, children }: BodyCellProps) {
+export function BodyCell({ label, head, value, open, icons, paper, onWrite, onOpen, onClose, onListKey, onSymbol, caretAt, aria, tabIndex, children }: BodyCellProps) {
   const write = useRef<HTMLDivElement | null>(null)
   const [marks, setMarks] = useState<BodyMarks>(NO_MARKS)
 
@@ -68,13 +71,13 @@ export function BodyCell({ label, head, value, open, icons, onWrite, onOpen, onC
     if (!el) return
     if (el.childElementCount > 0 && tillStrang(el).text === value) return
     const inside = el.contains(el.ownerDocument.activeElement)
-    fillBody(el, value, icons)
+    fillBody(el, value, icons, paper)
     // Noderna markören stod i finns inte kvar. Stod den i cellen sätts den tillbaka: där
     // verktyget skrev, när verktyget skrev, och annars sist — en ändring som kom någon
     // annanstans ifrån (D3) har ingen plats att peka på.
     if (inside) placeCaret(el, wanted.current ?? tillStrang(el).text.length)
     wanted.current = null
-  }, [value, icons])
+  }, [value, icons, paper])
 
   // `aria-pressed` följer markeringen, och markeringen ändras av allt: klick, piltangenter,
   // kommandon. Webbläsaren har en egen händelse för just det.

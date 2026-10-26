@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { PROJECT_NAME_MAX } from '@byd/server/doc'
 import { useFocusTrap } from '../editor/focusTrap.js'
 import { useT, type Key } from '../i18n/index.js'
-import { importGame, readExport, startExport, type ImportProblem } from './api.js'
+import { importGame, readExport, startExport, type ExportPrint, type ImportProblem } from './api.js'
 import type { Quota } from './quota.js'
 import { quotaLine, quotaWords } from './quota-words.js'
 import './game-dialogs.css'
@@ -27,7 +27,16 @@ const save = (zip: Blob, name: string) => {
 }
 
 type Game = { id: string; name: string; rev: number }
-type Exporting = { state: 'idle' } | { state: 'preparing'; total: number; done: number } | { state: 'ready'; zip: Blob; name: string } | { state: 'refused'; status: number } | { state: 'offline' }
+type Exporting = { state: 'idle' } | { state: 'preparing'; total: number; done: number } | { state: 'ready'; zip: Blob; name: string; print?: ExportPrint } | { state: 'refused'; status: number } | { state: 'offline' }
+
+// The last word says what LASMIG says (#1356): a version the print checks stop is exported without its
+// card PDFs, and a print file the renderer could not make is not in the zip. «Klar» alone let the
+// designer believe they were there.
+function readyWords(print: ExportPrint | undefined, t: ReturnType<typeof useT>): string {
+  if (print && print.errors > 0) return t(print.errors === 1 ? 'home.export.ready.stopped.one' : 'home.export.ready.stopped.other', { rev: print.rev, n: print.errors })
+  if (print && print.failed > 0) return t(print.failed === 1 ? 'home.export.ready.failed.one' : 'home.export.ready.failed.other', { n: print.failed })
+  return t('home.export.ready')
+}
 
 // What a refusal means, in words (A4, #542): the number is the server's and not the reader's.
 const refusal = (status: number): Key => (status === 401 ? 'home.export.refused.login' : status === 403 ? 'home.export.refused.forbidden' : status === 503 ? 'home.export.refused.unavailable' : 'home.export.refused')
@@ -89,7 +98,7 @@ export function ExportDialog({ http, game, onClose }: { http: string; game: Game
         )}
         {/* One status region from the start, so a screen reader hears its text change (4.1.3, #555). */}
         <p role="status" className={now.state === 'ready' ? undefined : 'byd-offscreen'}>
-          {now.state === 'preparing' ? t('home.export.progress', { done: now.done, total: now.total }) : now.state === 'ready' ? t('home.export.ready') : ''}
+          {now.state === 'preparing' ? t('home.export.progress', { done: now.done, total: now.total }) : now.state === 'ready' ? readyWords(now.print, t) : ''}
         </p>
         {now.state === 'refused' && <p role="alert">{t(refusal(now.status))}</p>}
         {now.state === 'offline' && <p role="alert">{t('home.export.offline')}</p>}

@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { EditorPage } from '../src/editor/EditorPage.js'
+import { Language } from '../src/i18n/index.js'
+import { placeholderDrawn } from './placeholder-drawn.js'
 import { TableClient } from '../src/client.js'
 import { projectDoc } from './project-doc.js'
 import { asObserver, asSeat, asTable, registerRoom, roomOf, startServer, type Running } from './fixture.js'
@@ -162,6 +164,57 @@ describe('a flag about a card in Resultat (#1142)', () => {
     await user.keyboard('{Escape}')
     expect(screen.queryByRole('dialog')).toBeNull()
     expect(document.activeElement).toBe(thumb)
+  })
+
+  // A guest who flagged a card in her own hand and then removed her name (#1349, G6): where the
+  // card lay is her hand, said under the masked name, and what she wrote is said to be gone rather
+  // than quoted. The placeholder reaches neither the flag's row nor the lifted card, in either
+  // language.
+  it.each([
+    ['sv', { results: 'Resultat', hand: 'i handen hos Utan namn', by: 'när Utan namn flaggade', gone: 'Kommentaren är borttagen.' }],
+    ['en', { results: 'Results', hand: 'in No name’s hand', by: 'when No name flagged it', gone: 'The comment is removed.' }],
+  ] as const)('says a card in the hand of a guest who removed her name as hers, under «Utan namn» (%s)', async (lang, words) => {
+    const res = await fetch(`${run.http}/projects/${run.projectId}/sessions`, { method: 'POST' })
+    const made = (await res.json()) as { id: string; code: string; hostKey: string }
+    registerRoom(made.id, made)
+    const seat = await asSeat(run, made.id, 'A', 'Adelina')
+    const ada = TableClient.connect(seat)
+    await ada.ready()
+    await ada.send({ v: 'seat.claim', seat: 'A', name: 'Adelina' })
+    await ada.send({ v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
+    const card = ada.view!.components.find((c) => c.zone === 'hand:A')!
+    await ada.send({ v: 'flag', component: card.id, note: 'Draken är för stark' })
+    await ada.send({ v: 'session.end' })
+    ada.close()
+    expect((await fetch(`${run.http}/sessions/${made.id}/erase`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token: seat.token }) })).status).toBe(200)
+
+    const user = userEvent.setup()
+    history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
+    render(
+      <Language lang={lang}>
+        <EditorPage />
+      </Language>,
+    )
+    await screen.findByText('Skogens herrar')
+    await user.click(screen.getByRole('tab', { name: lang === 'sv' ? 'Bord' : 'Tables' }))
+    await user.click(screen.getByRole('button', { name: words.results }))
+    const line = await waitFor(() => {
+      const found = document.querySelector<HTMLElement>('.byd-results-card-line')
+      expect(found).not.toBeNull()
+      return found!
+    })
+    expect(line.textContent).toContain(words.hand)
+    expect(placeholderDrawn()).toEqual([])
+
+    await user.click(within(line.closest('li')!).getByRole('button'))
+    const lifted = screen.getByRole('dialog')
+    expect(lifted.textContent).toContain(words.by)
+    expect(lifted.textContent).toContain(words.hand)
+    expect(lifted.textContent).toContain(words.gone)
+    expect(lifted.textContent).not.toContain('«')
+    expect(placeholderDrawn()).toEqual([])
+    expect(document.body.textContent).not.toContain('Adelina')
+    expect(document.body.textContent).not.toContain('Draken är för stark')
   })
 })
 

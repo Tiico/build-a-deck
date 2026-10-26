@@ -276,3 +276,17 @@ describe('the log says what a roll came to (#1136)', () => {
     expect(describeActivity(roll('a', undefined), withDice(null), sv)).toBe('Bo slog en tärning')
   })
 })
+
+// The reader's own undo is said to the reader in one person (#1366): «You undid their last move»
+// and «Du ångrade sitt senaste drag» put the third person's possessive after a second-person «you».
+describe('the reader’s own undo is said in one person (#1366)', () => {
+  const undo = { seq: 11, by: 'A', at: '2026-10-25T00:00:00.000Z', intent: { v: 'undo.self' } } as Activity
+  it('says «your» and «ditt» on the phone of the seat that undid', () => {
+    expect(describeActivity(undo, table('A'), en)).toBe('You undid your last move')
+    expect(describeActivity(undo, table('A'), sv)).toBe('Du ångrade ditt senaste drag')
+  })
+  it('says «their» and «sitt» about somebody else', () => {
+    expect(describeActivity(undo, table('B'), en)).toBe('Ada undid their last move')
+    expect(describeActivity(undo, table(null), sv)).toBe('Ada ångrade sitt senaste drag')
+  })
+})

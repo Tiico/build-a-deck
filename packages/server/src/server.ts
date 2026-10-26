@@ -32,7 +32,7 @@ import { printExportOf, queueFaces } from './faces.js'
 import { printFileJobsOf, printManifestOf, type PrintFileJob } from './print-files.js'
 import { Country, routeOrder, widestBleedMm, type PrintManifest, type PrintProvider, type Route } from '@byd/print'
 import { PRINT_PACKAGE_FORMAT, PRINT_PACKAGE_FORMAT_VERSION, packPrintPackage, printPackageDisposition, printPackageReadme, printPathOf, type PrintPackageManifest } from './print-package.js'
-import { EXPORT_FORMAT, EXPORT_FORMAT_VERSION, ProjectExport, RULEBOOK_FILE, assetFileOf, assetHashesOf, duplicatedName, exportDisposition, importedName, packExport, printFileOf, readExport, readmeOf, type ImportProblem } from './export.js'
+import { EXPORT_FORMAT, EXPORT_FORMAT_VERSION, EXPORT_SUMMARY_HEADER, ProjectExport, RULEBOOK_FILE, assetFileOf, assetHashesOf, duplicatedName, exportDisposition, exportSummaryOf, importedName, packExport, printFileOf, readExport, readmeOf, type ImportProblem } from './export.js'
 import { BlockedAsset, ReportBody, type ReportStore } from './reports.js'
 import { operatorMail, receiptMail } from './report-mail.js'
 import { MotifBody, assetHash, svgBytesRefusal, resolveAssets, resolveFonts, resolveIcons, resolveRuleImages, resolveTemplate, type AssetStore } from './assets.js'
@@ -420,8 +420,9 @@ const CORS_BASE: Record<string, string> = {
   'access-control-allow-headers': 'content-type, authorization',
   'access-control-max-age': '86400',
   // A zip is saved under the name the server gives it (#542, #1280), which a page on another
-  // origin, as in development, can read only when it is exposed.
-  'access-control-expose-headers': 'content-disposition',
+  // origin, as in development, can read only when it is exposed; and the export's summary beside
+  // it (#1356), which the window says when it hands the zip over.
+  'access-control-expose-headers': 'content-disposition, x-byd-export',
 }
 
 function originOf(value: string | undefined): string | null {
@@ -2505,7 +2506,7 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       print: { rev: rec.rev, cards: plan.cards, ...(plan.rulebook && prints.has(plan.rulebook) ? { rulebook: plan.rulebook } : {}), credits: creditsOf(rec), warnings: plan.warnings, errors: plan.errors, failed },
     })
     const zip = packExport({ manifest, readme: readmeOf(lang, manifest), assets: assetFiles, prints })
-    res.writeHead(200, { 'content-type': 'application/zip', 'content-length': String(zip.length), 'content-disposition': exportDisposition(rec.name, rec.rev), 'cache-control': 'no-store' })
+    res.writeHead(200, { 'content-type': 'application/zip', 'content-length': String(zip.length), 'content-disposition': exportDisposition(rec.name, rec.rev), [EXPORT_SUMMARY_HEADER]: exportSummaryOf(manifest), 'cache-control': 'no-store' })
     res.end(zip)
     return true
   }
