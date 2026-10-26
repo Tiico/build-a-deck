@@ -1101,6 +1101,50 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
               )}
               <HostSeats client={client} sessionId={table.id} hostKey={table.hostKey} view={live.view} onNotice={say} lastStop={bandMoreRef} onRotate={rotate} />
             </span>
+            {/* The band's questions and what it says after them stand here, under the seats, where the
+                seats' own question already stands (#679): one place for every question the band asks. */}
+            {askingCode && (
+              <Question
+                className="byd-editor-table-ask"
+                label={t('editor.table.newCode.ask')}
+                confirm={t('editor.table.newCode.ask.yes')}
+                onConfirm={() => void rotate()}
+                onCancel={() => {
+                  setAskingCode(false)
+                  bandMoreRef.current?.focus()
+                }}
+              >
+                <b>{t('editor.table.newCode.ask')}</b> {t('editor.table.newCode.ask.body', { code: table.code })}
+              </Question>
+            )}
+            {askingEnd && (
+              <Question
+                className="byd-editor-table-ask"
+                label={t('tables.end.of', { table: table.code })}
+                confirm={t('tables.end.yes')}
+                onConfirm={() => {
+                  setAskingEnd(false)
+                  // The table's own end, through the line the band already has open to it (C9).
+                  void live.client?.send({ v: 'session.end' }).then(() => tableEnded())
+                }}
+                onCancel={() => {
+                  setAskingEnd(false)
+                  bandMoreRef.current?.focus()
+                }}
+              >
+                {t('tables.end.question', { table: table.code })}
+              </Question>
+            )}
+            {codeSaid !== null && !askingCode && (
+              <p className="byd-editor-table-said" role="status" data-code-said>
+                {codeSaid}
+              </p>
+            )}
+            {copied && (
+              <p className="byd-editor-table-said" data-copied>
+                {t('tables.copied')}
+              </p>
+            )}
           </span>
           {/* The way in and the rest (L86): «Öppna bordet» as the row has it, once the cards are
               loaded (#765), and the row's own menu with what the host does to the table. */}
@@ -1111,50 +1155,8 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
                 <OutGlyph />
               </a>
             )}
-            <RowWays table={table.code} button={bandMoreRef} ways={[{ id: 'code', label: 'editor.table.newCode', press: () => setAskingCode(true) }, { id: 'end', label: 'tables.end', apart: true, press: () => setAskingEnd(true) }]} />
+            <RowWays table={table.code} button={bandMoreRef} mark="more" ways={[{ id: 'code', label: 'editor.table.newCode', press: () => setAskingCode(true) }, { id: 'end', label: 'tables.end', apart: true, press: () => setAskingEnd(true) }]} />
           </span>
-          {askingCode && (
-            <Question
-              className="byd-editor-table-ask"
-              label={t('editor.table.newCode.ask')}
-              confirm={t('editor.table.newCode.ask.yes')}
-              onConfirm={() => void rotate()}
-              onCancel={() => {
-                setAskingCode(false)
-                bandMoreRef.current?.focus()
-              }}
-            >
-              <b>{t('editor.table.newCode.ask')}</b> {t('editor.table.newCode.ask.body', { code: table.code })}
-            </Question>
-          )}
-          {askingEnd && (
-            <Question
-              className="byd-editor-table-ask"
-              label={t('tables.end.of', { table: table.code })}
-              confirm={t('tables.end.yes')}
-              onConfirm={() => {
-                setAskingEnd(false)
-                // The table's own end, through the line the band already has open to it (C9).
-                void live.client?.send({ v: 'session.end' }).then(() => tableEnded())
-              }}
-              onCancel={() => {
-                setAskingEnd(false)
-                bandMoreRef.current?.focus()
-              }}
-            >
-              {t('tables.end.question', { table: table.code })}
-            </Question>
-          )}
-          {codeSaid !== null && !askingCode && (
-            <p className="byd-editor-table-said" role="status" data-code-said>
-              {codeSaid}
-            </p>
-          )}
-          {copied && (
-            <p className="byd-editor-table-said" data-copied>
-              {t('tables.copied')}
-            </p>
-          )}
         </div>
       )}
       {/* The line to the project, in D5's own states (#485, fynd 8): gone, with how old the
