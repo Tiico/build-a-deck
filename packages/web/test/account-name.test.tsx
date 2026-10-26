@@ -58,7 +58,8 @@ describe('the welcome step after the first login', () => {
     await loggedIn('nicklas.ockelberg@example.com')
     const gone = welcome()
     expect(await screen.findByRole('heading', { level: 1, name: 'Välkommen till Deckster' })).toBeTruthy()
-    expect(screen.getByText('Du är inloggad som nicklas.ockelberg@example.com.')).toBeTruthy()
+    // The address stands in parts, so it breaks where an address breaks (#1359); the sentence is whole.
+    expect(document.querySelector('.byd-welcome-as')?.textContent).toBe('Du är inloggad som nicklas.ockelberg@example.com.')
     const field = screen.getByLabelText('Vad ska andra kalla dig?') as HTMLInputElement
     expect(field.value).toBe('Nicklas')
     expect(field.maxLength).toBe(40)

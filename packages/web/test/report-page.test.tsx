@@ -59,6 +59,61 @@ describe('the report page (#1274)', () => {
     const link = await screen.findByRole('link', { name: 'anmälningssidan' })
     expect(link.getAttribute('href')).toBe(`/villkor/anmal?server=${encodeURIComponent(run.http)}`)
   })
+
+  // The way back is section 11 itself, opened, and not the top of the terms (#1361).
+  it('leads back to section 11 of the terms, which opens on arrival', async () => {
+    at('/villkor/anmal', <ReportPage />)
+    expect(screen.getByRole('link', { name: 'Villkor, avsnitt 11' }).getAttribute('href')).toBe(`/villkor?server=${encodeURIComponent(run.http)}#villkor-11`)
+    cleanup()
+    history.replaceState(null, '', `/villkor?server=${encodeURIComponent(run.http)}#villkor-11`)
+    render(
+      <StatusLive>
+        <TermsPage />
+      </StatusLive>,
+    )
+    const eleven = (await screen.findByText('Anmälan och borttagning')).closest('details')
+    expect(eleven?.id).toBe('villkor-11')
+    expect(eleven?.open).toBe(true)
+    expect(document.querySelectorAll('details[open]').length).toBe(1)
+  })
+
+  // The receipt takes the focus the form had, so the next Tab goes on from it (#1362, WCAG 2.4.3).
+  it('puts the focus on the receipt’s heading once the report is sent', async () => {
+    at('/villkor/anmal', <ReportPage />)
+    fireEvent.change(screen.getByLabelText('Vilken bild är det?'), { target: { value: 'Bilden' } })
+    fireEvent.change(screen.getByLabelText('Var finns den?'), { target: { value: 'Skogens råd' } })
+    fireEvent.change(screen.getByLabelText('Varför får den inte finnas?'), { target: { value: 'Min.' } })
+    fireEvent.click(screen.getByRole('checkbox'))
+    const send = screen.getByRole('button', { name: 'Skicka anmälan' })
+    send.focus()
+    fireEvent.click(send)
+    const heading = await screen.findByRole('heading', { name: 'Anmälan är skickad' })
+    await waitFor(() => expect(document.activeElement).toBe(heading))
+  })
+
+  // The beställare's decision (#1376, punkt 2): logged in, the name and the address are filled in
+  // where they can be seen, and both can be emptied (L88).
+  it('fills in the name and the address of whoever is logged in, and lets both be emptied', async () => {
+    await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'mira@example.com' }) })
+    expect((await fetch(`${run.http}/me/name`, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'Mira Lind' }) })).ok).toBe(true)
+    at('/villkor/anmal', <ReportPage />)
+    const name = screen.getByLabelText<HTMLInputElement>('Ditt namn')
+    const email = screen.getByLabelText<HTMLInputElement>('Din e‑post')
+    await waitFor(() => expect(email.value).toBe('mira@example.com'))
+    expect(name.value).toBe('Mira Lind')
+    fireEvent.change(name, { target: { value: '' } })
+    fireEvent.change(email, { target: { value: '' } })
+    expect(name.value).toBe('')
+    expect(email.value).toBe('')
+  })
+
+  it('fills in nothing for nobody, and never over what has been typed', async () => {
+    at('/villkor/anmal', <ReportPage />)
+    fireEvent.change(screen.getByLabelText('Ditt namn'), { target: { value: 'Bo' } })
+    await new Promise((r) => setTimeout(r, 300))
+    expect(screen.getByLabelText<HTMLInputElement>('Ditt namn').value).toBe('Bo')
+    expect(screen.getByLabelText<HTMLInputElement>('Din e‑post').value).toBe('')
+  })
 })
 
 describe('a blocked picture in Tabell (#1274)', () => {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useT } from '../i18n/index.js'
 
 // Where a beta tester turns, and what she quotes back (#757, beställarens beslut, prototyp A): a
@@ -27,21 +27,36 @@ export function AboutLine({ http }: { http: string }) {
   const server = new URLSearchParams(location.search).get('server')
   const terms = `/villkor${server ? `?${new URLSearchParams({ server }).toString()}` : ''}`
   const report = `/villkor/anmal${server ? `?${new URLSearchParams({ server }).toString()}` : ''}`
+  // Each separator is the end of the part before it (#1373): when the row breaks on a narrow card, a
+  // line ends with «·» and the next begins with a word, never with the dot.
+  const parts: ReactNode[] = [
+    <a key="terms" href={terms}>
+      {t('about.terms')}
+    </a>,
+    <a key="privacy" href={`${terms}#integritet`}>
+      {t('about.privacy')}
+    </a>,
+    // A report of a picture (#1274): always there, like the terms, since it is the app's own page.
+    <a key="report" href={report}>
+      {t('about.report')}
+    </a>,
+    ...(href
+      ? [
+          <a key="contact" href={href}>
+            {t('about.contact')}
+          </a>,
+        ]
+      : []),
+    ...(about.release ? [t('about.version', { release: about.release })] : []),
+  ]
   return (
     <p className="byd-muted byd-about" data-about>
-      <a href={terms}>{t('about.terms')}</a>
-      {' · '}
-      <a href={`${terms}#integritet`}>{t('about.privacy')}</a>
-      {' · '}
-      {/* A report of a picture (#1274): always there, like the terms, since it is the app's own page. */}
-      <a href={report}>{t('about.report')}</a>
-      {href && (
-        <>
-          {' · '}
-          <a href={href}>{t('about.contact')}</a>
-        </>
-      )}
-      {about.release && ` · ${t('about.version', { release: about.release })}`}
+      {parts.map((part, i) => (
+        <span key={i}>
+          {part}
+          {i < parts.length - 1 && ' · '}
+        </span>
+      ))}
     </p>
   )
 }

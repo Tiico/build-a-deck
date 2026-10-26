@@ -42,7 +42,9 @@ export type Letter = {
   more?: readonly string[]
   // The letter's one button and the link it follows, written out again in the white band. A letter
   // without one (#1280) still names the site it came from, so its hand and its foot are there.
-  action?: { button: string; pasteIt: string; link: string } | { site: string }
+  // `pasteIt` is the line about a button that does not work, and it stands only where the link is the
+  // letter's whole point, a login or an invitation (#1374); a link that only explains goes without it.
+  action?: { button: string; pasteIt?: string; link: string } | { site: string }
   fine: string
   // The word before the contact in the foot, in the reader's language.
   contactWord: string
@@ -107,7 +109,7 @@ export function bands(l: Letter): string {
       <p style="margin:22px 0 0;font:13px/1.6 ${FONT};color:#5b574c">${esc(l.fine)}</p>
     </td></tr>
     <tr><td style="padding:20px 28px 24px;background:#ffffff;text-align:left;border:1px solid #e5e2d8;border-top:0;border-radius:0 0 18px 18px">
-      ${action ? `<p style="margin:0;font:13px/1.6 ${FONT};color:#5b574c">${esc(action.pasteIt)}<br><a href="${href}" style="color:#1a0dab;word-break:break-all">${href}</a></p>
+      ${action?.pasteIt ? `<p style="margin:0;font:13px/1.6 ${FONT};color:#5b574c">${esc(action.pasteIt)}<br><a href="${href}" style="color:#1a0dab;word-break:break-all">${href}</a></p>
       <div style="margin-top:16px">${foot}</div>` : foot}
     </td></tr>
   </table>

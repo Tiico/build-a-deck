@@ -26,3 +26,26 @@ export function markPitchSeen(): void {
     // A storage that refuses to remember shows the line again next time, which is the safe side.
   }
 }
+
+// Whether this browser has been told the first visit's line on the login card (#691, #1358): that
+// the link in the mail both logs in and makes the account. It is not the sales line. The landing
+// page counts as the sales line having been seen, since it says what the product is, but it never
+// says how an account is made; so a newcomer who goes in by the landing page is told it all the same.
+// Kept and read the way the sales line is, and wrong on the same safe side.
+const FIRST = 'byd.login.first-seen'
+
+export function firstVisitSeen(): boolean {
+  try {
+    return localStorage.getItem(FIRST) === '1'
+  } catch {
+    return false
+  }
+}
+
+export function markFirstVisitSeen(): void {
+  try {
+    localStorage.setItem(FIRST, '1')
+  } catch {
+    // As for the sales line: a storage that refuses tells the line again next time.
+  }
+}

@@ -26,6 +26,10 @@ const facts = (r: Report, lang: Lang): [string, string][] =>
         ['Vem', [r.name, r.email].filter((s) => s !== '').join(', ') || 'Inte angivet'],
         ['God tro', `Ja, ${r.at.slice(0, 10)}`],
       ]
+// Where a report's letters lead: section 11 of the terms, which says how a report is handled, opened
+// on arrival (#1361), and not the top of the terms with every section closed.
+export const REPORT_SECTION = '/villkor#villkor-11'
+
 const asText = (list: [string, string][]): string => list.map(([k, v]) => `${k}: ${v}`).join('\n')
 
 /** The receipt (DSA art. 16.4): what was reported, as it was written, and what happens next. */
@@ -33,14 +37,14 @@ export function receiptMail(r: Report, link: string, contact?: string): Mail {
   const site = siteOf(link)
   const list = facts(r, r.lang)
   if (r.lang === 'en') {
-    const subject = `Your report to Deckster is received, ${r.id}`
+    const subject = `Your report to Deckster has been received (${r.id})`
     const lead = 'A person at Deckster reads it within two working days and mails you the decision. This is what you reported:'
     const fine = `The report is called ${r.id}. Reply to this mail if you want to add anything.`
     return {
       to: r.email,
       subject,
-      text: `The report is received.\n\n${lead}\n\n${asText(list)}\n\nHow a report is tried: ${link}\n\n${fine}${textFoot(site, contact, 'Contact')}`,
-      html: bands({ lang: 'en', subject, pre: 'Read within two working days.', hello: 'The report is received', lead, facts: list, fine, contactWord: 'Contact', contact, action: { button: 'How a report is tried', pasteIt: 'Button not working? Paste the link into your browser:', link: link } }),
+      text: `The report has been received.\n\n${lead}\n\n${asText(list)}\n\nHow we handle a report: ${link}\n\n${fine}${textFoot(site, contact, 'Contact')}`,
+      html: bands({ lang: 'en', subject, pre: 'Read within two working days.', hello: 'The report has been received', lead, facts: list, fine, contactWord: 'Contact', contact, action: { button: 'How we handle a report', link } }),
     }
   }
   const subject = `Din anmälan till Deckster är mottagen, ${r.id}`
@@ -50,7 +54,7 @@ export function receiptMail(r: Report, link: string, contact?: string): Mail {
     to: r.email,
     subject,
     text: `Anmälan är mottagen.\n\n${lead}\n\n${asText(list)}\n\nSå prövas en anmälan: ${link}\n\n${fine}${textFoot(site, contact, 'Kontakt')}`,
-    html: bands({ lang: 'sv', subject, pre: 'Läses inom två arbetsdagar.', hello: 'Anmälan är mottagen', lead, facts: list, fine, contactWord: 'Kontakt', contact, action: { button: 'Så prövas en anmälan', pasteIt: 'Fungerar inte knappen? Klistra in länken i webbläsaren:', link: link } }),
+    html: bands({ lang: 'sv', subject, pre: 'Läses inom två arbetsdagar.', hello: 'Anmälan är mottagen', lead, facts: list, fine, contactWord: 'Kontakt', contact, action: { button: 'Så prövas en anmälan', link } }),
   }
 }
 
@@ -81,11 +85,11 @@ export function decisionMail(r: Report, outcome: ReportOutcome, link: string, co
   if (r.lang === 'en') {
     const subject = `Your report ${r.id}: ${words.hello.toLowerCase()}`
     const fine = 'You may also turn to a court.'
-    return { to: r.email, subject, text: `${words.hello}.\n\n${words.lead}\n\n${fine}${textFoot(site, contact, 'Contact')}`, html: bands({ lang: 'en', subject, pre: words.hello, hello: words.hello, lead: words.lead, fine, contactWord: 'Contact', contact, action: { button: 'How a report is tried', pasteIt: 'Button not working? Paste the link into your browser:', link: link } }) }
+    return { to: r.email, subject, text: `${words.hello}.\n\n${words.lead}\n\n${fine}${textFoot(site, contact, 'Contact')}`, html: bands({ lang: 'en', subject, pre: words.hello, hello: words.hello, lead: words.lead, fine, contactWord: 'Contact', contact, action: { button: 'How we handle a report', link } }) }
   }
   const subject = `Din anmälan ${r.id}: ${words.hello.toLowerCase()}`
   const fine = 'Du kan också vända dig till allmän domstol.'
-  return { to: r.email, subject, text: `${words.hello}.\n\n${words.lead}\n\n${fine}${textFoot(site, contact, 'Kontakt')}`, html: bands({ lang: 'sv', subject, pre: words.hello, hello: words.hello, lead: words.lead, fine, contactWord: 'Kontakt', contact, action: { button: 'Så prövas en anmälan', pasteIt: 'Fungerar inte knappen? Klistra in länken i webbläsaren:', link: link } }) }
+  return { to: r.email, subject, text: `${words.hello}.\n\n${words.lead}\n\n${fine}${textFoot(site, contact, 'Kontakt')}`, html: bands({ lang: 'sv', subject, pre: words.hello, hello: words.hello, lead: words.lead, fine, contactWord: 'Kontakt', contact, action: { button: 'Så prövas en anmälan', link } }) }
 }
 
 const why: Record<BlockReason, string> = {

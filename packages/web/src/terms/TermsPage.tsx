@@ -37,10 +37,15 @@ export function TermsPage() {
   }, [http])
   const text = textOf(version)
   const [all, setAll] = useState<boolean | null>(null)
-  // A link to a half of the page lands on it once it is drawn.
+  // A link to a half of the page lands on it once it is drawn. A link to a section (`#villkor-11`,
+  // #1361) opens that section and lands on it, as the report page's way back and the report's letters
+  // lead to section 11; every other section stays as it was.
   useEffect(() => {
     const id = location.hash.slice(1)
     if (id === 'integritet' || id === 'villkor') document.getElementById(id)?.scrollIntoView()
+    const section = /^(villkor|integritet)-\d+$/.test(id) ? document.getElementById(id) : null
+    if (section instanceof HTMLDetailsElement) section.open = true
+    section?.scrollIntoView?.()
   }, [])
   // Which half is being read, for the row at the top to say: the privacy text from when its heading
   // has passed under the row.
@@ -109,11 +114,11 @@ function Part({ id, doc, all, href, full }: { id: string; doc: Document; all: bo
           <li key={section.h}>
             {section.waits ? (
               // A section that waits for what it will be about (9, 10) has nothing more to open.
-              <div className="byd-terms-row" data-waits="">
+              <div className="byd-terms-row" id={`${id}-${i + 1}`} data-waits="">
                 <Head n={i + 1} section={section} href={href} />
               </div>
             ) : (
-              <Row key={String(all)} open={all === true} n={i + 1} section={section} href={href} full={full} />
+              <Row key={String(all)} id={`${id}-${i + 1}`} open={all === true} n={i + 1} section={section} href={href} full={full} />
             )}
           </li>
         ))}
@@ -134,9 +139,9 @@ function Head({ n, section, href }: { n: number; section: Document['sections'][n
   )
 }
 
-function Row({ open, n, section, href, full }: { open: boolean; n: number; section: Document['sections'][number]; href(part: LinkPart): string; full: string }) {
+function Row({ id, open, n, section, href, full }: { id: string; open: boolean; n: number; section: Document['sections'][number]; href(part: LinkPart): string; full: string }) {
   return (
-    <details className="byd-terms-row" open={open}>
+    <details className="byd-terms-row" id={id} open={open}>
       <summary>
         <Head n={n} section={section} href={href} />
         <span className="byd-terms-open" aria-hidden="true">

@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, type CSSProperties } from 'react'
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { DecksterMark } from '../brand/DecksterMark.js'
 import { WOOD_EDGE } from '../brand/mark.js'
 import { CardPreview } from '../editor/CardPreview.js'
@@ -28,6 +28,28 @@ export function LandingPage({ http, server, onNavigate }: { http: string; server
   const cards = useMemo(() => landingCards(lang), [lang])
   const login = loginUrl(location.pathname + location.search, server)
   useEffect(() => markPitchSeen(), [])
+  const phone = usePhone()
+  const words = (
+    <Fragment key="words">
+      <p className="byd-landing-eyebrow">{t('landing.eyebrow')}</p>
+      <h1 id="byd-landing-title">
+        {t('landing.title.build')} <em>{t('landing.title.play')}</em>
+      </h1>
+      <p className="byd-landing-lede">{t('landing.lede')}</p>
+      <div className="byd-landing-ctas">
+        <a className="byd-landing-btn byd-primary" href={login} data-landing-door="build">
+          {t('landing.build')}
+          <ArrowGlyph to="right" />
+        </a>
+        <span className="byd-landing-fine">{t('landing.fine')}</span>
+      </div>
+    </Fragment>
+  )
+  const code = (
+    <div key="code" className="byd-landing-code">
+      <CodeRow server={server} onNavigate={onNavigate} />
+    </div>
+  )
   const [owl, oak, mist, fox, queen] = cards as [LandingCard, LandingCard, LandingCard, LandingCard, LandingCard]
   return (
     <div className="byd-account byd-landing" data-page="home" data-landing>
@@ -50,21 +72,10 @@ export function LandingPage({ http, server, onNavigate }: { http: string; server
       <main>
         <section className="byd-landing-hero" aria-labelledby="byd-landing-title">
           <div className="byd-landing-pitch">
-            <p className="byd-landing-eyebrow">{t('landing.eyebrow')}</p>
-            <h1 id="byd-landing-title">
-              {t('landing.title.build')} <em>{t('landing.title.play')}</em>
-            </h1>
-            <p className="byd-landing-lede">{t('landing.lede')}</p>
-            <div className="byd-landing-ctas">
-              <a className="byd-landing-btn byd-primary" href={login} data-landing-door="build">
-                {t('landing.build')}
-                <ArrowGlyph to="right" />
-              </a>
-              <span className="byd-landing-fine">{t('landing.fine')}</span>
-            </div>
-            <div className="byd-landing-code">
-              <CodeRow server={server} onNavigate={onNavigate} />
-            </div>
+            {/* On a phone the code stands first (#675), and it is first in the page too, so a keyboard
+                meets the boxes in the order they stand in (#1363). Keyed, so the row keeps what has been
+                typed in it when the window crosses the line. */}
+            {phone ? [code, words] : [words, code]}
           </div>
           <Scene owl={owl} oak={oak} mist={mist} fox={fox} queen={queen} />
         </section>
@@ -227,6 +238,22 @@ function Scene({ owl, oak, mist, fox, queen }: Record<'owl' | 'oak' | 'mist' | '
       </div>
     </div>
   )
+}
+
+// The width under which the code stands first (#675), as `landing.css` says it.
+const PHONE = '(max-width: 560px)'
+function usePhone(): boolean {
+  const ask = () => typeof window.matchMedia === 'function' && window.matchMedia(PHONE).matches
+  const [phone, setPhone] = useState(ask)
+  useEffect(() => {
+    if (typeof window.matchMedia !== 'function') return
+    const query = window.matchMedia(PHONE)
+    const answer = () => setPhone(query.matches)
+    query.addEventListener('change', answer)
+    answer()
+    return () => query.removeEventListener('change', answer)
+  }, [])
+  return phone
 }
 
 // The size the table is drawn at, before it is zoomed to its column (`landing.css` says the same).

@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { DecksterMark } from '../brand/DecksterMark.js'
 import { ArrowGlyph } from '../glyphs.js'
 import { useLang, useT } from '../i18n/index.js'
 import { usePageTitle } from '../status/DocumentTitle.js'
+import { myAccount } from '../account/api.js'
 import './terms-page.css'
 import './report-page.css'
 
@@ -15,7 +16,9 @@ import './report-page.css'
 //
 // The page is open to everyone: whoever saw a picture at a table need not have an account. Name and
 // address may be left out, since a report of sexual content involving children needs neither; without
-// an address there is no receipt, and the page says so when it is sent.
+// an address there is no receipt, and the page says so when it is sent. Whoever is logged in finds her
+// name and address filled in, where she sees them, and can empty either (#1376, beställarens beslut
+// 2026-10-25); nothing she has typed is written over.
 type Field = 'what' | 'where' | 'why' | 'name' | 'email'
 type Sent = { id: string; email: string }
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
@@ -39,11 +42,29 @@ export function ReportPage() {
     }
   }, [http])
   const [values, setValues] = useState<Record<Field, string>>({ what: '', where: '', why: '', name: '', email: '' })
+  useEffect(() => {
+    let live = true
+    myAccount(http)
+      .then((me) => {
+        if (!live || !me) return
+        setValues((had) => ({ ...had, name: had.name === '' ? (me.name ?? '') : had.name, email: had.email === '' ? me.email : had.email }))
+      })
+      .catch(() => undefined)
+    return () => {
+      live = false
+    }
+  }, [http])
   const [goodFaith, setGoodFaith] = useState(false)
   const [tried, setTried] = useState(false)
   const [sending, setSending] = useState(false)
   const [failed, setFailed] = useState(false)
   const [sent, setSent] = useState<Sent | null>(null)
+  // The receipt takes the place of the form, and the focus the form had goes to its heading (#1362):
+  // the next Tab goes on from the receipt, and a screen reader reads where it now is.
+  const receipt = useRef<HTMLHeadingElement>(null)
+  useEffect(() => {
+    if (sent) receipt.current?.focus()
+  }, [sent])
   const missing = {
     what: values.what.trim() === '',
     where: values.where.trim() === '',
@@ -53,7 +74,8 @@ export function ReportPage() {
   }
   const wrong = (key: keyof typeof missing) => tried && missing[key]
   const home = server ? `/?${new URLSearchParams({ server }).toString()}` : '/'
-  const terms = `/villkor${server ? `?${new URLSearchParams({ server }).toString()}` : ''}#villkor`
+  // Section 11 itself, which opens on arrival (#1361).
+  const terms = `/villkor${server ? `?${new URLSearchParams({ server }).toString()}` : ''}#villkor-11`
 
   const submit = async (event: FormEvent) => {
     event.preventDefault()
@@ -135,7 +157,9 @@ export function ReportPage() {
         </header>
         {sent ? (
           <div className="byd-report-sent" role="status">
-            <strong>{t('report.sent')}</strong>
+            <h2 ref={receipt} tabIndex={-1}>
+              {t('report.sent')}
+            </h2>
             <p>{sent.email !== '' ? t('report.sent.receipt', { email: sent.email, id: sent.id }) : t('report.sent.none', { id: sent.id })}</p>
             {sent.email !== '' && <p>{t('report.sent.next')}</p>}
             <a className="byd-report-home" href={home}>

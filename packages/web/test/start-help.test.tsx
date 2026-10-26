@@ -13,6 +13,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { LoginCard } from '../src/account/LoginCard.js'
+import { markPitchSeen } from '../src/account/pitch.js'
 
 // What the product does during the beta, and that print is on its way (#743): ordering is phase 5,
 // and a line that promised it sent a beta tester looking for something that was not there.
@@ -67,6 +68,19 @@ describe('the login card', () => {
     cleanup()
     login()
     expect(screen.queryByText(/skapa konto med din e\u2011post/)).toBeNull()
+    expect(screen.getByText('Logga in för att komma till dina spel.')).toBeTruthy()
+  })
+
+  // The landing page counts as the sales line having been seen (L36), and the first visit's line is
+  // another thing: it says that the link makes the account, which the landing page never says. A
+  // newcomer who goes in by the landing page is told it all the same (#1358).
+  it('tells the first visit its line when the landing page has already been seen', () => {
+    markPitchSeen()
+    login()
+    expect(screen.queryByText(PITCH)).toBeNull()
+    expect(screen.getByText('Logga in eller skapa konto med din e‑post. Du får en länk i mejlet.')).toBeTruthy()
+    cleanup()
+    login()
     expect(screen.getByText('Logga in för att komma till dina spel.')).toBeTruthy()
   })
 

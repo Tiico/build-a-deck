@@ -43,12 +43,12 @@ describe('the mail the tool sends, in the reader\'s language (A4)', () => {
     expect((await post('/auth/login', { email: 'ada@example.com' })).status).toBe(200)
     const swedish = run.mail.sent.at(-1)!
     expect(swedish.subject).toBe('Logga in på Deckster')
-    expect(swedish.text).toContain('Klicka för att logga in')
+    expect(swedish.text).toContain('Logga in på Deckster: ')
 
     expect((await post('/auth/login', { email: 'bo@example.com', lang: 'en' })).status).toBe(200)
     const english = run.mail.sent.at(-1)!
     expect(english.subject).toBe('Sign in to Deckster')
-    expect(english.text).toContain('Click to sign in')
+    expect(english.text).toContain('Sign in to Deckster: ')
     // The link itself is the same link, whatever the language around it.
     expect(english.text).toMatch(/\/auth\/verify\?token=/)
     // A language the tool does not speak is not an error: the mail goes out in Swedish.
