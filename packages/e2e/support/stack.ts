@@ -122,7 +122,10 @@ export async function serverWith(env: Record<string, string>): Promise<{ origin:
   if (!dist) throw new Error('serverWith runs inside the suite, where the stack has been started')
   const database = process.env['BYD_E2E_DATABASE_URL']
   const logFile = join(HERE, '..', '.stack', `server-${randomBytes(4).toString('hex')}.log`)
-  const server = await listen({ STATIC_DIR: dist, ...(database ? { DATABASE_URL: database } : {}), ...env }, logFile)
+  // Beside the stack: the walk for a port starts at the stack's own, which is therefore the first
+  // number it has to turn down (#1371).
+  const stack = process.env['BYD_E2E_ORIGIN']
+  const server = await listen({ STATIC_DIR: dist, ...(database ? { DATABASE_URL: database } : {}), ...env }, logFile, stack ? Number(new URL(stack).port) : undefined)
   return {
     origin: server.origin,
     stop: async () => {
@@ -143,8 +146,8 @@ export async function serverWith(env: Record<string, string>): Promise<{ origin:
  * A table that nobody is looking at is not swept out from under a test that is between two
  * pages, so both idle timers are pushed past any run.
  */
-async function listen(env: Record<string, string>, logFile = LOG): Promise<{ origin: string; stop: () => Promise<void> }> {
-  let port = await free()
+async function listen(env: Record<string, string>, logFile = LOG, from?: number): Promise<{ origin: string; stop: () => Promise<void> }> {
+  let port = await free(from)
   mkdirSync(join(logFile, '..'), { recursive: true })
   for (let attempt = 0; attempt < 8; attempt++) {
     const origin = `http://127.0.0.1:${port}`
@@ -166,7 +169,7 @@ async function listen(env: Record<string, string>, logFile = LOG): Promise<{ ori
     child.stderr.on('data', (b: Buffer) => log.push(String(b)))
 
     const stop = () => drain(child)
-    if (await healthy(origin, child)) return { origin, stop }
+    if (await healthy(origin, child, () => listening(log.join(''), port))) return { origin, stop }
     await stop()
     // A port in the band can still be taken — by a peer worktree's stack, which is the whole
     // reason the band is walked rather than fixed. Anything else is the server failing to start,
@@ -203,11 +206,36 @@ async function fakeProviders(): Promise<{ url: string; stop: () => Promise<void>
   throw new Error('the fake AI provider could not find a free port in eight tries')
 }
 
-/** True once the server answers `/health`; false if it dies or never does. */
-async function healthy(origin: string, child: ChildProcess): Promise<boolean> {
+/**
+ * Whether the server's own output says it is listening on `port`: the line `main.ts` writes once
+ * `listen` has called back.
+ */
+function listening(output: string, port: number): boolean {
+  return output.split('\n').some((line) => {
+    try {
+      const said = JSON.parse(line) as { msg?: unknown; port?: unknown }
+      return said.msg === 'listening' && Number(said.port) === port
+    } catch {
+      return false
+    }
+  })
+}
+
+/**
+ * True once the server answers `/health`; false if it dies or never does.
+ *
+ * And only once the child has said it is the one listening (#1371). An answer on the port is not
+ * proof of that: whatever already held the port answers too, and a child that died of EADDRINUSE
+ * was taken for a healthy server for as long as it took to die.
+ */
+async function healthy(origin: string, child: ChildProcess, own: () => boolean): Promise<boolean> {
   const deadline = Date.now() + 30_000
   while (Date.now() < deadline) {
     if (child.exitCode !== null) return false
+    if (!own()) {
+      await new Promise((r) => setTimeout(r, 100))
+      continue
+    }
     try {
       const res = await fetch(`${origin}/health`)
       // `/health` answers for Postgres too, so a server that is up before its database is not

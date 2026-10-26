@@ -1,6 +1,9 @@
+import { randomUUID } from 'node:crypto'
 import { join } from 'node:path'
 import { expect, test } from '../support/test.js'
 import { askedForAnyPort } from '../../../test-support/listen-zero.js'
+import { free } from '../support/ports.js'
+import { serverWith } from '../support/stack.js'
 
 // What the rest of the suite stands on, checked before it is trusted.
 //
@@ -56,6 +59,28 @@ test.describe('the stack the suite runs against', () => {
     const here = import.meta.dirname
     expect(askedForAnyPort(here)).toEqual([])
     expect(askedForAnyPort(join(here, '..', 'support'))).toEqual([])
+  })
+
+  // A port the stack's own server holds is not free (#1371). The server listens on every address,
+  // and the probe asked only 127.0.0.1, which macOS lets a second socket have beside it; the next
+  // server then died of EADDRINUSE while the first one answered its health check for it.
+  test('never hands out the port the stack is listening on', async ({ baseURL }) => {
+    const port = Number(new URL(baseURL!).port)
+    expect(await free(port)).not.toBe(port)
+  })
+
+  // A second server beside the stack is a server of its own: another origin, and answering with the
+  // configuration it was given, not the stack's (#1371).
+  test('starts a second server with its own configuration on an origin of its own', async ({ baseURL }) => {
+    const release = `serverwith-${randomUUID()}`
+    const other = await serverWith({ BYD_TAG: release })
+    try {
+      expect(other.origin).not.toBe(baseURL)
+      const health = (await (await fetch(`${other.origin}/health`)).json()) as { release?: string }
+      expect(health.release).toBe(release)
+    } finally {
+      await other.stop()
+    }
   })
 
   test('keeps the log in Postgres wherever a run is expected to prove durability', async ({ baseURL }) => {
