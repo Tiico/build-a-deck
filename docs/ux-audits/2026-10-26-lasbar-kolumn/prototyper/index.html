@@ -1,0 +1,550 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp — vilken kolumn står still i Tabell</title>
+<!-- PROTOTYP 2026-10-26. Kastas när en variant är vald.
+     Fråga: bocken, id och antal står fastnålade till vänster i Tabell (L55, #145, #695) och tar
+     ~300 px av raden, men ingen av dem är det en designer orienterar sig efter — det är fritexten,
+     titeln. Vad ska stå still när tabellen rullar i sidled, och vem bestämmer det?
+     Fyra lägen på samma tabell, i appens egen stil (värden ur editor.css, inte importerade):
+       ?v=nu  — som i dag: bock, id och antal på listen.
+       ?v=A   — Låset: designern låser vilken kolumn som helst (i dörren och på rubriken).
+       ?v=B   — Namnkolumnen: verktyget nålar kortets namn; id och antal står under namnet i cellen.
+       ?v=C   — Kanten: listens kant är ett handtag; det som står till vänster om den står still.
+     ?w=1024|1280|1440|0 (0 = fönstret) · ?lek=prov|tat · ?font=mac|bred (+15 %, som Linux)
+     Ingenting här importeras av appen. -->
+<link rel="stylesheet" href="proto.css">
+<style>
+  body { overflow: auto; }
+  .sida { min-height: 100vh; display: flex; flex-direction: column; }
+  .protorad .grupp { display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+  .protorad .grupp > span { color: #c8b98d; margin-right: 2px; }
+  .protorad button[aria-pressed='true'] { background: #ffd98a; color: #1f1b12; border-color: #ffd98a; font-weight: 700; }
+  .protorad button.rek::after { content: ' ★'; }
+  .protorad .anteckning { min-height: 0; }
+  .protorad .anteckning p { margin: 0 0 4px; }
+  .protorad .matt { flex-wrap: wrap; row-gap: 2px; }
+  .scen { flex: 1; padding: var(--s4) var(--s4) 24px; display: grid; justify-content: start; }
+
+  /* ── Editorns Tabell-flik, så mycket av den som frågan behöver ───────────────────────── */
+  .fonster { --byd-tap: 44px; --byd-s1: 4px; --byd-s2: 8px; --byd-s3: 12px; --byd-s4: 16px;
+    --byd-editor-quiet: #868ea3; --byd-editor-data-rail: rgba(160, 180, 230, 0.09); --byd-editor-data-rail-edge: #7d879c;
+    --byd-editor-data-rail-ink: #b7c0d6; --byd-editor-count-ink: #c3cbdd; --byd-editor-primary-mark: #3c8ce7; --byd-editor-line: #2f333d;
+    width: var(--w, 100%); max-width: 100%; height: calc(100vh - 230px); min-height: 480px; display: flex; flex-direction: column;
+    background: #23262e; color: #ddd; font-size: 13px; outline: 1px solid #3a3f4b; }
+  .fonster[data-font='bred'] .byd-data { font-size: 13.8px; }
+  .fonster[data-font='bred'] .byd-data input { font-size: 13.8px; }
+  .flikar { flex: none; display: flex; gap: 2px; padding: 8px 16px 0; border-bottom: 1px solid var(--byd-editor-line); }
+  .flikar span { padding: 8px 12px; border-radius: 6px 6px 0 0; color: var(--byd-editor-quiet); font-weight: 600; }
+  .flikar span[aria-current] { background: #1b1d23; color: #fff; box-shadow: inset 0 -2px 0 var(--byd-editor-primary-mark); }
+  .tabell { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 12px 16px 0; }
+  .kron { flex: none; display: flex; align-items: center; gap: 9px; padding: 0 0 12px; }
+  .kron .sok { flex: 1 1 400px; display: flex; align-items: center; min-height: var(--byd-tap); padding: 0 12px; border: 1px solid #3b414e; border-radius: 8px; background: #1b1d23; color: var(--byd-editor-quiet); }
+  .kron .csv { display: inline-flex; align-items: center; min-height: var(--byd-tap); padding: 0 12px; border: 1px solid #3b414e; border-radius: 8px; background: #1b1d23; color: #dce3f2; font-weight: 700; }
+  .byd-data-scroll { position: relative; flex: 1 1 auto; min-height: 0; overflow: auto; padding-bottom: 56px; }
+  .byd-data { border-collapse: separate; border-spacing: 0; width: max-content; min-width: 100%; background: #1b1d23; table-layout: fixed; --byd-data-head-pad: 10px; --byd-data-cell-pad: 10px; font-size: 12px; }
+  .byd-data th { text-align: left; padding: 8px var(--byd-data-head-pad); color: var(--byd-editor-quiet); font-weight: 600; border-bottom: 1px solid #3b4358; position: sticky; top: 0; z-index: 2; background: #20232d; white-space: nowrap; vertical-align: top; }
+  .byd-data td { padding: 0; border-bottom: 1px solid #2a2e39; }
+  .byd-data tbody tr { background: #1b1d23; }
+  .byd-data tbody tr:hover td { background-image: linear-gradient(rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.03)); }
+  .byd-data th button { display: inline-flex; align-items: center; gap: 6px; padding: 0; border: 0; border-radius: 4px; background: transparent; color: inherit; font: inherit; font-weight: 600; cursor: pointer; }
+  .byd-data th button :is(span, .byd-glyph) { color: var(--byd-editor-quiet); }
+  .byd-data th button:hover { color: #dce3f2; }
+  .byd-data th button[data-active='true'] { color: #dce3f2; }
+  .byd-glyph { flex: none; vertical-align: -0.125em; pointer-events: none; }
+  .byd-data-check { width: var(--byd-tap); text-align: center; padding: 0 !important; }
+  .byd-data-tick { display: grid; place-items: center; min-width: var(--byd-tap); min-height: var(--byd-tap); cursor: pointer; }
+  .byd-data .byd-data-tick input { appearance: none; width: 18px; height: 18px; padding: 0; margin: 0; border: 1px solid #5b6274; border-radius: 3px; background: #14161c; cursor: pointer; }
+  .byd-data .byd-data-tick input:checked { background: var(--byd-editor-primary-mark) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3.5 8.5l3 3 6-6' fill='none' stroke='%23fff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 14px no-repeat; border-color: var(--byd-editor-primary-mark); }
+  .byd-data .byd-data-tick input:focus-visible { outline: 2px solid var(--byd-editor-primary-mark); outline-offset: 2px; }
+  .byd-data-id { padding: 0 var(--byd-data-cell-pad) !important; height: var(--byd-tap); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--byd-editor-data-rail-ink); }
+  .byd-data input { background: transparent; border: 0; color: #ddd; padding: 8px var(--byd-data-cell-pad); width: 100%; box-sizing: border-box; font-size: 12px; font-family: inherit; height: var(--byd-tap); }
+  .byd-data input:focus-visible { outline: 2px solid var(--byd-editor-primary-mark); outline-offset: -2px; }
+  .byd-data td[data-col='antal'] input { color: var(--byd-editor-data-rail-ink); font-variant-numeric: tabular-nums; }
+  .byd-data td[data-col='body'] { vertical-align: top; }
+  .byd-data-body { padding: 8px var(--byd-data-cell-pad) 8px; line-height: 1.45; max-height: calc(1.45 * 2em + 16px); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; color: #ddd; white-space: normal; }
+  .byd-data td[data-col='body'] .byd-data-body { padding-bottom: 0; margin-bottom: 8px; }
+  .byd-data-head-row2 { display: flex; align-items: center; gap: 4px; margin-top: 2px; height: 16px; color: var(--byd-editor-count-ink); font-size: 11px; font-weight: 400; }
+  .byd-data-head-row2 .hjalp { display: inline-grid; place-items: center; width: 15px; height: 15px; border: 1px solid var(--byd-editor-quiet); border-radius: 50%; font-size: 10px; }
+  .byd-data-filter { display: inline-grid; place-items: center; width: 24px; height: 24px; margin-left: 2px; border: 0; border-radius: 4px; background: transparent; color: var(--byd-editor-quiet); cursor: pointer; }
+  .byd-data-filter:hover { color: #dce3f2; }
+  .byd-prose-pilcrow { color: var(--byd-editor-quiet); font-weight: 400; }
+  .byd-data thead th > button.namn { position: sticky; left: var(--byd-data-lane, var(--byd-tap)); }
+  .byd-data thead th[data-pinned] > button.namn { position: static; }
+  .byd-data .byd-data-remove { position: sticky; right: 0; z-index: 4; width: var(--byd-tap); padding: 0 !important; background: #1b1d23; box-shadow: -8px 0 12px -8px rgb(0 0 0 / 80%); }
+  .byd-data thead .byd-data-remove > button { display: grid; place-items: center; width: var(--byd-tap); height: var(--byd-tap); padding: 0; color: var(--byd-editor-count-ink); font-size: 18px; line-height: 1; }
+  .byd-data thead .byd-data-remove { z-index: 6; }
+  /* Listen (L55): slöja över radens egen grund, kanten på listens sista kolumn. Vilka celler som
+     står på den säger varje variant med data-pinned; var de börjar säger mätningen i --left. */
+  .byd-data tbody td[data-pinned], .byd-data thead th[data-pinned], .byd-data tbody .byd-data-check, .byd-data thead .byd-data-check { position: sticky; left: var(--left, 0); z-index: 4; background: inherit; }
+  .byd-data thead th[data-pinned], .byd-data thead .byd-data-check { z-index: 5; background: #20232d; }
+  .byd-data tbody tr :is(td[data-pinned], .byd-data-check) { background-image: linear-gradient(var(--byd-editor-data-rail), var(--byd-editor-data-rail)); }
+  .byd-data thead :is(th[data-pinned], .byd-data-check) { background-image: linear-gradient(var(--byd-editor-data-rail), var(--byd-editor-data-rail)); }
+  .byd-data tbody tr:hover :is(td[data-pinned], .byd-data-check) { background-image: linear-gradient(rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.03)), linear-gradient(var(--byd-editor-data-rail), var(--byd-editor-data-rail)); }
+  .byd-data :is(tbody td, thead th)[data-pinned-last] { box-shadow: inset -2px 0 0 var(--byd-editor-data-rail-edge); }
+  .byd-data-scroll[data-under] .byd-data :is(tbody td, thead th)[data-pinned-last] { box-shadow: inset -2px 0 0 var(--byd-editor-data-rail-edge), 8px 0 12px -8px rgb(0 0 0 / 80%); }
+  .byd-data thead th[data-pinned] > button:not([data-active='true'], :hover), .byd-data thead th[data-pinned] > button:not([data-active='true']) :is(span, .byd-glyph) { color: var(--byd-editor-data-rail-ink); }
+  .byd-data tbody td[data-pinned] input { color: var(--byd-editor-data-rail-ink); }
+  /* Rubriken klipper sitt eget spill (#46). `clip` och inte `hidden`: en th med `overflow:
+     hidden` blir det rum det glidande namnet räknar sitt `left` mot, och namnet knuffades till
+     cellens högerkant över filtret. */
+  .byd-data th { overflow: clip; }
+
+  /* Foten (#130, #695) */
+  .byd-crown-foot { position: relative; flex: none; display: flex; align-items: center; gap: var(--byd-s3); padding: var(--byd-s2) 0 12px; border-top: 1px solid #2f333d; color: var(--byd-editor-quiet); font-size: 12px; }
+  .byd-crown-foot span { white-space: nowrap; }
+  .byd-data-count { margin: 0; color: var(--byd-editor-count-ink); font-variant-numeric: tabular-nums; }
+  .byd-crown-foot .byd-data-outside { flex: 1 1 0; min-width: min-content; max-width: max-content; display: inline-grid; grid-template-columns: auto minmax(0, max-content) auto; align-items: center; margin-block: calc((1lh - var(--byd-tap)) / 2); padding: 0 var(--byd-s2); border: 0; border-radius: 8px; background: transparent; color: var(--byd-editor-count-ink); font: inherit; cursor: pointer; min-height: var(--byd-tap); }
+  .byd-crown-foot .byd-data-outside[data-side='left'] { grid-template-columns: auto auto minmax(0, max-content); }
+  .byd-crown-foot .byd-data-outside > span { text-decoration: underline; text-decoration-color: color-mix(in srgb, currentColor 45%, transparent); text-underline-offset: 3px; }
+  .byd-crown-foot .byd-data-outside:hover { color: #e6ecfa; }
+  .byd-data-outside-names { overflow: hidden; text-overflow: ellipsis; }
+  .byd-crown-foot .tyst { margin-left: auto; color: var(--byd-editor-quiet); }
+  .byd-crown-foot .nytt { display: inline-flex; align-items: center; min-height: 36px; padding: 0 12px; border: 1px solid #3b414e; border-radius: 8px; background: #1b1d23; color: #dce3f2; font-weight: 700; }
+
+  /* Kolumndörren (#32, #46), lyft över tabellen (L55) */
+  .byd-columns { position: absolute; top: 56px; right: 0; z-index: 20; width: 360px; max-height: calc(100% - 72px); display: flex; flex-direction: column; padding: 12px; border: 1px solid #3b414e; border-radius: 10px; background: #171a23; box-shadow: 0 12px 32px rgb(0 0 0 / 55%); color: #ddd; }
+  .byd-columns-head { display: flex; justify-content: space-between; align-items: center; min-height: var(--byd-tap); }
+  .byd-columns-head strong { font-size: 12px; }
+  .byd-columns-head .hjalp { display: inline-grid; place-items: center; width: 18px; height: 18px; border: 1px solid var(--byd-editor-quiet); border-radius: 50%; font-size: 11px; color: var(--byd-editor-quiet); }
+  .byd-columns-list { flex: 1 1 auto; min-height: 0; display: grid; align-content: start; gap: 2px; margin: 0 0 8px; padding: 0; overflow-y: auto; list-style: none; }
+  .byd-columns-list li { display: flex; flex-wrap: nowrap; align-items: center; gap: 0 8px; min-height: var(--byd-tap); }
+  .byd-columns-name { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+  .byd-columns button.byd-columns-name { text-align: left; padding: 0; border: 0; background: transparent; color: inherit; font: inherit; font-weight: 400; cursor: pointer; }
+  .byd-columns-width { flex: 0 0 auto; padding: 0 4px; border: 1px solid #3b414e; border-radius: 6px; background: transparent; color: var(--byd-editor-quiet); font: inherit; font-size: 10px; font-variant-numeric: tabular-nums; }
+  .byd-kind-switch { flex: 0 0 auto; display: inline-flex; border-radius: 8px; background: #12141a; box-shadow: inset 0 0 0 1px #2f333d; }
+  .byd-kind-switch > span { min-width: 40px; min-height: 32px; display: grid; place-items: center; padding: 0 8px; border-radius: 8px; color: var(--byd-editor-quiet); font-size: 11px; font-weight: 600; }
+  .byd-kind-switch > span[aria-pressed='true'] { background: #2b3446; color: #fff; box-shadow: inset 0 0 0 1px #46597a; }
+  .byd-columns .byd-data-dropfield, .byd-columns .byd-columns-lock, .byd-columns .byd-columns-system { flex: 0 0 auto; display: grid; place-items: center; width: var(--byd-tap); min-height: var(--byd-tap); padding: 0; border: 0; background: transparent; color: var(--byd-editor-quiet); font-size: 13px; line-height: 1; cursor: pointer; }
+  .byd-columns .byd-data-dropfield:hover { color: #e05c5c; }
+  .byd-columns .byd-columns-lock { color: var(--byd-editor-count-ink); }
+  .byd-columns .byd-columns-lock[aria-pressed='true'] { color: #fff; background: #2b3446; border-radius: 8px; box-shadow: inset 0 0 0 1px #46597a; }
+  .byd-columns .byd-columns-lock:hover { color: #fff; }
+  .byd-columns .byd-columns-system { cursor: default; }
+  .byd-columns-note { flex: 1 0 100%; margin: 0; padding: 0 0 var(--byd-s1) var(--byd-s2); color: var(--byd-editor-quiet); font-size: 11px; line-height: 1.35; }
+  .byd-columns-list li:has(> .byd-columns-note) { flex-wrap: wrap; }
+  .byd-columns .fot { flex: none; padding: 8px 0 0; border-top: 1px solid #2f333d; color: var(--byd-editor-quiet); font-size: 12px; }
+  .byd-columns .fot .plus { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border: 1px solid #3b414e; border-radius: 8px; color: #dce3f2; font-weight: 700; }
+  .byd-columns .valj { flex: 0 0 auto; display: inline-grid; place-items: center; width: var(--byd-tap); min-height: var(--byd-tap); }
+  .byd-columns .valj input { width: 16px; height: 16px; margin: 0; accent-color: var(--byd-editor-primary-mark); }
+  .byd-columns .rubrik { padding: 6px 0 2px; color: var(--byd-editor-quiet); font-size: 11px; text-transform: uppercase; letter-spacing: .5px; }
+
+  /* A — låset på rubriken: syns när kolumnen är låst, och på hover som en väg att låsa. */
+  /* Står i rubrikens högra kant, utanför namnets flöde som ¶ och breddkanten (#46), så att
+     det inte kostar kolumnen bredd. */
+  .byd-data thead th .las { position: absolute; right: 2px; top: 6px; display: inline-grid; place-items: center; width: 24px; height: 24px; border: 0; border-radius: 4px; background: transparent; color: var(--byd-editor-data-rail-ink); cursor: pointer; }
+  .byd-data thead th:not([data-pinned]) .las { opacity: 0; color: var(--byd-editor-quiet); }
+  .byd-data thead th:not([data-pinned]):hover .las, .byd-data thead th .las:focus-visible { opacity: 1; }
+  .byd-data thead th .las:hover { color: #fff; }
+
+  /* B — namncellen: titeln, och under den id och antal i listens bläck. */
+  .byd-data td.namn { padding: 0 !important; height: var(--byd-tap); }
+  .byd-data td.namn input { height: 24px; padding: 6px var(--byd-data-cell-pad) 0; font-weight: 600; color: #e6ecfa; }
+  .byd-data td.namn .under { display: flex; gap: 6px; height: 19px; padding: 0 var(--byd-data-cell-pad); color: var(--byd-editor-data-rail-ink); font-size: 11px; line-height: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: .85; }
+  .byd-data td.namn .under b { font-weight: 600; font-variant-numeric: tabular-nums; }
+  .byd-data td.namn .under .punkt { opacity: .5; }
+  .byd-data thead th.namn .byd-data-head-row2 { color: var(--byd-editor-data-rail-ink); opacity: .85; }
+
+  /* C — kanten är ett handtag. Står i huvudet, på listens sista kolumns högerkant, och går att
+     dra i sidled; pilarna flyttar den en kolumn. Kolumnerna är bärbara, också id och antal. */
+  .byd-data thead th[data-pinned-last] { position: sticky; }
+  .kant { position: absolute; top: 0; z-index: 7; width: 14px; height: 100%; margin-left: -7px; border: 0; padding: 0; background: transparent; cursor: col-resize; display: grid; place-items: center; color: var(--byd-editor-data-rail-edge); }
+  .kant::before { content: ''; position: absolute; top: 0; bottom: 0; left: 6px; width: 2px; background: var(--byd-editor-data-rail-edge); }
+  .kant .grepp { position: relative; z-index: 1; width: 14px; height: 28px; border-radius: 4px; background: #2b3446; box-shadow: inset 0 0 0 1px #46597a; display: grid; place-items: center; font-size: 10px; letter-spacing: -1px; color: #c3cbdd; }
+  .kant:hover .grepp, .kant:focus-visible .grepp { background: #3c4a66; color: #fff; }
+  .kant:focus-visible { outline: 2px solid var(--byd-editor-primary-mark); outline-offset: -2px; }
+  .kant[data-dragging] .grepp { background: var(--byd-editor-primary-mark); }
+  .byd-data thead th[draggable] { cursor: grab; }
+  .byd-data thead th[data-over] { box-shadow: inset 3px 0 0 var(--byd-editor-primary-mark); }
+  .byd-data-scroll[data-kant-dragging] * { user-select: none; }
+
+  .flytande { position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%); z-index: 60; display: flex; align-items: center; gap: 4px; padding: 5px; border-radius: 999px; background: #ffd98a; color: #1f1b12; box-shadow: 0 10px 30px rgba(0,0,0,.6); font-weight: 700; }
+  .flytande button { min-width: 36px; min-height: 36px; border: 0; border-radius: 999px; background: #1f1b12; color: #ffd98a; font: inherit; cursor: pointer; }
+  .flytande .namn { padding: 0 12px; min-width: 300px; text-align: center; font-size: 12.5px; }
+</style>
+</head>
+<body>
+<div class="sida">
+  <div class="protorad">
+    <div class="fraga">
+      <p><b>Vilken kolumn står still i Tabell — och vem bestämmer det?</b> I dag står bocken, id och antal fastnålade till vänster (L55, #695) och tar ~300 px av raden; ingen av dem är det man orienterar sig efter. Rulla tabellen i sidled, lås och lås upp, dra i kanten.</p>
+      <p>Tabellen ritas med editorns egna värden (editor.css), provleken Sal's Saloon, 77 rader; «tät» är samma lek skalad till 308 rader och elva kolumner. Måtten under räknas på det som står i rutan just nu.</p>
+    </div>
+    <div class="grupp" id="varianter"><span>Variant</span></div>
+    <div class="grupp" id="ytor"><span>Fönster</span></div>
+    <div class="grupp" id="lekar"><span>Lek</span></div>
+    <div class="grupp" id="fonter"><span>Text</span></div>
+    <div class="anteckning" id="anteckning"></div>
+    <div class="matt" id="matt"></div>
+  </div>
+  <div class="scen">
+    <div class="fonster" id="fonster">
+      <div class="flikar"><span>Kort</span><span aria-current="page">Tabell</span><span>Mall</span><span>Media</span><span>Speltema</span><span>Regler</span><span>Bord</span><span>Dela</span></div>
+      <div class="tabell">
+        <div class="kron"><div class="sok">Sök i alla fält, eller typ: …</div><span class="csv">CSV ▾</span></div>
+        <div class="byd-data-scroll" id="scroll"><table class="byd-data" id="tabell"></table></div>
+        <div class="byd-crown-foot" id="fot"></div>
+      </div>
+    </div>
+  </div>
+</div>
+<nav class="flytande" aria-label="Prototypvarianter"><button id="forra" aria-label="Föregående variant">←</button><span class="namn" id="flytnamn"></span><button id="nasta" aria-label="Nästa variant">→</button></nav>
+<script src="data.js"></script>
+<script>
+// ── Varianterna ──────────────────────────────────────────────────────────────────────────────
+const VARIANTER = {
+  nu: { namn: 'Nu — bock, id och antal på listen',
+    regel: 'Som i dag (L55, #695): bocken, id och antal står fastnålade till vänster, i listens bläck, med kanten på antal. Allt annat rullar. Dörren bakom ＋ visar kolumnerna med hänglås på id och antal.',
+    pris: 'Listen är ~300 px vid varje bredd — id är lekens längsta nyckel plus 20 px — och det som står på den är det en designer sällan tittar på. Titeln rullar bort som allt annat, så på rad 54 i body säger listen «sals-saloon-guld · 2».' },
+  A: { namn: 'A — Låset: designern låser vilken kolumn som helst',
+    regel: 'Varje kolumn har ett lås, i dörren bakom ＋ och på rubriken (syns när kolumnen är låst, och när handen är på rubriken). En låst kolumn flyttar till listen och står still; låses den upp går den tillbaka till sin plats i leken. Verktyget gissar för en ny lek: titeln är låst, id och antal inte. Flera kan vara låsta; kanten står på den sista.',
+    pris: 'Ett grepp till att lära sig, och två platser att hitta det på. id och antal rullar bort — antal syns tills man rullat förbi den, och sedan säger foten var den är (#695 A). En låst body skulle ta hela rummet; prototypen låter den låsas ändå så att priset syns.' },
+  B: { namn: 'B — Namnkolumnen bär id och antal',
+    regel: 'Verktyget nålar kortets namn, ingen annan kolumn. I namncellen står titeln, och under den id och antal i listens bläck — det man vill veta om raden utan att det får en kolumn var. Vilken kolumn som är namnet väljs i dörren (titel som standard). id är ingen kolumn alls; antal är en vanlig kolumn, sist i lekens ordning, som i CSV:n.',
+    pris: 'Inget att låsa, inget att lära — men inget att välja heller: den som vill ha typ still får det inte. id går inte att sortera på. antal skrivs sist i raden (foten säger när den står utanför) och läses på listen; den är två saker på två ställen. Raden håller 45 px med knapp marginal.' },
+  C: { namn: 'C — Kanten är ett handtag',
+    regel: 'Listen är inte en egenskap utan en plats: det som står till vänster om kanten står still. Kanten är ett handtag i huvudet som går att dra i sidled (och flytta med ← → när den har fokus). Kolumnerna är bärbara som i dag (dra rubriken, Alt+pil), och i den här varianten gäller det också id och antal, så de kan dras av listen. För en ny lek står titeln ensam på listen; id och antal står först efter kanten.',
+    pris: 'Två saker att dra i huvudet, bredvid varandra och bredvid kolumnens breddkant (#46): ordning, bredd och list. id och antal blir flyttbara kolumner, vilket L4 i dag förbjuder. Listen kan bara vara ett förled — det som står still måste stå först, så «typ still, titel inte» kräver att man flyttar typ först.' },
+}
+const NYCKLAR = ['nu', 'A', 'B', 'C']
+const url = new URL(location.href)
+const stat = {
+  v: NYCKLAR.includes(url.searchParams.get('v')) ? url.searchParams.get('v') : 'A',
+  w: url.searchParams.has('w') ? Number(url.searchParams.get('w')) : 1280,
+  lek: url.searchParams.get('lek') === 'tat' ? 'tat' : 'prov',
+  font: url.searchParams.get('font') === 'bred' ? 'bred' : 'mac',
+}
+const ETIKETT = { id: 'id', antal: 'Antal', title: 'Titel', typ: 'typ', raritet: 'raritet', body: 'body', kostnad: 'kostnad', kraft: 'kraft', sida: 'sida', serie: 'serie', utgava: 'utgåva', anteckning: 'anteckning' }
+const DISKRETA = new Set(['typ', 'raritet', 'sida', 'serie'])
+const EXTRA = { kostnad: (i) => String(1 + (i * 7) % 9), kraft: (i) => String((i * 3) % 7), sida: (i) => ['Lagen', 'Banditerna', 'Staden'][i % 3], serie: (i) => ['Grund', 'Utvidgning 1'][i % 2], utgava: (i) => String(2024 + (i % 3)), anteckning: (i) => i % 5 === 0 ? 'Kolla balansen mot shopkorten' : '' }
+
+function lekRader() {
+  const bas = window.LEK.rows
+  if (stat.lek === 'prov') return bas.map((r) => ({ id: r.id, f: { ...r.fields } }))
+  const ut = []
+  for (let k = 0; k < 4; k++) bas.forEach((r, i) => {
+    const f = { ...r.fields }
+    for (const [name, fn] of Object.entries(EXTRA)) f[name] = fn(i + k * 77)
+    ut.push({ id: k === 0 ? r.id : `${r.id}-${k + 1}`, f })
+  })
+  return ut
+}
+// Lekens egna fält i dokumentets ordning (antal sist, som i CSV:n).
+function lekFalt() { return stat.lek === 'prov' ? ['title', 'typ', 'raritet', 'body', 'antal'] : ['title', 'typ', 'raritet', 'body', 'kostnad', 'kraft', 'sida', 'serie', 'utgava', 'anteckning', 'antal'] }
+
+// ── Variantens tillstånd: ordning och vad som står på listen ──────────────────────────────────
+let rader = lekRader()
+let ordning = [] // kolumner i tabellens ordning, 'id' inräknad
+let last = new Set() // A: låsta; C: räknas ur kant
+let kant = 1 // C: hur många kolumner som står på listen
+let namnkolumn = 'title' // B
+let dorrOppen = false
+function nollstall() {
+  rader = lekRader()
+  const falt = lekFalt().filter((f) => f !== 'antal')
+  if (stat.v === 'nu') { ordning = ['id', 'antal', ...falt]; last = new Set(['id', 'antal']) }
+  if (stat.v === 'A') { ordning = ['id', 'antal', ...falt]; last = new Set(['title']) }
+  if (stat.v === 'B') { ordning = [...falt, 'antal']; namnkolumn = 'title' }
+  if (stat.v === 'C') { ordning = ['title', 'id', 'antal', ...falt.filter((f) => f !== 'title')]; kant = 1 }
+  dorrOppen = false
+}
+// Det som ritas, i ordning: listen först.
+function kolumner() {
+  if (stat.v === 'A') return [...ordning.filter((c) => last.has(c)), ...ordning.filter((c) => !last.has(c))]
+  if (stat.v === 'B') return [namnkolumn, ...ordning.filter((c) => c !== namnkolumn)]
+  return ordning
+}
+function fastnalad(col, i) {
+  if (stat.v === 'nu' || stat.v === 'A') return last.has(col)
+  if (stat.v === 'B') return col === namnkolumn
+  return i < kant
+}
+
+// ── Bredder, som fitColumns räknar dem i stort: innehållets bredd, body tar rummet som är kvar ──
+const canvas = document.createElement('canvas').getContext('2d')
+function textbredd(s, vikt = 400) {
+  const px = stat.font === 'bred' ? 13.8 : 12
+  canvas.font = `${vikt} ${px}px system-ui, sans-serif`
+  return canvas.measureText(s).width
+}
+function bredder(cols, rum, listbredd) {
+  const w = {}
+  for (const c of cols) {
+    if (c === 'body') continue
+    let b = textbredd(ETIKETT[c] ?? c, 600) + 36 + (DISKRETA.has(c) ? 30 : 0)
+    if (c === 'antal') b = 67
+    else if (c === 'id') b = Math.max(...rader.map((r) => textbredd(r.id))) + 20
+    else if (c === 'title' && stat.v === 'B') b = Math.max(b, Math.min(220, Math.max(...rader.map((r) => textbredd(String(r.f.title ?? ''), 600) + textbredd(` ${r.id} · ${r.f.antal} st`, 400) * 0)) + 20), 180)
+    else b = Math.max(b, Math.min(c === 'title' ? 220 : 160, Math.max(...rader.map((r) => textbredd(String(r.f[c] ?? '')))) + 20))
+    if (stat.v === 'A' || stat.v === 'C' || stat.v === 'nu') if (last.has(c) || (stat.v === 'C' && cols.indexOf(c) < kant)) b += 0
+    w[c] = Math.ceil(b)
+  }
+  // L46: ingen kolumn bredare än rummet; body = rummet minus listen minus ×.
+  w.body = Math.max(160, rum - listbredd - 44)
+  return w
+}
+
+// ── Rita ─────────────────────────────────────────────────────────────────────────────────────
+const svg = (d) => `<svg class="byd-glyph" viewBox="0 0 16 16" width="1em" height="1em" aria-hidden="true" focusable="false"><path d="${d}" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`
+const SORT = 'M5 6l3-3 3 3M5 10l3 3 3-3'
+const LAS = 'M5.5 7.5V5.5a2.5 2.5 0 0 1 5 0v2M4.5 7.5h7a1 1 0 0 1 1 1V13a1 1 0 0 1-1 1h-7a1 1 0 0 1-1-1V8.5a1 1 0 0 1 1-1z'
+const LAS_OPPET = 'M5.5 7.5V5.5a2.5 2.5 0 0 1 4.85-.85M4.5 7.5h7a1 1 0 0 1 1 1V13a1 1 0 0 1-1 1h-7a1 1 0 0 1-1-1V8.5a1 1 0 0 1 1-1z'
+const KRYSS = 'M4 4l8 8M12 4l-8 8'
+const FILTER = 'M3.5 4.5h9l-3.5 4v3.5l-2 1V8.5z'
+const CHEV = { left: 'M10 3.5 5.5 8 10 12.5', right: 'M6 3.5 10.5 8 6 12.5' }
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
+
+function rita() {
+  const fonster = document.getElementById('fonster')
+  fonster.style.setProperty('--w', stat.w ? `${stat.w}px` : '100%')
+  fonster.dataset.font = stat.font
+  const scroll = document.getElementById('scroll')
+  const rum = scroll.clientWidth || (stat.w ? stat.w - 32 : 1200)
+  const cols = kolumner()
+  const forsta = bredder(cols, rum, 44)
+  const listbredd = 44 + cols.reduce((s, c, i) => s + (fastnalad(c, i) && c !== 'body' ? forsta[c] : 0), 0)
+  const w = bredder(cols, rum, listbredd)
+  if (cols.some((c, i) => c === 'body' && fastnalad(c, i))) w.body = Math.max(160, rum - 44 - 44 - cols.filter((c, i) => fastnalad(c, i) && c !== 'body').reduce((s, c) => s + w[c], 0) - 120)
+  const table = document.getElementById('tabell')
+  const senaste = [...cols].reverse().find((c, i) => fastnalad(c, cols.length - 1 - i))
+  let left = 44
+  const vanster = {}
+  for (const [i, c] of cols.entries()) if (fastnalad(c, i)) { vanster[c] = left; left += w[c] }
+  const lane = left
+  table.style.setProperty('--byd-data-lane', `${lane}px`)
+
+  const th = (c, i) => {
+    const pinned = fastnalad(c, i)
+    const attrs = `data-col="${c}"${pinned ? ` data-pinned style="--left:${vanster[c]}px"` : ''}${c === senaste ? ' data-pinned-last' : ''}${stat.v === 'C' ? ' draggable="true"' : ''}${stat.v === 'B' && c === namnkolumn ? ' class="namn"' : ''}`
+    const namn = ETIKETT[c] ?? c
+    const sort = c === 'id' && stat.v === 'nu' ? '' : ''
+    let inner = `<button type="button" class="namn" data-active="false">${esc(namn)}${svg(SORT)}${c === 'body' ? '<span class="byd-prose-pilcrow" aria-hidden="true">¶</span>' : ''}</button>`
+    if (DISKRETA.has(c)) inner += `<button type="button" class="byd-data-filter" aria-label="Filtrera på ${esc(namn)}">${svg(FILTER)}</button>`
+    if (stat.v === 'A') inner += `<button type="button" class="las" data-las="${c}" aria-pressed="${pinned}" aria-label="${pinned ? `Lås upp ${esc(namn)}` : `Lås ${esc(namn)} så att den står still`}" title="${pinned ? 'Lås upp: kolumnen rullar med de andra' : 'Lås: kolumnen står still när tabellen rullar'}">${svg(pinned ? LAS : LAS_OPPET)}</button>`
+    if (c === 'typ') inner += `<span class="byd-data-head-row2">kortgrupp <span class="hjalp">?</span></span>`
+    else if (stat.v === 'B' && c === namnkolumn) inner += `<span class="byd-data-head-row2">id · antal</span>`
+    else if (cols.includes('typ')) inner += `<span class="byd-data-head-row2"></span>`
+    return `<th ${attrs}>${inner}</th>`
+  }
+  const td = (r, c, i, radnr) => {
+    const pinned = fastnalad(c, i)
+    const attrs = `data-col="${c}"${pinned ? ` data-pinned style="--left:${vanster[c]}px"` : ''}${c === senaste ? ' data-pinned-last' : ''}`
+    if (c === 'id') return `<td class="byd-data-id" ${attrs}>${esc(r.id)}</td>`
+    if (stat.v === 'B' && c === namnkolumn) return `<td class="namn" ${attrs}><input value="${esc(r.f[c] ?? '')}" aria-label="${esc(ETIKETT[c])} för ${esc(r.id)}"><span class="under"><span>${esc(r.id)}</span><span class="punkt">·</span><b>${r.f.antal} st</b></span></td>`
+    if (c === 'body') return `<td ${attrs}><div class="byd-data-body" tabindex="0" role="textbox" aria-label="body för ${esc(r.id)}">${esc(r.f.body ?? '')}</div></td>`
+    if (c === 'antal') return `<td ${attrs}><input type="number" min="0" step="1" value="${r.f.antal}" aria-label="Antal för ${esc(r.id)}"></td>`
+    return `<td ${attrs}><input value="${esc(r.f[c] ?? '')}" aria-label="${esc(ETIKETT[c] ?? c)} för ${esc(r.id)}"></td>`
+  }
+  const colgroup = `<colgroup><col style="width:44px">${cols.map((c) => `<col data-col="${c}" style="width:${w[c]}px">`).join('')}<col style="width:44px"></colgroup>`
+  const head = `<thead><tr><th class="byd-data-check"><label class="byd-data-tick"><input type="checkbox" aria-label="Markera alla visade"></label></th>${cols.map(th).join('')}<th class="byd-data-remove" aria-label="Ta bort kolumn"><button type="button" id="dorr" aria-label="Kolumner" aria-expanded="${dorrOppen}">${dorrOppen ? '×' : '＋'}</button></th></tr></thead>`
+  const body = `<tbody>${rader.map((r, radnr) => `<tr data-card-ref="${esc(r.id)}"><td class="byd-data-check"><label class="byd-data-tick"><input type="checkbox" aria-label="Markera ${esc(r.id)}"></label></td>${cols.map((c, i) => td(r, c, i, radnr)).join('')}<td class="byd-data-remove"></td></tr>`).join('')}</tbody>`
+  table.innerHTML = colgroup + head + body
+  table.querySelector('.byd-data-check').style.setProperty('--left', '0px')
+  if (stat.v === 'C') ritaKant(table, cols, w, lane)
+  ritaDorr(cols, w)
+  foten(cols, w, lane)
+  matt(cols, w, lane, rum)
+  if (stat.v === 'C') bärbara(table)
+}
+
+// C: handtaget i huvudet, på listens sista kolumns högerkant.
+function ritaKant(table, cols, w, lane) {
+  const scroll = document.getElementById('scroll')
+  scroll.querySelector('.kant')?.remove()
+  const k = document.createElement('button')
+  k.type = 'button'
+  k.className = 'kant'
+  k.setAttribute('aria-label', `Listen slutar efter ${cols[kant - 1] ? ETIKETT[cols[kant - 1]] : 'bocken'}. Vänster och höger pil flyttar kanten.`)
+  k.title = 'Dra för att välja vad som står still'
+  k.innerHTML = '<span class="grepp">⋮</span>'
+  k.style.left = `${lane}px`
+  k.style.height = `${table.tHead.getBoundingClientRect().height}px`
+  k.style.top = '0'
+  k.style.position = 'sticky'
+  // Ett sticky handtag i lådans flöde: det ligger i en egen rad ovanför tabellen.
+  const bar = document.createElement('div')
+  bar.className = 'kantrad'
+  bar.style.cssText = `position: sticky; top: 0; left: 0; height: 0; z-index: 7; overflow: visible;`
+  bar.appendChild(k)
+  k.style.position = 'absolute'
+  scroll.prepend(bar)
+  k.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' && kant < cols.length) { kant++; rita(); fokusKant() }
+    if (e.key === 'ArrowLeft' && kant > 0) { kant--; rita(); fokusKant() }
+  })
+  k.addEventListener('pointerdown', (e) => {
+    e.preventDefault()
+    k.setPointerCapture(e.pointerId)
+    k.dataset.dragging = ''
+    scroll.dataset.kantDragging = ''
+    const start = e.clientX
+    const move = (ev) => {
+      const x = lane + (ev.clientX - start) + scroll.scrollLeft
+      // Vilken kolumns mittpunkt har handen passerat?
+      let n = 0, acc = 44
+      for (const c of cols) { if (x > acc + w[c] / 2) n++; acc += w[c] }
+      if (n !== kant) { kant = n; rita(); fokusKant(); }
+      else k.style.left = `${Math.max(44, lane + (ev.clientX - start))}px`
+    }
+    const up = () => { delete k.dataset.dragging; delete scroll.dataset.kantDragging; k.removeEventListener('pointermove', move); k.removeEventListener('pointerup', up); rita() }
+    k.addEventListener('pointermove', move)
+    k.addEventListener('pointerup', up)
+  })
+}
+function fokusKant() { document.querySelector('.kant')?.focus() }
+// C: rubrikerna går att bära — också id och antal.
+function bärbara(table) {
+  let lyft = null
+  for (const th of table.querySelectorAll('thead th[draggable]')) {
+    th.addEventListener('dragstart', (e) => { lyft = th.dataset.col; e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', lyft) })
+    th.addEventListener('dragover', (e) => { if (!lyft || lyft === th.dataset.col) return; e.preventDefault(); th.dataset.over = '' })
+    th.addEventListener('dragleave', () => delete th.dataset.over)
+    th.addEventListener('drop', (e) => {
+      e.preventDefault()
+      const till = th.dataset.col
+      const fran = ordning.indexOf(lyft), dit = ordning.indexOf(till)
+      ordning.splice(fran, 1); ordning.splice(dit, 0, lyft)
+      lyft = null
+      rita()
+    })
+    th.addEventListener('dragend', () => { lyft = null; rita() })
+  }
+}
+
+// Dörren bakom ＋: kolumnerna, och det varianten lägger på raden.
+function ritaDorr(cols, w) {
+  const scroll = document.getElementById('scroll')
+  scroll.querySelector('.byd-columns')?.remove()
+  document.getElementById('dorr').onclick = () => { dorrOppen = !dorrOppen; rita() }
+  if (!dorrOppen) return
+  const d = document.createElement('div')
+  d.className = 'byd-columns'
+  d.setAttribute('role', 'group')
+  d.setAttribute('aria-label', 'Kolumner')
+  const alla = stat.v === 'B' ? ['id', ...ordning] : ordning
+  const rad = (c) => {
+    const namn = ETIKETT[c] ?? c
+    const system = c === 'id' || c === 'antal'
+    const kind = c === 'body' ? 'prosa' : 'text'
+    let kontroller = ''
+    if (stat.v === 'A') kontroller = `<button type="button" class="byd-columns-lock" data-las="${c}" aria-pressed="${last.has(c)}" aria-label="${last.has(c) ? `Lås upp ${esc(namn)}` : `Lås ${esc(namn)} så att den står still`}" title="${last.has(c) ? 'Står still när tabellen rullar' : 'Rullar med de andra'}">${svg(last.has(c) ? LAS : LAS_OPPET)}</button>`
+    if (stat.v === 'B' && !system) kontroller = `<label class="valj" title="Kortets namn: står still, med id och antal under sig"><input type="radio" name="namn" value="${c}" ${c === namnkolumn ? 'checked' : ''} aria-label="${esc(namn)} är kortets namn"></label>`
+    const bredd = w[c] && !system && c !== 'body' ? '' : ''
+    // I A är hänglåset låsets eget tecken; verktygets två kolumner säger då bara att de inte går
+    // att ta bort, genom att sakna ×, i stället för att bära ett andra hänglås.
+    const slut = system ? (stat.v === 'A' ? '<span class="byd-columns-system" aria-hidden="true"></span>' : `<span class="byd-columns-system" role="img" aria-label="${esc(namn)} är verktygets egen kolumn" title="${esc(namn)} är verktygets egen kolumn">${svg(LAS)}</span>`) : `<button type="button" class="byd-data-dropfield" aria-label="Ta bort ${esc(namn)}">${svg(KRYSS)}</button>`
+    const vaxel = system ? '' : `<span class="byd-kind-switch"><span aria-pressed="${kind === 'text'}">Text</span><span aria-pressed="${kind === 'prosa'}">Prosa</span><span>Bild</span></span>`
+    const not = stat.v === 'B' && system ? `<p class="byd-columns-note">Står under kortets namn på varje rad${c === 'antal' ? ', och skrivs i sin egen kolumn sist' : ''}.</p>` : ''
+    return `<li data-col="${c}">${kontroller}${system ? `<span class="byd-columns-name">${esc(namn)}</span>` : `<button type="button" class="byd-columns-name" aria-label="Byt namn på ${esc(namn)}">${esc(namn)}</button>`}${bredd}${vaxel}${slut}${not}</li>`
+  }
+  d.innerHTML = `<div class="byd-columns-head"><strong>Kolumner</strong><span class="hjalp">?</span></div>${stat.v === 'A' ? '<p class="byd-columns-note" style="padding:0 0 6px">Låset: kolumnen står still till vänster när tabellen rullar.</p>' : ''}${stat.v === 'B' ? '<p class="byd-columns-note" style="padding:0 0 6px">Pricken: kolumnen är kortets namn och står still, med id och antal under sig.</p>' : ''}<ul class="byd-columns-list">${alla.map(rad).join('')}</ul><div class="fot"><span class="plus">＋ Ny kolumn</span></div>`
+  scroll.appendChild(d)
+  d.querySelectorAll('[data-las]').forEach((b) => b.addEventListener('click', () => lasOm(b.dataset.las)))
+  d.querySelectorAll('input[name="namn"]').forEach((r) => r.addEventListener('change', () => { namnkolumn = r.value; rita() }))
+}
+function lasOm(c) { if (last.has(c)) last.delete(c); else last.add(c); rita() }
+
+// Foten: antalet, och vilka kolumner som står utanför det rum som går att läsa (#695 A).
+function foten(cols, w, lane) {
+  const scroll = document.getElementById('scroll')
+  const fot = document.getElementById('fot')
+  const rum = scroll.clientWidth
+  const utanfor = { left: [], right: [] }
+  let x = 44
+  for (const [i, c] of cols.entries()) {
+    if (!fastnalad(c, i)) {
+      const a = x - scroll.scrollLeft, b = a + w[c]
+      if (b <= lane) utanfor.left.push(c)
+      else if (a >= rum - 44) utanfor.right.push(c)
+    }
+    x += w[c]
+  }
+  const knapp = (side) => {
+    const g = utanfor[side]
+    if (g.length === 0) return ''
+    const n = g.length === 1 ? `1 kolumn till ${side === 'left' ? 'vänster' : 'höger'}` : `${g.length} kolumner till ${side === 'left' ? 'vänster' : 'höger'}`
+    return `<button type="button" class="byd-data-outside" data-side="${side}" data-dir="${side === 'left' ? -1 : 1}">${side === 'left' ? svg(CHEV.left) : ''}<span>${n}</span><span class="byd-data-outside-names">: ${g.map((c) => esc(ETIKETT[c] ?? c)).join(', ')}</span>${side === 'right' ? svg(CHEV.right) : ''}</button>`
+  }
+  fot.innerHTML = `<p class="byd-data-count">${rader.length} av ${rader.length} kort</p>${knapp('left')}${knapp('right')}<span class="tyst">Sparat</span><span class="nytt">＋ Nytt kort</span>`
+  fot.querySelectorAll('.byd-data-outside').forEach((b) => b.addEventListener('click', () => scroll.scrollBy({ left: Number(b.dataset.dir) * (rum - lane - 44) * 0.8, behavior: 'smooth' })))
+  scroll.toggleAttribute('data-under', scroll.scrollLeft > 0)
+}
+
+// Måtten i protoraden: listens bredd, body i bild vid rullning 0, Tab från bocken till antal.
+function matt(cols, w, lane, rum) {
+  const scroll = document.getElementById('scroll')
+  const x0 = cols.slice(0, cols.indexOf('body')).reduce((s, c) => s + w[c], 44)
+  const bodyA = Math.max(x0 - scroll.scrollLeft, lane), bodyB = Math.min(x0 - scroll.scrollLeft + w.body, rum - 44)
+  const bodyIBild = Math.max(0, Math.round(bodyB - bodyA))
+  const rad = document.querySelector('#tabell tbody tr')
+  const stopp = rad ? [...rad.querySelectorAll('input, [tabindex="0"]')] : []
+  const antalAt = stopp.findIndex((el) => el.closest('td')?.dataset.col === 'antal')
+  const antalSyns = stat.v === 'B' ? 'läses under namnet, skrivs i kolumnen' : (() => { const i = cols.indexOf('antal'); let x = 44; for (const c of cols.slice(0, i)) x += w[c]; return fastnalad('antal', i) ? 'står still' : x + w.antal <= rum - 44 ? 'i bild vid rullning 0' : 'utanför, foten säger det' })()
+  document.getElementById('matt').innerHTML = [
+    `Listen <u>${lane} px</u>`,
+    `body i bild <u>${bodyIBild} px</u> av ${w.body}`,
+    `Tab bock → antal <u>${antalAt < 0 ? '—' : antalAt}</u>`,
+    `antal: <u>${antalSyns}</u>`,
+    `rummet ${rum} px`,
+  ].join(' · ')
+  const a = VARIANTER[stat.v]
+  document.getElementById('anteckning').innerHTML = `<p><b>${esc(a.namn)}</b></p><p><span class="plus">Regel.</span> ${esc(a.regel)}</p><p><span class="minus">Pris.</span> ${esc(a.pris)}</p>`
+  document.getElementById('flytnamn').textContent = a.namn
+}
+
+// ── Protoraden ───────────────────────────────────────────────────────────────────────────────
+function knappar(id, val, aktuell, satt, namn = (v) => v, rek) {
+  const g = document.getElementById(id)
+  g.querySelectorAll('button').forEach((b) => b.remove())
+  for (const v of val) {
+    const b = document.createElement('button')
+    b.textContent = namn(v)
+    b.setAttribute('aria-pressed', String(v === aktuell))
+    if (v === rek) b.classList.add('rek')
+    b.addEventListener('click', () => satt(v))
+    g.appendChild(b)
+  }
+}
+function uppdateraUrl() {
+  const u = new URL(location.href)
+  u.searchParams.set('v', stat.v); u.searchParams.set('w', String(stat.w)); u.searchParams.set('lek', stat.lek); u.searchParams.set('font', stat.font)
+  history.replaceState(null, '', u)
+}
+function protorad() {
+  knappar('varianter', NYCKLAR, stat.v, (v) => { stat.v = v; nollstall(); allt() }, (v) => v === 'nu' ? 'Nu' : v, 'A')
+  knappar('ytor', [1024, 1280, 1440, 0], stat.w, (v) => { stat.w = v; allt() }, (v) => v === 0 ? 'Fönstret' : String(v))
+  knappar('lekar', ['prov', 'tat'], stat.lek, (v) => { stat.lek = v; nollstall(); allt() }, (v) => v === 'prov' ? 'Provleken · 77' : 'Tät · 308 × 11')
+  knappar('fonter', ['mac', 'bred'], stat.font, (v) => { stat.font = v; allt() }, (v) => v === 'mac' ? 'Mac' : '+15 % (Linux)')
+}
+function allt() { uppdateraUrl(); protorad(); rita() }
+document.getElementById('forra').addEventListener('click', () => { stat.v = NYCKLAR[(NYCKLAR.indexOf(stat.v) + 3) % 4]; nollstall(); allt() })
+document.getElementById('nasta').addEventListener('click', () => { stat.v = NYCKLAR[(NYCKLAR.indexOf(stat.v) + 1) % 4]; nollstall(); allt() })
+window.addEventListener('keydown', (e) => {
+  if (e.target.closest('input, textarea, [contenteditable], [role="textbox"], .kant, .byd-columns')) return
+  if (e.key === 'ArrowLeft') document.getElementById('forra').click()
+  if (e.key === 'ArrowRight') document.getElementById('nasta').click()
+})
+document.getElementById('scroll').addEventListener('scroll', () => {
+  const cols = kolumner()
+  const scroll = document.getElementById('scroll')
+  const rum = scroll.clientWidth
+  const lane = Number(getComputedStyle(document.getElementById('tabell')).getPropertyValue('--byd-data-lane').replace('px', ''))
+  const w = {}
+  for (const col of document.querySelectorAll('#tabell colgroup col[data-col]')) w[col.dataset.col] = parseFloat(col.style.width)
+  foten(cols, w, lane)
+  matt(cols, w, lane, rum)
+})
+// A: låset på rubriken.
+document.getElementById('tabell').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-las]')
+  if (b) lasOm(b.dataset.las)
+})
+window.addEventListener('resize', () => rita())
+nollstall()
+allt()
+document.body.dataset.klar = 'allt'
+</script>
+</body>
+</html>
