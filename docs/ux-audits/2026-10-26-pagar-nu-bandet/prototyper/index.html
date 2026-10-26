@@ -93,7 +93,7 @@
   .v-B .spelrad b { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; color: #fff; }
   .v-B .spelrad a { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 10px; border-radius: 8px; color: #7dd3a0; font-size: 13px; font-weight: 700; text-decoration: none; white-space: nowrap; }
   .v-B .spelrad a:hover { background: #1d212b; }
-  .v-B .bord { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 12px; min-height: 60px; padding: 8px 10px 8px 16px; color: #fff; text-decoration: none; border-top: 1px solid #262a35; }
+  .v-B .bord { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto auto; align-items: center; gap: 12px; min-height: 60px; padding: 8px 10px 8px 16px; color: #fff; text-decoration: none; border-top: 1px solid #262a35; }
   .v-B .bord:first-of-type { border-top: 0; }
   .v-B .bord:hover { background: #1d212b; }
   .v-B .bord .platta { font-size: 15px; letter-spacing: 3.5px; padding: 7px 7px 7px 11px; }
@@ -102,6 +102,10 @@
   .v-B .bord .fakta small { color: #9aa3b8; font-size: 12px; line-height: 1.3; }
   .v-B .bord .pil { color: #9aa3b8; width: 24px; text-align: center; font-size: 18px; }
   .v-B .bord[data-still] .fakta b { color: #cfd5e3; }
+  .v-B .sits { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 10px; background: #1b2a22; color: #7dd3a0; }
+  .v-B .sits svg { width: 18px; height: 18px; }
+  .v-B .bord[data-still] .sits { background: #1f2433; color: #b9c3dc; }
+  .v-B .fakta b .prick { width: 7px; height: 7px; margin-right: 6px; vertical-align: 1px; }
 
   /* ── C · Beskedet ─────────────────────────────────────────────────────────────────────────── */
   .v-C .band { display: grid; gap: 10px; justify-items: center; text-align: center; padding: 16px 16px 14px; border-radius: 16px; background: #1b2a22; color: #d8ffe8; border: 1px solid #2a4034; }
@@ -135,7 +139,7 @@
 const V = {
   idag: ['Idag', '<b>Idag.</b> Namn, kod och två knappar i en grön ruta. <span class="minus">− Koden hänger fri, ingen bild, inga fakta om bordet, och två lika stora knappar gör att ingen väg är den som står redo.</span>'],
   A: ['A · Fönstret mot filten', '<b>A — ett fönster mot filten</b> (rekommenderas). Kortet öppnar med en bild av bordets form — filten, högarna, platserna — med kodplattan som TV:n skriver den och ett läge i hörnet. Spelets namn är vägen till editorn, under det bordets fakta, och <b>en</b> väg står redo: «Öppna bordet». <span class="plus">+ Samma bildspråk som hjältekortet och Bord-fliken; koden får den platta gästerna redan läser den på; ett orört bord ser orört ut.</span> <span class="minus">− Högst av de tre (≈ 200 px per bord). Bilden är bordets form ur receptet, inte dess live-läge.</span>'],
-  B: ['B · Grupperat per spel', '<b>B — borden under sitt spel.</b> Ett kort per spel: spelets namn och «Öppna spelet» på en rubrikrad, och varje bord en slank rad som i sig är vägen till bordet — läge, kod på plattan, fakta, pil. Samma form som «Väntar på dig». <span class="plus">+ Tätast (≈ 60 px per bord); två bord på ett spel säger spelets namn en gång; raden är knappen.</span> <span class="minus">− Ingen bild; ett spel med ett bord kostar ändå en rubrikrad; «Startade, aldrig spelade» blir samma kort med annat läge.</span>'],
+  B: ['B · Grupperat per spel', '<b>B — borden under sitt spel</b> (valt 2026-10-26, med ikonen). Ett kort per spel: spelets namn och «Öppna spelet» på en rubrikrad, och varje bord en slank rad som i sig är vägen till bordet — hur man sitter som ikon på egen grund (skärm på fot, eller två fönster), läge med prick, fakta, kod på plattan, pil. Samma form som «Väntar på dig». <span class="plus">+ Tätast (≈ 60 px per bord); två bord på ett spel säger spelets namn en gång; raden är knappen.</span> <span class="minus">− Ingen bild; ett spel med ett bord kostar ändå en rubrikrad; «Startade, aldrig spelade» blir samma kort med annat läge.</span>'],
   C: ['C · Beskedet', '<b>C — bandet säger det som en mening</b>, i samma gröna som kvittona («Bordet är igång. Rumskoden är …»). Läget överst, koden stor och mitt i, en mening om spelet och bordet, «Öppna bordet» över hela bredden och «Öppna spelet» som en tyst länk under. <span class="plus">+ Koden blir det man ser från andra sidan rummet; inget nytt bildspråk att bygga.</span> <span class="minus">− Centrerat och ganska högt (≈ 190 px); två bord ger två nästan likadana band; ett orört bord i grått blir en grå ruta med en stor kod.</span>'],
 }
 const W = ['1280', '1024', '390']
@@ -150,6 +154,14 @@ const BORD = [
   { spel: "Juice 'em up", kod: 'GN7RGY', rev: 'rev-1', sedan: 'startat för 20 min sedan', kort: 'startat 20 min sedan', sits: 'varsin dator', pagar: false },
   { spel: "Juice 'em up", kod: 'BGKDMT', rev: 'rev-1', sedan: 'startat i går', kort: 'startat i går', sits: 'runt en skärm', pagar: false },
 ]
+// Two glyphs on the app's 16 grid (glyphs.tsx: one 1.6 px round stroke): a screen on its stand
+// for «Runt en skärm», and two windows for «Var och en vid sin dator».
+const GLYF = {
+  screen: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 2.75h10a1 1 0 0 1 1 1v6.5a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1v-6.5a1 1 0 0 1 1-1zM8 11.25v2.5M5.25 13.75h5.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  computer: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 5.75h7.5a1 1 0 0 1 1 1v5.5a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1v-5.5a1 1 0 0 1 1-1zM5.5 5.75V3.75a1 1 0 0 1 1-1H14a1 1 0 0 1 1 1v5.5a1 1 0 0 1-1 1h-3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+}
+const SITS = { 'runt en skärm': 'screen', 'varsin dator': 'computer' }
+const SITS_ORD = { screen: 'Runt en skärm', computer: 'Var och en vid sin dator' }
 const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/'/g, '&#39;')
 const sektioner = () => [
   ['Pågår nu', BORD.filter((b) => b.pagar)],
@@ -177,7 +189,7 @@ function ritaB(bord) {
   for (const b of bord) perSpel.set(b.spel, [...(perSpel.get(b.spel) ?? []), b])
   return [...perSpel].map(([spel, rader]) => `<div class="grupp">
     <div class="spelrad"><b>${esc(spel)}</b><a href="#">Öppna spelet <span aria-hidden="true">›</span></a></div>
-    ${rader.map((b) => `<a class="bord" href="#" ${b.pagar ? '' : 'data-still'}><span class="prick" ${b.pagar ? '' : 'data-still'}></span><span class="fakta"><b>${b.pagar ? 'Pågår' : 'Aldrig spelat'}</b><small>${b.kort} · ${b.rev} · ${b.sits}</small></span><span class="platta">${b.kod}</span><span class="pil" aria-hidden="true">›</span></a>`).join('')}
+    ${rader.map((b) => `<a class="bord" href="#" ${b.pagar ? '' : 'data-still'}><span class="sits" title="${SITS_ORD[SITS[b.sits]]}">${GLYF[SITS[b.sits]]}<span class="offscreen">${SITS_ORD[SITS[b.sits]]}</span></span><span class="fakta"><b><span class="prick" ${b.pagar ? '' : 'data-still'}></span>${b.pagar ? 'Pågår' : 'Aldrig spelat'}</b><small>${b.kort} · ${b.rev}</small></span><span class="platta">${b.kod}</span><span class="pil" aria-hidden="true">›</span></a>`).join('')}
   </div>`).join('')
 }
 

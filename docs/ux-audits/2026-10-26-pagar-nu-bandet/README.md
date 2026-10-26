@@ -30,6 +30,8 @@ Fakta bandet säger i varianterna finns redan i `GET /projects/:id/sessions`: `v
   Ett kort per spel, i «Väntar på dig»:s form: spelets namn och «Öppna spelet» på en rubrikrad, och varje bord en rad som i sig är vägen till bordet, med läge, fakta, kodplatta och pil.
   Tätast, ≈ 60 px per bord, och två bord på ett spel säger spelets namn en gång.
   Ingen bild, och ett spel med ett bord kostar ändå en rubrikrad.
+  Efter beställarens val: raden leder med hur man sitter (L77) som en ikon på egen grund, i «Väntar på dig»:s form — en skärm på fot för «Runt en skärm», två fönster för «Var och en vid sin dator» — ritade på glyfernas 16-rutnät med den enda 1,6 px-linjen; orden står bara för skärmläsaren.
+  Pricken för läget flyttar in i den feta raden.
 - **C · Beskedet.**
   Bandet säger det som en mening, i kvittonas gröna: läget överst i versaler, koden stor och mitt i, «*Sal's Saloon* på rev-1, runt en skärm.», «Öppna bordet» över hela bredden och «Öppna spelet» som en tyst länk.
   Koden blir det man ser från andra sidan rummet.
@@ -42,4 +44,5 @@ Den ger bandet det som saknas, en bild och fakta, med former sidan redan har: hj
 B är det bättre valet om kolumnen ska rymma många bord, men den säger minst om varje och ser mest ut som en lista.
 C är vacker för ett bord och tröttsam för tre.
 
-Beslut: _väntar på beställaren_.
+Beslut: **B, med en ikon för hur man sitter**, beställaren 2026-10-26.
+Ikonerna är nya glyfer i `glyphs.tsx` (`screen`, `computer`); listan `GET /projects/:id/sessions` bär redan `seating`.
