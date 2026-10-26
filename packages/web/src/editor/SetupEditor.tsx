@@ -1,33 +1,31 @@
-import { createContext, useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent as RKeyboardEvent, type PointerEvent as RPointerEvent, type ReactNode } from 'react'
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent as RKeyboardEvent, type PointerEvent as RPointerEvent, type ReactNode } from 'react'
 import { useSay } from '../status/StatusLive.js'
 import type { ProjectDoc } from '@byd/server'
 import type { Motif } from '@byd/template'
-import type { ZoneBeside } from '@byd/protocol'
 import { targetsOf } from '../player/PlaySheet.js'
 import { stepAside } from './grips.js'
 import { TableRenderer, type FeltFit, type TableHandle } from '../table/TableRenderer.js'
 import { previewOf } from '../setup/preview.js'
 import { MIN_MM, NUDGE_MM, onTableOf, sizedBy } from './zone-geometry.js'
 import { useNumberDraft } from './number-draft.js'
-import { MAX_PLAYERS, counterId, layMaterial, newAreaSpot, newPileSpot, pasteSpot, placeLine, titleOfRow, type Counter, type Die, type Geometry, type MaterialLine, type Setup, type Zone } from '@byd/server/doc'
+import { layMaterial, newAreaSpot, newPileSpot, pasteSpot, placeLine, type Counter, type Die, type Geometry, type MaterialLine, type Setup, type Zone } from '@byd/server/doc'
 import type { ProjectClient } from './ProjectClient.js'
-import type { ZonePatch } from '@byd/server/doc'
-import { useT, type Key, type T } from '../i18n/index.js'
+import { useT, type T } from '../i18n/index.js'
 import { Help } from './HelpDrawer.js'
 import { GamePanel } from './GamePanel.js'
 import { TableTree } from './TableTree.js'
-import { Reading, familyRole, fixed, rowsOf } from './setup-rows.js'
+import { Reading, familyRole, fixed, movedTo, newCounter } from './setup-rows.js'
+import type { MaterialKey } from './MaterialRow.js'
 import { recipeWords } from './fields.js'
 import { useGesture } from './gesture.js'
 import { CardPreview } from './CardPreview.js'
 import { ZoneActions } from './ZoneActions.js'
-import { nameOf, templateOf } from './zone-name.js'
 import { landingOf } from './landing.js'
 import { CARD_MM } from '../table/drop.js'
 import { previewIcons } from './assets.js'
 import { previewFonts } from './fonts.js'
 import { FootSaid } from './said.js'
-import { ChevronGlyph, CloseGlyph } from '../glyphs.js'
+import { ChevronGlyph } from '../glyphs.js'
 
 // The setup editor (B5, K2). The table is the designer's: the recipe laid the first one out and
 // then let go, so what stands here stands here because they left it standing. The list on the left
@@ -155,7 +153,19 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside, lead }: Se
     setSaid(null)
     if (selected === zone.id) setSelected(null)
   }
-  const turnCounters = (counters: Counter[]) => client.setRecipe({ ...client.recipe, counters }, recipeWords(t))
+  const turnCounters = (counters: Counter[], gesture?: string) => client.setRecipe({ ...client.recipe, counters }, recipeWords(t), gesture)
+  // The counters are the only knobs written into a letter at a time; the rest are turned once and
+  // are a step back each (L14).
+  const counterTyping = useGesture('counter-field')
+  // Which piece of material stands open in its row, and which one takes the focus next render: a
+  // die or a counter just added from a ＋ opens with its fields and the key that added it is
+  // followed by the row it made rather than by nothing.
+  const [openMaterial, setOpenMaterial] = useState<MaterialKey | null>(null)
+  const [focusMaterial, setFocusMaterial] = useState<MaterialKey | null>(null)
+  const born = (key: MaterialKey) => {
+    setOpenMaterial(key)
+    setFocusMaterial(key)
+  }
   const keys = useRef({ selected, setup, client, remove, t })
   keys.current = { selected, setup, client, remove, t }
   // En ny zon föds på ledig filt (#440 för ytan, #443 för högen). Uppställningen äger regeln och
@@ -277,7 +287,6 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside, lead }: Se
     >
       <div className="byd-setup-side">
         <GamePanel client={client} setup={setup} />
-        <SeatsPanel client={client} setup={setup} />
         <TableTree
           setup={setup}
           rows={doc.rows}
@@ -291,9 +300,23 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside, lead }: Se
           onAdd={(what) => {
             if (what.kind === 'area' || what.kind === 'pile') add(what.kind)
             else if (what.kind === 'seat') addSeat(what.role)
-            else if (what.kind === 'die') client.setDice([...(setup.dice ?? []), movedTo({ faces: 6, count: 1, zone: '' }, what.place)])
-            else if (what.kind === 'counter') turnCounters([...client.recipe.counters, newCounter(client.recipe.counters, t, what.role)])
+            else if (what.kind === 'die') {
+              const dice = setup.dice ?? []
+              client.setDice([...dice, movedTo({ faces: 6, count: 1, zone: '' }, what.place)])
+              born(`die:${dice.length}`)
+            } else if (what.kind === 'counter') {
+              const counters = client.recipe.counters
+              turnCounters([...counters, newCounter(counters, t, what.role)])
+              born(`counter:${counters.length}`)
+            }
           }}
+          openMaterial={openMaterial}
+          onOpenMaterial={setOpenMaterial}
+          focusMaterial={focusMaterial}
+          onFocused={() => setFocusMaterial(null)}
+          onDice={(dice) => client.setDice(dice)}
+          onCounters={turnCounters}
+          typing={counterTyping}
         />
       </div>
       <div className="byd-setup-canvas">
@@ -410,250 +433,6 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside, lead }: Se
     </div>
     </Reading.Provider>
   )
-}
-
-function SeatsPanel({ client, setup }: { client: ProjectClient; setup: Setup }) {
-  const t = useT()
-  const recipe = client.recipe
-  // The counters are the only knobs written into a letter at a time; the rest are turned once and
-  // are a step back each, as they always were (L14).
-  const typing = useGesture('counter-field')
-  const turn = (patch: Partial<typeof recipe>, gesture?: string) => client.setRecipe({ ...recipe, ...patch }, recipeWords(t), gesture)
-  // A counter is named in the rules by its id (#708), so the id is written down before the name
-  // changes: one made before counters had ids is known by its name, and would otherwise lose every
-  // rule that names it at the first letter typed.
-  const setCounter = (i: number, patch: Partial<Counter>) => turn({ counters: recipe.counters.map((c, j) => (j === i ? { ...c, id: counterId(c), ...patch } : c)) }, typing.token())
-  // Counters lie in the seats' counters zones (C4). A game whose seats have none draws no chips,
-  // however long the list is, so the panel says so where the list is rather than leaving the
-  // designer to wonder why the table looks the same.
-  const homeless = recipe.counters.some((c) => c.role === undefined) && !setup.seats.some((s) => setup.zones.some((z) => z.id === `counters:${s}`))
-  const dice = setup.dice ?? []
-  // A die just added takes the focus in its own row, so that the key that added it is followed by
-  // the row it made rather than by nothing: the first «＋ Tärning» leaves the page with the first die.
-  const [fresh, setFresh] = useState<number | null>(null)
-  const addDie = () => {
-    client.setDice(withNewDie(setup, dice))
-    setFresh(dice.length)
-  }
-  return (
-    <aside className="byd-setup-recipe">
-      <section>
-        <div className="byd-setup-counters">
-          {/* A seat's counters change shape at the third one (C4, K18, #89): one or two lie side by
-              side along the seat's own rim, where a finger can reach each of them and the table can
-              read both at three metres; a third stacks them into one pile, because three targets of
-              44 px want more room along the rim than a seat has to give without taking it from its
-              neighbour. The designer cannot see that coming from the number, so it is said here,
-              where the number is chosen — behind the question mark, since it is an explanation
-              and not a cost (L32). */}
-          <div className="byd-help-row">
-            <h2>{t('setup.counters')}</h2>
-            <Help topic={t('setup.counters.help.topic')}>
-              <p>{t('setup.counters.help')}</p>
-            </Help>
-          </div>
-          {recipe.counters.map((c, i) => (
-            <div key={i} className="byd-setup-counter">
-              <input aria-label={t('setup.counter.name', { n: i + 1 })} value={c.name} readOnly={!client.mayEdit} {...typing.visit} onChange={(e) => setCounter(i, { name: e.target.value })} />
-              <span>{t('setup.counter.from')}</span>
-              <input aria-label={t('setup.counter.start', { n: i + 1 })} type="number" value={c.start} readOnly={!client.mayEdit} {...typing.visit} onChange={(e) => setCounter(i, { start: Math.trunc(Number(e.target.value) || 0) })} />
-              <button type="button" aria-label={t('setup.counter.remove', { n: i + 1 })} onClick={() => turn({ counters: recipe.counters.filter((_, j) => j !== i) })}>
-                <CloseGlyph />
-              </button>
-            </div>
-          ))}
-          {/* A game without dice has «＋ Tärning» beside «＋ Räknare» and no heading of its own (#1139):
-              at 1024 × 640 the column has no 100 px to spare for an empty group before the ways
-              to add a zone fall below its fold (#711). The heading comes with the first die. */}
-          <div className="byd-setup-adds">
-            <button type="button" onClick={() => turn({ counters: [...recipe.counters, newCounter(recipe.counters, t)] })}>
-              {t('setup.counter.add')}
-            </button>
-            {dice.length === 0 && (
-              <button type="button" onClick={addDie}>
-                {t('setup.die.add')}
-              </button>
-            )}
-          </div>
-          {homeless && <p className="byd-setup-note" role="status">{t('setup.counters.homeless')}</p>}
-        </div>
-      </section>
-      {dice.length > 0 && <DicePanel client={client} setup={setup} dice={dice} fresh={fresh} onAdd={addDie} onFocused={() => setFresh(null)} />}
-    </aside>
-  )
-}
-
-// The kinds a die can be (K28): the registry's six, by their sides.
-const DIE_FACES = [4, 6, 8, 10, 12, 20] as const satisfies readonly Die['faces'][]
-// Where a die can lie (#1139), as the zone picker's values: `zone:<id>` for an area every seat
-// shares, `role:<role>` for an area each seat has. Hands and piles are no place for a die.
-type DiePlace = { value: string; name: string }
-function diePlaces(setup: Setup): { table: DiePlace[]; seats: DiePlace[] } {
-  const table = setup.zones.filter((z) => z.kind === 'area' && z.owner === undefined).map((z) => ({ value: `zone:${z.id}`, name: z.name }))
-  const seats = rowsOf(setup.zones).flatMap((row) => (row.kind === 'family' && row.family.first.kind === 'area' ? [{ value: `role:${row.family.role}`, name: row.family.name }] : []))
-  return { table, seats }
-}
-const placeOf = (die: Die): string => (die.role !== undefined ? `role:${die.role}` : `zone:${die.zone ?? ''}`)
-// A die moved to another place keeps what its count meant: «per spelare» in a seat's area is
-// «per spelare» on the table too, and a seat's area has no other meaning to carry back. The point
-// it was dragged to was a point in the old zone (#1292), so the new one lays it where it finds room.
-function movedTo(die: Die, value: string): Die {
-  const { zone: _zone, role: _role, at: _at, perSeat, ...rest } = die
-  if (value.startsWith('role:')) return { ...rest, role: value.slice('role:'.length) }
-  const seated = die.role !== undefined || perSeat === true
-  return { ...rest, zone: value.slice('zone:'.length), ...(seated ? { perSeat: true } : {}) }
-}
-
-// The list with one more die: a d6 where the one above it lies, or on the felt when it is the first
-// or the one above lies nowhere any more.
-function withNewDie(setup: Setup, dice: readonly Die[]): Die[] {
-  const places = diePlaces(setup)
-  const known = new Set([...places.table, ...places.seats].map((p) => p.value))
-  const above = dice.at(-1)
-  const floor = places.table.find((p) => p.value === `zone:${setup.floor}`) ?? places.table[0]
-  const at = above && known.has(placeOf(above)) ? placeOf(above) : floor?.value
-  return at ? [...dice, movedTo({ faces: 6, count: 1, zone: '' }, at)] : [...dice]
-}
-
-// The game's dice (#1139, beställarens beslut A med dynamiskt antal), under the counters and
-// written like them: one row per line of `setup.dice`, the whole list one edit (B4).
-function DicePanel({ client, setup, dice, fresh, onAdd, onFocused }: { client: ProjectClient; setup: Setup; dice: Die[]; fresh: number | null; onAdd(): void; onFocused(): void }) {
-  const t = useT()
-  const places = diePlaces(setup)
-  const known = new Set([...places.table, ...places.seats].map((p) => p.value))
-  const write = (next: Die[]) => client.setDice(next)
-  return (
-    <section>
-      <div className="byd-setup-counters">
-        <div className="byd-help-row">
-          <h2>{t('setup.dice')}</h2>
-          <Help topic={t('setup.dice.help.topic')}>
-            <p>{t('setup.dice.help')}</p>
-          </Help>
-        </div>
-        {dice.map((die, i) => (
-          <DieRow
-            key={i}
-            die={die}
-            n={i + 1}
-            places={places}
-            gone={!known.has(placeOf(die))}
-            reading={!client.mayEdit}
-            fresh={i === fresh}
-            onFocused={onFocused}
-            onChange={(next) => write(dice.map((d, j) => (j === i ? next : d)))}
-            onRemove={() => write(dice.filter((_, j) => j !== i))}
-          />
-        ))}
-        <button type="button" onClick={onAdd}>
-          {t('setup.die.add')}
-        </button>
-      </div>
-    </section>
-  )
-}
-
-function DieRow({ die, n, places, gone, reading, fresh, onFocused, onChange, onRemove }: { die: Die; n: number; places: { table: DiePlace[]; seats: DiePlace[] }; gone: boolean; reading: boolean; fresh: boolean; onFocused(): void; onChange(die: Die): void; onRemove(): void }) {
-  const t = useT()
-  const note = useId()
-  const first = useRef<HTMLInputElement>(null)
-  useEffect(() => {
-    if (!fresh) return
-    first.current?.focus()
-    onFocused()
-  }, [fresh, onFocused])
-  const count = useNumberDraft({ value: die.count, min: 1, max: 20, onCommit: (value) => onChange({ ...die, count: Math.trunc(value) }) })
-  const place = placeOf(die)
-  return (
-    <>
-      <div className="byd-setup-counter byd-setup-die">
-        <input
-          ref={first}
-          aria-label={t('setup.die.count', { n })}
-          type="number"
-          min={1}
-          max={20}
-          value={count.value}
-          readOnly={reading}
-          onChange={count.onChange}
-          onBlur={count.onBlur}
-          onKeyDown={(e) => {
-            count.onKey(e)
-          }}
-        />
-        <select aria-label={t('setup.die.kind', { n })} value={die.faces} disabled={reading} onChange={(e) => onChange({ ...die, faces: Number(e.target.value) as Die['faces'] })}>
-          {DIE_FACES.map((faces) => (
-            <option key={faces} value={faces}>
-              {t('setup.die.faces', { n: faces })}
-            </option>
-          ))}
-        </select>
-        {die.role !== undefined ? (
-          <span>{t('setup.die.perSeat')}</span>
-        ) : (
-          <select aria-label={t('setup.die.mode', { n })} value={die.perSeat ? 'perSeat' : 'total'} disabled={reading} onChange={(e) => onChange(e.target.value === 'perSeat' ? { ...die, perSeat: true } : (({ perSeat: _p, ...rest }) => rest)(die))}>
-            <option value="perSeat">{t('setup.die.perSeat')}</option>
-            <option value="total">{t('setup.die.total')}</option>
-          </select>
-        )}
-        <span className="byd-setup-die-where">
-          <span>{t('setup.die.in')}</span>
-          <select
-            aria-label={t('setup.die.place', { n })}
-            value={gone ? '' : place}
-            disabled={reading}
-            aria-invalid={gone ? true : undefined}
-            aria-describedby={gone ? note : undefined}
-            onChange={(e) => onChange(movedTo(die, e.target.value))}
-          >
-            {gone && (
-              <option value="" disabled>
-                {t('setup.die.place.gone')}
-              </option>
-            )}
-            <optgroup label={t('setup.group.table')}>
-              {places.table.map((p) => (
-                <option key={p.value} value={p.value}>
-                  {p.name}
-                </option>
-              ))}
-            </optgroup>
-            {places.seats.length > 0 && (
-              <optgroup label={t('setup.group.seats')}>
-                {places.seats.map((p) => (
-                  <option key={p.value} value={p.value}>
-                    {p.name}
-                  </option>
-                ))}
-              </optgroup>
-            )}
-          </select>
-        </span>
-        <button type="button" aria-label={t('setup.die.remove', { n })} onClick={onRemove}>
-          <CloseGlyph />
-        </button>
-      </div>
-      {gone && (
-        <p id={note} className="byd-setup-note" role="status">
-          {t('setup.die.homeless', { n })}
-        </p>
-      )}
-    </>
-  )
-}
-
-// A new counter: the first is the score, the rest are lives — under a name no counter has yet, the
-// way new piles get one (#480). Two «Liv» were two «LIV» on the phone and the TV (#713).
-function newCounter(counters: readonly Counter[], t: T, role?: string): Counter {
-  const [base, start] = counters.length === 0 ? [t('counter.score'), 0] : [t('counter.life'), 20]
-  const taken = new Set(counters.map((c) => c.name))
-  let name = base
-  for (let n = 2; taken.has(name); n++) name = `${base} ${n}`
-  // And an id no counter has, which the rules name it by however it is renamed later (#708).
-  const ids = new Set(counters.map(counterId))
-  let id = counterId({ name })
-  for (let n = 2; ids.has(id); n++) id = `${counterId({ name })}-${n}`
-  return { id, name, start, ...(role !== undefined ? { role } : {}) }
 }
 
 // B: the felt with a handle on every zone but the floor. Dragging moves, the corner resizes,

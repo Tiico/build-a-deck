@@ -1,5 +1,5 @@
 import { createContext } from 'react'
-import type { Setup, Zone } from '@byd/server/doc'
+import { counterId, type Counter, type Die, type Setup, type Zone } from '@byd/server/doc'
 import type { T } from '../i18n/index.js'
 import { nameOf, templateOf } from './zone-name.js'
 
@@ -76,4 +76,40 @@ function settle(family: Family): Family {
   let best = templateOf(family.first)
   for (const [template, n] of counts) if (n > (counts.get(best) ?? 0)) best = template
   return { ...family, name: nameOf(best) || family.first.name, differ: family.zones.filter((zone) => templateOf(zone) !== best) }
+}
+
+// The kinds a die can be (K28): the registry's six, by their sides.
+export const DIE_FACES = [4, 6, 8, 10, 12, 20] as const satisfies readonly Die['faces'][]
+// Where a die can lie (#1139), as the zone picker's values: `zone:<id>` for an area every seat
+// shares, `role:<role>` for an area each seat has. Hands and piles are no place for a die.
+export type DiePlace = { value: string; name: string }
+export function diePlaces(setup: Setup): { table: DiePlace[]; seats: DiePlace[] } {
+  const table = setup.zones.filter((z) => z.kind === 'area' && z.owner === undefined).map((z) => ({ value: `zone:${z.id}`, name: z.name }))
+  const seats = rowsOf(setup.zones).flatMap((row) => (row.kind === 'family' && row.family.first.kind === 'area' ? [{ value: `role:${row.family.role}`, name: row.family.name }] : []))
+  return { table, seats }
+}
+export const placeOf = (die: Die): string => (die.role !== undefined ? `role:${die.role}` : `zone:${die.zone ?? ''}`)
+// A die moved to another place keeps what its count meant: «per spelare» in a seat's area is
+// «per spelare» on the table too, and a seat's area has no other meaning to carry back. The point
+// it was dragged to was a point in the old zone (#1292), so the new one lays it where it finds room.
+export function movedTo(die: Die, value: string): Die {
+  const { zone: _zone, role: _role, at: _at, perSeat, ...rest } = die
+  if (value.startsWith('role:')) return { ...rest, role: value.slice('role:'.length) }
+  const seated = die.role !== undefined || perSeat === true
+  return { ...rest, zone: value.slice('zone:'.length), ...(seated ? { perSeat: true } : {}) }
+}
+
+// A new counter: the first is the score, the rest are lives — under a name no counter has yet, the
+// way new piles get one (#480). Two «Liv» were two «LIV» on the phone and the TV (#713). Born from
+// an area family's ＋ it carries that role (K31); from the counters zone it carries none.
+export function newCounter(counters: readonly Counter[], t: T, role?: string): Counter {
+  const [base, start] = counters.length === 0 ? [t('counter.score'), 0] : [t('counter.life'), 20]
+  const taken = new Set(counters.map((c) => c.name))
+  let name = base
+  for (let n = 2; taken.has(name); n++) name = `${base} ${n}`
+  // And an id no counter has, which the rules name it by however it is renamed later (#708).
+  const ids = new Set(counters.map(counterId))
+  let id = counterId({ name })
+  for (let n = 2; ids.has(id); n++) id = `${counterId({ name })}-${n}`
+  return { id, name, start, ...(role !== undefined ? { role } : {}) }
 }

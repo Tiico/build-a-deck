@@ -1,13 +1,14 @@
 import { useContext, useEffect, useId, useRef, useState, type KeyboardEvent as RKeyboardEvent, type ReactNode } from 'react'
 import type { ProjectDoc } from '@byd/server'
 import type { ZoneBeside } from '@byd/protocol'
-import { titleOfRow, type SeatRole, type Setup, type Zone, type ZonePatch } from '@byd/server/doc'
+import { counterId, titleOfRow, type Counter, type Die, type SeatRole, type Setup, type Zone, type ZonePatch } from '@byd/server/doc'
 import { useT, type Key } from '../i18n/index.js'
 import { ChevronGlyph, CloseGlyph } from '../glyphs.js'
 import { Help } from './HelpDrawer.js'
 import { useGesture } from './gesture.js'
 import { landingOf } from './landing.js'
-import { Reading, fixed, rowsOf, type Family } from './setup-rows.js'
+import { Reading, diePlaces, fixed, placeOf, rowsOf, type Family } from './setup-rows.js'
+import { CounterFields, DieFields, MaterialRow, dieWords, type MaterialKey } from './MaterialRow.js'
 
 // The table as a tree (#1403, beställarens beslut C): the list in Bord's column mirrors the felt,
 // where everything lies in something. The floor is the root of what stands on the table — the
@@ -33,11 +34,28 @@ export function TableTree({
   onPatch,
   onHold,
   onAdd,
+  openMaterial,
+  onOpenMaterial,
+  focusMaterial,
+  onFocused,
+  onDice,
+  onCounters,
+  typing,
 }: {
   setup: Setup
   rows: ProjectDoc['rows']
   selected: string | null
   opened: string[]
+  // Which piece of material stands open in its row, which one should take the focus because the
+  // ＋ that made it is gone, and how the dice and the counters are written back (B4): the dice
+  // as the whole list, a counter as the recipe it is part of.
+  openMaterial: MaterialKey | null
+  onOpenMaterial(key: MaterialKey | null): void
+  focusMaterial: MaterialKey | null
+  onFocused(): void
+  onDice(dice: Die[]): void
+  onCounters(counters: Counter[], gesture?: string): void
+  typing: { visit: Record<string, unknown>; token(): string }
   onSelect(id: string | null): void
   onOpen(role: string): void
   onRemove(zone: Zone): void
@@ -54,7 +72,12 @@ export function TableTree({
   const areaFamilies = atSeats.flatMap((row) => (row.kind === 'family' && row.family.first.kind === 'area' ? [row.family] : []))
   const seatArea = areaFamilies.find((f) => f.role === 'mine') ?? areaFamilies[0]
   const seats = setup.seats.length
-  const zoneRow = (zone: Zone, add?: AddItem[]) => <ZoneRow key={zone.id} zone={zone} setup={setup} rows={deck} selected={selected} add={add} onSelect={onSelect} onRemove={onRemove} onPatch={onPatch} onHold={onHold} />
+  // An area's own dice stand under its row, in a list of its name.
+  const zoneRow = (zone: Zone, add?: AddItem[], material: ReactNode[] = []) => (
+    <ZoneRow key={zone.id} zone={zone} setup={setup} rows={deck} selected={selected} add={add} onSelect={onSelect} onRemove={onRemove} onPatch={onPatch} onHold={onHold}>
+      {material.length > 0 && <ul aria-label={zone.name}>{material}</ul>}
+    </ZoneRow>
+  )
   const dieIn = (place: string): AddItem => ({ label: t('setup.die.add'), pick: () => onAdd({ kind: 'die', place }) })
   const floorAdds: AddItem[] = [
     { label: t('setup.addArea'), pick: () => onAdd({ kind: 'area' }) },
@@ -72,6 +95,53 @@ export function TableTree({
   const familyAdds = (family: Family): AddItem[] | undefined =>
     family.first.kind === 'area' ? [dieIn(`role:${family.role}`), { label: t('setup.counter.add'), pick: () => onAdd({ kind: 'counter', role: family.role === 'counters' ? undefined : family.role }) }] : undefined
   const seatsAdd = useAddMenu(t('setup.seats.node'), seatAdds)
+
+  // The material, each line under the zone it lies in (K31). A die whose place is gone stands
+  // under the floor and asks for another; a counter whose family is gone stands under «Varje
+  // plats», and the one note there says why nothing is laid.
+  const dice = setup.dice ?? []
+  const counters = setup.counters ?? []
+  const places = diePlaces(setup)
+  const known = new Set([...places.table, ...places.seats].map((p) => p.value))
+  const familyRoles = new Set(areaFamilies.map((f) => f.role))
+  const dieRow = (die: Die, i: number, gone: boolean) => {
+    const key: MaterialKey = `die:${i}`
+    const words = dieWords(die, t)
+    return (
+      <MaterialRow key={key} id={key} kind="die" label={words.label} detail={words.detail} removeLabel={t('setup.die.remove', { n: i + 1 })} open={openMaterial === key || gone} onOpen={(open) => onOpenMaterial(open ? key : null)} onRemove={() => { onOpenMaterial(null); onDice(dice.filter((_, j) => j !== i)) }}>
+        <DieFields die={die} n={i + 1} places={places} gone={gone} focus={focusMaterial === key} onFocused={onFocused} onChange={(next) => onDice(dice.map((d, j) => (j === i ? next : d)))} />
+      </MaterialRow>
+    )
+  }
+  const diceAt = (place: string) => dice.flatMap((die, i) => (placeOf(die) === place ? [dieRow(die, i, false)] : []))
+  const homelessDice = dice.flatMap((die, i) => (known.has(placeOf(die)) ? [] : [dieRow(die, i, true)]))
+  const counterRow = (c: Counter, i: number, note?: ReactNode) => {
+    const key: MaterialKey = `counter:${i}`
+    return (
+      <MaterialRow key={key} id={key} kind="counter" label={c.name} detail={`${t('setup.counter.from')} ${c.start}`} removeLabel={t('setup.counter.remove', { n: i + 1 })} open={openMaterial === key} note={note} onOpen={(open) => onOpenMaterial(open ? key : null)} onRemove={() => { onOpenMaterial(null); onCounters(counters.filter((_, j) => j !== i)) }}>
+        {/* A counter is named in the rules by its id (#708), so the id is written down before the
+            name changes: one made before counters had ids is known by its name, and would otherwise
+            lose every rule that names it at the first letter typed. */}
+        <CounterFields counter={c} n={i + 1} focus={focusMaterial === key} onFocused={onFocused} visit={typing.visit} onChange={(patch) => onCounters(counters.map((o, j) => (j === i ? { ...o, id: counterId(o), ...patch } : o)), typing.token())} />
+      </MaterialRow>
+    )
+  }
+  const roleOfCounter = (c: Counter) => c.role ?? 'counters'
+  const countersAt = (role: string) => counters.flatMap((c, i) => (roleOfCounter(c) === role ? [counterRow(c, i)] : []))
+  // A counter whose family is gone lays no chip, however long the list is (C4): the first such
+  // row says so, where the designer would otherwise wonder why the table looks the same.
+  const homeless = counters.flatMap((c, i) => (familyRoles.has(roleOfCounter(c)) ? [] : [{ c, i }]))
+  const homelessCounters = homeless.map(({ c, i }, k) =>
+    counterRow(
+      c,
+      i,
+      k === 0 ? (
+        <p className="byd-setup-note" role="status">
+          {t('setup.counters.homeless')}
+        </p>
+      ) : undefined,
+    ),
+  )
   return (
     <section className="byd-setup-zones" data-zone-list>
       <div className="byd-help-row">
@@ -84,7 +154,16 @@ export function TableTree({
       </div>
       <ul aria-labelledby="byd-setup-tree">
         {floor &&
-          zoneRowWith(zoneRow, floor, floorAdds, <ul aria-label={floor.name}>{onTable.map((zone) => zoneRow(zone, zone.kind === 'area' ? [dieIn(`zone:${zone.id}`)] : undefined))}</ul>)}
+          zoneRowWith(
+            zoneRow,
+            floor,
+            floorAdds,
+            <ul aria-label={floor.name}>
+              {onTable.map((zone) => zoneRow(zone, zone.kind === 'area' ? [dieIn(`zone:${zone.id}`)] : undefined, diceAt(`zone:${zone.id}`)))}
+              {diceAt(`zone:${floor.id}`)}
+              {homelessDice}
+            </ul>,
+          )}
         <li data-seats-root>
           <div className="byd-setup-row">
             <span className="byd-setup-name">
@@ -99,11 +178,12 @@ export function TableTree({
               it.kind === 'zone' ? (
                 zoneRow(it.zone)
               ) : (
-                <FamilyRow key={it.family.role} family={it.family} setup={setup} open={opened.includes(it.family.role)} add={familyAdds(it.family)} onOpen={() => onOpen(it.family.role)}>
+                <FamilyRow key={it.family.role} family={it.family} setup={setup} open={opened.includes(it.family.role)} add={familyAdds(it.family)} material={[...diceAt(`role:${it.family.role}`), ...countersAt(it.family.role)]} onOpen={() => onOpen(it.family.role)}>
                   {it.family.zones.map((zone) => zoneRow(zone))}
                 </FamilyRow>
               ),
             )}
+            {homelessCounters}
           </ul>
         </li>
       </ul>
@@ -112,7 +192,7 @@ export function TableTree({
 }
 
 // The floor's row, with what lies on it under it: `ZoneRow` takes its children as the nested list.
-function zoneRowWith(zoneRow: (zone: Zone, add?: AddItem[]) => ReactNode, floor: Zone, add: AddItem[], children: ReactNode): ReactNode {
+function zoneRowWith(zoneRow: (zone: Zone, add?: AddItem[], material?: ReactNode[]) => ReactNode, floor: Zone, add: AddItem[], children: ReactNode): ReactNode {
   const row = zoneRow(floor, add) as React.ReactElement<{ children?: ReactNode }>
   return { ...row, props: { ...row.props, children } }
 }
@@ -191,7 +271,7 @@ function useAddMenu(name: string, items: AddItem[] | undefined): { button: React
 // En familjs rad: vad zonen är, hur många platser som har den, och — när platserna inte är lika —
 // att de inte är det. Raden fäller aldrig ut sig själv: en lista som ändrar form utan att någon
 // rört den är svår att lita på, och avvikelsen är en upplysning innan den är ett ärende.
-function FamilyRow({ family, setup, open, add, onOpen, children }: { family: Family; setup: Setup; open: boolean; add?: AddItem[] | undefined; onOpen(): void; children: ReactNode }) {
+function FamilyRow({ family, setup, open, add, material, onOpen, children }: { family: Family; setup: Setup; open: boolean; add?: AddItem[] | undefined; material: ReactNode[]; onOpen(): void; children: ReactNode }) {
   const t = useT()
   const n = family.zones.length
   const seats = setup.seats.length
@@ -229,7 +309,14 @@ function FamilyRow({ family, setup, open, add, onOpen, children }: { family: Fam
         )}
       </div>
       {adding.list}
-      {open && <ul aria-label={family.name}>{children}</ul>}
+      {/* The seats when the family is opened, and what every seat's zone holds always (K31): the
+          row is the table of contents, and a counter is something the designer looks for. */}
+      {(open || material.length > 0) && (
+        <ul aria-label={family.name}>
+          {open && children}
+          {material}
+        </ul>
+      )}
     </li>
   )
 }

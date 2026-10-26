@@ -1393,6 +1393,7 @@ export const enEditor = {
   'setup.tree.help.topic': 'the table',
   'setup.seats.node': 'Every seat',
   'setup.add.to': 'Add to {name}',
+  'setup.die.row': '{count} × d{faces}',
   'setup.players': 'Players',
   'setup.counters': 'Counters',
   'setup.counter.name': 'Name for counter {n}',

@@ -1527,6 +1527,7 @@ export const svEditor = {
   'setup.tree.help.topic': 'bordet',
   'setup.seats.node': 'Varje plats',
   'setup.add.to': 'Lägg till i {name}',
+  'setup.die.row': '{count} × d{faces}',
   'setup.players': 'Spelare',
   'setup.counters': 'Räknare',
   'setup.counter.name': 'Namn för räknare {n}',
