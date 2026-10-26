@@ -4,11 +4,12 @@ import { requestLink } from './session.js'
 import { arrival } from './api.js'
 import { firstVisitSeen, markFirstVisitSeen, markPitchSeen, pitchSeen } from './pitch.js'
 import { Help } from '../editor/HelpDrawer.js'
-import { LanguagePicker, useT, type Key } from '../i18n/index.js'
+import { LanguagePicker, useLang, useT, type Key, type T } from '../i18n/index.js'
 import { AboutLine } from './AboutLine.js'
 import { Address } from './Address.js'
 import { marked } from './marked.js'
 import { KeyGlyph } from '../glyphs.js'
+import { clockWord } from '../editor/when.js'
 import { letGoOfSuggestion, loginWithPasskey, useKeychain } from './passkey.js'
 
 // Logging in (G1, prototype A): one field, one button, one line about what logging in is for.
@@ -23,6 +24,7 @@ import { letGoOfSuggestion, loginWithPasskey, useKeychain } from './passkey.js'
 // pitch does not stand beside it.
 export function LoginCard({ http, next, onNavigate = (url) => location.assign(url), lead, help, notice }: { http: string; next: string; onNavigate?(url: string): void; lead?: string | undefined; help?: string | undefined; notice?: ReactNode }) {
   const t = useT()
+  const { lang } = useLang()
   const [pitch] = useState(() => lead === undefined && notice === undefined && !pitchSeen())
   // The first visit's line has a memory of its own (#1358): the landing page sells, and never says
   // that the link makes the account.
@@ -34,6 +36,20 @@ export function LoginCard({ http, next, onNavigate = (url) => location.assign(ur
   const [email, setEmail] = useState('')
   const [state, setState] = useState<State>('open')
   const field = useRef<HTMLInputElement>(null)
+  // The receipt's own answers (#1360): when a link was sent again, and what the last press was told.
+  const [receipt, setReceipt] = useState<Receipt>(FRESH)
+  const sentBox = useRef<HTMLDivElement>(null)
+  const resending = useRef(false)
+  // «Fel adress?» puts the field back with the address in it, and the focus and caret at its end.
+  const [back, setBack] = useState(false)
+  useEffect(() => {
+    if (state === 'sent') sentBox.current?.focus()
+  }, [state])
+  useEffect(() => {
+    if (!back || !field.current) return
+    setBack(false)
+    caretAtEnd(field.current)
+  }, [back])
   // The sentence under the field is tied to it, and the field says it is the one at fault when it
   // is (#475). Both go the moment the address is edited: a sentence about the old address standing
   // under a new one is a sentence about nothing.
@@ -83,14 +99,39 @@ export function LoginCard({ http, next, onNavigate = (url) => location.assign(ur
     setState('busy')
     try {
       const result = await requestLink(http, address, next)
-      if (result === 'logged-in') {
+      if (result.is === 'logged-in') {
         onward()
         return
       }
-      setState(result)
+      setReceipt(FRESH)
+      setState(result.is)
     } catch {
       setState('failed')
     }
+  }
+  // «Skicka igen» asks for one more link to the same address, straight away: no timer, and the
+  // answer said in the receipt. Resting after the limiter's refusal is said on the button rather than
+  // done by disabling it, which would drop the focus of whoever just pressed it.
+  const limited = receipt.said !== null && receipt.said !== 'failed'
+  const resend = async () => {
+    if (resending.current || limited) return
+    resending.current = true
+    try {
+      const result = await requestLink(http, email.trim(), next)
+      if (result.is === 'logged-in') onward()
+      else if (result.is === 'sent') setReceipt({ again: new Date().toISOString(), said: null })
+      else if (result.is === 'too-many') setReceipt((r) => ({ ...r, said: { retryAfter: result.retryAfter } }))
+      else setReceipt((r) => ({ ...r, said: 'failed' }))
+    } catch {
+      setReceipt((r) => ({ ...r, said: 'failed' }))
+    } finally {
+      resending.current = false
+    }
+  }
+  const wrongAddress = () => {
+    setReceipt(FRESH)
+    setState('open')
+    setBack(true)
   }
   return (
     <div className="byd-login" data-login>
@@ -112,9 +153,32 @@ export function LoginCard({ http, next, onNavigate = (url) => location.assign(ur
         </Help>
       </div>
       {state === 'sent' ? (
-        <div className="byd-login-sent" role="status">
+        // The receipt takes the focus the field had, so that its two answers are the next stop.
+        <div ref={sentBox} className="byd-login-sent" role="status" tabIndex={-1}>
           <strong>{t('login.sent.title')}</strong>
           <span>{marked(t('login.sent.body'), { email: <Address email={email.trim()} /> })}</span>
+          {receipt.again && (
+            <p className="byd-login-sent-again">
+              <span className="byd-login-tick" aria-hidden="true">
+                ✓
+              </span>
+              <span>{t('login.sent.again.done', { time: clockWord(receipt.again, lang) })}</span>
+            </p>
+          )}
+          {receipt.said && (
+            <p className="byd-login-sent-refused" role="alert">
+              {receipt.said === 'failed' ? t('login.error.failed') : limitWords(receipt.said.retryAfter, t)}
+            </p>
+          )}
+          {/* The passkey's offer's form on the same green (#1180): «Fel adress?» first, the commoner reason. */}
+          <div className="byd-login-sent-answers">
+            <button type="button" className="byd-secondary" onClick={wrongAddress}>
+              {t('login.sent.wrong')}
+            </button>
+            <button type="button" className="byd-secondary" {...(limited ? { 'aria-disabled': true } : {})} onClick={() => void resend()}>
+              {t('login.sent.again')}
+            </button>
+          </div>
         </div>
       ) : (
         // The browser's own bubble is not the product's voice and says nothing a screen reader
@@ -186,6 +250,27 @@ export function LoginCard({ http, next, onNavigate = (url) => location.assign(ur
 }
 
 type State = 'open' | 'busy' | 'sent' | 'empty' | 'at' | 'too-many' | 'invalid' | 'failed'
+// `again` is when the last link sent from the receipt went out; `said` is what the last press there
+// was told, when it was not a link: the limiter's refusal with its wait, or a send that failed.
+type Receipt = { again: string | null; said: null | 'failed' | { retryAfter: number | null } }
+const FRESH: Receipt = { again: null, said: null }
+
+// The limiter's refusal, with the wait in whole minutes up: a reader told «om 0 minuter» would press
+// again and be refused again.
+function limitWords(retryAfter: number | null, t: T): string {
+  if (retryAfter === null) return t('login.sent.limit.later')
+  const minutes = Math.max(1, Math.ceil(retryAfter / 60))
+  return minutes === 1 ? t('login.sent.limit.one') : t('login.sent.limit.other', { n: minutes })
+}
+
+// An email field has no selection to set, so the caret is put at the end by giving the value back
+// after the focus, which leaves it after the last character.
+function caretAtEnd(input: HTMLInputElement): void {
+  input.focus()
+  const value = input.value
+  input.value = ''
+  input.value = value
+}
 // What the card says under the field in each state that has something to say.
 const ERRORS: Partial<Record<State, Key>> = {
   empty: 'login.error.empty',
