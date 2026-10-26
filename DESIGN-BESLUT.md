@@ -6853,6 +6853,12 @@ Etiketten «Wizarden är startpunkten» är borta, och med den ordet «wizard» 
 Meningen står här och bara här; inloggningskortets leads är #691:s.
 Vid 1280 × 800 är rutan 445 × 70 px, mot 445 × 52 när den bara bar etiketten.
 
+**Kvittot «Kolla din mejl» får två svar** (beställarens beslut 2026-10-26, #1360, variant A efter prototyp).
+Kvittot står där fältet stod och får en rad med «Fel adress?» och «Skicka igen», i passkey-erbjudandets form på samma gröna grund; inget utanför kvittot ändras.
+«Fel adress?» lägger tillbaka fältet med adressen och markören sist, och «Skicka igen» skickar direkt: raden under texten säger klockslaget och att den förra länken också fungerar.
+Det finns ingen timer, eftersom en knapp som vilar utan att säga varför läses som död.
+När begränsaren säger nej säger kvittot när nästa kan gå, ur serverns `Retry-After`, och knappen vilar utan att tappa fokus.
+
 
 ### L37. En uppladdning som misslyckas för sent rättas i dokumentet och i historikens bilder, aldrig som ett eget steg (2026-09-20, #344; reviderat 2026-09-21, #358)
 

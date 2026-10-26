@@ -33,10 +33,11 @@
 /* The receipt takes the focus the vanished field had, as a place to stand and not a control. */
 .byd-login-sent:focus { outline: none; }
 /* Its two answers (#1360, beslut A): the passkey offer's outline buttons on the same green, side by
-   side, and one under the other when the card is too narrow for both. */
+   side, and one under the other, each across the receipt, when the card is too narrow for both. */
 .byd-login-sent-answers { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
-.byd-login .byd-login-sent-answers > button { flex: 1 1 120px; min-height: 44px; padding: 0 16px; border-radius: 12px; font: inherit; font-weight: 700; }
-.byd-login .byd-login-sent-answers > button[aria-disabled='true'] { opacity: 0.45; cursor: default; }
+.byd-login .byd-login-sent-answers > button { flex: 1 1 0; min-width: max-content; min-height: 44px; padding: 0 12px; border-radius: 12px; font: inherit; font-weight: 700; }
+/* Resting is drawn in the ink and the line alone, never as opacity: the focus ring stays whole. */
+.byd-login .byd-login-sent-answers > button[aria-disabled='true'] { color: #708a7b; border-color: #3a5545; cursor: default; }
 .byd-login-sent-again { display: flex; gap: 8px; align-items: flex-start; margin: 4px 0 0; font-size: 13px; }
 .byd-login-sent-again > .byd-login-tick { width: 18px; height: 18px; margin-top: 1px; font-size: 11px; }
 .byd-login-sent-refused { margin: 4px 0 0; padding: 10px 12px; border-radius: 10px; background: #3b3222; color: #ffeccc; font-size: 13px; line-height: 1.45; }
