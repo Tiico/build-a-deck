@@ -544,7 +544,10 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--byd-s2) var(--byd-s4);
-  padding: var(--byd-s2) var(--byd-s4);
+  /* 4 px above and below, not 8: with the seats on a line of their own the band is 75 px, and at
+     1024 × 768 the template's text panel has exactly that much room beside it (#736) — at 77 it
+     was 1 px under the fold. */
+  padding: var(--byd-s1) var(--byd-s4);
   background: var(--byd-editor-table-bg);
   color: var(--byd-editor-table-live);
   border-bottom: 1px solid #2f333d;
@@ -577,7 +580,7 @@
 .byd-editor-table-link[data-lost] .byd-editor-live::after { animation: none; }
 /* «Kopiera länk»: a full target drawn as its glyph alone, in the line's own height — the target's
    air hangs over the line as the help's «?» does. */
-.byd-editor-table-link button.byd-editor-copy { display: inline-grid; place-items: center; width: var(--byd-tap); height: var(--byd-tap); min-height: var(--byd-tap); padding: 0; border: 0; border-radius: 8px; background: transparent; color: var(--byd-editor-table-quiet); font-size: 16px; cursor: pointer; margin: calc((20px - var(--byd-tap)) / 2) 0; } /* undantag: glyfens 20 px mot träffytans 44 är inget avstånd på stegen. */
+.byd-editor-table-link button.byd-editor-copy { display: inline-grid; place-items: center; width: var(--byd-tap); height: var(--byd-tap); min-height: var(--byd-tap); padding: 0; border: 0; border-radius: 8px; background: transparent; color: var(--byd-editor-table-quiet); font-size: 16px; cursor: pointer; margin: calc((18px - var(--byd-tap)) / 2) 0; } /* undantag: radens 18 px mot träffytans 44 är inget avstånd på stegen. */
 .byd-editor-table-link button.byd-editor-copy:hover { background: #2a3a2c; color: #fff; }
 .byd-editor-table-link[data-lost] button.byd-editor-copy:hover { background: var(--byd-editor-lost-button-bg); }
 /* The way in and the ⋯, at the band's right end whatever the lines before them hold. */

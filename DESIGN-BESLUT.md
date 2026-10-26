@@ -9129,8 +9129,8 @@ Platserna har alltid en egen rad: bandet bryter aldrig mitt i brickorna, och det
 Ett ⋯ «Fler val för bordet KOD» är radens egen meny (`RowWays`) med «Ny kod» och «Avsluta bordet»; båda frågar först som förut (#679, C9), och frågorna står under bandet.
 Punkten står stilla vid nedsatt rörelse och blir rosa när kort saknas, med bandets övriga färger.
 
-Måtten: 85 px vid 1440 med tre platser (61 förut), 137 vid 1024 med åtta i CI:s typsnitt (109 förut).
-Priset är de 24 pixlarna på varje flik så länge bordet kör, och det är det priset formen valdes med.
+Måtten i den byggda appen: 75 px med platser vid bordet (61 förut), med 4 px luft över och under i stället för prototypens 8, eftersom Mall-flikens textpanel vid 1024 × 768 har exakt så mycket rum bredvid bandet (#736, `template-text-and-back-fit.spec.ts`).
+Priset är de 14 pixlarna på varje flik så länge bordet kör, och det är det priset formen valdes med.
 
 Följdkrav:
 Bandets egen anslutning till bordet är ägarens (`owner`), som radens, så att avslutet går samma väg som radens (C9) och platserna och slutet läses på en lina.
