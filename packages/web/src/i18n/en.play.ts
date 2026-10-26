@@ -431,6 +431,8 @@ export const enPlay: Record<keyof typeof svPlay, string> = {
   'survey.tied': 'Your answers are tied to {version}.',
   'survey.save': 'Save to your account',
   'survey.saved': 'Saved to your account.',
+  'survey.again': 'Answer again',
+  'survey.again.note': 'Your new answer replaces the first.',
   'guest.kept.saved.label': 'Saved',
   'guest.kept.saved': 'your name, moves, notes, flags and survey answers',
   'guest.kept.seen.label': 'Seen by',

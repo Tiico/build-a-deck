@@ -136,6 +136,32 @@ for (const backend of backends) {
       expect((await asAccount(id, hers, { seat: 'A', answers })).status).toBe(403)
     })
 
+    // Beställarens beslut i #1355: the phone asks the server whether its seat has answered, so that
+    // a new tab, a reload or another phone shows the thanks, and the tab's storage knows nothing of
+    // it. An erased admission (#1281) has no answers left and is said as forgotten (#1353).
+    it('says whether a seat, an observer and an account have answered, and that an erased one is forgotten', async () => {
+      const { id, ada, bo, cilla } = await ended()
+      const mine = async (body: unknown, cookie?: string) => {
+        const res = await fetch(`${run.http}/sessions/${id}/survey/mine`, { method: 'POST', headers: { 'content-type': 'application/json', ...(cookie ? { cookie } : {}) }, body: JSON.stringify(body) })
+        return [res.status, res.status === 200 ? await res.json() : null]
+      }
+      expect(await mine({ token: ada, seat: 'A' })).toEqual([200, { answered: false, forgotten: false }])
+      expect((await post(`/sessions/${id}/survey`, { token: ada, seat: 'A', answers })).status).toBe(201)
+      expect((await post(`/sessions/${id}/survey`, { token: cilla, seat: null, observer: true, answers })).status).toBe(201)
+      expect(await mine({ token: ada, seat: 'A' })).toEqual([200, { answered: true, forgotten: false }])
+      expect(await mine({ token: bo, seat: 'B' })).toEqual([200, { answered: false, forgotten: false }])
+      expect(await mine({ token: cilla, seat: null, observer: true })).toEqual([200, { answered: true, forgotten: false }])
+      // The account that claimed the seat asks from its login, as it answers (#1143).
+      expect(await mine({ seat: 'A' }, await claimed(ada))).toEqual([200, { answered: true, forgotten: false }])
+      // Nobody this table admitted is told nothing, and the token says the seat, not the body.
+      expect(await mine({ token: 'not-a-token', seat: 'A' })).toEqual([403, null])
+      expect(await mine({ token: bo, seat: 'A' })).toEqual([403, null])
+      expect(await mine({ seat: 'A' })).toEqual([403, null])
+      expect((await post(`/sessions/${id}/erase`, { token: ada })).status).toBe(200)
+      expect(await mine({ token: ada, seat: 'A' })).toEqual([200, { answered: false, forgotten: true }])
+      expect(await mine({ token: cilla, seat: null, observer: true })).toEqual([200, { answered: true, forgotten: false }])
+    })
+
     it('refuses the token of a seat that was kicked, as the door does', async () => {
       const { id, hostKey } = await createRoom(run.http, `survey-${process.pid}-${++tables}`)
       const ada = await run.admit(id, 'A', 'Ada')

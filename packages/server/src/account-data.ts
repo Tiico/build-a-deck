@@ -287,10 +287,11 @@ function flaggedCard(session: SessionInfo, log: readonly Applied[], flag: Applie
 
 // What «Radera kontot…» names (#1280, variant A): every game that goes with the account, who else
 // loses it — by the name they gave, or their address, as Dela says them to the owner — and how many
-// of its tables are playing; every game it leaves, with the owner's name and never her address
+// of its tables are playing, and how many were started and never played (#1376), which the Bord tab
+// files apart and which are not playing; every game it leaves, with the owner's name and never her address
 // (#1198); and how many tables it claimed.
 export type Deletion = {
-  games: { id: string; name: string; others: string[]; playing: number }[]
+  games: { id: string; name: string; others: string[]; playing: number; untouched: number }[]
   leaving: { id: string; name: string; owner: string | null }[]
   tables: number
 }
@@ -311,8 +312,13 @@ export async function deletionOf(opts: ServerOptions, account: Account): Promise
         if (who) others.push(who.name ?? who.email)
       }
       let playing = 0
-      for (const table of await opts.store.sessionsOf(summary.id)) if ((await opts.store.readVerbs(table.id, ['session.end'])).length === 0) playing++
-      games.push({ id: summary.id, name: summary.name, others, playing })
+      let untouched = 0
+      for (const table of await opts.store.sessionsOf(summary.id)) {
+        if ((await opts.store.readVerbs(table.id, ['session.end'])).length > 0) continue
+        if (table.lastAt === null) untouched++
+        else playing++
+      }
+      games.push({ id: summary.id, name: summary.name, others, playing, untouched })
     } else leaving.push({ id: summary.id, name: summary.name, owner: (await auth?.accountById(rec.owner))?.name ?? null })
   }
   return { games, leaving, tables: (await opts.store.guestsOf(account.id)).length }

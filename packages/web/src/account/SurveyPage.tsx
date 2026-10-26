@@ -7,7 +7,7 @@ import { submitSurvey } from '../player/surveyApi.js'
 import { useHasRulebook } from '../rules/sessionRules.js'
 import { useT } from '../i18n/index.js'
 import { noticeFor } from '../status/notice.js'
-import { maskedWord, maskedWords } from '../masked.js'
+import { isMasked, maskedWord, maskedWords } from '../masked.js'
 
 // /survey?session=…&server=…  — «Svara på enkäten» on Mina spel (#1143, variant B). A table that is
 // over has no way in, so the account answers for the seat it claimed (G1) from its own login: the
@@ -57,7 +57,8 @@ export function SurveyPage({ onNavigate = go }: SurveyPageProps) {
       who={maskedWord(mine.name, 'seat-name', maskedWords(t))}
       version={mine.version}
       rulebook={rulebook}
-      remember={`${session}:${seat ?? mine.name}`}
+      // Whether the seat has answered, as the server said it in the account's own list (#1355).
+      standing={{ answered: mine.surveyed, forgotten: isMasked(mine.name) }}
       onSubmit={(answers) => submitSurvey(http, session, { who: mine.name, seat, ...(mine.kind === 'observer' ? { observer: true } : {}), answers })}
       onward={
         <a

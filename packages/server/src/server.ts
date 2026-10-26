@@ -7,7 +7,7 @@ import { compressible, encodedBytes, encodedCopy, precompressed, typeOf } from '
 import { sharedPage } from './share.js'
 import { WebSocketServer, type WebSocket } from 'ws'
 import { z } from 'zod'
-import { ASSET_MAX_BYTES, assetFormatsNamed, assetKindDeclared, ClientMessage, REDACTED, SEATINGS, TABLE_PROTOCOL, hostKeyOfProtocols, offersTableProtocol, sniffAsset, tokenOfProtocols, type Applied, type Seating, type ServerMessage } from '@byd/protocol'
+import { ASSET_MAX_BYTES, assetFormatsNamed, assetKindDeclared, ClientMessage, PHYSICAL_VERBS, REDACTED, SEATINGS, TABLE_PROTOCOL, hostKeyOfProtocols, offersTableProtocol, sniffAsset, tokenOfProtocols, type Applied, type Seating, type ServerMessage } from '@byd/protocol'
 import { CARD_STANDARD_63x88, validateSetup, type DeckFacts, type SetupDef, type TypeRegistry } from '@byd/engine'
 import { renderRules, Template, validateCard, type Issue } from '@byd/template'
 import { A5, bookletOf } from './booklet.js'
@@ -20,7 +20,7 @@ import { changeOf, diffProjects, type DocDiff, type VersionChange } from './diff
 import { ProjectHost, type EditorMessage, type Saved } from './project-actor.js'
 import { checkedName, type EditIntent } from './edits.js'
 import { arrangementOf, fanFaces, namesOfProject, peekFace, type CardFace } from './names.js'
-import { SurveyBody, type SurveyAnswer, type SurveyStore } from './surveys.js'
+import { SurveyAsk, SurveyBody, sameSender, type SurveyAnswer, type SurveyStanding, type SurveyStore } from './surveys.js'
 import { playtestOf, type PlaytestSource } from './playtest.js'
 import { playtestWaiting, WAITING_VERBS, type GameWaiting, type Waiting, type WaitingTable } from './waiting.js'
 import { COOKIE, LoginBody, LoginLimiter, SESSION_TTL_MS, TOKEN_TTL_MS, accountOf, hash, langOf, loginMail, safeNext, splitFragment, token, type Account, type AuthStore, type Mailer } from './auth.js'
@@ -48,7 +48,7 @@ import { DEFAULT_PLANS, QuotaReached, YOU, growth, limitOf, tableWindowFrom, typ
 import { planOf, usageOf, type AccountPlanStore } from './account-plans.js'
 import { NO_CARDS, cardGrowth, cardsUsed, type CardMeasure } from './quota-cards.js'
 import { checkRegister, openToTheDue, termsInForce, termsStanding, type TermsRegister, type TermsStanding } from './terms.js'
-import { entry, type ErasureStore } from './erase.js'
+import { entry, isMasked, type ErasureStore } from './erase.js'
 import { deletionOf, packPersonalData, personalDataDisposition, personalDataOf } from './account-data.js'
 import { erasedMail } from './erased-mail.js'
 
@@ -245,8 +245,9 @@ const EraseBody = z.object({ token: z.string().min(1) })
 // The tables an account sat at (G1), newest first, each with what came of it: the game's name,
 // whether it ended, whether the survey was answered from that seat, how many moments were flagged
 // from it, the code to come back by while the table is open and the code lives, and whether its
-// game has been taken away since (#676).
-export type Played = { session: string; seat: string | null; name: string; kind: 'seat' | 'observer'; at: string; game: string | null; version: string; ended: boolean; surveyed: boolean; flags: number; code?: string; deleted?: true }
+// game has been taken away since (#676). `untouched`: the table runs and nothing was ever done on
+// it, which the Bord tab files as «Startade, aldrig spelade» and which is not running (#1376).
+export type Played = { session: string; seat: string | null; name: string; kind: 'seat' | 'observer'; at: string; game: string | null; version: string; ended: boolean; untouched?: true; surveyed: boolean; flags: number; code?: string; deleted?: true }
 async function playedBy(opts: ServerOptions, accountId: string): Promise<Played[]> {
   const out: Played[] = []
   for (const g of await opts.store.guestsOf(accountId)) {
@@ -255,12 +256,13 @@ async function playedBy(opts: ServerOptions, accountId: string): Promise<Played[
     const project = session.project && opts.projects ? await opts.projects.load(session.project) : null
     const log = await opts.store.read(g.sessionId)
     const ended = log.some((l) => l.intent.v === 'session.end')
+    const untouched = !ended && !log.some((l) => PHYSICAL_VERBS.includes(l.intent.v))
     const flags = log.filter((l) => l.intent.v === 'flag' && (g.kind === 'seat' ? l.by === g.seat : l.intent.observer === g.name)).length
     const surveyed = opts.surveys ? (await opts.surveys.list(g.sessionId)).some((s) => (g.kind === 'seat' ? s.seat === g.seat : s.observer === true && s.who === g.name)) : false
     const codeLives = session.code !== undefined && session.codeExpiresAt !== undefined && Date.parse(session.codeExpiresAt) > clock(opts).getTime()
     // A table whose game was taken away (#676) says so, rather than passing for «a table».
     const deleted = session.project !== undefined && opts.projects !== undefined && project === null
-    out.push({ session: g.sessionId, seat: g.seat, name: g.name, kind: g.kind, at: g.issuedAt, game: project?.name ?? null, version: session.version, ended, surveyed, flags, ...(!ended && codeLives && session.code ? { code: session.code } : {}), ...(deleted ? { deleted: true as const } : {}) })
+    out.push({ session: g.sessionId, seat: g.seat, name: g.name, kind: g.kind, at: g.issuedAt, game: project?.name ?? null, version: session.version, ended, ...(untouched ? { untouched: true as const } : {}), surveyed, flags, ...(!ended && codeLives && session.code ? { code: session.code } : {}), ...(deleted ? { deleted: true as const } : {}) })
   }
   return out
 }
@@ -421,8 +423,9 @@ const CORS_BASE: Record<string, string> = {
   'access-control-max-age': '86400',
   // A zip is saved under the name the server gives it (#542, #1280), which a page on another
   // origin, as in development, can read only when it is exposed; and the export's summary beside
-  // it (#1356), which the window says when it hands the zip over.
-  'access-control-expose-headers': 'content-disposition, x-byd-export',
+  // it (#1356), which the window says when it hands the zip over; and when the next sign-in link
+  // may go (#1360), which the receipt on the login card says.
+  'access-control-expose-headers': 'content-disposition, x-byd-export, retry-after',
 }
 
 function originOf(value: string | undefined): string | null {
@@ -1004,7 +1007,7 @@ async function admit(opts: ServerOptions, req: IncomingMessage, session: Session
 // Mina spel answers for a table that is over and has no way in (#1143) — and otherwise the
 // project's host, from the editor's own ways in, by the same login the door lets her sit down
 // with — never the table screen's key, which sits nowhere.
-async function surveySender(opts: ServerOptions, req: IncomingMessage, session: SessionRecord, actor: TableActor, body: SurveyBody): Promise<Omit<SurveyAnswer, 'answers'> | null> {
+async function surveySender(opts: ServerOptions, req: IncomingMessage, session: SessionRecord, actor: TableActor, body: SurveyAsk): Promise<Omit<SurveyAnswer, 'answers'> | null> {
   const observer = body.observer === true
   const seat = body.seat ?? null
   const as = (guest: { kind: 'seat' | 'observer'; seat: string | null; name: string }): Omit<SurveyAnswer, 'answers'> | null =>
@@ -1026,6 +1029,26 @@ async function surveySender(opts: ServerOptions, req: IncomingMessage, session: 
   if (observer) return seat === null && body.who ? { who: body.who, seat: null, observer: true } : null
   if (seat === null || !session.setup.seats.includes(seat)) return null
   return { who: actor.seats().find((s) => s.id === seat)?.name ?? seat, seat }
+}
+
+// Whether the one asking has answered the survey (#1355), or null for nobody this table admitted. A
+// guest's token is looked up and not tried, as her erasure looks it up: a guest whose table is over
+// is still the one it was given to, and one who erased herself (#1281) is told so, since her answers
+// went with her name (#1353). Without a token it is the account or the host, as `surveySender` says.
+async function surveyStanding(opts: ServerOptions, surveys: SurveyStore, req: IncomingMessage, session: SessionRecord, actor: TableActor, body: SurveyAsk): Promise<SurveyStanding | null> {
+  let sender: Omit<SurveyAnswer, 'answers'> | null
+  if (body.token !== undefined) {
+    const guest = await opts.store.guestByToken(session.id, hash(body.token))
+    if (!guest) return null
+    const observer = body.observer === true
+    const seat = body.seat ?? null
+    if (guest.kind === 'observer' ? !observer || seat !== null : observer || seat !== guest.seat) return null
+    if (isMasked(guest.name)) return { answered: false, forgotten: true }
+    sender = guest.kind === 'observer' ? { who: guest.name, seat: null, observer: true } : { who: guest.name, seat: guest.seat }
+  } else sender = await surveySender(opts, req, session, actor, body)
+  if (!sender) return null
+  const mine = { sessionId: session.id, ...sender }
+  return { answered: (await surveys.list(session.id)).some((r) => sameSender(r, mine)), forgotten: false }
 }
 
 // `POST /sessions/:id/erase` (#1281): what the guest's own erasure answers, and does.
@@ -2719,6 +2742,27 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     json(res, 201, { ok: true })
     return true
   }
+  // Whether the phone's seat or watch has answered (#1355): asked before the survey is shown, so a
+  // new tab or another phone shows the thanks with «Svara igen» rather than the first question. A
+  // POST, so the token travels in the body and never in an address.
+  const standing = /^\/sessions\/([^/]+)\/survey\/mine$/.exec(url.pathname)
+  if (standing && req.method === 'POST' && opts.surveys) {
+    const sessionId = decodeURIComponent(standing[1] ?? '')
+    const actor = await opts.host.get(sessionId)
+    const session = await opts.store.loadSession(sessionId)
+    if (!actor || !session) {
+      json(res, 404, { error: 'unknown session' })
+      return true
+    }
+    const asked = SurveyAsk.safeParse(JSON.parse((await readBody(req)) || '{}'))
+    const said = asked.success ? await surveyStanding(opts, opts.surveys, req, session, actor, asked.data) : null
+    if (!said) {
+      json(res, 403, { error: 'only the admission given at this table is told' })
+      return true
+    }
+    json(res, 200, said)
+    return true
+  }
   // A guest erases herself (#1281, G6, F5): her phone asks with the token her seat or her watch was
   // bought with, and that admission is erased as the operator's script erases one through Kontakt
   // (#1279) — her name, what she wrote from it and her survey answers. The token is looked up and
@@ -2919,7 +2963,12 @@ async function routeAuth(opts: ServerOptions, auth: AuthStore, req: IncomingMess
     const parsed = LoginBody.safeParse(JSON.parse(await readBody(req)))
     if (!parsed.success) return json(res, 400, { error: 'that is not an address' })
     const email = parsed.data.email.trim().toLowerCase()
-    if (opts.limiter && !opts.limiter.allow(email, Date.now())) return json(res, 429, { error: 'too many links; try again later' })
+    const allowance = opts.limiter?.allow(email, Date.now()) ?? { ok: true }
+    if (!allowance.ok) {
+      res.writeHead(429, { 'content-type': 'application/json', 'retry-after': String(allowance.retryAfter) })
+      res.end(JSON.stringify({ error: 'too many links; try again later' }))
+      return
+    }
     if (opts.authBypass) {
       res.writeHead(200, {
         'content-type': 'application/json',

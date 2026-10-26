@@ -29,7 +29,18 @@
 .byd-login input, .byd-code-row > input { width: 100%; box-sizing: border-box; padding: 14px 16px; border-radius: 12px; border: 1px solid var(--byd-secondary-line); background: var(--byd-account-field-bg); color: #fff; font-size: 16px; }
 .byd-login button, .byd-code-row > button { padding: 14px 18px; border-radius: 12px; font-size: 16px; cursor: pointer; }
 .byd-login button:disabled { opacity: 0.4; cursor: default; }
-.byd-login-sent { padding: 18px; border-radius: 14px; background: #1b2a22; color: #d8ffe8; display: grid; gap: 6px; font-size: 14px; line-height: 1.5; }
+.byd-login-sent { padding: 18px; border-radius: 14px; background: #1b2a22; color: #d8ffe8; display: grid; gap: 6px; font-size: 14px; line-height: 1.5; --byd-secondary-line: #5f8a70; --byd-secondary-ink: #d8ffe8; }
+/* The receipt takes the focus the vanished field had, as a place to stand and not a control. */
+.byd-login-sent:focus { outline: none; }
+/* Its two answers (#1360, beslut A): the passkey offer's outline buttons on the same green, side by
+   side, and one under the other, each across the receipt, when the card is too narrow for both. */
+.byd-login-sent-answers { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.byd-login .byd-login-sent-answers > button { flex: 1 1 0; min-width: max-content; min-height: 44px; padding: 0 12px; border-radius: 12px; font: inherit; font-weight: 700; }
+/* Resting is drawn in the ink and the line alone, never as opacity: the focus ring stays whole. */
+.byd-login .byd-login-sent-answers > button[aria-disabled='true'] { color: #708a7b; border-color: #3a5545; cursor: default; }
+.byd-login-sent-again { display: flex; gap: 8px; align-items: flex-start; margin: 4px 0 0; font-size: 13px; }
+.byd-login-sent-again > .byd-login-tick { width: 18px; height: 18px; margin-top: 1px; font-size: 11px; }
+.byd-login-sent-refused { margin: 4px 0 0; padding: 10px 12px; border-radius: 10px; background: #3b3222; color: #ffeccc; font-size: 13px; line-height: 1.45; }
 /* An address in a sentence (#1359, Address.tsx): each part between the breaks stands whole on its line, and
    gives way inside only when it alone is wider than the card. */
 .byd-address { overflow-wrap: anywhere; }

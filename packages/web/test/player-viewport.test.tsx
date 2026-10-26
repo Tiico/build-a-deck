@@ -185,10 +185,9 @@ function surfaces(view: Snapshot) {
     // The thanks, with the way to an account under them (G1): offered once the answers are sent
     // (#690), and the one link a thumb has to land on.
     thanks: (() => {
-      sessionStorage.setItem('byd.survey.sent.viewport:A', '1')
       return (
         <div className="byd-player">
-          <Survey who="Ada" version="v1" onSubmit={async () => undefined} saveUrl="http://claim.invalid/claim?token=t" remember="viewport:A" />
+          <Survey who="Ada" version="v1" onSubmit={async () => undefined} saveUrl="http://claim.invalid/claim?token=t" standing={{ answered: true, forgotten: false }} />
         </div>
       )
     })(),

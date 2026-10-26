@@ -18,14 +18,17 @@ for (const backend of accountBackends) {
       await db.close()
     })
 
-    it('says first what goes: each game, who else loses it, the tables playing, the games it leaves and the tables it claimed', async () => {
+    // A table started and never played is «Startade, aldrig spelade» there too, and not one that is
+    // playing (#1376, beställarens beslut punkt 1).
+    it('says first what goes: each game, who else loses it, the tables playing and those never played, the games it leaves and the tables it claimed', async () => {
       const w = await aWorld(db, `q${backend.name}`)
+      await w.played(w.ids.forest)
       const res = await w.nicklas.call('GET', '/me/deletion')
       expect(res.status).toBe(200)
-      const said = (await res.json()) as { games: { name: string; others: string[]; playing: number }[]; leaving: { name: string; owner: string | null }[]; tables: number }
-      expect(said.games.map((g) => [g.name, g.others, g.playing]).sort()).toEqual([
-        ['Skogens råd', ['Kim Kvar'], 0],
-        ['Stjärnhandel', [], 1],
+      const said = (await res.json()) as { games: { name: string; others: string[]; playing: number; untouched: number }[]; leaving: { name: string; owner: string | null }[]; tables: number }
+      expect(said.games.map((g) => [g.name, g.others, g.playing, g.untouched]).sort()).toEqual([
+        ['Skogens råd', ['Kim Kvar'], 1, 0],
+        ['Stjärnhandel', [], 0, 1],
       ])
       expect(said.leaving).toEqual([expect.objectContaining({ name: 'Vargtimmen', owner: 'Sara' })])
       expect(said.tables).toBe(1)
@@ -45,7 +48,7 @@ for (const backend of accountBackends) {
       expect(await (await w.nicklas.call('GET', '/auth/me')).json()).toMatchObject({ email: null })
       expect(await db.auth.accountByEmail(w.nicklas.email)).toBeNull()
 
-      // Her games went, as «Ta bort spelet» takes them: Kim lost Skogens råd, and the table playing
+      // Her games went, as «Ta bort spelet» takes them: Kim lost Skogens råd, and the table sat down at
       // at Stjärnhandel ended and was masked with Bo's words.
       const kims = (await (await w.kim.call('GET', '/projects')).json()) as { id: string }[]
       expect(kims.map((p) => p.id)).not.toContain(w.ids.forest)

@@ -15,7 +15,9 @@ test('puts the survey over an open rulebook when the table ends', async ({ reque
 
   const hosting = await host(table)
   await hosting.send([{ v: 'session.end' } as never])
-  const survey = ada.page.locator('.byd-survey')
+  // The first question, once the phone has asked whether the seat has answered (#1355): until then
+  // the survey holds its place with a ground of its own, which the question then replaces.
+  const survey = ada.page.locator('.byd-survey[data-survey="fun"]')
   await expect(survey).toBeVisible()
   // Read off the painted screen and not off hit-testing: the book lies inside the play view that
   // an ended table makes inert, and hit-testing passes through inert, so the survey took the presses

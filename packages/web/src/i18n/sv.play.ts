@@ -520,6 +520,8 @@ export const svPlay = {
   'survey.tied': 'Dina svar är kopplade till {version}.',
   'survey.save': 'Spara till ditt konto',
   'survey.saved': 'Sparat till ditt konto.',
+  'survey.again': 'Svara igen',
+  'survey.again.note': 'Ditt nya svar ersätter det första.',
   // Vad som lagras om en gäst, vem som ser det och hur länge, där hon sätter sig (#757, #1281,
   // prototypens variant C): tre korta rader i stället för en mening.
   'guest.kept.saved.label': 'Sparas',

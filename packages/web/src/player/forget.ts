@@ -14,21 +14,3 @@ export async function forgetMe(http: string, sessionId: string, token: string): 
     return { ok: false, reason: FORGET_FAILED }
   }
 }
-
-// Kept in the tab's own storage, as the survey's «sent» is: a reload under the thanks says it is
-// done rather than offering it again, and nothing leaves the device.
-const FORGOTTEN = 'byd.forgotten.'
-export function wasForgotten(key: string): boolean {
-  try {
-    return sessionStorage.getItem(FORGOTTEN + key) === '1'
-  } catch {
-    return false
-  }
-}
-export function markForgotten(key: string): void {
-  try {
-    sessionStorage.setItem(FORGOTTEN + key, '1')
-  } catch {
-    // A browser that keeps nothing offers it again after a reload, and asking again changes nothing.
-  }
-}

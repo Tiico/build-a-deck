@@ -11,7 +11,7 @@ import { SurveyPage } from '../src/account/SurveyPage.js'
 import { TableClient } from '../src/client.js'
 import { projectDoc } from './project-doc.js'
 import { faviconSvg } from '../src/brand/mark.js'
-import { admit, asTable, createSession, registerRoom, roomOf, startServer, type Running } from './fixture.js'
+import { admit, asSeat, asTable, createSession, registerRoom, roomOf, startServer, type Running } from './fixture.js'
 import { watchFontNet, type FontNet } from './font-net.js'
 import { answerStart } from './start-answer.js'
 
@@ -214,7 +214,9 @@ describe('the tables the account sat at (G1)', () => {
     expect(await screen.findByText('Bord du har spelat vid')).toBeTruthy()
     const card = await waitFor(() => document.querySelector(`[data-played="${id}"]`)!)
     expect(card.textContent).toContain('du spelade som Ada')
-    expect(card.textContent).toContain('pågår')
+    // Nobody has played at it yet (#1376): it is not said to be running.
+    expect(card.textContent).toContain('startade, aldrig spelade')
+    expect(card.textContent).not.toContain('pågår')
     expect(document.querySelector('.byd-home-claimed')?.textContent).toMatch(/Sparat.*som Ada/)
     // The banner is drawn with its text, so the page's live region says it (4.1.3, #555).
     await waitFor(() => expect(document.querySelector('[data-status-live="polite"]')?.textContent).toMatch(/^Sparat: du spelade .* som Ada\./))
@@ -505,9 +507,50 @@ describe('a game on the home page (G1)', () => {
     expect(within(hero).queryByRole('button', { name: 'Starta bord' })).toBeNull()
   })
 
-  // The table started is the first of «Pågår nu» (#724, beslut C + B): the room's code and the way
-  // to its screen, where they stay after a reload — the banner that said it went with the page.
-  const running = () => screen.queryByRole('region', { name: 'Pågår nu' })
+  // The table started is the first of the band (#724, beslut C + B): the room's code and the way to
+  // its screen, where they stay after a reload — the banner that said it went with the page. A table
+  // just started has not been played, so it stands under «Startade, aldrig spelade» (#1376) and not
+  // under «Pågår nu», in the same band's form.
+  const running = () => screen.queryByRole('region', { name: 'Startade, aldrig spelade' })
+
+  // Beställarens beslut i #1376, punkt 1: a table started and never played is not running. It has
+  // the heading the Bord tab files it under, and the game's row says so instead of «Pågår».
+  it('lists a table being played under «Pågår nu», and one never played under its own heading', async () => {
+    await home()
+    const start = async () => {
+      const made = (await (await fetch(`${run.http}/projects/${run.projectId}/sessions`, { method: 'POST' })).json()) as { id: string; code: string; hostKey: string }
+      registerRoom(made.id, made)
+      return made
+    }
+    const played = await start()
+    const seat = TableClient.connect(await asSeat(run, played.id, 'A', 'Ada'))
+    await seat.ready()
+    await seat.send({ v: 'seat.claim', seat: 'A', name: 'Ada' })
+    await seat.send({ v: 'draw', from: 'draw', to: 'table', count: 1 })
+    seat.close()
+    const untouched = await start()
+    cleanup()
+    render(<HomePage />)
+    await screen.findByText('Skogens herrar')
+    const now = await screen.findByRole('region', { name: 'Pågår nu' })
+    const never = await screen.findByRole('region', { name: 'Startade, aldrig spelade' })
+    expect(now.textContent).toContain(played.code)
+    expect(now.textContent).not.toContain(untouched.code)
+    expect(never.textContent).toContain(untouched.code)
+    expect(never.textContent).not.toContain(played.code)
+    expect(within(never).getByRole('link', { name: new RegExp(`Öppna bordet ${untouched.code}`) })).toBeTruthy()
+  })
+
+  it('says on the game’s row that its only table was started and never played, not that it runs', async () => {
+    await home()
+    const made = (await (await fetch(`${run.http}/projects/${run.projectId}/sessions`, { method: 'POST' })).json()) as { id: string; code: string }
+    cleanup()
+    render(<HomePage />)
+    await screen.findByText('Skogens herrar')
+    await waitFor(() => expect(card().textContent).toContain(`Startade, aldrig spelade · ${made.code}`))
+    expect(card().textContent).not.toContain('Pågår')
+    expect(screen.queryByRole('region', { name: 'Pågår nu' })).toBeNull()
+  })
   it('starts a table from the card and hands over the room code', async () => {
     await home()
     fireEvent.click(within(card()).getByRole('button', { name: 'Fler val för Skogens herrar' }))
@@ -883,7 +926,7 @@ describe('the game menu and the question on the home page (#475)', () => {
     await waitFor(() => expect(document.activeElement).toBe(more()))
     // The way to it is the band in «Pågår nu» (#724), and says it opens in the table's own tab:
     // opened twice, the same tab (#1217).
-    const band = await screen.findByRole('region', { name: 'Pågår nu' })
+    const band = await screen.findByRole('region', { name: 'Startade, aldrig spelade' })
     const open = await within(band).findByRole('link', { name: /^Öppna bordet [A-Z2-9]{6} i Skogens herrar \(öppnas i bordets egen flik\)$/ })
     expect(open.getAttribute('target')).toMatch(/^byd-tv-/)
     // And beside it the way to the game itself, in the editor (#1217).
