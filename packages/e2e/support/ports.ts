@@ -52,11 +52,18 @@ export async function free(after = start): Promise<number> {
   throw new Error(`no free port between ${FLOOR} and ${CEILING}`)
 }
 
-const bindable = (port: number): Promise<boolean> =>
+// Free on both of the addresses it is used on (#1371). The server listens with no host, which is
+// every address, IPv6 and IPv4 at once; the suite reaches it, and the fake services beside it
+// listen, on 127.0.0.1. macOS lets a socket have 127.0.0.1 beside one that holds every address,
+// so asking only there handed out the stack's own port: the second server then died of
+// EADDRINUSE, and the stack answered its health check for it.
+const bindable = async (port: number): Promise<boolean> => (await bindableOn(port, '127.0.0.1')) && (await bindableOn(port, undefined))
+
+const bindableOn = (port: number, host: string | undefined): Promise<boolean> =>
   new Promise((resolve) => {
     const probe = createServer()
     // `listen` says it failed by emitting `error` rather than by throwing, so a port in use
     // reaches the process as an unhandled event unless it is listened for here.
     probe.once('error', () => resolve(false))
-    probe.listen(port, '127.0.0.1', () => probe.close(() => resolve(true)))
+    probe.listen(port, host, () => probe.close(() => resolve(true)))
   })
