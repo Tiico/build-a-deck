@@ -15,6 +15,7 @@
   html, body { height: auto; overflow: auto; }
   body { background: #0b0d12; }
   .scen { padding: 16px; display: grid; justify-content: start; }
+  .scen > .sida { transform-origin: top left; }
   /* The page as a picture, and the column drawn over it in DOM at the same place. */
   .sida { position: relative; overflow: visible; margin-bottom: 40px; background: #0f1117; font-family: system-ui, sans-serif; color: #e6e6e6; }
   .sida > img { display: block; }
@@ -191,7 +192,17 @@ function rita() {
     ? `<div class="sida" data-w="${w}"><img src="bilder/${bild}.png" alt="Mina spel i dag vid ${w}"></div>`
     : `<div class="sida" data-w="${w}"><img src="bilder/${bild}.png" alt="">${w === '390' ? '<div class="telefonhuvud"></div>' : ''}<div class="kolumn">${kolumn}<div class="kodrad"><b>Har du en rumskod?</b><div><input aria-label="Rumskod"><button type="button">Gå med</button></div></div></div>${w === '390' ? '<div class="telefonrest"></div>' : ''}</div>`
   history.replaceState(null, '', `?v=${v}&w=${w}`)
+  passa()
 }
+// The stage shrinks to the window, so a narrow pane still shows the whole width.
+function passa() {
+  const sida = document.querySelector('.sida'); if (!sida) return
+  sida.style.transform = ''
+  const k = Math.min(1, (innerWidth - 32) / sida.offsetWidth)
+  sida.style.transform = `scale(${k})`
+  sida.style.marginBottom = `${40 - sida.offsetHeight * (1 - k)}px`
+}
+addEventListener('resize', passa)
 document.getElementById('varianter').addEventListener('click', (e) => { const k = e.target.closest('button')?.dataset.k; if (k) { v = k; rita() } })
 document.getElementById('bredder').addEventListener('click', (e) => { const k = e.target.closest('button')?.dataset.k; if (k) { w = k; rita() } })
 const steg = (d) => { const k = Object.keys(V); v = k[(k.indexOf(v) + d + k.length) % k.length]; rita() }
