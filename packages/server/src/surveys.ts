@@ -43,7 +43,14 @@ export type SurveyStore = {
   list(sessionId: string): Promise<SurveyRecord[]>
 }
 
-const sameSender = (a: SurveyRecord, b: SurveyRecord): boolean =>
+// What a phone asks before it shows the survey (#1355): whether the seat or the observer it sat or
+// watched under has answered, and whether her admission was erased (#1281), which takes her answers.
+// The phone shows the thanks from what the server says, never from the tab's own storage.
+export const SurveyAsk = SurveyBody.omit({ answers: true })
+export type SurveyAsk = z.infer<typeof SurveyAsk>
+export type SurveyStanding = { answered: boolean; forgotten: boolean }
+
+export const sameSender = (a: Pick<SurveyRecord, 'sessionId' | 'observer' | 'who' | 'seat'>, b: Pick<SurveyRecord, 'sessionId' | 'observer' | 'who' | 'seat'>): boolean =>
   a.sessionId === b.sessionId && (a.observer ?? false) === (b.observer ?? false) && (a.observer ? a.who === b.who : a.seat === b.seat)
 
 export class MemorySurveyStore implements SurveyStore {

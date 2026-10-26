@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { TableClient } from '../src/client.js'
 import { EditorPage } from '../src/editor/EditorPage.js'
@@ -187,11 +187,9 @@ describe('a masked name in Mina spel (#1349)', () => {
 
     history.replaceState(null, '', `/survey?session=${id}&server=${encodeURIComponent(run.http)}`)
     render(<SurveyPage onNavigate={() => undefined} />)
-    for (const n of ['4', '3', '2']) {
-      fireEvent.click(await screen.findByRole('button', { name: new RegExp(`^${n}$`) }))
-      fireEvent.click(screen.getByRole('button', { name: 'Nästa' }))
-    }
-    fireEvent.click(screen.getByRole('button', { name: 'Skicka' }))
+    // Her name and her answers are gone, and the page says so rather than asking again (#1353).
+    expect(await screen.findByText('Ditt namn och dina svar är borttagna.')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Nästa' })).toBeNull()
     await saysMasked()
   })
 })

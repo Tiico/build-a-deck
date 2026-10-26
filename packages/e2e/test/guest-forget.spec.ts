@@ -90,6 +90,14 @@ test('removing my name and my answers under the thanks: the seat stays taken as 
   await expect(ada.page.getByText('Thank you.', { exact: true })).toBeVisible()
   await expect(ada.page.getByRole('link', { name: 'Save to your account' })).toHaveCount(0)
   expect(await surveys()).toEqual([])
+  // Answers that are gone are tied to no version (#1353), and a reload says what was done, as the
+  // server knows it, rather than the thanks for answers that are no longer there.
+  await expect(thanks).not.toContainText('tied to')
+  await ada.page.reload()
+  await expect(ada.page.getByText('Your name and your answers are removed.')).toBeVisible()
+  await expect(ada.page.getByText('Thank you.', { exact: true })).toBeVisible()
+  await expect(ada.page.locator('.byd-survey-thanks')).not.toContainText('tied to')
+  await expect(ada.page.getByRole('button', { name: 'Answer again' })).toHaveCount(0)
 
   // The table, opened now: her seat is still taken, under the masked name in words, and no frame
   // carries her name.
@@ -100,4 +108,33 @@ test('removing my name and my answers under the thanks: the seat stays taken as 
   const shown = await tv.page.locator('body').innerText()
   expect(shown).not.toContain(PLACEHOLDER)
   expect(shown).not.toContain(NAME)
+})
+
+// A guest who answered and opens her link again in a new tab (#1355, beställarens beslut): the
+// phone asks the server, and shows the thanks with «Answer again» and the way to remove her name
+// rather than the first question. Answering again says that the new answer replaces the first.
+test('the link opened again in a new tab shows the thanks, and answering again replaces the first answer', async ({ request, player, host }) => {
+  const table = await tableWithRules(request, { players: 2 })
+  const ada = await player(table, { name: NAME, seat: table.seats[0]!, device: PHONE })
+  await expect(ada.page.getByText(NAME).first()).toBeVisible()
+  await (await host(table)).send([{ v: 'session.end' } as never])
+  await answer(ada.page)
+  await expect(ada.page.getByText(`Thank you, ${NAME}.`)).toBeVisible()
+  const surveys = async () => (await (await request.get(`/sessions/${encodeURIComponent(table.session)}/surveys`)).json()) as { who: string; answers: { fun: number } }[]
+
+  const again = await ada.page.context().newPage()
+  await again.goto(ada.page.url())
+  await expect(again.getByText(`Thank you, ${NAME}.`)).toBeVisible()
+  await expect(again.getByText('Four questions, one minute', { exact: false })).toHaveCount(0)
+  await expect(again.getByRole('button', { name: 'Remove my name and my answers…' })).toBeVisible()
+  await again.getByRole('button', { name: 'Answer again' }).tap()
+  await expect(again.getByText('Your new answer replaces the first.')).toBeVisible()
+  const survey = again.locator('.byd-survey')
+  for (const n of ['1', '1', '1']) {
+    await survey.getByRole('button', { name: n, exact: true }).tap()
+    await survey.getByRole('button', { name: 'Next' }).tap()
+  }
+  await survey.getByRole('button', { name: 'Send' }).tap()
+  await expect(again.getByText(`Thank you, ${NAME}.`)).toBeVisible()
+  expect((await surveys()).map((s) => [s.who, s.answers.fun])).toEqual([[NAME, 1]])
 })

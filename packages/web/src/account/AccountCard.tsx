@@ -151,7 +151,7 @@ export function ownersWord(name: string, lang: Lang): string {
 }
 
 // What the strip says goes, one line each: the games, who else loses each shared one, the tables
-// that end, the games it leaves, and the logging out.
+// that end, those never played, the games it leaves, and the logging out.
 function whatGoes(d: Deletion, t: ReturnType<typeof useT>, lang: Lang): ReactNode[] {
   const lines: ReactNode[] = []
   if (d.games.length > 0) lines.push(<li key="games">{marked(t(d.games.length === 1 ? 'profile.delete.game' : 'profile.delete.games'), { games: namesOf(d.games.map((g) => g.name), lang), game: <b>{d.games[0]?.name}</b> })}</li>)
@@ -160,6 +160,8 @@ function whatGoes(d: Deletion, t: ReturnType<typeof useT>, lang: Lang): ReactNod
   }
   for (const g of d.games) {
     if (g.playing > 0) lines.push(<li key={`playing-${g.id}`}>{t(g.playing === 1 ? 'profile.delete.playing.one' : 'profile.delete.playing.other', { game: g.name, n: g.playing })}</li>)
+    // A table started and never played is not playing (#1376), and is said by the Bord tab's name.
+    if (g.untouched > 0) lines.push(<li key={`untouched-${g.id}`}>{t(g.untouched === 1 ? 'profile.delete.untouched.one' : 'profile.delete.untouched.other', { game: g.name, n: g.untouched })}</li>)
   }
   for (const g of d.leaving) lines.push(<li key={`leaving-${g.id}`}>{g.owner ? t('profile.delete.leaving', { game: g.name, owners: ownersWord(g.owner, lang) }) : t('profile.delete.leaving.unnamed', { game: g.name })}</li>)
   lines.push(<li key="out">{t(d.tables > 0 ? 'profile.delete.out' : 'profile.delete.out.only')}</li>)

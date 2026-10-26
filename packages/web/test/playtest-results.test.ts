@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { PlaytestTable, PlaytestVersion } from '@byd/server/doc'
-import { chosenVersion, compareWith, decimal, meanOf, rowSummary, silent, tablesFor, versionSums } from '../src/editor/playtestReading.js'
+import { chosenVersion, compareWith, decimal, meanOf, rowSummary, silent, flaggedFor, tablesFor, versionSums } from '../src/editor/playtestReading.js'
 import { translate, type Lang, type T } from '../src/i18n/index.js'
 
 // What the Resultat view and the ended table's row say (#1010, beställarens val 2026-10-18), as
@@ -12,8 +12,8 @@ const sv = t('sv')
 const en = t('en')
 
 const counts = (fun: number[], clarity = [0, 0, 0, 0, 0], balance = [0, 0, 0, 0, 0]) => ({ fun, clarity, balance })
-const version = (over: Partial<PlaytestVersion> & { version: string }): PlaytestVersion => ({ ended: 0, running: 0, players: 0, answered: 0, observers: 0, flags: 0, distribution: counts([0, 0, 0, 0, 0]), ...over })
-const table = (over: Partial<PlaytestTable> = {}): PlaytestTable => ({ id: 't1', code: 'ABC234', version: 'rev-2', ended: true, endedAt: '2026-10-18T10:09:00.000Z', moves: 14, people: [], answers: [], flags: [], ...over })
+const version = (over: Partial<PlaytestVersion> & { version: string }): PlaytestVersion => ({ ended: 0, running: 0, untouched: 0, players: 0, answered: 0, observers: 0, flags: 0, distribution: counts([0, 0, 0, 0, 0]), ...over })
+const table = (over: Partial<PlaytestTable> = {}): PlaytestTable => ({ id: 't1', code: 'ABC234', version: 'rev-2', ended: true, endedAt: '2026-10-18T10:09:00.000Z', moves: 14, played: true, people: [], answers: [], flags: [], ...over })
 const said = (who: string, seat: string | null) => ({ who, seat, observer: seat === null, at: '2026-10-18T10:10:00.000Z', answers: { fun: 4, clarity: 3, balance: 5, change: '' } })
 const flag = (version: string) => ({ who: 'Ada', seat: 'A', observer: false, note: '', at: '2026-10-18T10:05:00.000Z', move: 3, version })
 
@@ -79,6 +79,13 @@ describe('which tables a version is read from', () => {
     expect(tablesFor(tables, 'rev-5').map((x) => x.id)).toEqual(['a', 'c'])
     expect(tablesFor(tables, 'rev-4').map((x) => x.id)).toEqual(['c'])
   })
+
+  // A running table's flags are read too (#1357), and its survey never is.
+  it('reads the flags of a running table as well, and only of one that raised one on the version', () => {
+    const tables = [table({ id: 'a', version: 'rev-5' }), table({ id: 'b', version: 'rev-5', ended: false, flags: [flag('rev-5')] }), table({ id: 'c', version: 'rev-5', ended: false }), table({ id: 'd', version: 'rev-3', ended: false, flags: [flag('rev-3')] })]
+    expect(flaggedFor(tables, 'rev-5').map((x) => x.id)).toEqual(['a', 'b'])
+    expect(tablesFor(tables, 'rev-5').map((x) => x.id)).toEqual(['a'])
+  })
 })
 
 // What a version's row in the list says under its name. A version a table was refreshed away from
@@ -90,5 +97,8 @@ describe('a version’s line in the list', () => {
     expect(versionSums(version({ version: 'rev-6', running: 1 }), sv)).toBe('1 bord pågår')
     expect(versionSums(version({ version: 'rev-4', flags: 2 }), sv)).toBe('2 flaggor')
     expect(versionSums(version({ version: 'rev-4', running: 1, flags: 1 }), en)).toBe('1 table running · 1 flag')
+    // A table never played is not running (#1376).
+    expect(versionSums(version({ version: 'rev-6', running: 1, untouched: 2 }), sv)).toBe('1 bord pågår · Startade, aldrig spelade: 2 bord')
+    expect(versionSums(version({ version: 'rev-6', untouched: 1 }), en)).toBe('Started, never played: 1 table')
   })
 })

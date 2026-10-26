@@ -106,7 +106,8 @@ export const as = (run: Running, cookie: string | null) => (method: string, path
   fetch(`${run.http}${path}`, { method, headers: { 'content-type': 'application/json', ...(cookie ? { cookie } : {}) }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) })
 
 // A designer's whole account, in every store there is (#1280): Nicklas, with a name, a passkey, an
-// AI key, a tier and the terms; Stjärnhandel, a game of hers with a table playing that Bo sits at;
+// AI key, a tier and the terms; Stjärnhandel, a game of hers with a table that Bo sat down at and
+// nobody played (#1376);
 // Skogens råd, a game of hers shared with Kim; Vargtimmen, Sara's game, which she edits and saved a
 // version of; Månskugga, Sara's game that she edited and Sara took away (#1334); and a table of
 // Sara's she sat at, flagged, noted and answered at, and claimed.
@@ -165,7 +166,7 @@ export async function aWorld(db: AccountBackend, tag: string) {
     registerRoom(t.id, t)
     return t
   }
-  // Her own game's table, playing, with Bo at it.
+  // Her own game's table, started and never played, with Bo at it.
   const star = await table(nicklas, ids.star)
   const boToken = await run.admit(star.id, 'B', 'Bo')
   const bo = await WireClient.connect(run.base, star.id, 'B', undefined, { token: boToken })
@@ -187,5 +188,14 @@ export async function aWorld(db: AccountBackend, tag: string) {
   await phone.close()
   expect((await as(run, null)('POST', `/sessions/${saras.id}/survey`, { token, seat: 'A', answers: { fun: 4, clarity: 3, balance: 2, change: HER_CHANGE } })).status).toBe(201)
   expect((await nicklas.call('POST', '/guests/claim', { token })).status).toBe(200)
-  return { id, nicklas, kim, sara, ids, star, saras, flagged: { inHand, faceDown } }
+  // A table of one of her games where a card was drawn (#1376): one that is being played, where the
+  // star's table was only sat down at.
+  const played = async (project: string) => {
+    const t = await table(nicklas, project)
+    const eva = await WireClient.connect(run.base, t.id, 'A', undefined, { token: await run.admit(t.id, 'A', 'Eva') })
+    for (const it of [{ v: 'seat.claim', seat: 'A', name: 'Eva' }, { v: 'draw', from: 'draw', to: 'hand:A', count: 1 }] as const) expect((await eva.send('A', it)).t).toBe('ack')
+    await eva.close()
+    return t
+  }
+  return { id, nicklas, kim, sara, ids, star, saras, flagged: { inHand, faceDown }, played }
 }

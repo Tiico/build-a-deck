@@ -60,7 +60,9 @@ async function started(): Promise<string> {
   fireEvent.click(within(card).getByRole('button', { name: 'Fler val för Skogens herrar' }))
   fireEvent.click(within(await screen.findByRole('group', { name: 'Val för Skogens herrar' })).getByRole('button', { name: 'Starta bord' }))
   await answerStart()
-  await within(await screen.findByRole('region', { name: 'Pågår nu' })).findByRole('link', { name: /^Öppna bordet [A-Z2-9]{6} i/ })
+  // A table just started has not been played, so its band is «Startade, aldrig spelade» (#1376):
+  // the same form as «Pågår nu», and the one a designer sees first after starting a table.
+  await within(await screen.findByRole('region', { name: 'Startade, aldrig spelade' })).findByRole('link', { name: /^Öppna bordet [A-Z2-9]{6} i/ })
   return container.innerHTML
 }
 
@@ -395,6 +397,8 @@ describe.each([390, 1024, 1280, 1440])('«Väntar på dig» at %i px (#1225)', (
     const seat = TableClient.connect(await asSeat(run, made.id, 'A', 'Bo'))
     await seat.ready()
     await seat.send({ v: 'seat.claim', seat: 'A', name: 'Bo' })
+    // Played, so that it runs and stands in «Pågår nu» (#1376).
+    await seat.send({ v: 'draw', from: 'draw', to: 'table', count: 1 })
     await seat.send({ v: 'flag', note: 'Draken är för stark' })
     seat.close()
     const sat = await createSession(run, 'satt')

@@ -1,6 +1,7 @@
 // The survey after a session (G3): short, structured, one per participant, sent once the log is
 // locked. `http` is the server origin.
 import type { Key } from '../i18n/index.js'
+import { useEffect, useState } from 'react'
 import { withCredentials } from '../account/session.js'
 
 export type SurveyAnswers = { fun: number; clarity: number; balance: number; change: string }
@@ -32,4 +33,40 @@ export async function submitSurvey(http: string, sessionId: string, answer: Surv
   const init: RequestInit = { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(answer) }
   const res = await fetch(`${http}/sessions/${encodeURIComponent(sessionId)}/survey`, answer.token === undefined ? withCredentials(init) : init)
   if (!res.ok) throw new Error(`could not send the survey: ${res.status}`)
+}
+
+// Whether the seat or the watch has answered already (#1355, beställarens beslut 2026-10-25), and
+// whether her admission was erased (#1281), which took her answers with it (#1353). Asked of the
+// server before the survey is shown, so a new tab, a reload or another phone shows the thanks; the
+// tab's own storage knows nothing of it. A server that cannot say is a survey not yet answered,
+// which is where the phone was before it asked.
+export type SurveyStanding = { answered: boolean; forgotten: boolean }
+export const NOT_ANSWERED: SurveyStanding = { answered: false, forgotten: false }
+export type SurveyAsk = Omit<SurveyRequest, 'answers' | 'who'> & { who?: string }
+
+export async function surveyStanding(http: string, sessionId: string, ask: SurveyAsk): Promise<SurveyStanding> {
+  const init: RequestInit = { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(ask) }
+  try {
+    const res = await fetch(`${http}/sessions/${encodeURIComponent(sessionId)}/survey/mine`, ask.token === undefined ? withCredentials(init) : init)
+    if (!res.ok) return NOT_ANSWERED
+    const said = (await res.json()) as Partial<SurveyStanding>
+    return { answered: said.answered === true, forgotten: said.forgotten === true }
+  } catch {
+    return NOT_ANSWERED
+  }
+}
+
+// The standing of one sender, asked once the table is over: undefined while it is being asked.
+export function useSurveyStanding(http: string, sessionId: string, ask: SurveyAsk, ended: boolean): SurveyStanding | undefined {
+  const [standing, setStanding] = useState<SurveyStanding | undefined>(undefined)
+  const key = JSON.stringify(ask)
+  useEffect(() => {
+    if (!ended) return
+    let live = true
+    void surveyStanding(http, sessionId, JSON.parse(key) as SurveyAsk).then((said) => live && setStanding(said))
+    return () => {
+      live = false
+    }
+  }, [http, sessionId, key, ended])
+  return standing
 }

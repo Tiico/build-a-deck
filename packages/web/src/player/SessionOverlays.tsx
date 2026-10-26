@@ -5,7 +5,7 @@ import type { SendResult, TableClient } from '../client.js'
 import { standingRewind, whereTo, whoDecides } from '../table/rewind.js'
 import { EndSheet, ExitSheet, ForgetSheet, ProposeSheet } from './SessionSheets.js'
 import { Survey } from './Survey.js'
-import { submitSurvey } from './surveyApi.js'
+import { submitSurvey, useSurveyStanding } from './surveyApi.js'
 import { forgetMe } from './forget.js'
 import { useHasRulebook } from '../rules/sessionRules.js'
 import { useRefusal } from '../status/Refusal.js'
@@ -270,6 +270,8 @@ export type SeatSurveyProps = {
 
 export function SeatSurvey({ view, seat, name, http, sessionId, version, token, saveUrl, saved, onward }: SeatSurveyProps) {
   const rulebook = useHasRulebook(http, sessionId, view.ended)
+  // Whether this seat has answered already (#1355), as the server says it.
+  const standing = useSurveyStanding(http, sessionId, { token, seat }, view.ended)
   if (!view.ended) return null
   return (
     <Survey
@@ -277,7 +279,7 @@ export function SeatSurvey({ view, seat, name, http, sessionId, version, token, 
       version={version ?? '…'}
       saveUrl={saveUrl}
       saved={saved}
-      remember={`${sessionId}:${seat}`}
+      standing={standing ?? 'asking'}
       rulebook={rulebook}
       onward={onward}
       onSubmit={(answers) => submitSurvey(http, sessionId, { token, who: name, seat, answers })}

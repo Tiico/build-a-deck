@@ -180,7 +180,7 @@ describe('removing my name and my answers under the thanks (#1281)', () => {
     await thanked(id)
     const thanks = document.querySelector('.byd-survey-thanks')!
     const controls = [...thanks.querySelectorAll('a, button')].map((c) => c.textContent)
-    expect(controls).toEqual(['Spara till ditt konto', 'Villkor', 'Integritet', 'Anmäl', 'Ta bort mitt namn och mina svar…'])
+    expect(controls).toEqual(['Spara till ditt konto', 'Villkor', 'Integritet', 'Anmäl', 'Svara igen', 'Ta bort mitt namn och mina svar…'])
     expect(thanks.textContent).toContain('Med ditt namn kvar vet designern vem som gjorde och sa vad.')
     expect((thanks.querySelector('button[data-kind="forget"]') as HTMLElement).textContent).toBe('Ta bort mitt namn och mina svar…')
   })
@@ -199,10 +199,41 @@ describe('removing my name and my answers under the thanks (#1281)', () => {
     expect(screen.queryByRole('button', { name: 'Ta bort mitt namn och mina svar…' })).toBeNull()
     expect(await answers(id)).toEqual([])
     expect(await raw(id)).not.toContain(NAME)
-    // A reload remembers it, as it remembers that the answers were sent.
+    // Answers that are gone are tied to no version (#1353).
+    expect(document.body.textContent).not.toContain('kopplade till')
+    // A reload says it, and so does a new tab, whose storage knows nothing: the server says it.
+    for (const tab of ['reloaded', 'new tab']) {
+      cleanup()
+      if (tab === 'new tab') sessionStorage.clear()
+      render(<PlayerPage />)
+      expect([tab, await screen.findByText('Ditt namn och dina svar är borttagna.')]).toBeTruthy()
+      expect([tab, document.body.textContent?.includes('kopplade till')]).toEqual([tab, false])
+      expect(screen.queryByRole('button', { name: 'Svara igen' })).toBeNull()
+      expect(document.body.textContent).not.toContain(REDACTED)
+    }
+  })
+
+  // Beställarens beslut i #1355: a guest who answered and opens her link in a new tab is shown the
+  // thanks, with «Svara igen» and the way to remove her name, never the first question; answering
+  // again says that the new answer replaces the first.
+  it('shows the thanks in a new tab, and says that answering again replaces the first answer', async () => {
+    const id = await createSession(run)
+    await thanked(id)
     cleanup()
+    sessionStorage.clear()
     render(<PlayerPage />)
-    expect(await screen.findByText('Ditt namn och dina svar är borttagna.')).toBeTruthy()
-    expect(document.body.textContent).not.toContain(REDACTED)
+    expect(await screen.findByText(`Tack, ${NAME}.`)).toBeTruthy()
+    expect(screen.queryByText(/Fyra frågor, en minut/)).toBeNull()
+    expect(screen.getByRole('button', { name: 'Ta bort mitt namn och mina svar…' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Svara igen' }))
+    expect(await screen.findByText('Ditt nya svar ersätter det första.')).toBeTruthy()
+    for (const n of ['1', '1', '1']) {
+      fireEvent.click(await screen.findByRole('button', { name: n }))
+      fireEvent.click(screen.getByRole('button', { name: 'Nästa' }))
+    }
+    fireEvent.click(screen.getByRole('button', { name: 'Skicka' }))
+    await screen.findByText(`Tack, ${NAME}.`)
+    const kept = (await (await fetch(`${run.http}/sessions/${id}/surveys`)).json()) as { who: string; answers: { fun: number } }[]
+    expect(kept.map((s) => [s.who, s.answers.fun])).toEqual([[NAME, 1]])
   })
 })

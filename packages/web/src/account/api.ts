@@ -194,7 +194,7 @@ export async function renameProject(http: string, project: string, name: string,
 }
 
 // A guest session claimed to the account afterwards (G1), and the tables the account sat at.
-export type Played = { session: string; seat: string | null; name: string; kind: 'seat' | 'observer'; at: string; game: string | null; version: string; ended: boolean; surveyed: boolean; flags: number; code?: string; deleted?: true }
+export type Played = { session: string; seat: string | null; name: string; kind: 'seat' | 'observer'; at: string; game: string | null; version: string; ended: boolean; untouched?: true; surveyed: boolean; flags: number; code?: string; deleted?: true }
 export async function myPlayed(http: string): Promise<Played[]> {
   const res = await fetch(`${http}/me/played`, withCredentials())
   if (res.status === 401) throw new Unauthorized()
@@ -427,7 +427,7 @@ export async function downloadMyData(http: string, lang: string): Promise<{ file
 // What «Radera kontot…» names (#1280): the games that go, who else loses each, the tables playing,
 // the games the account leaves, and how many tables it claimed.
 export type Deletion = {
-  games: { id: string; name: string; others: string[]; playing: number }[]
+  games: { id: string; name: string; others: string[]; playing: number; untouched: number }[]
   leaving: { id: string; name: string; owner: string | null }[]
   tables: number
 }

@@ -4,7 +4,7 @@ import type { DocDiff, Playtest, PlaytestAnswer, PlaytestFlag, PlaytestQuestion,
 import type { ProjectClient } from './ProjectClient.js'
 import { Summary } from './HistoryPanel.js'
 import { useRoving } from './roving.js'
-import { chosenVersion, compareWith, decimal, meanOf, signed, silent, tableName, tablesFor, versionSums, whenEnded } from './playtestReading.js'
+import { chosenVersion, compareWith, decimal, flaggedFor, meanOf, signed, silent, tableName, tablesFor, untouchedWords, versionSums, whenEnded } from './playtestReading.js'
 import { useLang, useT, type Key, type T } from '../i18n/index.js'
 import { saidOr } from '../i18n/said.js'
 import { clockWord } from './when.js'
@@ -113,6 +113,7 @@ export function PlaytestResults({ client, table, onTable, switcher, version: ask
           <p className="byd-results-empty">
             {t('results.empty')}
             {data.versions.some((v) => v.running > 0) && ` ${runningWords(data.versions.reduce((n, v) => n + v.running, 0), t)}.`}
+            {data.versions.some((v) => v.untouched > 0) && ` ${untouchedWords(data.versions.reduce((n, v) => n + v.untouched, 0), t)}.`}
           </p>
         ) : (
           <VersionResults key={chosen.version} client={client} playtest={data} version={chosen} name={name} table={table} onTable={onTable} lang={lang} />
@@ -163,6 +164,8 @@ function VersionResults({ client, playtest, version, name, table, onTable, lang 
   const tables = tablesFor(playtest.tables, version.version)
   const only = table !== null ? (tables.find((x) => x.id === table) ?? null) : null
   const shown = only ? [only] : tables
+  // The flags are read from the running tables too (#1357), unless the view is narrowed to one.
+  const flagged = only ? [only] : flaggedFor(playtest.tables, version.version)
   // What changed between the version held against and this one, in the history's own words (B4).
   const [diff, setDiff] = useState<DocDiff | null>(null)
   useEffect(() => {
@@ -195,6 +198,7 @@ function VersionResults({ client, playtest, version, name, table, onTable, lang 
     ...(version.observers > 0 ? [count(version.observers, 'results.observers.one', 'results.observers.other', t)] : []),
     count(version.flags, 'results.flags.one', 'results.flags.other', t),
     ...(version.running > 0 ? [count(version.running, 'results.stillRunning.one', 'results.stillRunning.other', t)] : []),
+    ...(version.untouched > 0 ? [untouchedWords(version.untouched, t)] : []),
   ]
   return (
     <>
@@ -202,7 +206,7 @@ function VersionResults({ client, playtest, version, name, table, onTable, lang 
         <h2 ref={heading} tabIndex={-1}>
           {name(version.version)}
         </h2>
-        {version.ended > 0 ? <p className="byd-results-quiet">{facts.join(' · ')}</p> : version.running > 0 && <p className="byd-results-quiet">{t('results.version.waiting')}</p>}
+        {version.ended > 0 ? <p className="byd-results-quiet">{facts.join(' · ')}</p> : version.running + version.untouched > 0 && <p className="byd-results-quiet">{t('results.version.waiting')}</p>}
         {before && diff && (
           <p className="byd-results-quiet">
             {t('results.changed', { version: name(before.version, 'word') })} <span className="byd-results-ink"><Summary diff={diff} /></span>
@@ -258,7 +262,7 @@ function VersionResults({ client, playtest, version, name, table, onTable, lang 
           </section>
         </>
       )}
-      {(version.ended > 0 || version.flags > 0) && <Flags tables={shown} version={version.version} versionName={name(version.version)} origin={client.facesOrigin} lang={lang} />}
+      {(version.ended > 0 || version.flags > 0) && <Flags tables={flagged} version={version.version} versionName={name(version.version)} origin={client.facesOrigin} lang={lang} />}
     </>
   )
 }
@@ -282,6 +286,9 @@ function Distribution({ version, before, name, lang }: { version: PlaytestVersio
         {t('results.survey.lead')}
         {before && ` ${t('results.survey.compare', { version: was })}`}
       </p>
+      {/* The table may be wider than a phone (#1372): it scrolls in a box of its own, which a
+          keyboard can reach, so that the text around it breaks inside the screen. */}
+      <div className="byd-results-scroll" role="region" aria-labelledby="byd-results-survey" tabIndex={0}>
       <table className="byd-results-dist" data-compare={before !== null}>
         <caption className="byd-offscreen">{before ? t('results.dist.caption.compare', { version: name(version.version, 'word'), before: was }) : t('results.dist.caption', { version: name(version.version, 'word') })}</caption>
         <thead>
@@ -344,6 +351,7 @@ function Distribution({ version, before, name, lang }: { version: PlaytestVersio
           })}
         </tbody>
       </table>
+      </div>
     </section>
   )
 }
@@ -420,7 +428,8 @@ function Flags({ tables, version, versionName, origin, lang }: { tables: readonl
               </span>
               <p>
                 <b>{f.who ?? t('results.flag.table')}</b>
-                {f.observer && <em className="byd-results-badge">{t('results.observer')}</em>} <span className="byd-results-quiet">· {t('results.atTable', { table: tableName(x, t) })}</span>
+                {f.observer && <em className="byd-results-badge">{t('results.observer')}</em>}
+                {!x.ended && <em className="byd-results-badge" data-running="">{t('results.flag.running')}</em>} <span className="byd-results-quiet">· {t('results.atTable', { table: tableName(x, t) })}</span>
                 {isMasked(f.note) ? ` ${t('results.flag.masked')}` : f.note ? `: «${f.note}»` : ` ${t('results.flag.silent')}`}
               </p>
               {f.card && <p className="byd-results-card-line">{cardLine(f.card, t)}</p>}
