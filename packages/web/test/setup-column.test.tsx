@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
@@ -25,6 +25,16 @@ async function openBord(): Promise<void> {
 }
 const row = (id: string) => document.querySelector(`[data-zone-row="${id}"]`) as HTMLElement
 const strip = () => screen.getByRole('button', { name: /^Spelet/ })
+// Listans rader i DOM-ordning: en zon som sitt id, en familj som `roll:*`.
+const rows = () => [...document.querySelectorAll('[data-zone-row], [data-zone-family]')].map((el) => el.getAttribute('data-zone-row') ?? `${el.getAttribute('data-zone-family')}:*`)
+const list = (name: string) => screen.getByRole('list', { name })
+// Namnet på varje rad direkt i en lista, utan det som står i raderna under.
+const names = (name: string) => [...list(name).querySelectorAll(':scope > li')].map((li) => (li.querySelector('.byd-setup-name') as HTMLElement).textContent)
+// Öppnar ＋-menyn på en rad och trycker ett av dess val.
+const addVia = (node: string, item: string) => {
+  fireEvent.click(screen.getByRole('button', { name: `Lägg till i ${node}` }))
+  fireEvent.click(within(screen.getByRole('menu', { name: `Lägg till i ${node}` })).getByRole('menuitem', { name: item }))
+}
 
 async function spara(): Promise<void> {
   const button = (await screen.findByRole('button', { name: 'Spara' })) as HTMLButtonElement
@@ -66,5 +76,41 @@ describe('Spelet överst i kolumnen (#1403, beslut C)', () => {
 
     await spara()
     await waitFor(async () => expect((await run.projects.load(run.projectId))?.setup.deckZone).toBe('discard'))
+  })
+})
+
+// Listan speglar filten: allt ligger i något. Spelyta är roten för det som står på bordet, och
+// «Varje plats» samlar det varje plats har — en rad per familj, inte en per plats (#175).
+describe('bordet som träd (#1403, beslut C)', () => {
+  it('har Spelyta och Varje plats som rötter, och lägger till i den zon vars ＋ trycks', async () => {
+    await openBord()
+    expect(rows()).toEqual(['table', 'draw', 'discard', 'hand:*'])
+    expect(names('Bordet')).toEqual(['Spelyta', 'Varje plats 2 platser'])
+    expect(names('Spelyta')).toEqual(['Draghög leken', 'Kasthög'])
+    expect(names('Varje plats')).toEqual(['Hand 2 platser'])
+    // De två rubrikerna som delade listan är borta; roten säger vad den rymmer.
+    expect(screen.queryByRole('heading', { name: 'På bordet' })).toBeNull()
+    expect(screen.queryByRole('heading', { name: 'Vid platserna' })).toBeNull()
+
+    // ＋ på Spelyta är en meny med det som går att lägga just där.
+    const plus = screen.getByRole('button', { name: 'Lägg till i Spelyta' })
+    expect(plus.getAttribute('aria-expanded')).toBe('false')
+    fireEvent.click(plus)
+    const menu = screen.getByRole('menu', { name: 'Lägg till i Spelyta' })
+    expect(within(menu).getAllByRole('menuitem').map((b) => b.textContent)).toEqual(['＋ Yta', '＋ Hög', '＋ Tärning'])
+    // Menyn tar fokus på sitt första val, och Escape lämnar det tillbaka till ＋.
+    await waitFor(() => expect(document.activeElement).toBe(within(menu).getByRole('menuitem', { name: '＋ Yta' })))
+    fireEvent.keyDown(menu, { key: 'Escape' })
+    expect(screen.queryByRole('menu')).toBeNull()
+    expect(document.activeElement).toBe(plus)
+
+    addVia('Spelyta', '＋ Hög')
+    expect(screen.queryByRole('menu')).toBeNull()
+    expect(names('Spelyta')).toEqual(['Draghög leken', 'Kasthög', 'Hög 1'])
+    // Den nya högen är vald, som förut: dess panel står öppen under raden.
+    expect(screen.getByLabelText('Namn för Hög 1')).toBeTruthy()
+    // Inga ＋ på en hög eller en hand: de rymmer kort, inte zoner eller material.
+    expect(screen.queryByRole('button', { name: 'Lägg till i Hög 1' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Lägg till i Hand' })).toBeNull()
   })
 })
