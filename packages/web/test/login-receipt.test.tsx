@@ -30,7 +30,13 @@ async function sendTo(email: string): Promise<HTMLElement> {
   return receipt()
 }
 
-const receipt = async () => (await screen.findByText('Kolla din mejl')).closest<HTMLElement>('.byd-login-sent')!
+// The receipt takes the focus in an effect, after the text is already in the document. A test that
+// puts the focus somewhere itself has to wait for that move first, or the effect takes it back.
+const receipt = async () => {
+  const box = (await screen.findByText('Kolla din mejl')).closest<HTMLElement>('.byd-login-sent')!
+  await waitFor(() => expect(document.activeElement).toBe(box))
+  return box
+}
 
 describe('the receipt after the link (#1360)', () => {
   it('holds both ways on, in one row inside it', async () => {
