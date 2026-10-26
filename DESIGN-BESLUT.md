@@ -5071,7 +5071,7 @@ Typvalet som togs bort då bytte bara namnförslaget; det som infördes 2026-10-
 En bildcell är en referens till en innehållsadresserad asset; vid import löses URL eller filnamn upp mot uppladdade filer.
 Varje rad har en systemkolumn `antal` med standard 1.
 Setup skapar så många instanser med samma `cardRef`; tryckmanifestet summerar.
-I tabellen står `antal` på listen direkt efter `id`, ett Tab-tryck från radens bock (#695, se tillägget 2026-10-20 nedan); i CSV:n och i dokumentets ordning står den fortfarande sist.
+I tabellen står `antal` direkt efter `id`, två Tab-tryck från radens bock (#695, se tillägget 2026-10-20 nedan; sedan #1408 rullar den med raden, se L90); i CSV:n och i dokumentets ordning står den fortfarande sist.
 
 *Tillagt 2026-09-27 (#479, beställarens beslut efter prototyp 13 och 15):*
 En import som skulle ta bort kort frågar först och säger hur många som finns och hur många filen har; en import som bara lägger till eller ändrar landar direkt.
@@ -5158,7 +5158,7 @@ En rubrik bär sitt ord och sättet den sorterar på, och ingenting mer — vilk
 Hänglaset flyttar med: i en panel finns plats för skälet i ord, vilket en rubrik aldrig hade, och `antal` får tillbaka de nitton pixlar det tog.
 Huvudets tabbordning är ett stopp per kolumn och en dörr, där den förr hade en kontroll som tar bort en kolumn mellan varje par av namn.
 Kolumnlistan i dörren rullar och blanketten under den står stilla: en lek med tjugo kolumner hängde annars dörren utanför fönstrets nederkant, och det som föll av var vägen att göra den tjugoförsta.
-Varken `id` eller `antal` kan bäras, är en plats att lägga en kolumn på, eller har en kant att dra i: id är en maskinnyckel och `antal` står på listen bredvid den, där ingen flytt skulle synas (L55, #695).
+Varken `id` eller `antal` kan bäras, är en plats att lägga en kolumn på, eller har en kant att dra i: id är en maskinnyckel och `antal` står bredvid den, först i raden (L55, #695; sedan #1408 kan båda låsas till listen som varje annan kolumn, L90).
 Pilen utan Alt är läsarens egen och rörs inte, och en rubrik som kan bäras har inte slutat vara en som kan tryckas för att sortera.
 En flytt sägs i den enda kanal allt på en skärm talar i (#7): ett drag är sitt eget svar för ögat, men en kolumn som flyttat sig under fokus utan att något sagts är en kolumn läsaren har tappat.
 
@@ -5193,6 +5193,7 @@ I en lek på 308 kort med elva fält stod dessutom sju kolumner till utanför vi
   En cell som tas in i bild — av fokus eller av `scrollIntoView` — tas in i det rum som går att läsa och inte till lådans kant: listens mätta bredd till vänster och ×:ets tryckbredd till höger.
   Med listen bredare och Linux-text började kolumnen efter body utanför lådan, och togs den in stod dess slut under ×.
   *Ändrat 2026-10-21 (#1067):* rummet är en `scroll-margin` på det som rullar och inte lådans `scroll-padding`.
+  *Ändrat 2026-10-26 (L90, #1408, beställarens val A):* `antal` står inte längre på listen utan först i raden efter `id`, och rullar med den; i bild vid rullning 0 vid 1024 och 1280, och foten säger var den är när den rullat bort. Listen är det designern låst, titeln från start. `fitColumns` säger var varje fastnålad kolumn börjar i `--byd-data-at-<n>`, per plats i raden och inte per namn.
   Som lådans gällde det också det fastnålade, som står i lådans kant och alltså aldrig i rummet, och Chromium centrerar ett fokuserat element som inte står helt i rummet.
   Handtaget «Kolumner» rullade därför lådan (bredd − list) / 2 åt sidan när det fick fokus, 432 px vid 1280, och bocken i en rad drog en rullad låda tillbaka till början, utan att någon av dem själv flyttade sig.
   Det fastnålade har ingen marginal och står alltid i bild; `packages/e2e/test/surfaces/table-sticky-focus.spec.ts` är grinden.
@@ -7915,6 +7916,7 @@ Jämförelsens tinter ligger nu som ett lager över cellens grund i stället fö
 Som grund gjorde de de fastnålade cellerna genomskinliga, så att ett värde som skrollats in under dem syntes igenom.
 `data-table-hover.test.tsx` mäter listen, kanten och bläcket på målade bildpunkter, på alla fem grunderna.
 *Ändrat 2026-10-20 (#695, beställarens val D + A):* listen är tre kolumner — bocken, `id` och `antal` — och kanten står på `antal`, listens sista.
+*Ändrat 2026-10-26 (L90, #1408, beställarens val A):* listen är bocken och det designern låst, titeln från start; `id` och `antal` rullar med raden tills de låses. Kanten står på listens sista kolumn, vilken den än är, och arket nålar fast på märket `data-pinned` som tabellen sätter, inte på kolumnens namn.
 `antal` stod sist och syntes inte vid någon bredd (L4); på listen läses den i listens bläck, som `id`.
 
 **Kolumndörrens handtag blir × medan dörren står** (variant A av tre: ＋ blir ×, en stängknapp i dörren och klick utanför stänger).
@@ -9103,3 +9105,32 @@ Följdkrav:
 Per-plats-material visas en gång under familjen, aldrig en gång per plats.
 Meeple, kub och bricka kommer som rader i ＋-menyn när deras typer finns (B1–B3), inte förr: en spärrad rad för något som inte finns är ett löfte i gränssnittet.
 `setup-column.test.tsx` pinnar remsan, rötterna, menyerna och materialets plats i trädet.
+
+### L90. Designern låser vilken kolumn som står still i Tabell, och titeln är låst från start (prototypat och beslutat 2026-10-26, #1408)
+
+Beställaren: id och antal tar för mycket plats till vänster i tabellen, och ingen av dem är det man tittar på hela tiden — det är fritexten man utgår ifrån.
+Listen (L55) var bocken, `id` och `antal` (#145, #695): 302 px i provleken, 315 i den täta, vid varje fönsterbredd, och det som stod still när man skrev långt ut i body var `sals-saloon-guld · 2` medan titeln rullat bort.
+
+Fyra lägen prototypades på samma tabell i editorns egna värden (`docs/ux-audits/2026-10-26-lasbar-kolumn/`): Nu; A, ett lås per kolumn; B, verktyget nålar kortets namn och skriver id och antal under det i cellen; C, listens kant är ett handtag och det som står till vänster om den står still.
+Valet blev **A**.
+
+**Varje kolumn har ett lås**, på två ställen: en rad i kolumndörren bakom ＋, där tangentbordet vrider det, och ett hänglås i rubrikens högra hörn som syns när kolumnen är låst och när handen är på rubriken.
+Rubrikens lås står utanför namnets flöde, som ¶ och breddkanten (#46), så det kostar kolumnen ingen bredd, och det står utanför tabbordningen: huvudet är ett stopp per kolumn och en dörr (#46), och dörren har samma lås.
+Det säger ändå vad det är och åt vilket håll det står, för den som läser rubriken i stället för att tabba den.
+
+**En låst kolumn står på listen**, i lekens ordning bland de låsta — `id`, `antal`, fälten i dokumentets ordning — och rullar inte; låses den upp går den tillbaka till sin plats i raden.
+Kanten (L55) står på listens sista kolumn, vilken den än är.
+Arket vet inte vad som är låst: tabellen sätter `data-pinned` på varje cell i en låst kolumn och `data-pinned-last` på den sista, och cellen säger sitt `left` ur det mätningen sagt per plats i raden (`--byd-data-at-<n>`), eftersom ett kolumnnamn är designerns och inte alltid ett ord en egenskap kan bära.
+Mätningen och foten frågar som förut arket vad som står still, så ingen av dem vet heller.
+
+**Från start är titeln låst, id och antal inte.** `id` står först i raden och `antal` efter den, som på listen förut, men de rullar; `antal` syns vid rullning 0 vid 1024 och 1280, och när den rullat bort säger foten var den är (#695 A).
+En lek utan titelkolumn har ingenting låst förrän designern låser något.
+Vad som är låst är en vy av leken och inte leken, som bredderna (L4, #46): det hålls i webbläsaren per spel och skrivs aldrig in i dokumentet.
+En designer som låst upp allt har sagt något, och får inte titeln tillbaka nästa gång.
+
+`id` och `antal` är fortfarande verktygets egna — de tas inte bort och döps inte om (L4) — och dörren säger det med ordet «spelets» där ×:et skulle stå, inte längre med ett hänglås, eftersom ett hänglås på raden nu betyder «står still».
+`id` läses i raden i sitt dämpade bläck och på listen i listens.
+
+Mätt i prototypen vid 1280: listen 302 → 237 px, body:s tak (L46) 902 → 967 px, Tab från bocken till antal 1 → 2.
+Ett fynd att bära med: titeln ensam är inget namn — provleken har fyra «Duel» — och B:s underrad med id under titeln löste det; «A med B:s underrad» är nästa prototyp om det visar sig störa.
+`packages/web/test/data-table-lock.test.tsx` är grinden för låset, `data-table-hover.test.tsx` för listens målning, och `packages/e2e/test/surfaces/table-antal-rail.spec.ts` och `table-sticky-focus.spec.ts` för listen i det byggda appen.

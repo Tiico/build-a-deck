@@ -4,12 +4,16 @@ import { expect, test } from '../../support/test.js'
 import { logIn, makeProjectOf } from '../../support/api.js'
 import { prov, tät } from '../../support/spelkort.js'
 
-// antal på listen, grupp i typ och foten som säger vad som står utanför (#695, beställarens val
-// D + A 2026-10-20), mätt i det byggda appen på de lekar prototypen mättes på.
+// Listen, grupp i typ och foten som säger vad som står utanför (#695, beställarens val D + A
+// 2026-10-20; #1408, beställarens val A 2026-10-26), mätt i det byggda appen på de lekar
+// prototyperna mättes på.
 //
 // antal stod sist, och L46:s tak gör body exakt lika bred som det rum som syns, så en kolumn efter
 // body kunde inte börja i bild vid någon bredd — antal började bakom × också vid 1440. I en tät lek
-// stod dessutom sju kolumner till utanför vid varje bredd, och ingenting sa det.
+// stod dessutom sju kolumner till utanför vid varje bredd, och ingenting sa det. #695 satte antal
+// på listen; #1408 gav listen till designern: titeln står där från start, id och antal rullar med
+// raden — antal i bild vid rullning 0, och foten säger var den är när den rullat bort — och varje
+// kolumn kan låsas dit i dörren.
 test.use({ locale: 'sv-SE' })
 
 // Text 15 % bredare, som DejaVu på CI:s Linux mot Macens typsnitt (#325): satt innan tabellen mäter
@@ -37,9 +41,10 @@ async function openTable(page: Page, doc: ProjectDoc, { width, height, linux = f
   await page.waitForFunction(() => (document.querySelector('table.byd-data') as HTMLElement | null)?.style.tableLayout === 'fixed')
 }
 
-// antal i huvudet och på de rader som syns: helt i bild, ritad ovanpå det som rullar, och direkt
-// efter id.
-const antalSyns = (page: Page) =>
+// Listen i huvudet och på de rader som syns: varje låst cell helt i bild, ritad ovanpå det som
+// rullar, och den första direkt efter bocken. Och antal: om dess rubrik står helt i det rum som går
+// att läsa, mellan listen och ×.
+const listen = (page: Page) =>
   page.evaluate(() => {
     const box = document.querySelector('.byd-data-scroll') as HTMLElement
     const room = box.getBoundingClientRect()
@@ -49,20 +54,32 @@ const antalSyns = (page: Page) =>
       return r.top >= room.top - 0.5 && r.bottom <= room.bottom + 0.5
     })
     for (const row of rows) {
-      const cell = row.querySelector('[data-col="antal"]') as HTMLElement | null
-      const id = row.querySelector('[data-col="id"]') as HTMLElement | null
       const vem = row.getAttribute('data-card-ref') ?? 'huvudet'
-      if (!cell || !id) {
-        fel.push(`${vem}: ingen cell`)
+      const tick = row.querySelector('.byd-data-check') as HTMLElement | null
+      const pinned = [...row.querySelectorAll<HTMLElement>('[data-pinned]')]
+      if (!tick || pinned.length === 0) {
+        fel.push(`${vem}: ingenting på listen`)
         continue
       }
-      const r = cell.getBoundingClientRect()
-      if (r.left < room.left - 0.5 || r.right > room.left + box.clientWidth + 0.5) fel.push(`${vem}: utanför lådan`)
-      if (Math.abs(r.left - id.getBoundingClientRect().right) > 0.5) fel.push(`${vem}: inte bredvid id`)
-      const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)
-      if (hit !== cell && !cell.contains(hit)) fel.push(`${vem}: täckt`)
+      if (Math.abs(pinned[0]!.getBoundingClientRect().left - tick.getBoundingClientRect().right) > 0.5) fel.push(`${vem}: listen står inte bredvid bocken`)
+      for (const cell of pinned) {
+        const r = cell.getBoundingClientRect()
+        const col = cell.getAttribute('data-col')
+        if (r.left < room.left - 0.5 || r.right > room.left + box.clientWidth + 0.5) fel.push(`${vem} ${col}: utanför lådan`)
+        const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)
+        if (hit !== cell && !cell.contains(hit)) fel.push(`${vem} ${col}: täckt`)
+      }
     }
-    return { rader: rows.length, fel, sidled: document.documentElement.scrollWidth - document.documentElement.clientWidth }
+    const rail = box.querySelector('thead th[data-pinned-last]')?.getBoundingClientRect()
+    const pin = box.querySelector('thead .byd-data-remove')!.getBoundingClientRect()
+    const antal = box.querySelector('thead th[data-col="antal"]')!.getBoundingClientRect()
+    return {
+      rader: rows.length,
+      fel,
+      låsta: [...box.querySelectorAll('thead th[data-pinned]')].map((th) => th.getAttribute('data-col')),
+      antalIBild: rail !== undefined && antal.left >= rail.right - 0.5 && antal.right <= pin.left + 0.5,
+      sidled: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    }
   })
 
 const rollToEnd = (page: Page) => page.locator('.byd-data-scroll').evaluate((box) => (box.scrollLeft = box.scrollWidth))
@@ -70,20 +87,54 @@ const rollToEnd = (page: Page) => page.locator('.byd-data-scroll').evaluate((box
 for (const [width, height] of [[1280, 800], [1024, 768]] as const) {
   for (const [lek, doc] of [['provleken', prov], ['den täta leken', tät]] as const) {
     for (const linux of [false, true]) {
-      test(`antal syns utan rullning i sidled och står kvar när lådan rullas, ${lek} vid ${width}${linux ? ' med text 15 % bredare' : ''}`, async ({ page }) => {
+      test(`titeln står på listen från start och antal syns utan rullning i sidled, ${lek} vid ${width}${linux ? ' med text 15 % bredare' : ''}`, async ({ page }) => {
         await openTable(page, doc(), { width, height, linux })
-        const vid0 = await antalSyns(page)
+        const vid0 = await listen(page)
         expect(vid0.rader).toBeGreaterThan(5)
+        expect(vid0.låsta).toEqual(['title'])
         expect(vid0.fel).toEqual([])
+        expect(vid0.antalIBild).toBe(true)
         // Och sidan själv rullar aldrig i sidled: lådan gör det.
         expect(vid0.sidled).toBe(0)
         await rollToEnd(page)
         await expect.poll(() => page.locator('.byd-data-scroll').evaluate((box) => box.hasAttribute('data-under'))).toBe(true)
-        expect((await antalSyns(page)).fel).toEqual([])
+        const rullad = await listen(page)
+        expect(rullad.fel).toEqual([])
+        // antal har rullat bort med raden, och foten säger det.
+        expect(rullad.antalIBild).toBe(false)
+        await expect(page.locator('.byd-crown-foot .byd-data-outside[data-side="left"]')).toHaveAccessibleName(/till vänster: .*Antal/)
       })
     }
   }
 }
+
+// Låset i dörren (#1408): antal låst står på listen före titeln, i lekens ordning, och står kvar
+// när lådan rullas — och låset på rubriken låser upp.
+test('antal låst i dörren står på listen och kvar när lådan rullas, och rubrikens lås låser upp', async ({ page }) => {
+  await openTable(page, prov(), { width: 1280, height: 800 })
+  await page.getByRole('button', { name: 'Kolumner', exact: true }).click()
+  const door = page.getByRole('group', { name: 'Kolumner', exact: true })
+  const lock = door.getByRole('button', { name: 'Lås Antal så att den står still' })
+  await expect(lock).toHaveAttribute('aria-pressed', 'false')
+  await lock.click()
+  await expect(door.getByRole('button', { name: 'Lås upp Antal' })).toHaveAttribute('aria-pressed', 'true')
+  await page.keyboard.press('Escape')
+  await expect(door).toBeHidden()
+  await page.waitForFunction(() => (document.querySelector('table.byd-data') as HTMLElement | null)?.style.getPropertyValue('--byd-data-at-2') !== '')
+  const vid0 = await listen(page)
+  expect(vid0.låsta).toEqual(['antal', 'title'])
+  expect(vid0.fel).toEqual([])
+  await rollToEnd(page)
+  await expect.poll(() => page.locator('.byd-data-scroll').evaluate((box) => box.hasAttribute('data-under'))).toBe(true)
+  expect((await listen(page)).fel).toEqual([])
+  // Rubrikens lås är en hands väg: pekaren på rubriken visar det, och ett tryck låser upp.
+  const antalHead = page.locator('.byd-data thead th[data-col="antal"]')
+  await antalHead.hover()
+  const onHead = antalHead.getByRole('button', { name: 'Lås upp Antal' })
+  await expect(onHead).toBeVisible()
+  await onHead.click()
+  await expect.poll(() => listen(page).then((l) => l.låsta)).toEqual(['title'])
+})
 
 // typ förklarar kortgruppen (#695): märket «kortgrupp» och L32:s frågetecken på typ:s rubrik.
 test('typ bär märket kortgrupp, och dess frågetecken säger var utseendet ändras', async ({ page }) => {

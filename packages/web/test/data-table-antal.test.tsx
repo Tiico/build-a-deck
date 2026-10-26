@@ -279,23 +279,26 @@ describe('the count message stays in its column', () => {
   })
 })
 
-// antal står på listen bredvid id (#695, beställarens val D + A 2026-10-20). Den stod sist, och
-// vid varje bredd började den bakom × — kolumnen som säger hur många kopior som går i leken var
-// den sista en ny formgivare hittade. Nu är den den första efter kortets namn, ett Tab-tryck från
-// radens bock, och står kvar när lådan rullas (det mäts i `data-table-sideways.test.tsx`).
-describe('antal på listen (#695)', () => {
-  it('står direkt efter id, i huvudet och på varje rad', () => {
+// antal står direkt efter id (#695, beställarens val D + A 2026-10-20). Den stod sist, och vid
+// varje bredd började den bakom × — kolumnen som säger hur många kopior som går i leken var den
+// sista en ny formgivare hittade. Sedan #1408 står titeln först, på listen, och id och antal efter
+// den i raden: antal är två Tab-tryck från radens bock, och i bild vid rullning 0 (det mäts i
+// `table-antal-rail.spec.ts`).
+describe('antal efter id (#695, #1408)', () => {
+  it('står direkt efter id, efter titeln, i huvudet och på varje rad', () => {
     table()
-    expect([...document.querySelectorAll('thead th[data-col]')].map((th) => th.getAttribute('data-col'))).toEqual(['id', 'antal', 'title', 'body'])
+    expect([...document.querySelectorAll('thead th[data-col]')].map((th) => th.getAttribute('data-col'))).toEqual(['title', 'id', 'antal', 'body'])
     for (const row of document.querySelectorAll('tbody tr')) {
-      expect([...row.querySelectorAll('td[data-col]')].map((td) => td.getAttribute('data-col'))).toEqual(['id', 'antal', 'title', 'body'])
+      expect([...row.querySelectorAll('td[data-col]')].map((td) => td.getAttribute('data-col'))).toEqual(['title', 'id', 'antal', 'body'])
     }
   })
 
-  it('nås med ett Tab-tryck från radens bock', async () => {
+  it('nås med två Tab-tryck från radens bock, över titeln', async () => {
     const user = userEvent.setup()
     table()
     ;(screen.getByLabelText('markera dragon') as HTMLInputElement).focus()
+    await user.tab()
+    expect(document.activeElement).toBe(screen.getByLabelText('dragon title'))
     await user.tab()
     expect(document.activeElement).toBe(screen.getByLabelText('dragon antal'))
   })

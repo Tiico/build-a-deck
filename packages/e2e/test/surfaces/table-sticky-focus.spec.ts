@@ -5,9 +5,9 @@ import { tät } from '../../support/spelkort.js'
 
 // Det fastnålade i tabellen står still när det får fokus (#1067).
 //
-// Kolumndörrens handtag «Kolumner» står klistrat mot lådans högra kant, listen (bocken, id och
-// antal) mot dess vänstra, och sedan #695 tas en cell in i det rum som går att läsa och inte till
-// lådans kant. När handtaget fick fokus rullade lådan 432 px åt sidan vid 1280, och bocken i en
+// Kolumndörrens handtag «Kolumner» står klistrat mot lådans högra kant, listen (bocken och det
+// designern låst, titeln från start sedan #1408) mot dess vänstra, och sedan #695 tas en cell in i
+// det rum som går att läsa och inte till lådans kant. När handtaget fick fokus rullade lådan 432 px åt sidan vid 1280, och bocken i en
 // rad drog en rullad låda nästan hela vägen tillbaka — en kontroll som alltid står i bild flyttade
 // allt annat för att visa sig.
 //
@@ -48,7 +48,7 @@ const läge = (page: Page) =>
     const a = document.activeElement as HTMLElement
     const cell = a.closest('th, td')
     const r = a.getBoundingClientRect()
-    const rail = document.querySelector('.byd-data thead th[data-col="antal"]')!.getBoundingClientRect()
+    const rail = document.querySelector('.byd-data thead th[data-pinned-last]')!.getBoundingClientRect()
     const pin = document.querySelector('.byd-data thead .byd-data-remove')!.getBoundingClientRect()
     return {
       x: box.scrollLeft,
@@ -112,11 +112,13 @@ for (const [width, height] of STORLEKAR) {
         expect(start.x).toBe(0)
         // Premissen: tabellen är bredare än lådan, annars finns ingenting att rulla.
         expect(start.slut).toBeGreaterThan(200)
-        // Bakåt över antal och bocken, som står på listen, till huvudets sista kontroll.
-        const steg = await tabbaTill(page, 'huvudet byd-data-remove', 'Shift+Tab', 4)
-        expect(steg.map((s) => s.var)).toEqual(['raden antal', 'raden byd-data-check', 'huvudet byd-data-remove'])
-        expect(steg.map((s) => s.x)).toEqual([0, 0, 0])
-        // Och tillbaka: framåt igen till bocken och antal, utan att något rör sig.
+        // Bakåt över antal och titeln, som står i bild respektive på listen, och bocken, till
+        // huvudets sista kontroll.
+        const steg = await tabbaTill(page, 'huvudet byd-data-remove', 'Shift+Tab', 5)
+        expect(steg.map((s) => s.var)).toEqual(['raden antal', 'raden title', 'raden byd-data-check', 'huvudet byd-data-remove'])
+        expect(steg.map((s) => s.x)).toEqual([0, 0, 0, 0])
+        // Och tillbaka: framåt igen till bocken, titeln och antal, utan att något rör sig.
+        await page.keyboard.press('Tab')
         await page.keyboard.press('Tab')
         await page.keyboard.press('Tab')
         expect(await läge(page)).toMatchObject({ var: 'raden antal', x: 0 })
@@ -125,7 +127,7 @@ for (const [width, height] of STORLEKAR) {
       test(`det fastnålade drar inte tillbaka en rullad låda, och en cell tas fortfarande in i det läsbara rummet, ${namn}`, async ({ page }) => {
         await openTable(page, yta)
         // Rullad med pekaren till mitten, och sedan med tangentbordet från flikens verktyg in i
-        // huvudet: bocken, id och antal står på listen och ska inte flytta lådan.
+        // huvudet: bocken och titeln står på listen (#1408) och ska inte flytta lådan.
         const box = page.locator('.byd-data-scroll')
         const mått = await box.boundingBox()
         await page.mouse.move(mått!.x + mått!.width / 2, mått!.y + mått!.height / 2)
@@ -134,27 +136,27 @@ for (const [width, height] of STORLEKAR) {
         await page.locator('#byd-editor-tab-table').focus()
         const in_ = await tabbaTill(page, 'huvudet byd-data-check')
         expect(in_.map((s) => `${s.var} ${s.x}`)).toEqual(in_.map((s) => `${s.var} ${mitt}`))
-        const lista = await tabbaTill(page, 'huvudet antal', 'Tab', 2)
-        expect(lista.map((s) => s.var)).toEqual(['huvudet id', 'huvudet antal'])
-        expect(lista.map((s) => s.x)).toEqual([mitt, mitt])
+        const lista = await tabbaTill(page, 'huvudet title', 'Tab', 1)
+        expect(lista.map((s) => s.var)).toEqual(['huvudet title'])
+        expect(lista.map((s) => s.x)).toEqual([mitt])
 
         // Framåt genom huvudet till handtaget: rubrikerna tas in i bild, och lådan står vid sista
         // kolumnen.
         const huvud = await tabbaTill(page, 'huvudet byd-data-remove')
         const sist = huvud.at(-1)!.x
         expect(sist).toBeGreaterThan(mitt)
-        // Och in i första raden: bocken och antal står på listen, och lådan står kvar.
-        const rad = await tabbaTill(page, 'raden antal', 'Tab', 2)
-        expect(rad.map((s) => s.var)).toEqual(['raden byd-data-check', 'raden antal'])
+        // Och in i första raden: bocken och titeln står på listen, och lådan står kvar.
+        const rad = await tabbaTill(page, 'raden title', 'Tab', 2)
+        expect(rad.map((s) => s.var)).toEqual(['raden byd-data-check', 'raden title'])
         expect(rad.map((s) => s.x)).toEqual([sist, sist])
         // Bakåt till handtaget igen, lika stilla.
         const bak = await tabbaTill(page, 'huvudet byd-data-remove', 'Shift+Tab', 2)
         expect(bak.map((s) => s.x)).toEqual([sist, sist])
 
-        // Men en cell utanför bild tas fortfarande in, och i det rum som går att läsa: typ står
-        // utanför till vänster, och tas in till höger om listen.
-        await tabbaTill(page, 'raden antal', 'Tab', 2)
-        const typ = (await tabbaTill(page, 'raden typ', 'Tab', 1)).at(-1)!
+        // Men en cell utanför bild tas fortfarande in, och i det rum som går att läsa: antal står
+        // utanför till vänster sedan den rullar med raden (#1408), och tas in till höger om listen.
+        await tabbaTill(page, 'raden title', 'Tab', 2)
+        const typ = (await tabbaTill(page, 'raden antal', 'Tab', 1)).at(-1)!
         expect(typ.x).toBeLessThan(sist)
         expect(typ.vänster).toBeGreaterThanOrEqual(0)
         expect(typ.höger).toBeGreaterThanOrEqual(0)

@@ -714,13 +714,15 @@ export const svEditor = {
   'table.columns.help.topic': 'kolumnerna',
   'table.columns.help.prose': 'Text är en rad text. Prosa ger flera rader och formatering, och Bild tar emot bilder i cellerna.',
   'table.columns.help.auto': 'En streckad markering följer mallen: en hög textruta föreslår prosa och ett bildlager bild. Ett eget val gäller tills du återställer det med pilen bredvid växeln.',
-  'table.columns.help.manage': 'Tryck på ett kolumnnamn för att byta det. Låsta kolumner behövs av spelet, och var en kolumn syns på kortet bestäms i Mall.',
+  'table.columns.help.manage': 'Tryck på ett kolumnnamn för att byta det, och på hänglåset för att låta kolumnen stå still till vänster när tabellen rullar. id och antal behövs av spelet och kan inte tas bort; var en kolumn syns på kortet bestäms i Mall.',
   'table.columns': 'Kolumner',
   'table.column.moved': '{field} är kolumn {at} av {of}',
   'table.column.width.said': '{field} är {px} px bred',
   'table.column.width.said.auto': '{field} följer innehållet igen',
   'table.column.width.auto': 'Låt {field} följa innehållet igen',
   'table.column.width.px': '{px} px',
+  'table.column.lock': 'Lås {field} så att den står still',
+  'table.column.unlock': 'Lås upp {field}',
   // Att döpa om en kolumn (#384). Namnet är nyckeln — `fieldLabel` ger tillbaka nyckeln oförändrad
   // för allt utom `antal` — så det designern skriver in är det som står i dokumentet och det som
   // läses upp (A4). Det som suggereras är därför inget: fältet öppnar med kolumnens eget namn i.
@@ -744,6 +746,7 @@ export const svEditor = {
   'table.field.remove': 'Ta bort fältet {field}',
   // Vad hänglåset i rubriken på id och antal säger (#46, L4). De två kolumnerna är verktygets
   // egna och kan inte tas bort; tidigare saknades bara deras × och ett hål förklarar ingenting.
+  'table.field.system.short': 'spelets',
   'table.field.system': '{field} är verktygets egen kolumn och kan inte tas bort',
   'table.field.remove.none': 'Ta bort {field}? Inget kort har ett värde i den.',
   'table.field.remove.one': 'Ta bort {field}? Värdet försvinner på {n} kort.',
