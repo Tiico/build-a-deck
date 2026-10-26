@@ -26,8 +26,14 @@ export function TableMenu({ view, activity, version, send }: { view: Snapshot; a
   const menu = useRef<HTMLDivElement | null>(null)
   const undone = useRefusal('table')
   const ended = useRefusal('table')
+  // The move a press on «Ångra senaste draget» is taking back, while it is on its way (#1390). The
+  // table's new state arrives before the answer that closes the menu, and in between the item read
+  // «Bordet har inte gjort något drag än» and went dead under the focus; it says what it is doing
+  // until the menu closes, and a second press cannot send a second undo.
+  const [taking, setTaking] = useState<string | null>(null)
   const close = (focus = true) => {
     setOpen(false)
+    setTaking(null)
     undone.clear()
     if (focus) requestAnimationFrame(() => more.current?.focus())
   }
@@ -50,7 +56,7 @@ export function TableMenu({ view, activity, version, send }: { view: Snapshot; a
   const can = undo !== null && !undo.contested
   const first = undo ? activity.find((l) => l.seq === undo.toSeq + 1) : undefined
   const move = first ? sayable(activity.filter((l) => l.batch === first.batch))[0] : undefined
-  const why = undo === null ? t('table.undo.none') : undo.contested ? t('table.undo.phone') : move ? describeActivity(move, view, t) : ''
+  const why = taking ?? (undo === null ? t('table.undo.none') : undo.contested ? t('table.undo.phone') : move ? describeActivity(move, view, t) : '')
 
   const keys = (e: RKeyboardEvent) => {
     const items = [...(menu.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [])]
@@ -89,11 +95,12 @@ export function TableMenu({ view, activity, version, send }: { view: Snapshot; a
           <button
             type="button"
             role="menuitem"
-            aria-disabled={can ? undefined : 'true'}
+            aria-disabled={can || taking !== null ? undefined : 'true'}
             {...undone.control}
             onClick={() => {
-              if (!can) return
-              void undone.watch(send({ v: 'undo.self' })).then((r) => r.ok && close())
+              if (!can || taking !== null) return
+              setTaking(why)
+              void undone.watch(send({ v: 'undo.self' })).then((r) => (r.ok ? close() : setTaking(null)))
             }}
           >
             {t('table.undo')}

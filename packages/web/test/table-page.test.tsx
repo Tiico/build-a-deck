@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { TableClient } from '../src/client.js'
 import { TablePage } from '../src/table/TablePage.js'
@@ -222,16 +222,14 @@ describe('presence on the table screen (K6)', () => {
     await screen.findByText(/Draghög/)
     const ada = TableClient.connect(await asSeat(run, id, 'A'))
     await ada.ready()
+    // The pointer travels apart from the table's state, so it can be drawn before this screen has
+    // heard her name, under her seat's letter; the name it carries is the one the table has now,
+    // and not the one it had when the pointer last moved (#1390).
+    ada.sendPresence({ kind: 'cursor', x: 0, y: 0 })
+    await waitFor(() => expect(document.querySelector('[data-cursor]')?.textContent).toBe('A'))
     await ada.send({ v: 'seat.claim', seat: 'A', name: 'Ada' }, { v: 'draw', from: 'draw', to: 'table', count: 1 })
     const cardId = ada.view!.components[0]!.id
-
-    ada.sendPresence({ kind: 'cursor', x: 0, y: 0 })
-    const cursor = await waitFor(() => {
-      const el = document.querySelector('[data-cursor]')
-      if (!el) throw new Error('no cursor yet')
-      return el
-    })
-    expect(cursor.textContent).toContain('Ada')
+    await waitFor(() => expect(document.querySelector('[data-cursor]')?.textContent).toBe('Ada'))
     ada.sendPresence({ kind: 'drag', component: cardId, x: 100, y: 100 })
     await waitFor(() => expect(document.querySelector(`[data-ghost-of][data-component="${cardId}"]`)).toBeTruthy())
     expect(document.querySelector(`[data-component="${cardId}"][data-carried]`)).toBeTruthy()
@@ -446,9 +444,32 @@ describe('the felt’s own screen says what happened, and can undo and end (#682
     const undo = within(menu).getByRole('menuitem', { name: /Ångra senaste draget/ })
     expect(undo.textContent).toBe('Ångra senaste dragetBordet drog 2 kort från Draghög till Kasthög')
     await waitFor(() => expect(document.activeElement).toBe(undo))
-    fireEvent.click(undo)
-    await waitFor(() => expect(document.querySelector('[data-zone="draw"]')!.getAttribute('data-count')).toBe('10'))
-    expect(screen.queryByRole('menu')).toBeNull()
+    // The table's new state reaches the screen before the answer that closes the menu (#1390). The
+    // answer is held here, so the screen in between is the one a loaded machine shows: the menu
+    // still says which move it is taking back, and the item is not dead under the focus.
+    let answer!: () => void
+    const answered = new Promise<void>((resolve) => (answer = resolve))
+    const send = TableClient.prototype.send
+    const held = vi.spyOn(TableClient.prototype, 'send').mockImplementation(function (this: TableClient, ...intents) {
+      const sent = send.apply(this, intents)
+      return intents.some((i) => i.v === 'undo.self') ? sent.then(async (r) => (await answered, r)) : sent
+    })
+    try {
+      fireEvent.click(undo)
+      fireEvent.click(undo)
+      await waitFor(() => expect(document.querySelector('[data-zone="draw"]')!.getAttribute('data-count')).toBe('10'))
+      expect(screen.getByRole('menu')).toBeTruthy()
+      expect(undo.textContent).toBe('Ångra senaste dragetBordet drog 2 kort från Draghög till Kasthög')
+      expect(undo.getAttribute('aria-disabled')).toBeNull()
+      expect(held.mock.calls.filter((c) => c.some((i) => i.v === 'undo.self'))).toHaveLength(1)
+      answer()
+      await waitFor(() => expect(screen.queryByRole('menu')).toBeNull())
+    } finally {
+      answer()
+      held.mockRestore()
+    }
+    // One move taken back, not two: the second press sent nothing.
+    expect(document.querySelector('[data-zone="draw"]')!.getAttribute('data-count')).toBe('10')
     other.close()
   })
 

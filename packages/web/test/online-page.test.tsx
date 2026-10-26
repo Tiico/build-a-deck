@@ -95,11 +95,30 @@ describe('OnlinePage (C2): both roles in one window', () => {
     const id = await createSession(run)
     await open(id, 'A', 'Ada')
     fireEvent.click(screen.getByRole('button', { name: /Flagga/ }))
-    fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Flagga' }))
-    await waitFor(async () => expect((await run.store.read(id)).at(-1)).toMatchObject({ by: 'A', intent: { v: 'flag' } }))
-    // The server has the flag before the page has its answer, and until then the panel stands and
-    // catches every press outside it (#1142), the way out included (#1315). Wait on the page.
-    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Flagga' })).toBeNull())
+    // The commit that takes the panel away takes its hold on the page with it (#1390): an effect
+    // later, every button stood dimmed and the next press, «Lämna…» below, was caught and eaten.
+    // React runs an effect straight after its commit while the frame has time left, so the clock is
+    // driven forward to make it yield after every commit, as a busy worker makes it; what the root
+    // says is read in the commit that removed the panel.
+    const pointing: boolean[] = []
+    const gone = new MutationObserver(() => {
+      if (!screen.queryByRole('dialog', { name: 'Flagga' })) pointing.push(document.documentElement.hasAttribute('data-flag-pointing'))
+    })
+    gone.observe(document.body, { childList: true, subtree: true })
+    const now = performance.now.bind(performance)
+    let drift = 0
+    performance.now = () => now() + (drift += 10)
+    try {
+      fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Flagga' }))
+      await waitFor(async () => expect((await run.store.read(id)).at(-1)).toMatchObject({ by: 'A', intent: { v: 'flag' } }))
+      // The server has the flag before the page has its answer, and until then the panel stands and
+      // catches every press outside it (#1142), the way out included (#1315). Wait on the page.
+      await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Flagga' })).toBeNull())
+    } finally {
+      performance.now = now
+      gone.disconnect()
+    }
+    expect(pointing[0]).toBe(false)
     fireEvent.click(screen.getByRole('button', { name: 'Lämna… eller avsluta bordet' }))
     fireEvent.click(screen.getByRole('button', { name: 'Avsluta för alla' }))
     fireEvent.click(screen.getByRole('button', { name: /Avsluta för alla/ }))
@@ -114,7 +133,9 @@ describe('OnlinePage (C2): both roles in one window', () => {
     const table = TableClient.connect(await asTable(run, id))
     await table.ready()
     await open(id, 'A', 'Ada')
-    // Shuffled once Ada sits, so it is the last thing that happened and not her sitting down.
+    // Shuffled once Ada sits, so it is the last thing that happened and not her sitting down. The page
+    // sits down from an effect once it has the table, so the table is asked whether she has (#1390).
+    await waitFor(() => expect(table.view?.seats.find((s) => s.id === 'A')?.name).toBe('Ada'))
     await table.send({ v: 'shuffle', pile: 'draw' })
     await screen.findByText(/blandade/)
     const flag = screen.getByRole('button', { name: /Flagga/ })
