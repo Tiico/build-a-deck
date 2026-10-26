@@ -1,0 +1,96 @@
+/* The desk's panel (#1376 punkt 3, beställarens beslut 2026-10-26: variant A, prototype
+   `proto/1360-1376-dator`). Flagga, Lämna, «Avsluta bordet?», the removal of a name, the survey and
+   the thanks stand at the window's right, from the head down to the foot, and the targets and the
+   hand give up its width while it stands rather than lie under it. The flag is `/online`'s panel
+   (#1255), drawn flush in the same place. Fetched with the desk, never in the first frame's sheet
+   (felt-font.spec.ts), and the phone never asks for it. */
+.byd-desk { --byd-desk-panel: 380px; --byd-desk-panel-wide: 480px; }
+@media (max-width: 1151px) { .byd-desk { --byd-desk-panel: 340px; --byd-desk-panel-wide: 440px; } }
+/* What the hand's row reads to know how wide it is (`rowStyle`). */
+.byd-desk[data-side='narrow'] { --byd-desk-side: var(--byd-desk-panel); }
+.byd-desk[data-side='wide'] { --byd-desk-side: var(--byd-desk-panel-wide); }
+
+.byd-desk-body { flex: 1 1 auto; min-height: 0; display: flex; }
+.byd-desk-play { position: relative; flex: 1 1 auto; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+
+.byd-desk-panel, .byd-desk-body > .byd-flag-panel {
+  flex: 0 0 var(--byd-desk-panel); width: auto; min-height: 0; box-sizing: border-box; display: flex; flex-direction: column; margin: 0;
+  border: 0; border-left: 1px solid var(--byd-rule); border-radius: 0; background: var(--byd-surface); color: var(--byd-ink);
+  box-shadow: -12px 0 30px rgba(0, 0, 0, 0.25); font: 14px/1.45 system-ui, sans-serif;
+}
+.byd-desk-panel[data-wide] { flex-basis: var(--byd-desk-panel-wide); }
+/* The flag's head, parts and foot on the same lines as the way out's, so the panel does not move
+   under the eye when one gives way to the other. */
+.byd-desk-body > .byd-flag-panel > .byd-flag-panel-head { padding: 12px 12px 12px 20px; border-bottom-color: var(--byd-rule); }
+.byd-desk-body > .byd-flag-panel .byd-flag-panel-head h2 { font-size: 17px; }
+.byd-desk-body > .byd-flag-panel .byd-flag-panel-x { width: 44px; height: 44px; border-radius: 10px; }
+.byd-desk-body > .byd-flag-panel > .byd-flag-panel-part { padding: 16px 20px; border-bottom-color: var(--byd-rule); }
+.byd-desk-body > .byd-flag-panel > .byd-flag-panel-foot { padding: 14px 20px; border-top-color: var(--byd-rule); }
+.byd-desk-body > .byd-flag-panel > .byd-flag-panel-foot button { min-height: 44px; border-radius: 12px; }
+
+/* What the table just said, «Flaggat» among it, over the targets rather than in the column, where
+   it pushed the head, the targets and the hand up for as long as it stood. */
+.byd-player[data-desk] > .byd-phone-said { position: fixed; z-index: 40; top: 68px; left: 50%; transform: translateX(-50%); margin: 0; border-radius: 999px; white-space: nowrap; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4); }
+.byd-desk-panel:focus { outline: none; }
+.byd-desk-panel *, .byd-desk-panel *::before { box-sizing: border-box; }
+
+.byd-desk-panel-head { flex: none; display: flex; align-items: center; gap: 10px; padding: 12px 12px 12px 20px; border-bottom: 1px solid var(--byd-rule); }
+.byd-desk-panel-head h2 { flex: 1; min-width: 0; margin: 0; color: var(--byd-ink-strong); font-size: 17px; font-weight: 700; }
+.byd-desk-panel-x { flex: none; display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 10px; background: none; color: var(--byd-ink-muted); cursor: pointer; }
+.byd-desk-panel-x:hover { background: var(--byd-control); color: var(--byd-ink-strong); }
+.byd-desk-panel-x .byd-glyph { width: 18px; height: 18px; }
+
+.byd-desk-panel-body { flex: 1 1 auto; min-height: 0; overflow: auto; overscroll-behavior: contain; display: grid; align-content: start; gap: 16px; padding: 18px 20px; }
+.byd-desk-panel-body p { margin: 0; color: var(--byd-ink-muted); font-size: 14px; line-height: 1.5; }
+.byd-desk-panel-body ul { margin: 0; padding-left: 20px; display: grid; gap: 4px; color: var(--byd-ink); font-size: 14px; line-height: 1.45; }
+.byd-desk-panel-body .byd-status-refusal { margin: 0; }
+
+.byd-desk-panel-foot { flex: none; display: flex; align-items: center; gap: 8px; padding: 14px 20px; border-top: 1px solid var(--byd-rule); }
+.byd-desk-panel-foot > small { flex: 1 1 auto; min-width: 0; color: var(--byd-ink-muted); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.byd-desk-panel-foot > button { flex: none; min-height: 44px; padding: 0 18px; border: 0; border-radius: 12px; font: 700 15px system-ui, sans-serif; cursor: pointer; }
+.byd-desk-panel-foot > button[data-kind='quiet'] { background: var(--byd-control); color: var(--byd-ink-strong); }
+.byd-desk-panel-foot > button[data-kind='no'] { background: var(--byd-danger-bg); color: var(--byd-danger); }
+.byd-desk-panel-foot > button.byd-primary { background: var(--byd-accent); color: var(--byd-on-accent); }
+.byd-desk-panel-foot > button:disabled { opacity: 0.35; cursor: default; }
+.byd-desk-panel kbd { display: inline-block; min-width: 18px; padding: 0 4px; border: 1px solid #3a4152; border-radius: 4px; background: var(--byd-control); color: var(--byd-ink); font: 600 11px/16px system-ui, sans-serif; text-align: center; }
+.byd-desk-panel :focus-visible { outline: 3px solid var(--byd-kbd-ring, #9cc6ff); outline-offset: 2px; }
+
+/* The way out (C9, #31, L80, L87): each way with what it costs under it, in the phone's order, and
+   the removal of a name after a line, quieter than either. */
+.byd-desk-panel .byd-exit-choice { margin: 0; display: grid; gap: 6px; }
+.byd-desk-panel .byd-exit-choice button, .byd-desk-panel .byd-exit-choice a[data-kind='stay'] { min-height: 48px; padding: 12px 14px; font-size: 15px; }
+.byd-desk-panel .byd-exit-choice p { margin: 0 2px; }
+.byd-desk-panel .byd-forget-way { margin: 0; padding-top: 16px; gap: 8px; }
+.byd-desk-panel .byd-forget-way p { font-size: 14px; line-height: 1.45; }
+
+/* The survey (G3) beside the ended table: one question at a time, the answers in a row with the
+   key that gives each, and the thanks in the middle of the panel's upper part. */
+.byd-desk-survey .byd-survey-sub { margin: 0; color: var(--byd-ink-muted); font-size: 14px; }
+.byd-desk-survey .byd-survey-q { display: grid; gap: 0; align-content: start; }
+.byd-desk-survey .byd-survey-q h3 { margin: 0 0 14px; color: var(--byd-ink-strong); font-size: 20px; font-weight: 700; }
+.byd-desk-survey .byd-survey-scale { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+.byd-desk-survey .byd-survey-scale button { position: relative; min-height: 52px; aspect-ratio: auto; border: 1px solid var(--byd-line); border-radius: 12px; background: var(--byd-surface); color: var(--byd-ink-strong); font: 700 18px system-ui, sans-serif; cursor: pointer; }
+.byd-desk-survey .byd-survey-scale button[aria-pressed='true'] { border-color: var(--byd-accent); background: var(--byd-accent); color: var(--byd-on-accent); }
+.byd-desk-survey .byd-survey-scale kbd { position: absolute; top: 5px; right: 6px; min-width: 0; padding: 0 4px; font-size: 10px; line-height: 14px; opacity: 0.7; }
+.byd-desk-survey .byd-survey-labels { margin-top: 6px; color: var(--byd-ink-muted); font-size: 13px; }
+.byd-desk-survey textarea { width: 100%; min-height: 120px; padding: 10px 12px; border: 1px solid var(--byd-line); border-radius: 12px; background: var(--byd-bg); color: var(--byd-ink-strong); font: 15px/1.4 system-ui, sans-serif; resize: vertical; }
+.byd-desk-survey .byd-survey-error { margin: 8px 0 0; color: var(--byd-danger); font-size: 13px; }
+.byd-desk-survey .byd-survey-dots { flex: none; display: flex; gap: 6px; margin-right: auto; }
+.byd-desk-survey .byd-survey-dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--byd-line); }
+.byd-desk-survey .byd-survey-dots i[data-on='true'] { background: var(--byd-accent); }
+.byd-desk-survey .byd-desk-panel-foot > small { flex: 0 1 auto; }
+.byd-desk-survey .byd-survey-thanks { display: grid; justify-items: center; gap: 8px; padding-top: 40px; text-align: center; }
+.byd-desk-survey .byd-survey-thanks > strong { color: var(--byd-ink-strong); font-size: 26px; }
+.byd-desk-survey .byd-survey-thanks > span, .byd-desk-survey .byd-survey-thanks .byd-muted { max-width: 420px; color: var(--byd-ink-muted); font-size: 14px; line-height: 1.5; }
+.byd-desk-survey .byd-survey-thanks .byd-trust { color: var(--byd-ink-muted); font-size: 13px; }
+.byd-desk-survey .byd-survey-thanks .byd-trust a { color: inherit; }
+.byd-desk-survey .byd-survey-thanks .byd-forget-way, .byd-desk-survey .byd-forget-done { width: 100%; max-width: 420px; text-align: left; }
+.byd-desk-survey .byd-forget-done { justify-items: center; text-align: center; }
+
+/* The table as it lay when it ended, behind the survey: still there to look at, plainly not to be
+   played, with the words over it. */
+.byd-desk[data-ended] > .byd-desk-head, .byd-desk[data-ended] .byd-desk-targets, .byd-desk[data-ended] .byd-desk-hand { opacity: 0.35; filter: saturate(0.4); }
+.byd-desk-ended { position: absolute; z-index: 3; top: 40%; left: 50%; transform: translate(-50%, -50%); padding: 10px 18px; border-radius: 999px; background: #2a2e3a; color: var(--byd-ink-strong); font-size: 15px; font-weight: 700; white-space: nowrap; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4); pointer-events: none; }
+
+/* The head's Flagga and Lämna say which of them the panel stands for. */
+.byd-desk-tools > button[aria-expanded='true'] { background: #343a4c; box-shadow: inset 0 -3px 0 var(--byd-warn); }

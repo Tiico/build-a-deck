@@ -98,11 +98,15 @@ export type PlayerSurfaceProps = {
   forget?: Forget | undefined
   onForgotten?: () => void
   // A wide window (`useDesk`, #1310): the hand along the foot and the targets over it, in place of
-  // the four tabs. The sheets, the held card and the questions are the same in both.
+  // the four tabs. The held card and the rewind's questions are the same in both; the flag, the way
+  // out and its questions stand in the desk's panel at the right (#1376).
   desk?: boolean
+  // The survey, once the table has ended, which the desk shows in its panel beside the table as it
+  // lay when it ended (#1376); the phone's stands over the whole screen, outside this surface.
+  survey?: ReactNode
 }
 
-export function PlayerSurface({ client, view, activity, seat, name, sessionId, faces, version, marks, turnedHand, openHand, onLeft, away = false, stay, forget, onForgotten, desk = false }: PlayerSurfaceProps) {
+export function PlayerSurface({ client, view, activity, seat, name, sessionId, faces, version, marks, turnedHand, openHand, onLeft, away = false, stay, forget, onForgotten, desk = false, survey }: PlayerSurfaceProps) {
   const ids = useId()
   const t = useT()
   const [tab, setTab] = useState<Tab>('hand')
@@ -120,8 +124,12 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
   const [lifted, setLifted] = useState<VisibleComponentState | null>(null)
   // Out of reach while another seat's rewind is asked of this one (#483), and while a card is held
   // up (#715): the hand's buttons showed through the veil and read into the card's own row.
-  const behind = (asking && asking.by !== seat) || held !== null ? { inert: true } : {}
   const [sheet, setSheet] = useState<Sheet>(null)
+  // On the desk, also while the panel asks a question that cannot be undone, which holds the focus
+  // the way the phone's sheet does (#1376), and once the table has ended: the survey beside it is
+  // then the one thing that is not out of reach (UX-38).
+  const asks = desk && !view.ended && (sheet === 'exit' || sheet === 'end' || sheet === 'forget')
+  const behind = (asking && asking.by !== seat) || held !== null || asks || (desk && view.ended) ? { inert: true } : {}
   // The head's undo and «Mer»'s flag and way out each hand the focus back to themselves.
   const raiseHead = useSheetOpener(sheet, setSheet)
   const raiseMore = useSheetOpener(sheet, setSheet)
@@ -227,6 +235,11 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
   const roving = useRoving({ ids: tabs.map((x) => x.id), selected: tab, orientation: 'horizontal', followFocus: true, onActivate: (id) => setTab(id as Tab) })
   const panel = (id: Tab) => ({ role: 'tabpanel', id: `${ids}-${id}`, 'aria-labelledby': `${ids}-tab-${id}`, hidden: tab !== id, className: 'byd-panel', 'data-panel': id })
   const playing = !view.ended && !view.rewind
+  // On the desk an ended table is a picture beside the survey, with nothing left open over it.
+  const over = !(desk && view.ended)
+  const overlays = (
+    <SessionOverlays client={client} view={view} seat={seat} sheet={over ? sheet : null} onSheet={setSheet} onLeft={onLeft} toast={null} onToast={setToast} version={version} faces={faces} stay={stay} docked={desk} forget={forget} {...(onForgotten ? { onForgotten } : {})} />
+  )
 
   return (
     <>
@@ -254,6 +267,14 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
             rolling={rolling}
             onRoll={() => setRolling(true)}
             behind={behind}
+            sheet={sheet}
+            sideWidth={view.ended ? 'wide' : sheet === 'flag' || asks ? 'narrow' : undefined}
+            side={
+              <>
+                {overlays}
+                {view.ended && survey}
+              </>
+            }
           />
           {toast && <p className="byd-phone-said" role="status">{toast}</p>}
         </Suspense>
@@ -368,7 +389,7 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
       )}
       {/* The card held up. A card that lies in front of you carries its verbs here, and a verb
           puts the card down as it goes: what it did is read off the row behind it. */}
-      {held && (() => {
+      {over && held && (() => {
         const row = rowOf(held.row)
         // The card as it lies now, so a flip seen while it is held shows the face it has.
         const card = row.find((c) => c.id === held.card.id) ?? held.card
@@ -434,7 +455,7 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
           />
         )
       })()}
-      {lifted && (
+      {over && lifted && (
         <PlaySheet
           view={view}
           count={toPlay.length}
@@ -450,8 +471,8 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
           refusedZone={refusedZone}
         />
       )}
-      {rolling && <DiceSheet view={view} activity={activity} send={(...intents) => client.send(...intents)} onClose={() => setRolling(false)} />}
-      <SessionOverlays client={client} view={view} seat={seat} sheet={sheet} onSheet={setSheet} onLeft={onLeft} toast={null} onToast={setToast} version={version} faces={faces} stay={stay} forget={forget} {...(onForgotten ? { onForgotten } : {})} />
+      {over && rolling && <DiceSheet view={view} activity={activity} send={(...intents) => client.send(...intents)} onClose={() => setRolling(false)} />}
+      {!desk && overlays}
     </>
   )
 }

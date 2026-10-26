@@ -20,7 +20,8 @@
 .byd-flag-point button:focus-visible { outline: 2px solid var(--byd-warn-bg, #2a2417); outline-offset: 2px; }
 :root[data-flag-pointing] :is([data-component], [data-hand-card], [data-area-card], [data-mine-card]) { cursor: crosshair; }
 :root[data-flag-pointing='band'] :is([data-component], [data-hand-card], [data-area-card], [data-mine-card]) { outline: 3px solid var(--byd-warn, #ffd98a); outline-offset: 2px; }
-:root[data-flag-pointing] :is(button, summary, input, select, textarea):not([data-component], [data-hand-card], [data-area-card], [data-mine-card], .byd-flag-point *, .byd-flag-panel *, summary) { opacity: 0.35; }
+/* A pile on the desk whose top is face up holds a card that can be pointed out (#1376). */
+:root[data-flag-pointing] :is(button, summary, input, select, textarea):not([data-component], [data-hand-card], [data-area-card], [data-mine-card], .byd-flag-point *, .byd-flag-panel *, summary, :has([data-component])) { opacity: 0.35; }
 /* A press points out and reads nothing (#1142), so the card a resting mouse would lift is not lifted. */
 :root[data-flag-pointing] [data-lift] { display: none; }
 
@@ -51,7 +52,8 @@
 .byd-flag-panel-pick { display: grid; gap: 4px; justify-items: center; margin: 0; padding: 24px 12px; border: 1px dashed var(--byd-line, #343a4a); border-radius: 12px; color: var(--byd-ink-quiet, #a7b0c4); font-size: 13px; text-align: center; }
 .byd-flag-panel-pick b { color: var(--byd-ink-strong, #fff); font-size: 14px; }
 .byd-flag-panel-card { display: flex; gap: 12px; align-items: flex-start; }
-.byd-flag-panel-face { flex: none; width: 128px; aspect-ratio: 63 / 88; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 16px #0008; }
+/* The face's own box: a texture still on its way is drawn over the card and not over the window. */
+.byd-flag-panel-face { position: relative; flex: none; width: 128px; aspect-ratio: 63 / 88; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 16px #0008; }
 .byd-flag-panel-face .byd-texture { display: block; width: 100%; height: 100%; object-fit: contain; }
 .byd-flag-panel-card > div { display: grid; gap: 8px; min-width: 0; }
 .byd-flag-panel-card b { font-size: 16px; overflow-wrap: anywhere; }

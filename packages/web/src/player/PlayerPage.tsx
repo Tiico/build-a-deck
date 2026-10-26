@@ -105,13 +105,20 @@ export function PlayerPage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
   if (!view || !client) return <RouteStatus status={live} over="sheet" links={links} onRetry={conn.retry} />
 
   const me = view.seats.find((s) => s.id === seat)
+  const survey = (docked: boolean) => (
+    <SeatSurvey docked={docked} view={view} seat={seat} name={me?.name ?? seat} http={faces} sessionId={sessionId} version={version} token={token} saveUrl={token ? claimUrl(token, params.get('server')) : null} saved={params.get('saved') === '1'} />
+  )
+  // Out of reach while the line is down, and once the table has ended (UX-38, #83). The desk keeps
+  // its survey in its own panel beside the ended table (#1376), so there the surface takes what
+  // stands beside the survey out of reach itself, and the survey is never inside what is.
+  const still = live.stale ? !(desk && view.ended) : view.ended && !desk
   if (PlaytestPrototype && params.has('variant')) return <Suspense fallback={<p>Laddar prototyp…</p>}><PlaytestPrototype view={view} faces={faces} seat={seat} /></Suspense>
 
   return (
     <>
       {/* An ended table is one more state of D5's kind: the picture behind the survey is not to be
           acted on, so it is out of reach the same way a stale one is (UX-38, #83). */}
-      <div className={`byd-player${live.stale ? ' byd-status-stale' : ''}`} data-page="player" data-status={status} data-desk={desk ? '' : undefined} {...(live.stale || view.ended ? { inert: true } : {})}>
+      <div className={`byd-player${live.stale ? ' byd-status-stale' : ''}`} data-page="player" data-status={status} data-desk={desk ? '' : undefined} {...(still ? { inert: true } : {})}>
         <PlayerSurface
           client={client}
           view={view}
@@ -128,10 +135,11 @@ export function PlayerPage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
           desk={desk}
           forget={token ? { name: me?.name ?? name ?? seat, run: () => forgetMe(faces, sessionId, token) } : undefined}
           onForgotten={() => setForgotten(true)}
+          survey={desk ? survey(true) : undefined}
         />
-        {kbd.panel}
+        {!(desk && view.ended) && kbd.panel}
       </div>
-      <SeatSurvey view={view} seat={seat} name={me?.name ?? seat} http={faces} sessionId={sessionId} version={version} token={token} saveUrl={token ? claimUrl(token, params.get('server')) : null} saved={params.get('saved') === '1'} />
+      {!desk && survey(false)}
       <RouteStatus status={live} over="sheet" links={links} onRetry={conn.retry} />
     </>
   )

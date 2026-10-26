@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { useFocusTrap } from '../editor/focusTrap.js'
 import { Refusal, type RefusalHandle } from '../status/Refusal.js'
 import { useT } from '../i18n/index.js'
@@ -127,54 +127,56 @@ export function ProposeSheet({ where, who, onPropose, onClose }: { where: string
 // en ändring 2026-10-25): offered under both ways out, after the sentence on why keeping it helps,
 // as a quieter button than either. Keeping the name is the first choice; removing it is visible and
 // reachable, and never dressed as an equal one. Absent without a guest's token.
-export function ExitSheet({ pile, onLeave, onEnd, onClose, refusal, stay, onForget }: { pile: string | null; onLeave(): void; onEnd(): void; onClose(): void; refusal?: RefusalHandle; stay?: ReactNode; onForget?: () => void }) {
+//
+// `panel`: the desk's form (#1376, beställarens beslut A), the same ways out in the same order in
+// the panel at the window's right rather than in a sheet over the hand.
+export function ExitSheet({ pile, onLeave, onEnd, onClose, refusal, stay, onForget, panel = false }: { pile: string | null; onLeave(): void; onEnd(): void; onClose(): void; refusal?: RefusalHandle; stay?: ReactNode; onForget?: () => void; panel?: boolean }) {
   const t = useT()
-  const box = useSheet(onClose)
+  const Shell = panel ? SessionPanel : SessionSheet
   return (
-    <div className="byd-sheet-backdrop" onClick={onClose}>
-      <div
-        className="byd-sheet byd-session-sheet byd-exit-sheet"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="exit-sheet-title"
-        onClick={(e) => e.stopPropagation()}
-        ref={box}
-      >
-        <p className="byd-sheet-title" id="exit-sheet-title">{t('exit.sheet.title')}</p>
-        {/* Taking it brings the editor's tab out, and the sheet is not left standing behind. */}
-        {stay && (
-          <div className="byd-exit-choice" onClick={(e) => (e.target as HTMLElement).closest('a') && onClose()}>
-            {stay}
-          </div>
-        )}
-        <div className="byd-exit-choice">
-          <button type="button" data-kind="leave" onClick={onLeave} className={refusal?.notice ? 'byd-status-refused-control' : undefined} {...(refusal?.control ?? {})}>
-            {t('exit.sheet.leave')}
-          </button>
-          <p>{pile ? t('exit.sheet.leave.body', { pile }) : t('exit.sheet.leave.body.any')}</p>
+    <Shell
+      title={t('exit.sheet.title')}
+      className="byd-exit-sheet"
+      onClose={onClose}
+      hint={
+        <>
+          <kbd>Esc</kbd> {t('desk.panel.esc')}
+        </>
+      }
+      actions={
+        <button type="button" data-kind="quiet" onClick={onClose} data-first>
+          {t('exit.sheet.stay')}
+        </button>
+      }
+      refusal={refusal}
+    >
+      {/* Taking it brings the editor's tab out, and the sheet is not left standing behind. */}
+      {stay && (
+        <div className="byd-exit-choice" onClick={(e) => (e.target as HTMLElement).closest('a') && onClose()}>
+          {stay}
         </div>
-        <div className="byd-exit-choice">
-          <button type="button" data-kind="no" onClick={onEnd}>
-            {t('exit.sheet.end')}
-          </button>
-          <p>{t('exit.sheet.end.body')}</p>
-        </div>
-        {onForget && (
-          <div className="byd-forget-way">
-            <p>{t('forget.why')}</p>
-            <button type="button" data-kind="forget" onClick={onForget}>
-              {t('forget.leave')}
-            </button>
-          </div>
-        )}
-        <div className="byd-sheet-actions">
-          <button type="button" data-kind="quiet" onClick={onClose} data-first>
-            {t('exit.sheet.stay')}
-          </button>
-        </div>
-        {refusal && <Refusal handle={refusal} />}
+      )}
+      <div className="byd-exit-choice">
+        <button type="button" data-kind="leave" onClick={onLeave} className={refusal?.notice ? 'byd-status-refused-control' : undefined} {...(refusal?.control ?? {})}>
+          {t('exit.sheet.leave')}
+        </button>
+        <p>{pile ? t('exit.sheet.leave.body', { pile }) : t('exit.sheet.leave.body.any')}</p>
       </div>
-    </div>
+      <div className="byd-exit-choice">
+        <button type="button" data-kind="no" onClick={onEnd}>
+          {t('exit.sheet.end')}
+        </button>
+        <p>{t('exit.sheet.end.body')}</p>
+      </div>
+      {onForget && (
+        <div className="byd-forget-way">
+          <p>{t('forget.why')}</p>
+          <button type="button" data-kind="forget" onClick={onForget}>
+            {t('forget.leave')}
+          </button>
+        </div>
+      )}
+    </Shell>
   )
 }
 
@@ -182,38 +184,38 @@ export function ExitSheet({ pile, onLeave, onEnd, onClose, refusal, stay, onForg
 // it cannot be undone, with the focus on the answer that changes nothing. `leaving` is the way out's
 // («Lämna och ta bort ditt namn?»), and otherwise it is the thanks' («Ta bort ditt namn och dina
 // svar?»), which takes the answers too. `watched`: she watched rather than sat.
-export function ForgetSheet({ name, leaving, watched = false, onYes, onClose, refusal, busy = false }: { name: string; leaving: boolean; watched?: boolean; onYes(): void; onClose(): void; refusal?: RefusalHandle; busy?: boolean }) {
+// `panel`: the desk's form (#1376), in the panel at the window's right; `wide` is the survey's
+// width, for the question asked under the thanks.
+export function ForgetSheet({ name, leaving, watched = false, onYes, onClose, refusal, busy = false, panel = false, wide = false }: { name: string; leaving: boolean; watched?: boolean; onYes(): void; onClose(): void; refusal?: RefusalHandle; busy?: boolean; panel?: boolean; wide?: boolean }) {
   const t = useT()
-  const box = useSheet(onClose)
+  const Shell = panel ? SessionPanel : SessionSheet
   return (
-    <div className="byd-sheet-backdrop" onClick={onClose}>
-      <div
-        className="byd-sheet byd-session-sheet byd-forget-sheet"
-        role="alertdialog"
-        aria-modal="true"
-        aria-labelledby="forget-sheet-title"
-        onClick={(e) => e.stopPropagation()}
-        ref={box}
-      >
-        <p className="byd-sheet-title" id="forget-sheet-title">{t(leaving ? 'forget.leave.title' : 'forget.thanks.title')}</p>
-        <p>{t('forget.list')}</p>
-        <ul>
-          <li>{t(watched ? 'forget.list.watched' : 'forget.list.name', { name })}</li>
-          <li>{t('forget.list.words')}</li>
-          {!leaving && <li>{t('forget.list.answers')}</li>}
-        </ul>
-        <p>{t('forget.kept', { masked: t('masked.name') })}</p>
-        <div className="byd-sheet-actions">
+    <Shell
+      title={t(leaving ? 'forget.leave.title' : 'forget.thanks.title')}
+      role="alertdialog"
+      className="byd-forget-sheet"
+      wide={wide}
+      onClose={onClose}
+      actions={
+        <>
           <button type="button" data-kind="quiet" onClick={onClose} data-first>
             {t('forget.cancel')}
           </button>
           <button type="button" data-kind="no" onClick={onYes} disabled={busy} className={refusal?.notice ? 'byd-status-refused-control' : undefined} {...(refusal?.control ?? {})}>
             {t(leaving ? 'forget.leave.yes' : 'forget.thanks.yes')}
           </button>
-        </div>
-        {refusal && <Refusal handle={refusal} />}
-      </div>
-    </div>
+        </>
+      }
+      refusal={refusal}
+    >
+      <p>{t('forget.list')}</p>
+      <ul>
+        <li>{t(watched ? 'forget.list.watched' : 'forget.list.name', { name })}</li>
+        <li>{t('forget.list.words')}</li>
+        {!leaving && <li>{t('forget.list.answers')}</li>}
+      </ul>
+      <p>{t('forget.kept', { masked: t('masked.name') })}</p>
+    </Shell>
   )
 }
 
@@ -237,41 +239,97 @@ export function ForgottenPage({ home }: { home: string }) {
   )
 }
 
-// Ending the session (C9): says what it means, then does it for everyone.
-export function EndSheet({ version, onEnd, onClose, refusal }: { version: string; onEnd(): void; onClose(): void; refusal?: RefusalHandle }) {
+// Ending the session (C9): says what it means, then does it for everyone. The sentence says where
+// the survey comes, which is where each player holds the hand, a phone or a computer (#1376).
+// In the desk's panel the question is an alert, and «Avbryt» stands before the red answer, where
+// the panel's foot reads from (#1376, prototype A); the phone's sheet keeps its order.
+export function EndSheet({ version, onEnd, onClose, refusal, panel = false }: { version: string; onEnd(): void; onClose(): void; refusal?: RefusalHandle; panel?: boolean }) {
   const t = useT()
+  const end = (
+    <button key="end" type="button" data-kind="no" onClick={onEnd} className={refusal?.notice ? 'byd-status-refused-control' : undefined} {...(refusal?.control ?? {})}>
+      {t('end.sheet.end')}
+    </button>
+  )
+  const not = (
+    <button key="not" type="button" data-kind="quiet" onClick={onClose} data-first>
+      {t('end.sheet.not')}
+    </button>
+  )
+  const Shell = panel ? SessionPanel : SessionSheet
+  return (
+    <Shell title={t('end.sheet.title')} role={panel ? 'alertdialog' : 'dialog'} onClose={onClose} actions={panel ? [not, end] : [end, not]} refusal={refusal}>
+      <p>{t('end.sheet.body', { version })}</p>
+    </Shell>
+  )
+}
+
+// The two forms a session question takes. Both are modal windows (#485, fynd 6): the focus goes in
+// — on the control marked `data-first`, the one a person most likely wants — Tab stays in, Escape
+// answers from wherever the focus is, and the focus goes back to what opened it when it closes.
+type ShellProps = {
+  title: string
+  role?: 'dialog' | 'alertdialog'
+  className?: string
+  onClose(): void
+  // The answers, at the sheet's foot or in the panel's.
+  actions: ReactNode
+  refusal?: RefusalHandle | undefined
+  // What the keyboard does here, said in the panel's foot (the desk has one, the phone has not).
+  hint?: ReactNode
+  // The survey's width, for a question asked where the survey stands.
+  wide?: boolean
+  children: ReactNode
+}
+
+// The phone's: a sheet over the hand, with the page dimmed behind it.
+function SessionSheet({ title, role = 'dialog', className, onClose, actions, refusal, children }: ShellProps) {
+  const id = useId()
   const box = useSheet(onClose)
   return (
     <div className="byd-sheet-backdrop" onClick={onClose}>
-      <div
-        className="byd-sheet byd-session-sheet"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="end-sheet-title"
-        onClick={(e) => e.stopPropagation()}
-        ref={box}
-      >
-        <p className="byd-sheet-title" id="end-sheet-title">{t('end.sheet.title')}</p>
-        <p>{t('end.sheet.body', { version })}</p>
-        <div className="byd-sheet-actions">
-          <button type="button" data-kind="no" onClick={onEnd} className={refusal?.notice ? 'byd-status-refused-control' : undefined} {...(refusal?.control ?? {})}>
-            {t('end.sheet.end')}
-          </button>
-          <button type="button" data-kind="quiet" onClick={onClose} data-first>
-            {t('end.sheet.not')}
-          </button>
-        </div>
+      <div className={`byd-sheet byd-session-sheet${className ? ` ${className}` : ''}`} role={role} aria-modal="true" aria-labelledby={`${id}-title`} onClick={(e) => e.stopPropagation()} ref={box}>
+        <p className="byd-sheet-title" id={`${id}-title`}>
+          {title}
+        </p>
+        {children}
+        <div className="byd-sheet-actions">{actions}</div>
         {refusal && <Refusal handle={refusal} />}
       </div>
     </div>
   )
 }
 
-// A session sheet is a modal window (#485, fynd 6): the focus goes in — on the control marked
-// `data-first`, the one a person most likely wants — Tab stays in, Escape answers from wherever
-// the focus is, and the focus goes back to what opened the sheet when it closes.
-function useSheet(onClose: () => void) {
-  const box = useRef<HTMLDivElement>(null)
+// The desk's (#1376, beställarens beslut 2026-10-26: variant A): a panel at the window's right, from
+// the head down to the foot, beside the targets and the hand rather than over them; the flag stands
+// in the same place (#1255). A question that cannot be undone holds the focus the way the sheet does,
+// and the surface takes what stands beside it out of reach while it does. Its sheet is the desk's,
+// fetched with it (`desk-panel.css`).
+export function SessionPanel({ title, role = 'dialog', className, onClose, actions, refusal, hint, wide = false, children }: ShellProps) {
+  const t = useT()
+  const id = useId()
+  const box = useSheet<HTMLElement>(onClose)
+  return (
+    <aside className={`byd-desk-panel${className ? ` ${className}` : ''}`} data-wide={wide ? '' : undefined} role={role} aria-modal="true" aria-labelledby={`${id}-title`} ref={box}>
+      <header className="byd-desk-panel-head">
+        <h2 id={`${id}-title`}>{title}</h2>
+        <button type="button" className="byd-desk-panel-x" onClick={onClose} aria-label={t('desk.panel.close')} title={t('desk.panel.close')}>
+          <CloseGlyph />
+        </button>
+      </header>
+      <div className="byd-desk-panel-body">
+        {children}
+        {refusal && <Refusal handle={refusal} />}
+      </div>
+      <footer className="byd-desk-panel-foot">
+        <small aria-hidden="true">{hint}</small>
+        {actions}
+      </footer>
+    </aside>
+  )
+}
+
+function useSheet<E extends HTMLElement = HTMLDivElement>(onClose: () => void) {
+  const box = useRef<E>(null)
   useFocusTrap(box, { onEscape: onClose, initial: () => box.current?.querySelector<HTMLElement>('[data-first]') ?? null })
   return box
 }

@@ -981,6 +981,25 @@ Ett mål med liten höjd behåller namn, antal och sina kort i mindre storlek; r
 Skrivbordets stilmall hämtas med skrivbordet och inte i den första bildens, som inte har något utrymme kvar (`felt-font.spec.ts`), och telefonen hämtar den aldrig.
 Grindarna är `play-desk.test.tsx` i webben för gesterna och gränsen, och `desk-hand.spec.ts` och `desk-density.spec.ts` på den byggda appen: en dator som går med vid ett TV-bord och spelar ett kort genom att dra det, en telefon vid samma bord som behåller flikarna, och tätheten.
 
+Reviderat 2026-10-26 (#1376 punkt 3, beställarens beslut variant A efter prototypen `play-arken.html` på grenen `proto/1360-1376-dator`, e1eacdb5): **på skrivbordet står Flagga, Lämna, «Avsluta bordet?», raderingen, enkäten och tacket i en panel till höger, från huvudet ned till nederkanten.**
+Förut öppnade de telefonens bottenark över hela bredden, och enkäten var en spalt på 520 px mitt på skärmen med 11 px ändord.
+Huvudet står kvar över hela fönstret, och knappen som öppnade panelen säger det (`aria-expanded`, en ljus kant underst).
+Målen och handen ger panelen sin bredd medan den står, 380 px och vid ett fönster smalare än 1152 px 340 px; ingenting ligger under den, handens sista kort är helt och sidan rullar aldrig (`desk-panel.spec.ts`).
+Priset är det prototypen mätte: vid 1024 × 768 ryms ett mål färre medan panelen står, och handen överlappar mer.
+
+- **Flaggan är `/online`s panel** (G3, #1255), ritad kant i kant på samma plats: inget läge, ett klick på ett kort i handen, på ett mål eller överst på en hög med framsidan upp pekar ut det och gör inget annat, ⌘↵ eller Ctrl+↵ flaggar, och Tab lämnar panelen.
+- **Lämna, «Avsluta bordet?» och raderingen (L87) fångar fokus** som arken gör: fokus på «Avbryt», Tab går runt inne i panelen, Esc och krysset stänger, och huvudet, målen och handen är `inert` medan frågan står.
+  Lämna har telefonens vägar ut i samma ordning (C9, #31, L80, L87), med «Esc stannar» i foten; i «Avsluta bordet?» står «Avbryt» före den röda knappen, som panelens fot läses.
+- **Avslutsfrågan säger «Alla spelare får enkäten där de håller sin hand.»** («Every player gets the survey where they hold their hand.») på alla ytor, eftersom den är sann på både telefonen och datorn.
+- **Enkäten står i en bredare panel**, 480 px och 440 px i det smalare fönstret, bredvid bordet som det låg när det slutade, dämpat och med «Bordet är avslutat» över sig.
+  Den ställer en fråga i taget som telefonen (G3), med 1 till 5 på tangenterna och Enter till nästa när frågan har ett svar; en siffra i fritextfältet är text.
+  Tacket, «Svara igen» (#1355) och raderingen under tacket står i samma panel, och raderingens fråga tar panelens plats och fångar fokus.
+  Att bordet är `inert` sätts här på huvudet, målen och handen och inte på hela sidan, så att enkäten i panelen är det enda som lever (UX-38).
+- **Telefonen och smala fönster behåller arken** och enkäten över hela skärmen.
+
+Panelens stilmall, `desk-panel.css`, hämtas med skrivbordet och aldrig i den första bildens.
+Grindarna är `play-desk-panel.test.tsx` i webben för panelen, fokusfångsten och tangenterna, och `desk-panel.spec.ts` på den byggda appen vid 1280 × 800 och 1024 × 768: en dator som flaggar ett kort, avslutar bordet från Lämna och svarar på enkäten, med panelens och handens mått.
+
 ### C5. Rumslig modell: konfigurerbart TV- eller bordsläge (fråga 32)
 
 Sessionen väljer vid start mellan TV-läge, där allt orienteras mot betraktaren och platser radas längs nedre kanten, och bordsläge, där platser ligger runt om och orientering följer platsen.
@@ -2494,6 +2513,7 @@ Tre former prövades på riktiga `/online` (gren `prototype/flag-desktop`): en p
   Ett annat kort byter, och «Ta bort kortet» gör flaggan till ögonblickets igen.
 - **Panelen säger vad som stämplas.** «Det som hände» står som loggens senaste rad, utan flaggor och anteckningar, och kortet visas 128 px brett med namnet.
 - **Den är inget modalt fönster.** Fokus går till kommentaren och tillbaka till det som hade det när panelen stängs; Tab lämnar den för korten, och Esc, «Avbryt» och krysset stänger. ⌘↵ eller Ctrl+↵ flaggar.
+- **Och på `/play` i ett brett fönster** (#1376 punkt 3, beställarens beslut 2026-10-26: variant A) står samma panel till höger om målen och handen, från huvudet till nederkanten, där också Lämna, avslutsfrågan, enkäten och tacket står; se C4:s revidering samma dag.
 
 ### G4. Fysiska playtests mäts inte (fråga 38)
 
