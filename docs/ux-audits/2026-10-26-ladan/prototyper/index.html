@@ -1,0 +1,926 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp — spelets låda (#1406)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* ── Frågan ──────────────────────────────────────────────────────────────────────────────
+     #1406, steg 1: lådan som komponenttyp med designbara ytor (B1, B2), måtten räknade ur leken,
+     och lådans framsida som spelets omslag digitalt.
+     Tre varianter av samma tre saker: hur lådan designas i editorn, hur måtten visas och låses,
+     och var omslaget syns (Mina spel, den delade länkens bild, TV:n före start, landningssidan).
+     Leken är riktig: 108 kort på 63 × 88 mm och 0,3 mm (kortets typ, recipe.ts). Lådan är en
+     tuckbox med 1 mm luft runt kortet och 2 mm i djupet, avrundat uppåt till en halv millimeter.
+     Varje yta ritas av en och samma funktion, `yta()`, i millimeter, så som E2 kräver att den
+     enda renderaren gör. Lådans text är designerns och står kvar på svenska när verktyget byter
+     språk (språkgränsen, A4).
+     PROTOTYP. Slängs när beslutet står i DESIGN-BESLUT.md.
+     ────────────────────────────────────────────────────────────────────────────────────── */
+  body { display: flex; flex-direction: column; min-height: 100vh; overflow: auto; }
+  .protorad { position: relative; z-index: 20; }
+  .protorad .flikar { display: flex; gap: 4px; flex-wrap: wrap; }
+  .protorad .flikar button[aria-pressed='true'] { background: #ffd98a; color: #2a2417; }
+  .protorad .grupp { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .protorad .grupp > span { color: #c8b98d; }
+  .protorad .grupp[hidden] { display: none; }
+  main.scen { flex: 1 1 auto; display: flex; flex-wrap: wrap; gap: 28px; justify-content: safe center; align-content: start; align-items: start; padding: 28px 16px 60px; background: #15171c; }
+  .m-ram { flex: none; }
+  .m-skarm { display: block; }
+  .g { width: 16px; height: 16px; flex: none; }
+
+  /* ── 3D-lådan ───────────────────────────────────────────────────────────────────────────── */
+  .b3 { position: relative; perspective: 1600px; flex: none; }
+  .b3-kropp { position: absolute; inset: 0; transform-style: preserve-3d; }
+  .b3 .yta { position: absolute; display: block; backface-visibility: hidden; cursor: inherit; }
+  .b3 .yta svg { display: block; width: 100%; height: 100%; }
+  .b3 .yta[data-vald] { outline: 2px solid var(--primary-mark); outline-offset: -1px; }
+  .b3[data-genom] .yta { opacity: .28; backface-visibility: visible; }
+  .b3 .lek { position: absolute; transform-style: preserve-3d; }
+  .b3 .lek i { position: absolute; display: block; background: repeating-linear-gradient(to right, #efe6d2 0 1px, #d9cdb3 1px 2px); outline: 1px solid #b9ab8d; }
+  .b3 .lek i.fram { background: #f6efe0; }
+  .b3 .lek[data-over] i { background: repeating-linear-gradient(to right, #f3b3a6 0 1px, #d9776a 1px 2px); outline-color: #b84a3a; }
+  .matt3 { position: absolute; display: flex; align-items: center; justify-content: center; gap: 4px; color: #dce3f2; font: 600 13px system-ui; white-space: nowrap; pointer-events: auto; }
+  .matt3::before, .matt3::after { content: ''; flex: 1 1 auto; height: 1px; background: #9aa3b8; }
+  .matt3.lodrat { flex-direction: column; }
+  .matt3.lodrat::before, .matt3.lodrat::after { width: 1px; height: auto; }
+  .matt3 button { display: inline-flex; align-items: center; gap: 4px; min-height: 32px; padding: 0 8px; border: 1px solid #3b414e; border-radius: 8px; background: #1b1d23; color: #fff; font: inherit; cursor: pointer; }
+  .matt3 button[aria-pressed='true'] { border-color: var(--locked-ink); color: var(--locked-ink); }
+  .matt3 button[data-over] { border-color: #e05c5c; color: #ffb4b4; }
+
+  /* ── Produktbilden (B): lådan och leken som föremål, i ljus ─────────────────────────────────
+     CSS 3D-transformer, en yta per plan med renderarens textur (här en SVG i dess ställe), och
+     ljuset bakat som två lager per yta: skuggning efter ytans normal och en glansrand där lacken
+     speglar ljuset. Skriptet räknar om båda när lådan vrids. Ingen avtäckning, ingen slump. */
+  .produkt { position: relative; flex: none; perspective: 2200px; touch-action: none; }
+  .produkt[data-drag] { cursor: grab; }
+  .p-rot { position: absolute; inset: 0; transform-style: preserve-3d; }
+  .p-yta { position: absolute; display: block; overflow: hidden; backface-visibility: hidden; border-radius: var(--hr, 1px); }
+  .p-yta svg { display: block; width: 100%; height: 100%; }
+  .p-yta .ljus { position: absolute; inset: 0; background: #000; pointer-events: none; }
+  .p-yta .glans { position: absolute; inset: -40%; pointer-events: none; mix-blend-mode: screen; background: linear-gradient(115deg, transparent 38%, rgb(255 255 255 / 85%) 50%, transparent 62%); }
+  .p-yta .slitage { position: absolute; inset: 0; pointer-events: none; border-radius: inherit; box-shadow: inset 0 0 0 .6px rgb(255 248 230 / 45%), inset 0 0 calc(var(--mm) * 2.4) rgb(0 0 0 / 28%); }
+  .p-yta.kartong { background: repeating-linear-gradient(90deg, #efe6cf 0 .7px, #d8ccae .7px 1.4px); }
+  .p-yta.kortkant { background: repeating-linear-gradient(90deg, #f4ecda 0 1px, #cdbf9f 1px 1.6px); }
+  .p-yta.kortkant.liggande { background: repeating-linear-gradient(0deg, #f4ecda 0 1px, #cdbf9f 1px 1.6px); }
+  .p-golv { position: absolute; pointer-events: none; background: radial-gradient(closest-side, rgb(0 0 0 / 62%), rgb(0 0 0 / 25%) 55%, transparent); }
+  .studio { height: 100%; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; background: radial-gradient(60% 70% at 50% 42%, #3a3f4c, #191b21 62%, #0e0f13); color: #e6ecfa; font: 15px system-ui, sans-serif; }
+  .studio header { display: flex; align-items: center; gap: 14px; padding: 16px 28px; }
+  .studio header b { font-size: 16px; }
+  .studio header .hoger { margin-left: auto; display: flex; gap: 10px; }
+  .studio .knapp { min-height: 44px; display: inline-flex; align-items: center; gap: 8px; padding: 0 16px; border-radius: 10px; border: 1px solid #6f7a90; color: #dce3f2; background: transparent; font: inherit; font-weight: 700; }
+  .studio .knapp.prim { background: #7dd3a0; border-color: #7dd3a0; color: #0b2a18; }
+  .studio .mitt { display: grid; place-items: center; min-height: 0; }
+  .studio footer { display: flex; justify-content: center; align-items: baseline; gap: 28px; padding: 0 28px 26px; color: #9aa3b8; font-variant-numeric: tabular-nums; }
+  .studio footer h1 { margin: 0; font: 700 34px Georgia, serif; color: #f3e7c9; }
+  .studio .ljusval { display: flex; gap: 4px; }
+  .studio .ljusval button { min-height: 36px; padding: 0 10px; border: 1px solid #3b414e; border-radius: 8px; background: transparent; color: #c3cbdd; font: inherit; font-size: 13px; }
+  .studio .ljusval button[aria-pressed='true'] { border-color: #ffd98a; color: #fff; }
+
+  /* ── Editorn, gemensamt ─────────────────────────────────────────────────────────────────── */
+  .m-skarm .ed-huvud { gap: 10px; }
+  .m-skarm .ed-flikar button { padding: 0 10px; }
+  .ed-flikar button[data-ny] { color: #ffe9b8; }
+  .ed-flikar button[data-ny]::after { content: ' ny'; font-size: 10px; color: #c8b98d; }
+  .ed-knapp[data-varnar] { border-color: #f0b64a; color: #ffd98a; }
+  .yta-rad { display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; align-items: center; gap: 8px; min-height: 44px; padding: 0 8px 0 0; border-radius: 6px; cursor: pointer; color: #dce3f2; }
+  .yta-rad[aria-selected='true'] { background: #2f3a55; }
+  .yta-rad small { color: var(--hint-ink); font-size: 11px; font-variant-numeric: tabular-nums; }
+  .yta-rad .tum { width: 28px; height: 28px; display: grid; place-items: center; }
+  .yta-rad .tum svg { max-width: 28px; max-height: 28px; outline: 1px solid #3b414e; }
+  .yta-rad[data-tom] { color: #6b7387; cursor: default; }
+  .lagerrubrik { margin: 12px 0 4px; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--hint-ink); }
+  .m-props .rad2 { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 6px; }
+  .matt-tab { display: grid; gap: 2px; }
+  .matt-tab .mrad { display: grid; grid-template-columns: 52px minmax(0, 1fr) 44px; align-items: center; gap: 6px; min-height: 48px; border-bottom: 1px solid #23262e; }
+  .matt-tab .mrad > span { color: #9aa3b8; font-size: 12px; }
+  .matt-tab .mrad b { color: #fff; font-size: 15px; font-variant-numeric: tabular-nums; }
+  .matt-tab .mrad small { display: block; color: var(--hint-ink); font-size: 11px; font-weight: 400; line-height: 1.3; }
+  .matt-tab .mrad input { width: 72px; min-height: 36px !important; }
+  .las-knapp { width: 44px; height: 44px; display: grid; place-items: center; border: 1px solid transparent; border-radius: 8px; background: transparent; color: #6b7387; cursor: pointer; }
+  .las-knapp:hover { border-color: #3b414e; color: #c3cbdd; }
+  .las-knapp[aria-pressed='true'] { color: var(--locked-ink); }
+  .las-knapp:focus-visible { outline: 2px solid var(--primary-mark); outline-offset: 2px; }
+  .varnar { display: grid; gap: 6px; padding: 10px 12px; border-radius: 8px; background: #3b3222; color: #ffeccc; font-size: 12px; line-height: 1.45; }
+  .varnar b { color: #fff; }
+  .varnar button { justify-self: start; min-height: 36px; padding: 0 10px; border: 1px solid #a39a86; border-radius: 8px; background: transparent; color: #ffeccc; font: inherit; font-weight: 700; cursor: pointer; }
+  .fyllning { display: grid; gap: 4px; font-size: 11px; color: var(--hint-ink); }
+  .fyllning > div { position: relative; height: 10px; border-radius: 5px; background: #23262e; overflow: hidden; }
+  .fyllning > div i { position: absolute; inset: 0 auto 0 0; background: #7dd3a0; border-radius: 5px; }
+  .fyllning > div i[data-over] { background: #e05c5c; }
+  .formel { margin: 0; padding: 8px 10px; border-radius: 8px; background: #11141b; border: 1px solid #262a35; color: #c3cbdd; font: 12px/1.5 ui-monospace, Menlo, monospace; }
+  .formel em { font-style: normal; color: #7dd3a0; }
+  .formel s { text-decoration: none; color: #f0b64a; }
+  .legend { position: absolute; left: 12px; bottom: 12px; display: flex; gap: 14px; padding: 6px 10px; border-radius: 8px; background: rgb(15 17 23 / 85%); color: #c3cbdd; font-size: 11px; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { display: inline-block; width: 22px; height: 0; border-top: 1.5px solid #e6e6e6; }
+  .legend i.vik { border-top-style: dashed; }
+  .legend i.lim { height: 10px; border: 0; background: repeating-linear-gradient(45deg, #7a7f8c 0 2px, transparent 2px 5px); }
+  .duklapp { position: absolute; right: 12px; top: 12px; padding: 6px 10px; border-radius: 8px; background: rgb(15 17 23 / 85%); color: #c3cbdd; font-size: 11px; font-variant-numeric: tabular-nums; }
+  .duklapp[data-over] { color: #ffd98a; }
+  .natet svg [data-yta] { cursor: pointer; }
+  .snabb { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+  .snabb button { min-height: 44px; padding: 0 12px; border: 1px solid var(--line); border-radius: 8px; background: #1b1d23; color: #dce3f2; font: inherit; font-weight: 600; cursor: pointer; }
+  .snabb button[aria-pressed='true'] { border-color: var(--primary-mark); color: #fff; }
+  .b-scen { position: relative; min-width: 0; min-height: 0; display: grid; grid-template-rows: minmax(0, 1fr) auto; gap: 12px; padding: 16px; background: radial-gradient(70% 70% at 50% 45%, #2a2f3b, #15171c 75%); cursor: grab; touch-action: none; }
+  .b-scen:active { cursor: grabbing; }
+  .b-scen .mitt { display: grid; place-items: center; min-height: 0; }
+  .b-scen .tips { position: absolute; left: 16px; top: 12px; color: var(--hint-ink); font-size: 12px; }
+  .b-panel { min-height: 0; overflow: auto; padding: 12px; border-left: 1px solid var(--line); display: grid; gap: 12px; align-content: start; }
+  .b-panel h2 { margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--hint-ink); }
+  .platt { display: grid; place-items: center; padding: 14px; border-radius: 8px; background: repeating-conic-gradient(#20232b 0 25%, #1b1d23 0 50%) 0 0 / 24px 24px; }
+  .platt > div { position: relative; }
+  .platt svg { display: block; box-shadow: 0 1px 3px rgb(0 0 0 / 40%); }
+  .handtag { position: absolute; outline: 2px solid var(--primary-mark); pointer-events: none; }
+  .handtag i { position: absolute; width: 10px; height: 10px; background: #fff; border: 2px solid var(--primary-mark); box-sizing: border-box; transform: translate(-50%, -50%); }
+  .c-duk { position: relative; display: grid; place-items: center; min-width: 0; min-height: 0; overflow: hidden; background: repeating-conic-gradient(#20232b 0 25%, #1b1d23 0 50%) 0 0 / 24px 24px; }
+  .c-mini { position: absolute; left: 12px; top: 12px; display: grid; gap: 6px; justify-items: center; padding: 10px; border-radius: 10px; background: rgb(15 17 23 / 88%); border: 1px solid #2f333d; color: #c3cbdd; font-size: 11px; }
+  .c-mini .val { display: flex; gap: 4px; }
+  .c-mini .val button { min-height: 32px; min-width: 44px; border: 1px solid #3b414e; border-radius: 6px; background: transparent; color: #c3cbdd; font: inherit; cursor: pointer; }
+  .c-mini .val button[aria-pressed='true'] { border-color: var(--primary-mark); color: #fff; }
+  .c-mini svg [data-yta] { cursor: pointer; }
+  .m-krona .storlek-lapp { color: #c3cbdd; font-size: 12px; font-variant-numeric: tabular-nums; }
+  .m-krona .storlek-lapp b { color: #fff; }
+  .m-krona .storlek-lapp[data-over] b { color: #ffd98a; }
+
+  /* ── Måtten, tre lägen sida vid sida ────────────────────────────────────────────────────── */
+  .lage { display: grid; gap: 8px; width: 360px; }
+  .lage > p { margin: 0; color: var(--quiet-2); font-size: 12px; }
+  .lage > p b { color: #fff; }
+  .lage .kropp { padding: 14px; border-radius: 10px; background: var(--chrome); border: 1px solid #3a3f4b; box-shadow: 0 10px 40px rgb(0 0 0 / 45%); color: #dce3f2; font: 13px system-ui; display: grid; gap: 12px; }
+  .lage .kropp.byd-editor { --hint-ink: #9aa3b8; --locked-ink: #e8c06a; }
+  .fk { display: grid; gap: 6px; padding: 10px 12px; border-radius: 8px; border: 1px solid #3b414e; background: #171a23; font-size: 12px; line-height: 1.45; }
+  .fk h4 { margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 1.2px; color: #9aa3b8; }
+  .fk p { margin: 0; }
+  .fk p b { color: #ffd98a; }
+  .fk .ok { color: #7dd3a0; }
+
+  /* ── Mina spel (G1, Arbetsbänken) ───────────────────────────────────────────────────────── */
+  .ms { --kant: #262a35; --tyst: #9aa3b8; height: 100%; background: #0f1117; color: #e6e6e6; font: 14px system-ui, sans-serif; display: grid; grid-template-rows: auto minmax(0, 1fr); }
+  .ms .topp { display: flex; align-items: center; gap: 16px; padding: 14px 32px; border-bottom: 1px solid var(--kant); }
+  .ms .topp b { font-size: 18px; color: #fff; display: inline-flex; gap: 8px; align-items: center; }
+  .ms .topp .hoger { margin-left: auto; display: flex; gap: 10px; align-items: center; }
+  .ms .knapp { min-height: 44px; display: inline-flex; align-items: center; gap: 8px; padding: 0 16px; border-radius: 10px; font-weight: 700; text-decoration: none; border: 1px solid #6f7a90; color: #dce3f2; background: transparent; font-size: 14px; }
+  .ms .knapp.prim { background: #7dd3a0; border-color: #7dd3a0; color: #0b2a18; }
+  .ms .bank { padding: 24px 32px; display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 28px; align-items: start; }
+  .ms h1 { margin: 0 0 18px; font-size: 30px; }
+  .ms .hero { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 28px; padding: 24px; border-radius: 22px; background: radial-gradient(90% 120% at 0% 100%, color-mix(in srgb, #2e6b45 40%, #171a23), #171a23 60%); border: 1px solid var(--kant); align-items: center; }
+  .ms .bild { position: relative; height: 270px; display: grid; place-items: center; }
+  .ms .hero .over { color: var(--tyst); font-size: 13px; text-transform: uppercase; letter-spacing: 2px; font-weight: 700; }
+  .ms .hero h2 { margin: 6px 0; font-size: 34px; line-height: 1.1; color: #fff; }
+  .ms .siffror { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 14px 0; }
+  .ms .siffror div { padding: 10px 12px; border-radius: 12px; background: rgb(15 17 23 / 55%); border: 1px solid var(--kant); }
+  .ms .siffror b { display: block; font-size: 22px; color: #fff; }
+  .ms .siffror span { color: var(--tyst); font-size: 12px; }
+  .ms .knappar { display: flex; gap: 10px; }
+  .ms .alla { margin-top: 26px; display: grid; gap: 12px; }
+  .ms .alla h3 { margin: 0; font-size: 18px; }
+  .ms .rader { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .ms .rad { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 14px; align-items: center; padding: 12px; border-radius: 16px; background: #171a23; border: 1px solid var(--kant); }
+  .ms .rad strong { font-size: 16px; color: #fff; display: block; }
+  .ms .rad .muted { color: var(--tyst); font-size: 13px; }
+  .ms .rad .tum { width: 66px; height: 92px; display: grid; place-items: center; }
+  .ms .rail { display: grid; gap: 14px; }
+  .ms .rail h3 { margin: 0; font-size: 16px; }
+  .ms .lev { display: grid; gap: 8px; padding: 14px 16px; border-radius: 16px; background: #1b2a22; color: #d8ffe8; }
+  .ms .lev .kod { font-size: 26px; letter-spacing: 4px; color: #fff; font-weight: 700; }
+  .ms .notis { margin: 0; padding: 10px 12px; border-radius: 10px; border: 1px dashed #4a4230; color: #e9d7a8; font-size: 12px; line-height: 1.45; }
+  .ms .mer { width: 44px; height: 44px; border: 0; background: none; color: var(--tyst); font-size: 18px; }
+  .solf { position: relative; width: 250px; height: 250px; }
+  .solf > svg { position: absolute; left: 50%; top: 14px; margin-left: -82px; height: 230px; width: auto; box-shadow: 0 6px 18px rgb(0 0 0 / 45%); border-radius: 6px; }
+  .solf > svg:nth-child(1) { transform: rotate(-9deg) translate(-34px, 8px); filter: brightness(.7); }
+  .solf > svg:nth-child(2) { transform: rotate(8deg) translate(34px, 8px); filter: brightness(.82); }
+  .platt-omslag { box-shadow: 0 14px 30px rgb(0 0 0 / 55%), 0 0 0 1px rgb(255 255 255 / 6%); border-radius: 3px; }
+  .ladmedkort { position: relative; width: 270px; height: 260px; }
+  .ladmedkort .lada { position: absolute; left: 10px; top: 0; }
+  .ladmedkort .kortet { position: absolute; right: 6px; bottom: 0; height: 160px; width: auto; transform: rotate(7deg); box-shadow: 0 10px 22px rgb(0 0 0 / 55%); border-radius: 5px; }
+
+  /* ── Den delade länken ──────────────────────────────────────────────────────────────────── */
+  .chatt { height: 100%; background: #f2f2f5; color: #1d1d1f; font: 15px -apple-system, system-ui, sans-serif; display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
+  .chatt > section { padding: 22px 26px; display: grid; gap: 12px; align-content: start; border-right: 1px solid #dcdce2; }
+  .chatt h3 { margin: 0; color: #6b6b72; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+  .bubbla { justify-self: start; max-width: 420px; padding: 9px 13px; border-radius: 18px; background: #e5e5ea; line-height: 1.4; }
+  .bubbla.min { justify-self: end; background: #0a84ff; color: #fff; }
+  .forhand { justify-self: end; width: 400px; border-radius: 16px; overflow: hidden; background: #e5e5ea; }
+  .forhand .ogbild { width: 400px; height: 210px; position: relative; overflow: hidden; }
+  .forhand .ogtext { padding: 10px 14px 12px; display: grid; gap: 2px; }
+  .forhand .ogtext b { font-size: 14px; }
+  .forhand .ogtext span { color: #6b6b72; font-size: 13px; }
+  .og-deckster { position: absolute; inset: 0; background: #171a23; display: grid; grid-template-columns: auto auto; gap: 18px; place-content: center; align-items: center; color: #fff; font: 800 34px system-ui; }
+  .og-spel { position: absolute; inset: 0; background: radial-gradient(80% 110% at 30% 60%, #2e6b45, #12301f); display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 14px; align-items: center; padding: 0 22px; color: #fff; }
+  .og-spel b { font: 700 28px Georgia, serif; display: block; }
+  .og-spel span { color: #cfe8d8; font-size: 14px; }
+  .og-spel .kod { display: inline-block; margin-top: 10px; padding: 4px 10px; border-radius: 8px; background: rgb(0 0 0 / 35%); font: 700 20px system-ui; letter-spacing: 3px; color: #fff; }
+
+  /* ── TV:n före start ────────────────────────────────────────────────────────────────────── */
+  .tv { height: 100%; background: #0d0f14; color: #e6ecfa; font: 18px system-ui, sans-serif; display: grid; grid-template-rows: 88px minmax(0, 1fr); }
+  .tv header { display: flex; align-items: center; gap: 24px; padding: 0 36px; border-bottom: 1px solid #1f2330; }
+  .tv header h1 { margin: 0; font-size: 34px; }
+  .tv header .rev { color: #9aa3b8; font-size: 20px; }
+  .tv header .kod { margin-left: auto; text-align: right; color: #9aa3b8; font-size: 16px; line-height: 1.3; }
+  .tv header .kod b { display: block; color: #fff; font-size: 36px; letter-spacing: 6px; }
+  .qr { display: grid; background: #fff; padding: 6px; border-radius: 6px; }
+  .qr i { display: block; }
+  .tv .kropp { display: grid; grid-template-columns: minmax(0, 1fr) 440px; min-height: 0; }
+  .filt { position: relative; margin: 36px; border-radius: 48px; background: radial-gradient(ellipse at center, #2e6b45, #1a432b); border: 22px solid #4a2f1f; box-shadow: inset 0 0 80px rgb(0 0 0 / 45%); }
+  .filt .hog { position: absolute; width: 126px; height: 176px; border-radius: 8px; background: repeating-linear-gradient(45deg, #183f2a 0 8px, #1f4d33 8px 16px); border: 3px solid #f3e7c9; box-shadow: 4px 4px 0 #0e2718, 8px 8px 0 #0b2013; }
+  .filt .hog-namn { position: absolute; color: #cfe8d8; font: 700 16px 'Roboto Condensed', system-ui; letter-spacing: 2px; }
+  .filt .start { position: absolute; display: grid; gap: 10px; justify-items: center; padding: 22px 30px; border-radius: 20px; background: rgb(13 15 20 / 82%); color: #fff; }
+  .filt .start button { min-height: 64px; padding: 0 36px; border: 0; border-radius: 14px; background: #7dd3a0; color: #0b2a18; font: 800 24px system-ui; }
+  .filt .start small { color: #9aa3b8; font-size: 16px; }
+  .filt .pill { position: absolute; min-width: 110px; height: 56px; padding: 0 18px; border-radius: 28px; display: grid; place-items: center; align-content: center; color: #0d0f14; font-size: 15px; font-weight: 700; line-height: 1.15; }
+  .filt .pill b { font-size: 18px; }
+  .filt .pill.ledig { background: transparent; border: 2px dashed #9fc9b0; color: #cfe8d8; }
+  .tv .spalt { border-left: 1px solid #1f2330; padding: 28px; display: grid; gap: 22px; align-content: start; }
+  .tv .spalt h2 { margin: 0; font-size: 15px; letter-spacing: 3px; color: #9aa3b8; }
+  .tv .insp { display: grid; place-items: center; min-height: 520px; border-radius: 18px; background: #151821; border: 1px solid #1f2330; color: #9aa3b8; font-size: 18px; text-align: center; padding: 18px; }
+  .tv .platser { display: grid; gap: 10px; }
+  .tv .platser div { display: flex; align-items: center; gap: 12px; font-size: 18px; }
+  .tv .platser i { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-weight: 800; color: #0d0f14; font-size: 15px; }
+  .tv .platser i.ledig { border: 2px dashed #5f6b80; color: #9aa3b8; }
+  .titelskarm { position: absolute; inset: 88px 0 0 0; z-index: 3; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 90px; align-items: center; justify-content: center; padding: 40px 120px; background: rgb(8 10 14 / 90%); }
+  .titelskarm h2 { margin: 0; font: 700 96px/1 Georgia, serif; color: #f3e7c9; }
+  .titelskarm p { margin: 14px 0 0; font-size: 28px; color: #c3cbdd; }
+  .titelskarm .rum { margin-top: 44px; display: flex; gap: 36px; align-items: center; }
+  .titelskarm .rum b { display: block; font-size: 84px; letter-spacing: 12px; color: #fff; }
+  .titelskarm .stang { position: absolute; right: 30px; top: 24px; width: 64px; height: 64px; border-radius: 50%; border: 1px solid #3b414e; background: transparent; color: #c3cbdd; font-size: 30px; }
+
+  /* ── Landningssidan (L36, G1) ───────────────────────────────────────────────────────────── */
+  .land { height: 100%; background: #0f1117; color: #e6e6e6; font: 16px system-ui, sans-serif; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; }
+  .land header { display: flex; align-items: center; gap: 12px; padding: 16px 40px; }
+  .land header b { color: #fff; font-size: 20px; }
+  .land header a { margin-left: auto; color: #dce3f2; }
+  .land .hjalte { display: grid; grid-template-columns: 420px minmax(0, 1fr); gap: 30px; align-items: center; padding: 10px 40px; }
+  .land h1 { margin: 0; font: 700 46px/1.08 Georgia, serif; color: #fff; }
+  .land .hjalte p { color: #c3cbdd; line-height: 1.5; }
+  .land .dorr { display: flex; gap: 10px; margin-top: 18px; }
+  .land .dorr a { min-height: 48px; display: inline-flex; align-items: center; padding: 0 20px; border-radius: 12px; font-weight: 700; text-decoration: none; }
+  .land .dorr a.p { background: #7dd3a0; color: #0b2a18; }
+  .land .dorr a.s { border: 1px solid #6f7a90; color: #dce3f2; }
+  .land .bordet { position: relative; height: 470px; perspective: 1100px; }
+  .land .duk { position: absolute; left: 50px; right: 30px; top: 70px; height: 330px; border-radius: 40px; background: radial-gradient(ellipse at center, #2e6b45, #1a432b); border: 16px solid #4a2f1f; transform: rotateX(48deg); transform-origin: 50% 100%; }
+  .land .duk svg { position: absolute; height: 120px; width: auto; border-radius: 4px; box-shadow: 0 4px 10px rgb(0 0 0 / 40%); }
+  .land .stegrad { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; padding: 18px 40px 28px; }
+  .land .stegrad div { padding: 14px 16px; border-radius: 14px; background: #171a23; border: 1px solid #262a35; font-size: 14px; color: #c3cbdd; }
+  .land .stegrad b { display: block; color: #fff; margin-bottom: 4px; }
+  .land .stegrad div[data-ny] { border-color: #6f5a2c; }
+  .land .lada-pa-bordet { position: absolute; right: 70px; top: 120px; z-index: 2; }
+  .oforandrad { position: absolute; left: 50%; top: 14px; transform: translateX(-50%); z-index: 5; padding: 8px 14px; border-radius: 10px; background: #2a2417; border: 1px solid #4a4230; color: #ffd98a; font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="protorad" role="region" aria-label="Prototypens rad (inte en del av förslaget)">
+  <div class="fraga" style="all:unset;flex:1 1 320px;min-width:0">
+    <p><b>PROTOTYP #1406 — spelets låda, steg 1.</b> Lådan som komponenttyp med sex ytor, måtten räknade ur leken, och framsidan som spelets omslag.</p>
+    <p>Växla variant med A/B/C eller ← →. «Leken» lägger till tolv kort så att du ser vad som händer med måttet; lås ett mått och lägg till dem igen.</p>
+  </div>
+  <div class="vaxlare" role="group" aria-label="Variant" id="vaxlare"></div>
+  <div class="grupp"><span>Yta</span><div class="flikar" id="ytor"></div></div>
+  <div class="grupp" id="lekgrupp"><span>Leken</span><div class="flikar" id="lek"></div></div>
+  <div class="grupp" id="designgrupp"><span>Lådan</span><div class="flikar" id="design"></div></div>
+  <div class="grupp"><span>Språk</span><div class="flikar" id="lang"></div></div>
+  <button type="button" id="omstart">Börja om</button>
+  <p class="anteckning" id="anteckning"></p>
+</div>
+<main class="scen" id="scen"></main>
+
+<script>
+// ── Glyferna: #1083:s hand, 16-rutnät, 1,6 rund linje ────────────────────────────────────────────
+const P = {
+  lasT: 'M4.5 7.25h7v6h-7zM5.75 7.25V5.5a2.25 2.25 0 0 1 4.5 0v1.75',
+  lasO: 'M4.5 7.25h7v6h-7zM5.75 7.25V5.5a2.25 2.25 0 0 1 4.4-.7',
+  lada: 'M2.5 5 8 2.5 13.5 5v6L8 13.5 2.5 11zM2.5 5 8 7.5l5.5-2.5M8 7.5v6',
+  varv: 'M12.75 8A4.75 4.75 0 1 1 11.3 4.6M12.75 2.75V5.5H10',
+  text: 'M3.5 4h9M8 4v8.5',
+  bild: 'M2.75 3.5h10.5v9H2.75zM2.75 11l3.5-3.5 2.5 2.5 1.5-1.5 3 3',
+  form: 'M3 3h10v10H3z',
+  pen: 'M10.5 2.75 13.25 5.5 6 12.75H3.25V10z',
+  spela: 'M5 3.5v9l7-4.5z',
+}
+const g = (n, cls = 'g') => `<svg class="${cls}" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="${P[n]}"/></svg>`
+
+// ── Tillståndet ──────────────────────────────────────────────────────────────────────────────────
+const q = new URLSearchParams(location.search)
+let v = (q.get('v') || 'B').toUpperCase()
+let yta = q.get('yta') || 'editor'
+let lang = q.get('lang') || 'sv'
+let n = Number(q.get('lek') || 108)
+let designad = q.get('design') !== 'tom'
+let st = {}
+const omstart = () => { st = { yta: 'fram', las: { W: false, H: false, D: false }, lasade: null, fast: false, rx: -14, ry: -32, genom: false, mini: 'nat' } }
+omstart()
+const en = () => lang === 'en'
+const L = (sv, eng) => (en() ? eng : sv)
+const tal = (x) => { const r = Math.round(x * 10) / 10; return (Number.isInteger(r) ? String(r) : r.toFixed(1)).replace('.', en() ? '.' : ',') }
+
+// ── Måtten ur leken ──────────────────────────────────────────────────────────────────────────────
+// Kortets typ: 63 × 88 mm, 0,3 mm (recipe.ts). Luft 1 mm runt kortet och 2 mm i djupet,
+// avrundat uppåt till en halv millimeter. Det låsta måttet är det lådan hade när det låstes.
+const KORT = { w: 63, h: 88, t: 0.3 }
+const LUFT = 1, DJUPLUFT = 2
+const rakna = (antal) => ({ W: KORT.w + 2 * LUFT, H: KORT.h + 2 * LUFT, D: Math.ceil((antal * KORT.t + DJUPLUFT) * 2) / 2 })
+function matt() {
+  const r = rakna(n)
+  const lasta = st.lasade ?? rakna(108)
+  const d = { ...r }
+  if (v === 'C') { if (st.fast) Object.assign(d, lasta) } else for (const k of ['W', 'H', 'D']) if (st.las[k]) d[k] = lasta[k]
+  const lek = n * KORT.t
+  const rymmer = Math.floor((d.D - DJUPLUFT) / KORT.t + 1e-9)
+  const over = d.D < r.D
+  return { d, r, lek, rymmer, over, forMycket: Math.max(0, n - rymmer) }
+}
+const GLIM = 12, TUCK = 20, BLEED = 3
+const natMatt = (d) => ({ w: GLIM + 2 * d.D + 2 * d.W, h: 2 * TUCK + 2 * d.D + d.H })
+const A4 = { w: 297, h: 210 }
+
+// ── Ytorna: en funktion ritar varje yta överallt (E2) ────────────────────────────────────────────
+const YTOR = [
+  ['fram', 'Framsida', 'Front'], ['bak', 'Baksida', 'Back'], ['vanster', 'Vänster sida', 'Left side'],
+  ['hoger', 'Höger sida', 'Right side'], ['lock', 'Lock', 'Lid'], ['botten', 'Botten', 'Bottom'],
+]
+const ytNamn = (k) => { const y = YTOR.find((x) => x[0] === k); return en() ? y[2] : y[1] }
+const ytMatt = (k, d) => (k === 'fram' || k === 'bak' ? [d.W, d.H] : k === 'vanster' || k === 'hoger' ? [d.D, d.H] : [d.W, d.D])
+function trad(w, h, x0, y0, s, fill) {
+  return `<polygon points="${x0},${y0} ${x0 + w / 2},${y0 - h * s} ${x0 + w},${y0}" fill="${fill}"/>`
+}
+// Lådans innehåll är designerns och står på svenska oavsett verktygets språk (A4).
+function ytaInre(k, w, h, titel = 'Skogens råd') {
+  const ord = titel.split(' ')
+  if (k === 'fram') {
+    let skog = ''
+    const fx = [[-4, .34, '#0e2a1b'], [8, .42, '#123622'], [22, .30, '#0e2a1b'], [36, .46, '#16402a'], [48, .33, '#0e2a1b'], [58, .40, '#123622']]
+    for (const [x, s, f] of fx) skog += trad(18, h, x * w / 65, h - 12, s, f)
+    return `<rect width="${w}" height="${h}" fill="#1d4a31"/><rect width="${w}" height="${h * .55}" fill="#25583b"/>
+      <circle cx="${w * .78}" cy="${h * .16}" r="${w * .07}" fill="#f3e7c9" opacity=".9"/>${skog}
+      <rect x="0" y="${h - 12}" width="${w}" height="12" fill="#0b2013"/>
+      <text x="${w / 2}" y="${h * .27}" text-anchor="middle" font-family="Georgia, serif" font-weight="700" font-size="${w * .15}" fill="#f3e7c9">${ord[0]}</text>
+      <text x="${w / 2}" y="${h * .27 + w * .15}" text-anchor="middle" font-family="Georgia, serif" font-weight="700" font-size="${w * .15}" fill="#f3e7c9">${ord.slice(1).join(' ')}</text>
+      <text x="${w / 2}" y="${h * .27 + w * .25}" text-anchor="middle" font-family="system-ui, sans-serif" font-size="${w * .048}" fill="#cfe8d8">Ett kortspel för 2–4 spelare</text>
+      <text x="${w / 2}" y="${h - 4.6}" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="700" font-size="3.4" fill="#f3e7c9">2–4 · 30 min · 10+</text>
+      <rect x="2.5" y="2.5" width="${w - 5}" height="${h - 5}" fill="none" stroke="#c9a85a" stroke-width=".5"/>`
+  }
+  if (k === 'bak') {
+    const mk = (x, y, r) => `<g transform="translate(${x} ${y}) rotate(${r})"><rect x="-7" y="-10" width="14" height="19.5" rx="1" fill="#f6efe0" stroke="#7c6c4c" stroke-width=".3"/><rect x="-7" y="-10" width="14" height="4.5" rx="1" fill="#25583b"/><rect x="-5.5" y="-4" width="11" height="7" fill="#cfe0c8"/></g>`
+    return `<rect width="${w}" height="${h}" fill="#f3ecdc"/><rect width="${w}" height="9" fill="#1d4a31"/>
+      <text x="${w / 2}" y="6.4" text-anchor="middle" font-family="Georgia, serif" font-weight="700" font-size="4.4" fill="#f3e7c9">${titel}</text>
+      <text x="6" y="17" font-family="system-ui" font-size="2.7" fill="#3b3426">Rådet samlas när månen står högt.</text>
+      <text x="6" y="21" font-family="system-ui" font-size="2.7" fill="#3b3426">Spela ut djur, samla röster och</text>
+      <text x="6" y="25" font-family="system-ui" font-size="2.7" fill="#3b3426">bli skogens nya röst.</text>
+      ${mk(w * .27, h * .52, -8)}${mk(w * .5, h * .5, 0)}${mk(w * .73, h * .52, 8)}
+      <text x="${w / 2}" y="${h - 14}" text-anchor="middle" font-family="system-ui" font-size="2.6" fill="#3b3426">Innehåll: 108 kort och ett regelhäfte</text>
+      <text x="${w / 2}" y="${h - 8}" text-anchor="middle" font-family="system-ui" font-weight="700" font-size="3" fill="#1d4a31">2–4 spelare · 30 min · 10+</text>`
+  }
+  if (k === 'vanster' || k === 'hoger') {
+    return `<rect width="${w}" height="${h}" fill="#1d4a31"/><rect x="0" y="${h - 12}" width="${w}" height="12" fill="#0b2013"/>
+      <text transform="translate(${w / 2 + 2} ${h * .45}) rotate(-90)" text-anchor="middle" font-family="Georgia, serif" font-weight="700" font-size="${Math.min(6, w * .2)}" fill="#f3e7c9">${titel}</text>
+      ${trad(10, h, w / 2 - 5, h - 14, .12, '#123622')}`
+  }
+  if (k === 'lock') {
+    return `<rect width="${w}" height="${h}" fill="#1d4a31"/>
+      <text x="${w / 2}" y="${h / 2 + 2}" text-anchor="middle" font-family="Georgia, serif" font-weight="700" font-size="${Math.min(7, h * .2)}" fill="#f3e7c9">${titel}</text>`
+  }
+  return `<rect width="${w}" height="${h}" fill="#f3ecdc"/>
+    <text x="${w / 2}" y="${h / 2 - 1}" text-anchor="middle" font-family="system-ui" font-weight="700" font-size="3.4" fill="#1d4a31">2–4 spelare · 30 min · 10+</text>
+    <text x="${w / 2}" y="${h / 2 + 4.5}" text-anchor="middle" font-family="system-ui" font-size="2.8" fill="#3b3426">108 kort · ${titel}</text>`
+}
+const ytaSVG = (k, d, px, titel, extra = '') => { const [w, h] = ytMatt(k, d); return `<svg viewBox="0 0 ${w} ${h}" width="${w * px}" height="${h * px}" ${extra} role="img" aria-label="${ytNamn(k)}">${ytaInre(k, w, h, titel)}</svg>` }
+// Ett spel utan låda (variant A): ett omslag av namnet och första kortet, i spelets färg.
+function genereratInre(w, h, titel) {
+  return `<rect width="${w}" height="${h}" fill="#26303f"/><text x="${w / 2}" y="${h * .2}" text-anchor="middle" font-family="system-ui" font-weight="800" font-size="${w * .11}" fill="#e6ecfa">${titel}</text>
+    <g transform="translate(${w * .2} ${h * .3}) scale(${(w * .6) / 63})">${kortInre()}</g>`
+}
+const genereratSVG = (d, px, titel) => `<svg viewBox="0 0 ${d.W} ${d.H}" width="${d.W * px}" height="${d.H * px}" role="img" aria-label="${L('Omslag av namnet och första kortet', 'Cover from the name and the first card')}">${genereratInre(d.W, d.H, titel)}</svg>`
+// Lekens första kort, Skogsvaktaren, 63 × 88 mm.
+function kortInre(farg = '#25583b', namn = 'Skogsvaktaren') {
+  return `<rect width="63" height="88" rx="3" fill="#f6efe0"/><rect width="63" height="14" rx="3" fill="${farg}"/><rect y="10" width="63" height="4" fill="${farg}"/>
+    <text x="31.5" y="9.6" text-anchor="middle" font-family="Georgia, serif" font-weight="700" font-size="6" fill="#f3e7c9">${namn}</text>
+    <rect x="5" y="18" width="53" height="36" rx="1.5" fill="#cfe0c8"/>${trad(14, 88, 12, 52, .26, '#25583b')}${trad(16, 88, 26, 52, .32, '#1d4a31')}${trad(12, 88, 41, 52, .22, '#25583b')}
+    <text x="6" y="62" font-family="system-ui" font-size="3.4" fill="#3b3426">Titta på två kort i Skogen.</text>
+    <text x="6" y="67" font-family="system-ui" font-size="3.4" fill="#3b3426">Lägg ett av dem överst.</text>
+    <circle cx="55" cy="80" r="4" fill="${farg}"/><text x="55" y="81.3" text-anchor="middle" font-family="system-ui" font-weight="800" font-size="4" fill="#fff">3</text>`
+}
+const kortSVG = (hpx, farg, namn, extra = '') => `<svg viewBox="0 0 63 88" height="${hpx}" width="${hpx * 63 / 88}" ${extra} role="img" aria-label="${namn ?? 'Skogsvaktaren'}">${kortInre(farg, namn)}</svg>`
+
+// ── Lådan i 3D ───────────────────────────────────────────────────────────────────────────────────
+function lada3d(d, s, rx, ry, o = {}) {
+  const W = d.W * s, H = d.H * s, D = d.D * s
+  const titel = o.titel ?? 'Skogens råd'
+  const y = (k, w, h, tf, left, top) => `<div class="yta" data-yta="${k}" ${o.vald === k ? 'data-vald' : ''} style="width:${w}px;height:${h}px;left:${left}px;top:${top}px;transform:${tf}">${o.tom ? `<svg viewBox="0 0 10 10" preserveAspectRatio="none"><rect width="10" height="10" fill="${k === 'fram' ? '#2b3140' : '#232836'}" stroke="#3b4358" stroke-width=".15"/></svg>` : ytaSVG(k, d, s, titel).replace(/width="[\d.]+" height="[\d.]+"/, '')}</div>`
+  let lek = ''
+  if (o.lek) {
+    const m = o.lek, cw = KORT.w * s, ch = KORT.h * s, ld = m.lek * s
+    const over = ld > (d.D - DJUPLUFT) * s
+    // Leken står mot framsidans insida och växer bakåt; går den ut genom baksidan blir den röd.
+    const z0 = D / 2 - LUFT * s
+    const f = (tf, w, h, cls = '') => `<i class="${cls}" style="width:${w}px;height:${h}px;transform:${tf}"></i>`
+    lek = `<div class="lek" ${over ? 'data-over' : ''} style="left:${(W - cw) / 2}px;top:${(H - ch) / 2}px;width:${cw}px;height:${ch}px">
+      ${f(`translateZ(${z0}px)`, cw, ch, 'fram')}${f(`translateZ(${z0 - ld}px)`, cw, ch, 'fram')}
+      ${f(`translateX(${cw - ld / 2}px) rotateY(90deg) translateZ(${z0 - ld / 2}px)`.replace(`translateZ(${z0 - ld / 2}px)`, '') + ` translateX(0)`, ld, ch)}
+    </div>`
+    // Sidan på leken: ett plan längs högerkanten.
+    lek = lek.replace('</div>', `<i style="width:${ld}px;height:${ch}px;transform:translateX(${cw - ld / 2}px) translateZ(${z0 - ld / 2}px) rotateY(90deg)"></i><i style="width:${ld}px;height:${ch}px;transform:translateX(${-ld / 2}px) translateZ(${z0 - ld / 2}px) rotateY(-90deg)"></i></div>`)
+  }
+  let mattEtiketter = ''
+  if (o.etiketter) {
+    const e = o.etiketter
+    mattEtiketter = `
+      <div class="matt3" style="left:0;top:${H + 10}px;width:${W}px;height:34px;transform:translateZ(${D / 2}px)">${e.W}</div>
+      <div class="matt3 lodrat" style="left:${-64}px;top:0;width:56px;height:${H}px;transform:translateZ(${D / 2}px)">${e.H}</div>
+      <div class="matt3" style="left:${(W - D) / 2}px;top:${H + 10}px;width:${D}px;height:34px;transform:rotateY(90deg) translateZ(${W / 2}px)">${e.D}</div>`
+  }
+  return `<div class="b3" ${o.genom ? 'data-genom' : ''} style="width:${W}px;height:${H}px${o.stil ? ';' + o.stil : ''}"><div class="b3-kropp" style="transform:rotateX(${rx}deg) rotateY(${ry}deg)">
+    ${y('fram', W, H, `translateZ(${D / 2}px)`, 0, 0)}
+    ${y('bak', W, H, `rotateY(180deg) translateZ(${D / 2}px)`, 0, 0)}
+    ${y('hoger', D, H, `rotateY(90deg) translateZ(${W / 2}px)`, (W - D) / 2, 0)}
+    ${y('vanster', D, H, `rotateY(-90deg) translateZ(${W / 2}px)`, (W - D) / 2, 0)}
+    ${y('lock', W, D, `rotateX(90deg) translateZ(${H / 2}px)`, 0, (H - D) / 2)}
+    ${y('botten', W, D, `rotateX(-90deg) translateZ(${H / 2}px)`, 0, (H - D) / 2)}
+    ${lek}${mattEtiketter}
+  </div></div>`
+}
+
+// ── Produktbilden (B) ────────────────────────────────────────────────────────────────────────────
+// Lådan och leken som två föremål på samma golv, i lekens egna mått: lådan W × H × D, leken
+// 63 × 88 × (antal × 0,3) mm bredvid. Varje plan bär en normal (data-n), och `belys` räknar
+// skuggning och glans ur den efter vridningen. Ytorna är texturer från den enda renderaren (E2);
+// här står ytaSVG i deras ställe, och presentationen ritar aldrig ett kort själv.
+const LJUS = { studio: [-0.45, -0.7, 0.55], kvall: [0.6, -0.45, 0.65] }
+let ljusval = 'studio'
+function produkt(d, s, o = {}) {
+  const W = d.W * s, H = d.H * s, D = d.D * s
+  const lekT = (o.antal ?? 108) * KORT.t * s, cw = KORT.w * s, ch = KORT.h * s
+  const gap = 16 * s
+  const total = o.utanLek ? W : W + gap + cw
+  const bx = -total / 2 + W / 2, kx = total / 2 - cw / 2
+  const rw = Math.max(total, D) * 1.32, rh = H * 1.5
+  const titel = o.titel ?? 'Skogens råd'
+  const plan = (w, h, cx, cy, cz, tf, n, inne, cls = '', glans = 0) => `<div class="p-yta ${cls}" data-n="${n}" data-glans="${glans}" style="--mm:${s}px;width:${w}px;height:${h}px;left:${(rw - w) / 2}px;top:${(rh - h) / 2}px;transform:translate3d(${cx}px,${cy}px,${cz}px) ${tf}">${inne}<i class="ljus"></i>${glans ? '<i class="glans"></i>' : ''}<i class="slitage"></i></div>`
+  const tex = (k) => (o.tom ? (k === 'fram' ? `<svg viewBox="0 0 ${d.W} ${d.H}"><text x="${d.W / 2}" y="${d.H * .45}" text-anchor="middle" font-family="Georgia, serif" font-weight="700" font-size="7" fill="#6b5a3a">${titel}</text></svg>` : '') : ytaSVG(k, d, s, titel).replace(/width="[\d.]+" height="[\d.]+"/, ''))
+  const tomCls = o.tom ? 'kartong' : ''
+  // Lådan: sex plan runt (bx, 0, 0). Lacken (glans 1) ligger på framsida och lock, resten är matt laminat.
+  let html = ''
+  html += plan(W, H, bx, 0, 0, `translateZ(${D / 2}px)`, '0,0,1', tex('fram'), tomCls, 1)
+  html += plan(W, H, bx, 0, 0, `rotateY(180deg) translateZ(${D / 2}px)`, '0,0,-1', tex('bak'), tomCls, .4)
+  html += plan(D, H, bx, 0, 0, `rotateY(90deg) translateZ(${W / 2}px)`, '1,0,0', tex('hoger'), tomCls, .4)
+  html += plan(D, H, bx, 0, 0, `rotateY(-90deg) translateZ(${W / 2}px)`, '-1,0,0', tex('vanster'), tomCls, .4)
+  html += plan(W, D, bx, 0, 0, `rotateX(90deg) translateZ(${H / 2}px)`, '0,-1,0', tex('lock'), tomCls, 1)
+  html += plan(W, D, bx, 0, 0, `rotateX(-90deg) translateZ(${H / 2}px)`, '0,1,0', tex('botten'), tomCls)
+  // Leken: ett block av kort, framkortet uppvänt, kanterna randiga av korten.
+  if (!o.utanLek) {
+    const ky = (H - ch) / 2, kz = D / 2 - lekT / 2 + 6 * s
+    html += plan(cw, ch, kx, ky, kz, `translateZ(${lekT / 2}px)`, '0,0,1', kortSVG(ch).replace(/width="[\d.]+"/, '').replace(/height="[\d.]+"/, ''), 'lek-yta', .6)
+    html += plan(cw, ch, kx, ky, kz, `rotateY(180deg) translateZ(${lekT / 2}px)`, '0,0,-1', '<svg viewBox="0 0 63 88"><rect width="63" height="88" rx="3" fill="#1d4a31"/><rect x="4" y="4" width="55" height="80" rx="2" fill="none" stroke="#c9a85a" stroke-width=".6"/></svg>', 'lek-yta', .3)
+    html += plan(lekT, ch, kx, ky, kz, `rotateY(90deg) translateZ(${cw / 2}px)`, '1,0,0', '', 'kortkant lek-yta')
+    html += plan(lekT, ch, kx, ky, kz, `rotateY(-90deg) translateZ(${cw / 2}px)`, '-1,0,0', '', 'kortkant lek-yta')
+    html += plan(cw, lekT, kx, ky, kz, `rotateX(90deg) translateZ(${ch / 2}px)`, '0,-1,0', '', 'kortkant liggande lek-yta')
+  }
+  const golv = `<div class="p-golv" style="width:${total * 1.5}px;height:${Math.max(D, lekT) * 3.2}px;left:${(rw - total * 1.5) / 2}px;top:${(rh - Math.max(D, lekT) * 3.2) / 2}px;transform:translate3d(0,${H / 2 + 1}px,0) rotateX(90deg)"></div>`
+  let etik = ''
+  if (o.etiketter) {
+    const e = o.etiketter
+    etik = `<div class="matt3" style="position:absolute;left:${(rw - W) / 2}px;top:${(rh - H) / 2 + H + 12}px;width:${W}px;height:34px;transform:translate3d(${bx}px,0,${D / 2}px)">${e.W}</div>
+      <div class="matt3 lodrat" style="position:absolute;left:${(rw - W) / 2 - 64}px;top:${(rh - H) / 2}px;width:56px;height:${H}px;transform:translate3d(${bx}px,0,${D / 2}px)">${e.H}</div>
+      <div class="matt3" style="position:absolute;left:${(rw - D) / 2}px;top:${(rh - H) / 2 + H + 12}px;width:${D}px;height:34px;transform:translate3d(${bx}px,0,0) rotateY(90deg) translateZ(${W / 2}px)">${e.D}</div>`
+  }
+  return `<div class="produkt" ${o.drag ? 'data-drag' : ''} ${o.auto ? 'data-auto' : ''} data-rx="${o.rx ?? -12}" data-ry="${o.ry ?? -28}" style="width:${rw}px;height:${rh}px${o.stil ? ';' + o.stil : ''}"><div class="p-rot" style="transform-style:preserve-3d">${golv}${html}${etik}</div></div>`
+}
+// Ljuset: skuggning efter normalen, glans där halvvektorn mellan ljus och betraktare möter ytan.
+function belys(el) {
+  const rx = Number(el.dataset.rx) * Math.PI / 180, ry = Number(el.dataset.ry) * Math.PI / 180
+  const rot = el.querySelector('.p-rot')
+  rot.style.transform = `rotateX(${el.dataset.rx}deg) rotateY(${el.dataset.ry}deg)`
+  const [lx0, ly0, lz0] = LJUS[ljusval]; const ll = Math.hypot(lx0, ly0, lz0); const Lv = [lx0 / ll, ly0 / ll, lz0 / ll]
+  const Hh = [Lv[0], Lv[1], Lv[2] + 1]; const hl = Math.hypot(...Hh); Hh[0] /= hl; Hh[1] /= hl; Hh[2] /= hl
+  for (const p of el.querySelectorAll('.p-yta')) {
+    let [x, y, z] = p.dataset.n.split(',').map(Number)
+    // CSS: rotateX(a) rotateY(b) ger Rx(Ry(n)).
+    const x1 = x * Math.cos(ry) + z * Math.sin(ry), z1 = -x * Math.sin(ry) + z * Math.cos(ry)
+    const y2 = y * Math.cos(rx) - z1 * Math.sin(rx), z2 = y * Math.sin(rx) + z1 * Math.cos(rx)
+    const n = [x1, y2, z2]
+    const diff = Math.max(0, n[0] * Lv[0] + n[1] * Lv[1] + n[2] * Lv[2])
+    p.querySelector('.ljus').style.opacity = (0.62 * (1 - (0.28 + 0.72 * diff))).toFixed(3)
+    const g = p.querySelector('.glans')
+    if (g) {
+      const spec = Math.pow(Math.max(0, n[0] * Hh[0] + n[1] * Hh[1] + n[2] * Hh[2]), 18) * Number(p.dataset.glans)
+      g.style.opacity = (0.55 * spec).toFixed(3)
+      g.style.transform = `translateX(${(n[0] * 60).toFixed(1)}%)`
+    }
+  }
+}
+const lugn = matchMedia('(prefers-reduced-motion: reduce)')
+function snurra(t) {
+  for (const el of document.querySelectorAll('.produkt')) {
+    if (el.dataset.auto !== undefined && !el.dataset.held && !lugn.matches) {
+      el.dataset.bas ??= el.dataset.ry
+      el.dataset.ry = (Number(el.dataset.bas) + 22 * Math.sin(t / 3200)).toFixed(2)
+    }
+    belys(el)
+  }
+  requestAnimationFrame(snurra)
+}
+
+// ── Nätet ────────────────────────────────────────────────────────────────────────────────────────
+function nat(d, px, o = {}) {
+  const { W, H, D } = d
+  const nm = natMatt(d)
+  const xL = GLIM, xF = GLIM + D, xR = GLIM + D + W, xB = GLIM + 2 * D + W
+  const yLid = TUCK, yK = TUCK + D, yBot = TUCK + D + H, yTuck2 = TUCK + 2 * D + H
+  const panel = (k, x, y, w, h, rot = 0) => `<g data-yta="${k}"><svg x="${x}" y="${y}" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">${rot ? `<g transform="rotate(180 ${w / 2} ${h / 2})">${ytaInre(k, w, h)}</g>` : ytaInre(k, w, h)}</svg>${o.vald === k ? `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="none" stroke="#3c8ce7" stroke-width="${1.6 / px * 2}"/>` : ''}</g>`
+  const flik = (pts) => `<polygon points="${pts}" fill="#d9d4c7" stroke="#222" stroke-width="${0.6 / px * 2}"/>`
+  const dd = D * .8
+  const lim = `<polygon points="0,${yK + 5} ${GLIM},${yK} ${GLIM},${yBot} 0,${yBot - 5}" fill="url(#lim)" stroke="#222" stroke-width="${0.6 / px * 2}"/>`
+  const tuck = (x, y, uppat) => uppat
+    ? `<path d="M${x} ${y + TUCK} V${y + 6} Q${x} ${y} ${x + 8} ${y} H${x + W - 8} Q${x + W} ${y} ${x + W} ${y + 6} V${y + TUCK}" fill="#d9d4c7" stroke="#222" stroke-width="${0.6 / px * 2}"/>`
+    : `<path d="M${x} ${y} V${y + TUCK - 6} Q${x} ${y + TUCK} ${x + 8} ${y + TUCK} H${x + W - 8} Q${x + W} ${y + TUCK} ${x + W} ${y + TUCK - 6} V${y}" fill="#d9d4c7" stroke="#222" stroke-width="${0.6 / px * 2}"/>`
+  const vik = (x1, y1, x2, y2) => `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#222" stroke-width="${0.5 / px * 2}" stroke-dasharray="2 1.4"/>`
+  const ark = o.a4 ? `<rect x="${(nm.w - A4.w) / 2}" y="${(nm.h - A4.h) / 2}" width="${A4.w}" height="${A4.h}" fill="#3a3f4b" opacity=".55" stroke="#6f7a90" stroke-width="${0.5 / px * 2}"/><text x="${(nm.w - A4.w) / 2 + 3}" y="${(nm.h - A4.h) / 2 + 6}" font-family="system-ui" font-size="${11 / px}" fill="#c3cbdd">A4 · 297 × 210 mm</text>` : ''
+  const pad = o.a4 ? Math.max(0, (A4.w - nm.w) / 2 + 2) : 0
+  const padY = o.a4 ? Math.max(0, (A4.h - nm.h) / 2 + 2) : 0
+  const vb = `${-pad} ${-padY} ${nm.w + 2 * pad} ${nm.h + 2 * padY}`
+  return `<svg viewBox="${vb}" width="${(nm.w + 2 * pad) * px}" height="${(nm.h + 2 * padY) * px}" role="img" aria-label="${L('Lådans nät', 'The box net')}">
+    <defs><pattern id="lim" width="3" height="3" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="3" height="3" fill="#d9d4c7"/><line x1="0" y1="0" x2="0" y2="3" stroke="#7a7f8c" stroke-width=".8"/></pattern></defs>
+    ${ark}${lim}
+    ${flik(`${xL},${yK} ${xL + 3},${yK - dd} ${xL + D - 3},${yK - dd} ${xL + D},${yK}`)}${flik(`${xR},${yK} ${xR + 3},${yK - dd} ${xR + D - 3},${yK - dd} ${xR + D},${yK}`)}
+    ${flik(`${xL},${yBot} ${xL + 3},${yBot + dd} ${xL + D - 3},${yBot + dd} ${xL + D},${yBot}`)}${flik(`${xR},${yBot} ${xR + 3},${yBot + dd} ${xR + D - 3},${yBot + dd} ${xR + D},${yBot}`)}
+    ${tuck(xB, 0, true)}${tuck(xF, yTuck2, false)}
+    ${panel('lock', xB, yLid, W, D, 1)}${panel('vanster', xL, yK, D, H)}${panel('fram', xF, yK, W, H)}${panel('hoger', xR, yK, D, H)}${panel('bak', xB, yK, W, H)}${panel('botten', xF, yBot, W, D)}
+    <rect x="${xL}" y="${yK}" width="${nm.w - GLIM}" height="${H}" fill="none" stroke="#222" stroke-width="${0.6 / px * 2}"/>
+    ${vik(xL, yK, xL, yBot)}${vik(xF, yK, xF, yBot)}${vik(xR, yK, xR, yBot)}${vik(xB, yK, xB, yBot)}
+    ${vik(xB, yLid, xB + W, yLid)}${vik(xB, yK, xB + W, yK)}${vik(xF, yBot, xF + W, yBot)}${vik(xF, yTuck2, xF + W, yTuck2)}
+    ${vik(xL, yK, xL + D, yK)}${vik(xR, yK, xR + D, yK)}${vik(xL, yBot, xL + D, yBot)}${vik(xR, yBot, xR + D, yBot)}
+  </svg>`
+}
+
+// ── Editorns krom ────────────────────────────────────────────────────────────────────────────────
+const FLIKAR = [['wall', 'Kortvägg', 'Card wall'], ['template', 'Mall', 'Template'], ['table', 'Tabell', 'Table'], ['theme', 'Speltema', 'Theme'], ['media', 'Media', 'Media'], ['rules', 'Regler', 'Rules'], ['tables', 'Bord', 'Tables']]
+function huvud(vald, nyFlik) {
+  const m = matt()
+  const flikar = [...FLIKAR]
+  if (nyFlik) flikar.splice(2, 0, ['box', 'Låda', 'Box'])
+  return `<div class="ed-huvud"><span class="hem">‹ ${L('Mina spel', 'My games')}</span><strong>Skogens råd</strong><span class="rev">v7</span><span class="sparat">${L('Sparat', 'Saved')}</span><span class="spacer"></span>
+    <div class="ed-flikar" role="tablist">${flikar.map(([k, sv, eng]) => `<button role="tab" aria-selected="${k === vald}" ${k === 'box' ? 'data-ny' : ''}>${L(sv, eng)}</button>`).join('')}</div>
+    <span class="spacer"></span><button class="ed-knapp kantad" ${m.over ? 'data-varnar' : ''}>${L('Fysisk kontroll', 'Physical check')} (${m.over ? 1 : 0})</button><span class="who">N</span></div>`
+}
+const lasKnapp = (k, tryckt) => `<button class="las-knapp" data-las="${k}" aria-pressed="${tryckt}" aria-label="${tryckt ? L('Följ leken igen', 'Follow the deck again') : L('Lås måttet', 'Lock the size')}" title="${tryckt ? L('Låst. Klicka för att följa leken igen', 'Locked. Click to follow the deck again') : L('Följer leken. Klicka för att låsa', 'Follows the deck. Click to lock')}">${g(tryckt ? 'lasT' : 'lasO')}</button>`
+
+// A: tre rader med var sitt lås, och formeln som ger dem.
+function mattA(m, interaktiv = true) {
+  const { d, r } = m
+  const rad = (k, namn, varde, kalla) => {
+    const last = st.las[k]
+    return `<div class="mrad"><span>${namn}</span><div>${last ? `<b>${tal(varde)} mm</b><small style="color:#e8c06a">${L('låst', 'locked')}${d[k] < r[k] ? ` · ${L('leken behöver', 'the deck needs')} ${tal(r[k])}` : ''}</small>` : `<b>${tal(varde)} mm</b><small>${kalla}</small>`}</div>${interaktiv ? lasKnapp(k, last) : ''}</div>`
+  }
+  return `<div class="matt-tab">
+    ${rad('W', L('Bredd', 'Width'), d.W, L(`kortet ${KORT.w} + 2 × ${LUFT} luft`, `card ${KORT.w} + 2 × ${LUFT} clearance`))}
+    ${rad('H', L('Höjd', 'Height'), d.H, L(`kortet ${KORT.h} + 2 × ${LUFT} luft`, `card ${KORT.h} + 2 × ${LUFT} clearance`))}
+    ${rad('D', L('Djup', 'Depth'), d.D, L(`${n} kort × ${tal(KORT.t)} + ${DJUPLUFT} luft`, `${n} cards × ${tal(KORT.t)} + ${DJUPLUFT} clearance`))}
+  </div>
+  <p class="formel">${n} × ${tal(KORT.t)} = <em>${tal(m.lek)} mm</em> ${L('lek', 'deck')} · ${L('ryms', 'fits')} ${m.over ? `<s>${m.rymmer}</s>` : `<em>${m.rymmer}</em>`} ${L('kort', 'cards')}</p>
+  ${m.over ? `<div class="varnar" role="status"><span><b>${L(`${m.forMycket} kort får inte plats.`, `${m.forMycket} cards do not fit.`)}</b> ${L(`Leken är ${tal(m.lek)} mm, och det låsta djupet rymmer ${tal(d.D - DJUPLUFT)}.`, `The deck is ${tal(m.lek)} mm, and the locked depth holds ${tal(d.D - DJUPLUFT)}.`)}</span>${interaktiv ? `<button data-do="folj">${L('Följ leken igen', 'Follow the deck again')}</button>` : ''}</div>` : `<p class="hint">${L('Måtten följer leken. Lås ett mått när lådan ska hålla det, till exempel för en färdig insats.', 'The sizes follow the deck. Lock one when the box has to keep it, say for a finished insert.')}</p>`}`
+}
+
+// B: måtten står på lådan; leken går att se inuti.
+function etiketterB(m) {
+  const { d, r } = m
+  const e = (k) => `<button data-las="${k}" aria-pressed="${st.las[k]}" ${k === 'D' && m.over ? 'data-over' : ''} title="${st.las[k] ? L('Låst', 'Locked') : L('Följer leken', 'Follows the deck')}">${tal(d[k])} mm ${g(st.las[k] ? 'lasT' : 'lasO')}</button>`
+  return { W: e('W'), H: e('H'), D: e('D') }
+}
+function fyllB(m) {
+  const pct = Math.min(100, (m.lek / (m.d.D - DJUPLUFT)) * 100)
+  return `<div class="fyllning"><span>${L('Leken fyller', 'The deck fills')} ${tal(m.lek)} ${L('av', 'of')} ${tal(m.d.D - DJUPLUFT)} mm${m.over ? ` · <b style="color:#ffb4b4">${L(`${m.forMycket} kort för mycket`, `${m.forMycket} cards too many`)}</b>` : ''}</span><div><i ${m.over ? 'data-over' : ''} style="width:${pct}%"></i></div></div>`
+}
+
+// C: ett val som kortets format: «Följer leken» eller «Fast mått».
+function mattC(m, interaktiv = true) {
+  const { d, r } = m
+  return `<label>${L('Storlek', 'Size')}<select data-do="storlek" ${interaktiv ? '' : 'disabled'}><option value="folj" ${st.fast ? '' : 'selected'}>${L('Följer leken', 'Follows the deck')}</option><option value="fast" ${st.fast ? 'selected' : ''}>${L('Fast mått', 'Fixed size')}</option></select></label>
+    ${st.fast ? `<div class="m-rader"><label>${L('Bredd', 'Width')}<input value="${tal(d.W)}"></label><label>${L('Höjd', 'Height')}<input value="${tal(d.H)}"></label><label>${L('Djup', 'Depth')}<input value="${tal(d.D)}" ${m.over ? 'aria-invalid="true" style="border-color:#f0b64a;color:#ffd98a"' : ''}></label></div>`
+      : `<p class="hint" style="font-size:12px;color:#dce3f2"><b style="font-variant-numeric:tabular-nums">${tal(d.W)} × ${tal(d.H)} × ${tal(d.D)} mm</b></p><p class="hint">${L(`Kortet ${KORT.w} × ${KORT.h} mm och ${n} kort på ${tal(m.lek)} mm, med luft runt om.`, `The ${KORT.w} × ${KORT.h} mm card and ${n} cards at ${tal(m.lek)} mm, with clearance around.`)}</p>`}
+    ${m.over ? `<div class="varnar" role="status"><span><b>${L(`${m.forMycket} kort får inte plats.`, `${m.forMycket} cards do not fit.`)}</b> ${L(`Lådan rymmer ${m.rymmer} kort. Det står också i Fysisk kontroll.`, `The box holds ${m.rymmer} cards. Physical check says so too.`)}</span></div>` : ''}`
+}
+
+// ── Editorn, variant för variant ─────────────────────────────────────────────────────────────────
+function ytLista(d) {
+  return YTOR.map(([k]) => {
+    const [w, h] = ytMatt(k, d)
+    return `<div class="yta-rad" role="option" data-valj="${k}" aria-selected="${st.yta === k}"><span class="tum">${ytaSVG(k, d, 28 / Math.max(w, h))}</span><span>${ytNamn(k)}</span><small>${tal(w)} × ${tal(h)}</small></div>`
+  }).join('') + `<div class="yta-rad" data-tom><span class="tum">${g('form')}</span><span>${L('Flikar', 'Flaps')}</span><small>${L('trycks inte', 'not printed')}</small></div>`
+}
+function lagerLista() {
+  const lager = st.yta === 'fram' ? [['text', 'Titel', 'Skogens råd'], ['text', 'Undertitel', 'Ett kortspel för…'], ['text', 'Fakta', '2–4 · 30 min · 10+'], ['bild', 'Skogen', 'skog.svg'], ['form', 'Bakgrund', '']]
+    : st.yta === 'bak' ? [['text', 'Titel', 'Skogens råd'], ['text', 'Berättelse', 'Rådet samlas…'], ['bild', 'Tre kort', ''], ['text', 'Innehåll', '108 kort…'], ['form', 'Bakgrund', '']]
+      : [['text', 'Titel', 'Skogens råd'], ['form', 'Bakgrund', '']]
+  return lager.map(([ik, namn, kalla], i) => `<div class="m-rad" ${i === 0 ? 'aria-selected="true"' : ''}><span class="las">${g('lasO')}</span><span class="namn">${g(ik)}<span>${namn}</span><i>${kalla}</i></span><span class="grepp">⋮⋮</span></div>`).join('')
+}
+function textProps() {
+  return `<section class="m-sek"><h3>${L('Text', 'Text')} · ${L('Titel', 'Title')}</h3><div class="m-rader">
+    <label>${L('Typsnitt', 'Typeface')}<select><option>Georgia</option></select></label><label>${L('Storlek', 'Size')}<input value="28 pt"></label>
+    <label>X<input value="6 mm"></label><label>Y<input value="12 mm"></label></div></section>`
+}
+function verktyg() { return `<div class="m-verktyg"><button>${g('text')}<span>Text</span></button><button>${g('bild')}<span>${L('Bild', 'Image')}</span></button><button>${g('form')}<span>${L('Form', 'Shape')}</span></button></div>` }
+
+function editorA() {
+  const m = matt(), d = m.d, nm = natMatt(d)
+  const px = 1.95
+  const pa4 = nm.w + 2 * BLEED <= A4.w && nm.h + 2 * BLEED <= A4.h
+  return `${huvud('box', true)}
+  <div class="m-duk" style="height:calc(100% - 56px)">${verktyg()}
+    <div class="m-lager" style="grid-template-rows:auto auto minmax(0,1fr)"><div class="krona"><h2>${L('Lådans ytor', 'Box faces')}</h2></div>
+      <div role="listbox" aria-label="${L('Ytor', 'Faces')}">${ytLista(d)}</div>
+      <div class="m-lista"><p class="lagerrubrik">${L('Lager', 'Layers')} · ${ytNamn(st.yta)}</p>${lagerLista()}</div></div>
+    <div class="m-rum"><div class="m-sceneyta natet" style="display:grid;place-items:center">${nat(d, px, { vald: st.yta, a4: true })}
+      <div class="legend"><span><i></i>${L('skärs', 'cut')}</span><span><i class="vik"></i>${L('viks', 'fold')}</span><span><i class="lim"></i>${L('limflik', 'glue flap')}</span><span style="color:#9aa3b8">${L('ljusa flikar trycks inte', 'pale flaps are not printed')}</span></div>
+      <div class="duklapp" ${pa4 ? '' : 'data-over'}>${L('Nätet', 'Net')} ${tal(nm.w)} × ${tal(nm.h)} mm · ${pa4 ? L('ryms på A4 med utfall', 'fits A4 with bleed') : L('ryms inte på A4', 'does not fit A4')}</div></div>
+      <div class="m-zoom"><span>100 %</span><button aria-pressed="true">${L('Hela', 'Fit')}</button><input type="range"></div></div>
+    <div class="m-props"><section class="m-sek"><h3>${L('Lådans mått', 'Box size')}</h3>${mattA(m)}</section>${textProps()}</div>
+  </div>`
+}
+
+function editorB() {
+  const m = matt(), d = m.d
+  const s = Math.min(3.9, 330 / d.H)
+  const [fw, fh] = ytMatt(st.yta, d)
+  const ps = Math.min(300 / fw, 330 / fh)
+  return `${huvud('box', true)}
+  <div style="height:calc(100% - 56px);display:grid;grid-template-columns:minmax(0,1fr) 380px">
+    <div class="b-scen" data-drag><span class="tips">${g('varv')} ${L('Dra för att vrida lådan. Klicka på en sida för att rita den.', 'Drag to turn the box. Click a side to draw it.')}</span>
+      <div class="mitt">${st.genom ? lada3d(d, s, st.rx, st.ry, { vald: st.yta, genom: true, lek: m, etiketter: etiketterB(m) }) : produkt(d, s * .92, { rx: st.rx, ry: st.ry, antal: n, etiketter: etiketterB(m) })}</div>
+      <div style="display:grid;gap:10px;justify-items:center">
+        <div class="snabb">${YTOR.map(([k]) => `<button data-snap="${k}" aria-pressed="${st.yta === k}">${ytNamn(k)}</button>`).join('')}<button data-do="genom" aria-pressed="${st.genom}">${L('Genomskinlig: leken i lådan', 'See-through: the deck inside')}</button><button data-ga="visaupp">${L('Visa upp ›', 'Show off ›')}</button></div>
+        <div style="width:420px">${fyllB(m)}</div>
+      </div></div>
+    <div class="b-panel"><h2>${ytNamn(st.yta)} · ${tal(fw)} × ${tal(fh)} mm</h2>
+      <div class="platt"><div>${ytaSVG(st.yta, d, ps)}${st.yta === 'fram' ? `<span class="handtag" style="left:${8 * ps}px;top:${12 * ps}px;width:${(fw - 16) * ps}px;height:${22 * ps}px"><i style="left:0;top:0"></i><i style="left:100%;top:0"></i><i style="left:0;top:100%"></i><i style="left:100%;top:100%"></i></span>` : ''}</div></div>
+      <h2>${L('Lager', 'Layers')}</h2><div>${lagerLista()}</div>
+      <p class="hint" style="color:#9aa3b8;font-size:11px;margin:0">${L('Måtten står på lådan. Klicka på ett mått för att låsa det.', 'The sizes stand on the box. Click one to lock it.')}</p>
+    </div>
+  </div>`
+}
+
+function editorC() {
+  const m = matt(), d = m.d
+  const [fw, fh] = ytMatt(st.yta, d)
+  const ps = Math.min(330 / fw, 420 / fh, 6)
+  // Grannytorna skymtar runt den valda, så att man ser var den viks.
+  const granne = { fram: ['vanster', 'hoger', 'lock', 'botten'], bak: ['hoger', 'vanster', 'lock', 'botten'], vanster: ['bak', 'fram', 'lock', 'botten'], hoger: ['fram', 'bak', 'lock', 'botten'], lock: [null, null, 'bak', 'fram'], botten: [null, null, 'fram', 'bak'] }[st.yta]
+  const ghost = (k, stil) => k ? `<div style="position:absolute;opacity:.28;${stil}">${ytaSVG(k, d, ps)}</div>` : ''
+  const [gv, gh, go, gu] = granne
+  const gw = (k) => (k ? ytMatt(k, d)[0] * ps : 0), gH = (k) => (k ? ytMatt(k, d)[1] * ps : 0)
+  const mini = st.mini === 'nat' ? nat(d, .72, { vald: st.yta }) : lada3d(d, 1.05, -14, -32, { vald: st.yta })
+  return `${huvud('template', false)}
+  <div class="m-krona"><label>${L('Komponent', 'Component')}<select><option>${L('Kort', 'Card')}</option><option selected>${L('Låda', 'Box')}</option></select></label>
+    <div class="sidor">${YTOR.map(([k]) => `<button data-valj="${k}" aria-pressed="${st.yta === k}">${ytNamn(k)}</button>`).join('')}</div>
+    <span class="spacer"></span><span class="storlek-lapp" ${m.over ? 'data-over' : ''}>${st.fast ? L('Fast', 'Fixed') : L('Följer leken', 'Follows the deck')} · <b>${tal(d.W)} × ${tal(d.H)} × ${tal(d.D)} mm</b></span></div>
+  <div class="m-duk" style="height:calc(100% - 56px - 61px)">${verktyg()}
+    <div class="m-lager"><div class="krona"><h2>${L('Lager', 'Layers')}</h2><p>${ytNamn(st.yta)} · ${tal(fw)} × ${tal(fh)} mm</p></div><div class="m-lista">${lagerLista()}</div><div class="fot"><b>?</b>${L('Vad är ett lager?', 'What is a layer?')}</div></div>
+    <div class="m-rum"><div class="c-duk">
+      <div style="position:relative;width:${fw * ps}px;height:${fh * ps}px">
+        ${ghost(gv, `right:100%;top:0;margin-right:2px`)}${ghost(gh, `left:100%;top:0;margin-left:2px`)}
+        ${ghost(go, `bottom:100%;left:${(fw * ps - gw(go)) / 2}px;margin-bottom:2px;height:${gH(go)}px`)}${ghost(gu, `top:100%;left:${(fw * ps - gw(gu)) / 2}px;margin-top:2px`)}
+        ${ytaSVG(st.yta, d, ps, undefined, 'style="display:block;box-shadow:0 1px 3px rgb(0 0 0/40%)"')}
+        ${st.yta === 'fram' ? `<span class="handtag" style="left:${8 * ps}px;top:${12 * ps}px;width:${(fw - 16) * ps}px;height:${22 * ps}px"><i style="left:0;top:0"></i><i style="left:100%;top:0"></i><i style="left:0;top:100%"></i><i style="left:100%;top:100%"></i></span>` : ''}
+      </div>
+      <div class="c-mini"><div class="val"><button data-mini="nat" aria-pressed="${st.mini === 'nat'}">${L('Nät', 'Net')}</button><button data-mini="3d" aria-pressed="${st.mini === '3d'}">3D</button></div><div style="display:grid;place-items:center;min-height:150px;min-width:160px">${mini}</div><span>${L('Klicka på en yta för att rita den', 'Click a face to draw it')}</span></div>
+    </div><div class="m-zoom"><span>100 %</span><button aria-pressed="true">${L('Hela', 'Fit')}</button><input type="range"></div></div>
+    <div class="m-props"><section class="m-sek"><h3>${L('Lådan', 'The box')}</h3>${mattC(m)}</section>${textProps()}</div>
+  </div>`
+}
+
+// ── Måtten: tre lägen sida vid sida ──────────────────────────────────────────────────────────────
+function mattenLage(lage) {
+  const spara = { st: JSON.parse(JSON.stringify(st)), n }
+  n = lage.n
+  st.lasade = rakna(108)
+  st.las = { W: false, H: false, D: lage.last }
+  st.fast = lage.last
+  st.genom = true
+  const m = matt()
+  let kropp = ''
+  if (v === 'A') kropp = `<div class="m-props" style="padding:0;border:0;overflow:visible"><section class="m-sek" style="margin:0"><h3>${L('Lådans mått', 'Box size')}</h3>${mattA(m, false)}</section></div>`
+  if (v === 'B') kropp = `<div style="display:grid;place-items:center;padding:36px 0 50px;background:radial-gradient(70% 70% at 50% 45%, #2a2f3b, #1b1d23 75%);border-radius:8px">${lada3d(m.d, 1.9, -14, -40, { genom: true, lek: m, etiketter: etiketterB(m) })}</div>${fyllB(m)}`
+  if (v === 'C') kropp = `<div class="m-krona" style="height:auto;padding:0;border:0"><span class="storlek-lapp" ${m.over ? 'data-over' : ''}>${st.fast ? L('Fast', 'Fixed') : L('Följer leken', 'Follows the deck')} · <b>${tal(m.d.W)} × ${tal(m.d.H)} × ${tal(m.d.D)} mm</b></span></div><div class="m-props" style="padding:0;border:0;overflow:visible"><section class="m-sek" style="margin:0"><h3>${L('Lådan', 'The box')}</h3>${mattC(m, false)}</section></div>`
+  const fk = `<div class="fk"><h4>${L('Fysisk kontroll', 'Physical check')}</h4>${m.over ? `<p><b>${L('Lådan', 'Box')}:</b> ${L(`${m.forMycket} kort av ${n} får inte plats. Leken är ${tal(m.lek)} mm, lådan rymmer ${tal(m.d.D - DJUPLUFT)}.`, `${m.forMycket} of ${n} cards do not fit. The deck is ${tal(m.lek)} mm, the box holds ${tal(m.d.D - DJUPLUFT)}.`)} <u>${L('Till lådan ›', 'To the box ›')}</u></p>` : `<p class="ok">${L('Inga anmärkningar på lådan.', 'Nothing to note on the box.')}</p>`}</div>`
+  const html = `<div class="lage"><p><b>${lage.rubrik}</b></p><div class="kropp byd-editor">${kropp}</div>${fk}</div>`
+  st = spara.st; n = spara.n
+  return html
+}
+function matten() {
+  return [
+    { n: 108, last: false, rubrik: L('1 · 108 kort, måttet följer leken', '1 · 108 cards, the size follows the deck') },
+    { n: 120, last: false, rubrik: L('2 · tolv kort till: lådan växer med', '2 · twelve more cards: the box grows') },
+    { n: 120, last: true, rubrik: L('3 · djupet låst på 34,5 mm, och tolv kort till', '3 · depth locked at 34.5 mm, and twelve more') },
+  ].map(mattenLage).join('')
+}
+
+// ── Omslaget: Mina spel ──────────────────────────────────────────────────────────────────────────
+const ANDRA = [['Polarnatt', '#2c5d8f', 'Isbjörnen'], ["Sal's Saloon", '#8f2c3a', 'Sheriffen'], ['Sjörövarnas skatt', '#8f6a2c', 'Kaptenen'], ['Molnriket', '#5b4a8f', 'Vindens barn']]
+function heroBild() {
+  const d = rakna(108)
+  if (v === 'A') return designad ? `<div class="bild">${ytaSVG('fram', d, 2.75, undefined, 'class="platt-omslag"')}</div>` : `<div class="bild">${genereratSVG(d, 2.75, 'Skogens råd').replace('<svg', '<svg class="platt-omslag"')}</div>`
+  if (v === 'B') return `<div class="bild">${produkt(d, 1.55, { rx: -10, ry: -26, auto: true, drag: true, tom: !designad })}</div>`
+  return designad ? `<div class="bild"><div class="ladmedkort"><div class="lada">${lada3d(d, 2.45, -6, -24)}</div>${kortSVG(160, undefined, undefined, 'class="kortet"')}</div></div>` : `<div class="bild">${solfjader()}</div>`
+}
+const solfjader = () => `<div class="solf">${kortSVG(230, '#3c6e8f', 'Uggla')}${kortSVG(230, '#8f6a2c', 'Rävens list')}${kortSVG(230)}</div>`
+function radTum([namn, farg, kort]) {
+  if (v === 'A') return genereratSVG(rakna(77), 1, namn).replace('<svg', '<svg style="height:92px;width:auto"')
+  return kortSVG(92, farg, kort)
+}
+function minaSpel() {
+  const notis = {
+    A: designad ? L('Omslaget står överallt där spelet visas: heron, raderna, länkens bild, TV:n och landningssidan.', 'The cover stands wherever the game shows: the hero, the rows, the link picture, the TV and the landing page.') : L('Utan ritad låda får spelet ett omslag av namnet och första kortet, också i raderna.', 'Without a drawn box the game gets a cover from its name and first card, in the rows too.'),
+    B: designad ? L('Heron är produktbilden: lådan och leken i ljus, som vrider sig lugnt och går att vrida. Raderna har kvar första kortet (#231).', 'The hero is the product shot: box and deck in light, turning slowly and turnable. The rows keep the first card (#231).') : L('Utan ritad låda står leken bredvid en blank kartong med spelets namn, så att föremålet finns från första dagen.', 'Without a drawn box the deck stands by a blank carton with the game’s name, so the object is there from day one.'),
+    C: designad ? L('Lådan står bakom första kortet, så att spelet känns igen från raden. Raderna är orörda.', 'The box stands behind the first card, so the game is known from its row. The rows are untouched.') : L('Utan ritad låda är heron som i dag, med solfjädern.', 'Without a drawn box the hero is as today, with the fan.'),
+  }[v]
+  return `<div class="ms"><div class="topp"><b>${g('lada')} Deckster</b><div class="hoger"><a class="knapp">${L('Importera', 'Import')}</a><a class="knapp prim">＋ ${L('Nytt spel', 'New game')}</a><span class="who">N</span></div></div>
+    <div class="bank"><div>
+      <h1>${L('Mina spel', 'My games')}</h1>
+      <section class="hero">${heroBild()}<div>
+        <span class="over">${L('Fortsätt där du slutade', 'Pick up where you left off')}</span><h2>Skogens råd</h2>
+        <span style="color:#9aa3b8">${L('Version 7 sparad i dag 14:02 · 2–4 spelare', 'Version 7 saved today 14:02 · 2–4 players')}</span>
+        <div class="siffror"><div><b>108</b><span>${L('kort', 'cards')}</span></div><div><b>6</b><span>${L('bord spelade', 'tables played')}</span></div><div><b>11</b><span>${L('enkätsvar', 'survey answers')}</span></div><div><b style="color:#ffd98a">3</b><span>${L('nya flaggor', 'new flags')}</span></div></div>
+        <div class="knappar"><a class="knapp prim">${g('pen')} ${L('Öppna editorn', 'Open the editor')}</a><a class="knapp">${g('spela')} ${L('Starta bord', 'Start a table')}</a></div>
+      </div></section>
+      <section class="alla"><h3>${L('Alla spel', 'All games')}</h3><div class="rader">${ANDRA.map((a) => `<div class="rad"><span class="tum">${radTum(a)}</span><span><strong>${a[0]}</strong><span class="muted">v3 · 77 ${L('kort', 'cards')} · 4 ${L('spelare', 'players')}</span><br><span class="muted">${L('spelat för 4 dagar sedan', 'played 4 days ago')}</span></span><button class="mer">⋯</button></div>`).join('')}</div></section>
+    </div>
+    <aside class="rail"><h3>${L('Pågår nu', 'Live now')} · 1</h3><div class="lev"><b>Polarnatt</b><span class="kod">R8RH</span><a class="knapp prim">${L('Öppna bordet', 'Open the table')}</a></div><p class="notis">${notis}</p></aside>
+    </div></div>`
+}
+
+// ── Omslaget: den delade länken ──────────────────────────────────────────────────────────────────
+const deckster = () => `<div class="og-deckster"><svg viewBox="0 0 32 32" width="110" height="110" aria-hidden="true"><rect x="5" y="8" width="13" height="18" rx="2" transform="rotate(-14 11 17)" fill="#e0a73a" stroke="#171a23" stroke-width="1.5"/><rect x="10" y="6" width="13" height="18" rx="2" fill="#3f8f5f" stroke="#171a23" stroke-width="1.5"/><rect x="15" y="8" width="13" height="18" rx="2" transform="rotate(14 21 17)" fill="#efe8d8" stroke="#171a23" stroke-width="1.5"/></svg><span>Deckster</span></div>`
+const ogSpel = (rad2, kod) => `<div class="og-spel"><div style="display:grid;place-items:center">${designad ? lada3d(rakna(108), 1.75, -8, -28) : genereratSVG(rakna(108), 1.75, 'Skogens råd')}</div><div><b>Skogens råd</b><span>${rad2}</span>${kod ? `<br><span class="kod">${kod}</span>` : ''}</div></div>`
+function lank() {
+  const ogProdukt = (rad2, kod) => `<div class="og-spel" style="grid-template-columns:200px minmax(0,1fr);background:radial-gradient(60% 90% at 28% 50%, #3a3f4c, #15171c)"><div style="display:grid;place-items:center;margin-left:-20px">${produkt(rakna(108), 1.25, { rx: -10, ry: -30, tom: !designad })}</div><div><b style="color:#f3e7c9">Skogens råd</b><span style="color:#c3cbdd">${rad2}</span>${kod ? `<br><span class="kod">${kod}</span>` : ''}</div></div>`
+  const rumBild = v === 'B' ? ogProdukt(L('Ett kortspel för 2–4 spelare · gå med vid bordet', 'A card game for 2–4 players · join the table'), 'K7XP') : (v === 'C' && !designad) ? deckster() : ogSpel(L('Ett kortspel för 2–4 spelare · gå med vid bordet', 'A card game for 2–4 players · join the table'), 'K7XP')
+  const bjudBild = v === 'A' ? ogSpel(L('Kim bjuder in dig att redigera', 'Kim invites you to edit'), '') : v === 'B' ? ogProdukt(L('Kim bjuder in dig att redigera', 'Kim invites you to edit'), '') : deckster()
+  const kort = (bild, titel, text) => `<div class="forhand"><div class="ogbild">${bild}</div><div class="ogtext"><b>${titel}</b><span>${text}</span><span>deckster.se</span></div></div>`
+  const not = {
+    A: L('Båda länkarna bär spelets omslag. Bilden ritas av renderaren per spel och version, och hämtas utan inloggning av den som förhandsvisar länken.', 'Both links carry the game’s cover. The picture is drawn by the renderer per game and version, and fetched without login by whatever previews the link.'),
+    B: L('Båda länkarna bär produktbilden som stillbild: samma scen, fotograferad av renderarens Chromium i 1200 × 630 och sparad per version, eftersom en förhandsvisare bara hämtar en bild. Den hämtas utan inloggning.', 'Both links carry the product shot as a still: the same scene, photographed by the renderer’s Chromium at 1200 × 630 and kept per version, since a previewer only fetches a picture. It is fetched without login.'),
+    C: L('Bara rumskodens länk bär omslaget: den går till spelare som ska bestämma sig för att sätta sig. Inbjudan att redigera går till någon som redan vet vad spelet är.', 'Only the room-code link carries the cover: it goes to players deciding whether to sit down. An edit invitation goes to someone who already knows the game.'),
+  }[v]
+  return `<div class="chatt">
+    <section><h3>${L('Rumskoden, skickad i en chatt', 'The room code, sent in a chat')}</h3><div class="bubbla min">${L('Spelar vi i kväll? Sätt dig här', 'Playing tonight? Sit down here')}</div><div class="bubbla min" style="word-break:break-all">https://deckster.se/join/K7XP</div>
+      ${kort(rumBild, L('Skogens råd · bord K7XP', 'Skogens råd · table K7XP'), L('Gå med vid bordet med telefonen.', 'Join the table with your phone.'))}<div class="bubbla">${L('Jag kommer! 🌲', 'On my way! 🌲')}</div></section>
+    <section><h3>${L('Inbjudan att redigera', 'An invitation to edit')}</h3><div class="bubbla min" style="word-break:break-all">https://deckster.se/invite/9f3c…</div>
+      ${kort(bjudBild, L('Kim bjuder in dig till Skogens råd', 'Kim invites you to Skogens råd'), L('Logga in för att öppna spelet du bjudits in till.', 'Log in to open the game you were invited to.'))}
+      <p style="margin:12px 0 0;padding:10px 12px;border-radius:10px;background:#fff6e0;border:1px solid #e5d2a0;color:#5a4a20;font-size:13px;line-height:1.45">${not}</p></section></div>`
+}
+
+// ── Omslaget: TV:n före start ────────────────────────────────────────────────────────────────────
+function qr(px, celler = 25) {
+  let h = ''
+  let x = 1406
+  for (let i = 0; i < celler * celler; i++) { x = (x * 1103515245 + 12345) & 0x7fffffff; const r = Math.floor(i / celler), c = i % celler; const hornet = (r < 7 && c < 7) || (r < 7 && c >= celler - 7) || (r >= celler - 7 && c < 7); const svart = hornet ? (r % 6 === 0 || c % 6 === 0 || (r % 6 >= 2 && r % 6 <= 4 && c % 6 >= 2 && c % 6 <= 4) || r === celler - 1 || c === celler - 1) : (x >> 8) % 2 === 0; h += `<i style="background:${svart ? '#000' : '#fff'}"></i>` }
+  return `<div class="qr" style="grid-template-columns:repeat(${celler},${px / celler}px);grid-auto-rows:${px / celler}px">${h}</div>`
+}
+function tv() {
+  const d = rakna(108)
+  const insp = v === 'B'
+    ? `<div class="insp" style="min-height:0;padding:10px 0 18px;background:radial-gradient(60% 60% at 50% 45%, #2e333f, #151821 75%)">${produkt(d, 1.95, { rx: -10, ry: -26, auto: true, tom: !designad })}<span style="color:#c3cbdd">Skogens råd · 108 ${L('kort', 'cards')}</span></div>`
+    : v === 'C' && designad
+    ? `<div class="insp" style="min-height:0;padding:22px">${lada3d(d, 3.9, -6, -22)}<span style="margin-top:18px;color:#c3cbdd">Skogens råd · ${L('2–4 spelare', '2–4 players')}</span></div>`
+    : `<div class="insp">${L('Peka på ett kort så syns det här.', 'Point at a card and it shows here.')}</div>`
+  const ladaPaFilten = ''
+  const titel = v === 'A' ? `<div class="titelskarm"><button class="stang" aria-label="${L('Göm titelskärmen', 'Hide the title screen')}">×</button>${designad ? lada3d(d, 7.6, -6, -24) : genereratSVG(d, 7.6, 'Skogens råd')}<div><h2>Skogens råd</h2><p>${L('Ett kortspel för 2–4 spelare · version 7', 'A card game for 2–4 players · version 7')}</p><div class="rum">${qr(260)}<div><span style="color:#9aa3b8;font-size:26px">${L('Sätt dig med telefonen', 'Sit down with your phone')}</span><b>K7XP</b><span style="color:#9aa3b8;font-size:24px">${L('2 av 4 platser tagna', '2 of 4 seats taken')}</span></div></div></div></div>` : ''
+  return `<div class="tv" style="position:relative"><header><h1>Skogens råd</h1><span class="rev">rev-7</span><div class="kod">${L('Rum', 'Room')}<b>K7XP</b></div>${qr(64)}</header>
+    <div class="kropp"><div class="filt">
+      <span class="hog-namn" style="left:calc(28% - 10px);top:calc(50% - 128px)">${L('DRAGHÖG', 'DRAW')}</span><span class="hog" style="left:calc(28% - 63px);top:calc(50% - 88px)"></span>
+      <div class="start" style="left:calc(52% - 110px);top:calc(50% - 64px)"><button>${g('spela')} ${L('Starta spelet', 'Start the game')}</button><small>${L('Ger 5 kort var', 'Deals 5 cards each')}</small></div>
+      ${ladaPaFilten}
+      <span class="pill" style="background:#e05d4f;left:calc(50% - 55px);bottom:-36px"><b>A</b>Ada</span><span class="pill" style="background:#3b82d6;left:calc(50% - 55px);top:-36px"><b>B</b>Bo</span>
+      <span class="pill ledig" style="left:-40px;top:calc(50% - 28px)"><b>C</b>${L('ledig', 'free')}</span><span class="pill ledig" style="right:-40px;top:calc(50% - 28px)"><b>D</b>${L('ledig', 'free')}</span>
+    </div>
+    <aside class="spalt"><h2>${L('INSPEKTION', 'INSPECT')}</h2>${insp}<h2>${L('PLATSER', 'SEATS')}</h2><div class="platser"><div><i style="background:#e05d4f">A</i>Ada</div><div><i style="background:#3b82d6">B</i>Bo</div><div><i class="ledig">C</i>${L('ledig', 'free')}</div><div><i class="ledig">D</i>${L('ledig', 'free')}</div></div></aside></div>${titel}</div>`
+}
+
+// ── Omslaget: landningssidan ─────────────────────────────────────────────────────────────────────
+function landning() {
+  const d = rakna(77)
+  const lada = v === 'A' ? `<div class="lada-pa-bordet" style="filter:drop-shadow(14px 18px 12px rgb(0 0 0 / 50%))">${lada3d(d, 2.2, -10, -30, { titel: 'Skogens herrar' })}</div>` : ''
+  return `<div class="land" style="position:relative">${v === 'A' ? '' : `<div class="oforandrad">${L('Oförändrad i den här varianten (L36, G1): lådan är steg 2:s löfte, och trycket är inte här än.', 'Unchanged in this variant (L36, G1): the box is step 2’s promise, and print is not here yet.')}</div>`}
+    <header><b>${g('lada')} Deckster</b><a>${L('Mina spel', 'My games')}</a></header>
+    <div class="hjalte"><div><h1>${L('Bygg ditt kortspel. Spela det i kväll.', 'Build your card game. Play it tonight.')}</h1><p>${L('Skriv korten, rita ett av dem och få alla. Duka bordet och spela med telefonerna som händer.', 'Write the cards, draw one and get them all. Set the table and play with phones as hands.')}</p><div class="dorr"><a class="p">${L('Börja bygga', 'Start building')}</a><a class="s">${L('Till editorn', 'To the editor')}</a></div></div>
+      <div class="bordet"><div class="duk">${kortSVG(120, '#8f2c3a', 'Herren', 'style="left:42%;top:30%;transform:rotate(-4deg)"')}${kortSVG(120, '#2c5d8f', 'Vakten', 'style="left:55%;top:32%;transform:rotate(5deg)"')}<div style="position:absolute;left:14%;top:30%;width:86px;height:120px;border-radius:6px;background:repeating-linear-gradient(45deg,#183f2a 0 6px,#1f4d33 6px 12px);border:2px solid #f3e7c9;box-shadow:3px 3px 0 #0e2718,6px 6px 0 #0b2013"></div></div>${lada}</div></div>
+    <div class="stegrad"><div><b>1 · ${L('Skriv korten', 'Write the cards')}</b>${L('En rad per kort.', 'One row per card.')}</div><div><b>2 · ${L('Rita ett kort och få alla', 'Draw one card, get them all')}</b>${L('Mallen fylls av raderna.', 'The template fills from the rows.')}</div><div ${v === 'A' ? 'data-ny' : ''}><b>3 · ${L('Duka bordet', 'Set the table')}</b>${v === 'A' ? L('Lådan står bredvid leken, i lekens mått.', 'The box stands by the deck, in the deck’s size.') : L('Högar, händer och platser.', 'Piles, hands and seats.')}</div><div><b>4 · ${L('Spela och lär', 'Play and learn')}</b>${L('Flaggor och enkäter.', 'Flags and surveys.')}</div></div></div>`
+}
+
+// ── Visa upp (B): produktbilden som en egen vy ───────────────────────────────────────────────────
+function visaUpp() {
+  if (v !== 'B') return `<div class="studio" style="position:relative;place-items:center;display:grid"><div class="oforandrad">${L(`Variant ${v} har ingen egen vy för att visa upp lådan.`, `Variant ${v} has no view of its own for showing the box.`)}</div></div>`
+  const d = matt().d
+  return `<div class="studio"><header><b>‹ ${L('Tillbaka till lådan', 'Back to the box')}</b><div class="hoger"><div class="ljusval" role="group" aria-label="${L('Ljus', 'Light')}">${[['studio', 'Studio', 'Studio'], ['kvall', 'Kvällsljus', 'Evening']].map(([k, sv, eng]) => `<button data-ljus="${k}" aria-pressed="${ljusval === k}">${L(sv, eng)}</button>`).join('')}</div><button class="knapp">${L('Spara bilden', 'Save the picture')}</button><button class="knapp prim">${L('Dela länken', 'Share the link')}</button></div></header>
+    <div class="mitt">${produkt(d, 4.3, { rx: -12, ry: -28, auto: true, drag: true, antal: n })}</div>
+    <footer><h1>Skogens råd</h1><span>${n} ${L('kort', 'cards')} · ${L('låda', 'box')} ${tal(d.W)} × ${tal(d.H)} × ${tal(d.D)} mm · ${L('lek', 'deck')} ${tal(n * KORT.t)} mm</span><span>${L('Dra för att vrida', 'Drag to turn')}</span></footer></div>`
+}
+
+// ── Varianterna ──────────────────────────────────────────────────────────────────────────────────
+const Vf = () => ({
+  A: { namn: L('A — Nätet: lådan som papper', 'A — The net: the box as paper'),
+    not: L('<b>Editorn</b> får en ny flik, «Låda», där hela nätet ligger på ett A4: sex tryckta ytor, flikar, vik- och snittlinjer, i millimeter. Man klickar på en yta i nätet eller i listan och ritar den med samma lager och egenskaper som kortet. <b>Måtten</b> är tre rader med var sitt lås och formeln under. <b>Omslaget</b> står överallt: heron, raderna, länkarna, en titelskärm på TV:n och en låda på landningssidans bord. <span class="plus">+ designern ser exakt det som trycks, och locket står upp och ner som det gör på arket; nätet kan skrivas ut hemma för ett speltest</span> <span class="minus">− en åttonde flik och en andra duk att bygga; nätet är en tuckbox och följer inte partnerns stansform (steg 2); titelskärmen täcker högarna</span>',
+      '<b>The editor</b> gets a new tab, «Box», with the whole net on an A4: six printed faces, flaps, fold and cut lines, in millimetres. Click a face in the net or the list and draw it with the card’s own layers and properties. <b>The sizes</b> are three rows with a lock each and the formula below. <b>The cover</b> stands everywhere: hero, rows, links, a TV title screen and a box on the landing page’s table. <span class="plus">+ the designer sees exactly what prints, the lid upside down as on the sheet; the net can be printed at home for a playtest</span> <span class="minus">− an eighth tab and a second canvas to build; the net is a tuckbox and not the partner’s die (step 2); the title screen covers the piles</span>') },
+  B: { namn: '',
+    not: L('<b>Riktningen 2026-10-26:</b> spelet ska kännas som något man vill ha som fysisk kopia, i en lugn produktbild och aldrig som en lådöppning. <b>Editorn</b> får fliken «Låda» med produktbilden stor: lådan och leken bredvid i ljus, med lackens glans, kartongens slitna vikkanter, kortens randiga kant och en skugga på golvet, allt i lekens egna mått. Dra för att vrida, klicka på en sida för att rita den platt i panelen. <b>Måtten</b> står på lådans kanter med ett lås var, och «Genomskinlig» visar leken i lådan; för många kort sticker ut i rött. <b>Omslaget</b> är produktbilden i heron, i båda länkarnas bild (som stillbild), i TV:ns inspektionspanel före start, och i en egen vy, «Visa upp». <span class="plus">+ föremålet är målet: designern ser det hon ska få hem och vill visa det; varje yta återanvänder renderarens texturer</span> <span class="minus">− att rita i en sidopanel är trängre än i Mall; länkens stillbild är ett nytt jobb för renderaren per version</span>',
+      '<b>The direction of 2026-10-26:</b> the game should feel like something you want as a physical copy, in a calm product shot and never as a box opening. <b>The editor</b> gets a «Box» tab with the product shot large: box and deck side by side in light, with the lacquer’s gloss, the carton’s worn folds, the cards’ striped edge and a shadow on the floor, all in the deck’s own sizes. Drag to turn, click a side to draw it flat in the panel. <b>The sizes</b> stand on the box’s edges with a lock each, and «See-through» shows the deck inside; too many cards stick out in red. <b>The cover</b> is the product shot in the hero, in both links’ picture (as a still), in the TV’s inspect panel before start, and in a view of its own, «Show off». <span class="plus">+ the object is the point: the designer sees what she will get and wants to show it; every face reuses the renderer’s textures</span> <span class="minus">− drawing in a side panel is tighter than in Template; the link still is a new job for the renderer per version</span>') },
+  C: { namn: L('C — En yta i taget i Mall', 'C — One face at a time in Template'),
+    not: L('<b>Editorn</b> får ingen ny flik: lådan är en komponent i Malls väljare, bredvid Kort, och de sex ytorna är sidoknappar som Framsida och Baksida är för kortet (L7). Grannytorna skymtar runt duken, så att man ser var den viks, och ett litet nät eller en liten låda i hörnet väljer yta. <b>Måtten</b> är ett val, «Följer leken» eller «Fast mått», som kortets format. <b>Omslaget</b> står där det inte kostar något: heron (lådan bakom första kortet), TV:ns inspektionspanel som annars står tom före start, och rumskodens länk. <span class="plus">+ minst nytt: samma duk, lager, egenskaper och renderare; TV:ns filt förlorar ingenting</span> <span class="minus">− nätet och 3D syns bara i hörnet; ett lås för alla tre måtten, inte ett per mått</span>',
+      '<b>The editor</b> gets no new tab: the box is a component in Template’s picker, beside Card, and its six faces are side buttons as Front and Back are for the card (L7). The neighbouring faces show faintly round the canvas, so you see where it folds, and a small net or box in the corner picks a face. <b>The size</b> is one choice, «Follows the deck» or «Fixed size», like the card’s format. <b>The cover</b> stands where it costs nothing: the hero (the box behind the first card), the TV’s inspect panel that is otherwise empty before start, and the room-code link. <span class="plus">+ least new: the same canvas, layers, properties and renderer; the TV felt loses nothing</span> <span class="minus">− net and 3D only show in the corner; one lock for all three sizes, not one per size</span>') },
+})
+const YTA_FLIKAR = [['editor', 'Editorn', 'Editor'], ['matten', 'Måtten', 'Sizes'], ['visaupp', 'Visa upp', 'Show off'], ['minaspel', 'Mina spel', 'My games'], ['lank', 'Delad länk', 'Shared link'], ['tv', 'TV före start', 'TV before start'], ['landning', 'Landningssidan', 'Landing page']]
+
+// ── Ritningen ───────────────────────────────────────────────────────────────────────────────────
+const scen = document.getElementById('scen')
+function skarm(etikett, w, h, html, cls = 'byd-editor') {
+  const tillg = Math.max(320, scen.clientWidth - 32)
+  const hojd = Math.max(360, innerHeight - document.querySelector('.protorad').offsetHeight - 70)
+  const s = Math.min(1, tillg / w, hojd / h)
+  return `<div class="m-ram" style="width:${w * s}px;height:${h * s}px"><p class="etikett">${etikett} · ${w} × ${h}${s < 1 ? ` · ${L('skalad', 'scaled')} ${Math.round(s * 100)} %` : ''}</p><div class="m-skarm ${cls}" style="width:${w}px;height:${h}px;transform:scale(${s})">${html}</div></div>`
+}
+function render() {
+  const V = Vf()
+  document.getElementById('vaxlare').innerHTML = ['A', 'B', 'C'].map((k) => `<button aria-pressed="${k === v}" data-v="${k}">${k}</button>`).join('')
+  document.getElementById('ytor').innerHTML = YTA_FLIKAR.map(([k, sv, eng]) => `<button aria-pressed="${k === yta}" data-yta="${k}">${L(sv, eng)}</button>`).join('')
+  document.getElementById('lek').innerHTML = [[108, '108 kort', '108 cards'], [120, '120 kort', '120 cards']].map(([k, sv, eng]) => `<button aria-pressed="${k === n}" data-lek="${k}">${L(sv, eng)}</button>`).join('')
+  document.getElementById('design').innerHTML = [[true, 'ritad', 'drawn'], [false, 'inte ritad än', 'not drawn yet']].map(([k, sv, eng]) => `<button aria-pressed="${k === designad}" data-design="${k}">${L(sv, eng)}</button>`).join('')
+  document.getElementById('lang').innerHTML = [['sv', 'Svenska'], ['en', 'English']].map(([k, nn]) => `<button aria-pressed="${k === lang}" data-lang="${k}">${nn}</button>`).join('')
+  document.getElementById('lekgrupp').hidden = yta !== 'editor'
+  document.getElementById('designgrupp').hidden = !['minaspel', 'lank', 'tv'].includes(yta)
+  document.getElementById('lekgrupp').hidden = !['editor', 'visaupp'].includes(yta)
+  const vv = V[v]
+  document.getElementById('anteckning').innerHTML = `<b>${v === 'C' ? L('C — En yta i taget i Mall', 'C — One face at a time in Template') : v === 'B' ? L('B — Produktbilden: lådan och leken i ljus · rekommenderas', 'B — The product shot: box and deck in light · recommended') : vv.namn}.</b> ${vv.not}`
+  document.documentElement.lang = lang
+  const lbl = `<b>${L(YTA_FLIKAR.find((y) => y[0] === yta)[1], YTA_FLIKAR.find((y) => y[0] === yta)[2])}</b> · ${L('variant', 'variant')} ${v} · ${lang}`
+  let html = ''
+  if (yta === 'editor') html = skarm(`${lbl} · ${n} ${L('kort', 'cards')}`, 1280, 800, v === 'A' ? editorA() : v === 'B' ? editorB() : editorC())
+  if (yta === 'matten') html = matten()
+  if (yta === 'visaupp') html = skarm(lbl, 1280, 800, visaUpp(), '')
+  if (yta === 'minaspel') html = skarm(lbl, 1280, 800, minaSpel(), '')
+  if (yta === 'lank') html = skarm(`${lbl} · ${L('förhandsvisningen är 1200 × 630, ritad i 400 × 210', 'the preview is 1200 × 630, drawn at 400 × 210')}`, 1000, 640, lank(), '')
+  if (yta === 'tv') html = skarm(lbl, 1920, 1080, tv(), '')
+  if (yta === 'landning') html = skarm(lbl, 1280, 800, landning(), '')
+  scen.innerHTML = html
+  history.replaceState(null, '', `?v=${v}&yta=${yta}&lang=${lang}${n !== 108 ? `&lek=${n}` : ''}${designad ? '' : '&design=tom'}`)
+}
+
+// ── Händelserna ─────────────────────────────────────────────────────────────────────────────────
+document.querySelector('.protorad').addEventListener('click', (e) => {
+  const b = e.target.closest('button')
+  if (!b) return
+  if (b.dataset.v) { v = b.dataset.v; omstart() }
+  if (b.dataset.yta) yta = b.dataset.yta
+  if (b.dataset.lek) n = Number(b.dataset.lek)
+  if (b.dataset.design) designad = b.dataset.design === 'true'
+  if (b.dataset.lang) lang = b.dataset.lang
+  if (b.id === 'omstart') { omstart(); n = 108 }
+  render()
+})
+const lasa = (k) => { if (!Object.values(st.las).some(Boolean)) st.lasade = rakna(n); st.las[k] = !st.las[k]; if (!Object.values(st.las).some(Boolean)) st.lasade = null }
+scen.addEventListener('click', (e) => {
+  const t = e.target
+  const las = t.closest('[data-las]'); if (las) { lasa(las.dataset.las); render(); return }
+  const valj = t.closest('[data-valj]'); if (valj) { st.yta = valj.dataset.valj; render(); return }
+  const snap = t.closest('[data-snap]')
+  if (snap) { st.yta = snap.dataset.snap; Object.assign(st, { fram: { rx: -10, ry: -20 }, bak: { rx: -10, ry: 160 }, vanster: { rx: -10, ry: 70 }, hoger: { rx: -10, ry: -70 }, lock: { rx: -70, ry: -20 }, botten: { rx: 70, ry: -20 } }[st.yta]); render(); return }
+  const mini = t.closest('[data-mini]'); if (mini) { st.mini = mini.dataset.mini; render(); return }
+  const py = t.closest('.b-scen .p-yta:not(.lek-yta)')
+  if (py) { st.yta = { '0,0,1': 'fram', '0,0,-1': 'bak', '1,0,0': 'hoger', '-1,0,0': 'vanster', '0,-1,0': 'lock', '0,1,0': 'botten' }[py.dataset.n]; render(); return }
+  const ljusk = t.closest('[data-ljus]'); if (ljusk) { ljusval = ljusk.dataset.ljus; render(); return }
+  const ytan = t.closest('[data-yta]'); if (ytan && !t.closest('.protorad')) { st.yta = ytan.dataset.yta; render(); return }
+  const d = t.closest('[data-do]')?.dataset.do
+  const ga = t.closest('[data-ga]'); if (ga) { yta = ga.dataset.ga; render(); return }
+  if (d === 'genom') st.genom = !st.genom
+  if (d === 'folj') { st.las = { W: false, H: false, D: false }; st.lasade = null }
+  if (d) render()
+})
+scen.addEventListener('change', (e) => {
+  if (e.target.matches('[data-do="storlek"]')) { st.fast = e.target.value === 'fast'; st.lasade = st.fast ? rakna(n) : null; render() }
+})
+// B: dra för att vrida lådan.
+let drag = null
+scen.addEventListener('pointerdown', (e) => {
+  if (!e.target.closest('[data-drag]') || e.target.closest('button')) return
+  const el = e.target.closest('.b-scen')?.querySelector('.produkt') ?? e.target.closest('.produkt')
+  drag = { x: e.clientX, y: e.clientY, rx: st.rx, ry: st.ry, flytt: false, el, prx: Number(el?.dataset.rx ?? 0), pry: Number(el?.dataset.ry ?? 0) }
+  if (el) el.dataset.held = '1'
+})
+addEventListener('pointermove', (e) => {
+  if (!drag) return
+  const dx = e.clientX - drag.x, dy = e.clientY - drag.y
+  if (Math.abs(dx) + Math.abs(dy) > 4) drag.flytt = true
+  st.ry = drag.ry + dx * .5; st.rx = Math.max(-80, Math.min(80, drag.rx - dy * .4))
+  const k = scen.querySelector('.b-scen .b3-kropp'); if (k) k.style.transform = `rotateX(${st.rx}deg) rotateY(${st.ry}deg)`
+  if (drag.el) { drag.el.dataset.rx = drag.el === scen.querySelector('.b-scen .produkt') ? st.rx : Math.max(-60, Math.min(30, drag.prx - dy * .4)); drag.el.dataset.ry = drag.el === scen.querySelector('.b-scen .produkt') ? st.ry : drag.pry + dx * .5; delete drag.el.dataset.bas }
+})
+addEventListener('pointerup', (e) => { if (drag?.el) { const el = drag.el; setTimeout(() => { delete el.dataset.held; el.dataset.bas = el.dataset.ry }, 2500) } if (drag?.flytt) { e.stopPropagation(); scen.addEventListener('click', (c) => c.stopPropagation(), { capture: true, once: true }) } drag = null })
+addEventListener('keydown', (e) => {
+  if (e.target.closest('input, textarea, select, [contenteditable]')) return
+  const ks = ['A', 'B', 'C']
+  if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { v = ks[(ks.indexOf(v) + (e.key === 'ArrowRight' ? 1 : 2)) % 3]; omstart(); render() }
+})
+addEventListener('resize', () => render())
+render()
+requestAnimationFrame(snurra)
+</script>
+</body>
+</html>
