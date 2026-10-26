@@ -67,6 +67,36 @@ describe('the export window says what went wrong in words (#542)', () => {
     })
   }
 
+  // The last word says what LASMIG says (#1356): a game the print checks stop is exported without
+  // its card PDFs, and «Exporten är klar.» alone let the designer believe they were in the zip.
+  const ready = (summary: Record<string, number>) =>
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (_url: string, init?: RequestInit) => (init?.method === 'POST' ? reply(202, { total: 1, done: 1 }) : reply(200, new Blob(['PK']), { 'content-disposition': 'attachment; filename="Skogens herrar v2.zip"', 'x-byd-export': JSON.stringify(summary) }))),
+    )
+  it('says the print files were left out, and why, when the print checks stopped the version', async () => {
+    ready({ rev: 2, errors: 12, failed: 0 })
+    open()
+    await screen.findByRole('button', { name: 'Ladda ner' }, { timeout: 5000 })
+    const said = screen.getByRole('status').textContent ?? ''
+    expect(said).toMatch(/utan tryckfilerna/)
+    expect(said).toMatch(/tryckkontrollen/)
+    expect(said).toMatch(/version 2/)
+    expect(said).toMatch(/12 fynd/)
+  })
+  it('says how many print files could not be made', async () => {
+    ready({ rev: 2, errors: 0, failed: 3 })
+    open()
+    await screen.findByRole('button', { name: 'Ladda ner' }, { timeout: 5000 })
+    expect(screen.getByRole('status').textContent).toMatch(/3 tryckfiler kunde inte skapas/)
+  })
+  it('says only that it is ready when everything came along', async () => {
+    ready({ rev: 2, errors: 0, failed: 0 })
+    open()
+    await screen.findByRole('button', { name: 'Ladda ner' }, { timeout: 5000 })
+    expect(screen.getByRole('status').textContent).toBe('Exporten är klar.')
+  })
+
   it('says so when the server cannot be reached, and lets the export be asked for again', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => Promise.reject(new TypeError('Failed to fetch'))))
     open()

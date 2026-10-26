@@ -6,7 +6,9 @@ import { DocumentTitle } from '../src/status/DocumentTitle.js'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
 import { ProjectClient } from '../src/editor/ProjectClient.js'
-import type { VersionChange } from '@byd/server/doc'
+import type { DocDiff, VersionChange } from '@byd/server/doc'
+import { Summary } from '../src/editor/HistoryPanel.js'
+import { Language } from '../src/i18n/index.js'
 
 let run: Running
 beforeEach(async () => {
@@ -70,9 +72,9 @@ describe('the project\'s history in the editor (B4)', () => {
       const panel = await screen.findByRole('dialog', { name: 'Historik' })
 
       fireEvent.click(await within(panel).findByRole('button', { name: /Version 2/ }))
-      expect(await within(panel).findByText(/1 ändrade/)).toBeTruthy()
+      expect(await within(panel).findByText(/1 kort ändrat/)).toBeTruthy()
       fireEvent.click(await within(panel).findByRole('button', { name: /Version 3/ }))
-      expect(await within(panel).findByText(/1 nya kort/)).toBeTruthy()
+      expect(await within(panel).findByText(/1 nytt kort/)).toBeTruthy()
     } finally {
       spy.mockRestore()
     }
@@ -407,5 +409,40 @@ describe('the history says its failures in the reader’s language (#812)', () =
     fireEvent.click(within(panel).getByRole('button', { name: 'Återställ version 1' }))
     await waitFor(() => expect(within(panel).getByRole('alert').textContent).toBe('Version 1 kunde inte tas tillbaka. Försök igen.'))
     expect(panel.textContent).not.toMatch(/could not|500/)
+  })
+})
+
+// What a version changed, said as a sentence with its noun (#1375): Resultat's head read «Ändrat
+// sedan version 1: 1 ändrade.», and the history «1 nya kort».
+describe('the summary of a change says what it counts', () => {
+  const diff = (kinds: ('added' | 'removed' | 'changed')[]): DocDiff => ({
+    rows: kinds.map((kind, i) => (kind === 'changed' ? { kind, cardRef: `c${i}`, fields: [] } : { kind, cardRef: `c${i}` })),
+    reordered: false,
+    columns: false,
+    template: false,
+    setup: false,
+    icons: false,
+    rules: false,
+  })
+  const said = (d: DocDiff, lang: 'sv' | 'en') => {
+    const { container, unmount } = render(
+      <Language lang={lang}>
+        <Summary diff={d} />
+      </Language>,
+    )
+    const text = container.textContent
+    unmount()
+    return text
+  }
+  it('in Swedish, one and several', () => {
+    expect(said(diff(['changed']), 'sv')).toBe('1 kort ändrat.')
+    expect(said(diff(['changed', 'changed']), 'sv')).toBe('2 kort ändrade.')
+    expect(said(diff(['added', 'removed']), 'sv')).toBe('1 nytt kort · 1 kort borttaget.')
+    expect(said(diff(['added', 'added', 'removed', 'removed']), 'sv')).toBe('2 nya kort · 2 kort borttagna.')
+  })
+  it('in English, one and several', () => {
+    expect(said(diff(['changed']), 'en')).toBe('1 card changed.')
+    expect(said(diff(['changed', 'changed']), 'en')).toBe('2 cards changed.')
+    expect(said(diff(['added', 'removed']), 'en')).toBe('1 new card · 1 card removed.')
   })
 })

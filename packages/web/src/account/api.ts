@@ -230,7 +230,19 @@ export async function returnToTable(http: string, session: string): Promise<{ to
 // A whole game to keep (G5, #527, #529). Asking starts the print files; reading says how far they
 // have come until the zip is ready. The same question twice is the same question: nothing is held
 // between the two, so a window closed half-way and opened again goes on from where the renderer is.
-export type ExportState = { state: 'preparing'; total: number; done: number } | { state: 'ready'; zip: Blob; name: string } | { state: 'refused'; status: number }
+// What the zip left out (#1356), as the server says it beside the zip: the version, how many findings
+// of the print checks stopped its card PDFs, and how many print files could not be made.
+export type ExportPrint = { rev: number; errors: number; failed: number }
+export type ExportState = { state: 'preparing'; total: number; done: number } | { state: 'ready'; zip: Blob; name: string; print?: ExportPrint } | { state: 'refused'; status: number }
+const printOf = (header: string | null): ExportPrint | undefined => {
+  if (!header) return undefined
+  try {
+    const said = JSON.parse(header) as Partial<ExportPrint>
+    return typeof said.rev === 'number' && typeof said.errors === 'number' && typeof said.failed === 'number' ? { rev: said.rev, errors: said.errors, failed: said.failed } : undefined
+  } catch {
+    return undefined
+  }
+}
 export async function startExport(http: string, project: string): Promise<ExportState> {
   const res = await fetch(`${http}/projects/${encodeURIComponent(project)}/export`, withCredentials({ method: 'POST' }))
   if (res.status !== 202) return { state: 'refused', status: res.status }
@@ -242,7 +254,10 @@ export async function readExport(http: string, project: string): Promise<ExportS
   const res = await fetch(`${http}/projects/${encodeURIComponent(project)}/export?${q.toString()}`, withCredentials())
   // Saved under the name the server gives it (#542), which says the version the zip holds: the
   // list the window was opened from may be a version behind.
-  if (res.status === 200) return { state: 'ready', zip: await res.blob(), name: zipName(res.headers.get('content-disposition'), project) }
+  if (res.status === 200) {
+    const print = printOf(res.headers.get('x-byd-export'))
+    return { state: 'ready', zip: await res.blob(), name: zipName(res.headers.get('content-disposition'), project), ...(print ? { print } : {}) }
+  }
   if (res.status !== 202) return { state: 'refused', status: res.status }
   const body = (await res.json()) as { total: number; done: number }
   return { state: 'preparing', total: body.total, done: body.done }

@@ -170,6 +170,18 @@ describe('what a layer says it is (L15)', () => {
     expect(layerShown('body')).toBeNull()
   })
 
+  // The guide keeps the title under the key `title` and calls the layer «Titel» (#1375): the row
+  // said «Titel · title», the key after the very word the table heads the column with.
+  it('says the title column by the word the table heads it with, and not at all when that is the layer’s name', async () => {
+    const doc = projectDoc()
+    const front = doc.template.faces['front']!
+    front.base = front.base.map((el) => (el.id === 'title' ? { ...el, name: 'Titel', bind: { field: 'title' } } : el.id === 'body' ? { ...el, name: 'Rubrik', bind: { field: 'title' } } : el))
+    await openTheTemplate(doc)
+
+    expect(layerShown('title')).toBeNull()
+    expect(layerShown('body')).toBe('Titel')
+  })
+
   it('takes a new name on F2, keeps it in the project, and gives the id back when the name is emptied', async () => {
     await openTheTemplate()
     await userEvent.click(within(row('title')).getByRole('button', { name: /^title/ }))

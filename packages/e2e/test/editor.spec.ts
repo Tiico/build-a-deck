@@ -44,7 +44,7 @@ test.describe('from the editor to a table', () => {
     // A row for the table that now exists, carrying its id.
     const row = page.locator('.byd-table-row').first()
     await expect(row).toBeVisible()
-    const session = await row.getAttribute('data-table')
+    const session = await row.getAttribute('data-session')
     expect(session, 'the row names the table it is a row for').toBeTruthy()
 
     // A table has one way in, «Öppna bordet» (#1286), and a table around one screen opens at its

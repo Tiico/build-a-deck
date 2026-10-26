@@ -249,9 +249,15 @@ export function Summary({ diff, empty }: { diff: DocDiff; empty?: string }) {
   const t = useT()
   const n = (kind: RowChange['kind']) => diff.rows.filter((r) => r.kind === kind).length
   const parts: string[] = []
-  if (n('added')) parts.push(t('history.diff.added', { n: n('added') }))
-  if (n('removed')) parts.push(t('history.diff.removed', { n: n('removed') }))
-  if (n('changed')) parts.push(t('history.diff.changed', { n: n('changed') }))
+  // Each count with its noun and in its number (#1375): «1 ändrade.» stood alone in Resultat's head,
+  // and the history said «1 nya kort».
+  const count = (kind: RowChange['kind']) => {
+    const many = n(kind)
+    if (many) parts.push(t(`history.summary.${kind}.${many === 1 ? 'one' : 'other'}`, { n: many }))
+  }
+  count('added')
+  count('removed')
+  count('changed')
   if (diff.reordered) parts.push(t('history.diff.reordered'))
   if (diff.columns) parts.push(t('history.diff.columns'))
   if (diff.template) parts.push(t('history.diff.template'))

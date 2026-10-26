@@ -94,7 +94,7 @@ describe('the three groups in the table column (#176, C9)', () => {
 
     // What the designer came for stands in the open, and nothing else does.
     const open = within(await screen.findByRole('list', { name: 'Bord som spelas' }))
-    expect(open.getAllByRole('listitem').map((li) => li.getAttribute('data-table'))).toEqual([playing])
+    expect(open.getAllByRole('listitem').map((li) => li.getAttribute('data-session'))).toEqual([playing])
 
     // The two folds say what they are and how many are behind them — in words, not in a colour.
     const untouched = screen.getByRole('button', { name: 'Startade, aldrig spelade · 2' })
@@ -119,10 +119,10 @@ describe('the three groups in the table column (#176, C9)', () => {
 
     // The row that is on the screen is live, as it always was: the thumbnail is the table itself.
     await waitFor(() => expect(dialledFor(playing).length).toBeGreaterThan(0))
-    await waitFor(() => expect(document.querySelector(`[data-table="${playing}"] [data-zone="draw"]`)).not.toBeNull())
+    await waitFor(() => expect(document.querySelector(`[data-session="${playing}"] [data-zone="draw"]`)).not.toBeNull())
     // The four that are not on the screen are four sockets and four renderings nobody asked for.
     expect(dialledFor(sleeping)).toEqual([])
-    expect(document.querySelector(`[data-table="${sleeping}"]`)).toBeNull()
+    expect(document.querySelector(`[data-session="${sleeping}"]`)).toBeNull()
 
     await user.click(screen.getByRole('button', { name: 'Startade, aldrig spelade · 1' }))
     await waitFor(() => expect(dialledFor(sleeping).length).toBeGreaterThan(0))
@@ -257,7 +257,7 @@ describe('a table started or ended from the column (#480)', () => {
     })
     // The table is said by its room code, the name its row and the band give it (#706).
     expect(said.textContent).toBe(`Nytt bord startat: ${code}.`)
-    await waitFor(() => expect(document.querySelector(`[data-table="${id}"]`)).not.toBeNull())
+    await waitFor(() => expect(document.querySelector(`[data-session="${id}"]`)).not.toBeNull())
   })
 
   it('moves a table it ends to the ended group at once', async () => {
@@ -293,7 +293,7 @@ describe('a table started from the header (#704)', () => {
     await user.click(screen.getByRole('button', { name: 'Starta bord' }))
     await answerStart()
     const id = await onlyTable()
-    await waitFor(() => expect(document.querySelector(`[data-table="${id}"]`)).not.toBeNull())
+    await waitFor(() => expect(document.querySelector(`[data-session="${id}"]`)).not.toBeNull())
     expect(screen.getByRole('button', { name: 'Startade, aldrig spelade · 1' }).getAttribute('aria-expanded')).toBe('true')
     expect(screen.queryByText(/Inget bord ännu/)).toBeNull()
   })
@@ -308,7 +308,7 @@ describe('a table started from the header (#704)', () => {
     const id = await onlyTable()
     await screen.findByText(/Nytt bord startat på/)
     await user.click(screen.getByRole('tab', { name: 'Bord' }))
-    await waitFor(() => expect(document.querySelector(`[data-table="${id}"]`)).not.toBeNull())
+    await waitFor(() => expect(document.querySelector(`[data-session="${id}"]`)).not.toBeNull())
     expect(screen.getByRole('button', { name: 'Startade, aldrig spelade · 1' }).getAttribute('aria-expanded')).toBe('true')
   })
 })
@@ -342,11 +342,11 @@ describe('the untouched group while a table in it renders its cards (#939)', () 
     await openTables()
     const fold = await untouchedFold()
     await waitFor(() => expect(fold.getAttribute('aria-expanded')).toBe('true'))
-    await waitFor(() => expect(document.querySelector(`[data-table="${id}"] .byd-tables-render`)?.textContent).toBe('laddar kort 0/4'))
+    await waitFor(() => expect(document.querySelector(`[data-session="${id}"] .byd-tables-render`)?.textContent).toBe('laddar kort 0/4'))
 
     expect(await run.completeRenders()).toBe(4)
     await waitFor(() => expect(fold.getAttribute('aria-expanded')).toBe('false'))
-    expect(document.querySelector(`[data-table="${id}"]`)).toBeNull()
+    expect(document.querySelector(`[data-session="${id}"]`)).toBeNull()
   })
 
   it('stays folded for a table whose cards are already done', async () => {
@@ -366,16 +366,16 @@ describe('the untouched group while a table in it renders its cards (#939)', () 
     await openTables()
     const fold = await untouchedFold()
     // Folded by the designer while it renders, then opened by her: from then on it is hers.
-    await waitFor(() => expect(document.querySelector(`[data-table="${id}"] .byd-tables-render`)).not.toBeNull())
+    await waitFor(() => expect(document.querySelector(`[data-session="${id}"] .byd-tables-render`)).not.toBeNull())
     await user.click(fold)
     expect(fold.getAttribute('aria-expanded')).toBe('false')
     await user.click(fold)
     expect(fold.getAttribute('aria-expanded')).toBe('true')
 
     await run.completeRenders()
-    await waitFor(() => expect(document.querySelector(`[data-table="${id}"] .byd-tables-render`)).toBeNull())
+    await waitFor(() => expect(document.querySelector(`[data-session="${id}"] .byd-tables-render`)).toBeNull())
     expect(fold.getAttribute('aria-expanded')).toBe('true')
-    expect(document.querySelector(`[data-table="${id}"]`)).not.toBeNull()
+    expect(document.querySelector(`[data-session="${id}"]`)).not.toBeNull()
   })
 
   it('stays folded when the designer folds it while the cards render, also as the count moves on', async () => {
@@ -383,7 +383,7 @@ describe('the untouched group while a table in it renders its cards (#939)', () 
     const id = await startTable()
     await openTables()
     const fold = await untouchedFold()
-    await waitFor(() => expect(document.querySelector(`[data-table="${id}"] .byd-tables-render`)).not.toBeNull())
+    await waitFor(() => expect(document.querySelector(`[data-session="${id}"] .byd-tables-render`)).not.toBeNull())
     await user.click(fold)
     expect(fold.getAttribute('aria-expanded')).toBe('false')
 

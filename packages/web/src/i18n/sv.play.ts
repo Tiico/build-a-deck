@@ -315,6 +315,7 @@ export const svPlay = {
   'activity.session.end': 'Bordet avslutades',
   'activity.version.change': 'Spelet uppdaterades till {to}',
   'activity.undo.self': '{who} ångrade sitt senaste drag',
+  'activity.undo.mine': 'Du ångrade ditt senaste drag',
   'activity.rewind.propose': '{who} föreslog att spola tillbaka',
   'activity.rewind.confirm': '{who} godkände tillbakaspolningen',
   'activity.rewind.reject': '{who} avvisade tillbakaspolningen',

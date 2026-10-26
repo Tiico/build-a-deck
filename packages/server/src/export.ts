@@ -130,33 +130,65 @@ export function packExport(parts: { manifest: ProjectExport; readme: string; ass
 
 // What the zip holds, said to whoever opens it, in the language the export was asked for in (A4).
 // The file names in it are the format's and stay as they are in both.
+//
+// It names only what is in the zip (#1356): a game with no pictures has no `assets/`, a version
+// the print checks stop has no card PDFs, and a game without a rulebook has none. What was left
+// out is said on a line of its own, with why and where the manifest lists it.
 export function readmeOf(lang: 'sv' | 'en', m: ProjectExport): string {
   const when = m.exportedAt.slice(0, 10)
-  if (lang === 'en')
+  const en = lang === 'en'
+  const blocked = m.blocked?.length ?? 0
+  const cards = m.print.cards.length > 0
+  const rulebook = m.print.rulebook !== undefined
+  const lines: string[] = []
+  if (en) {
+    lines.push(
+      `- \`spel.json\` — the game. \`versions\` holds every saved version of the document, oldest first, each complete; \`current.rev\` is the latest. \`assets\` says which file is which picture or typeface, and \`print\` which PDF is which card's which face.`,
+      `- \`schema.json\` — the JSON Schema of \`spel.json\`.`,
+    )
+    if (m.assets.length > 0) lines.push(`- \`assets/\` — every picture and typeface the game uses. A file is named by the SHA-256 of its bytes, and the document refers to it as \`asset:<that hash>\`.`)
+    if (m.absent.length > 0) lines.push(`- ${m.absent.length} ${m.absent.length === 1 ? 'picture or typeface' : 'pictures or typefaces'} the game points at ${m.absent.length === 1 ? 'was' : 'were'} not on the server when it was exported; listed in \`absent\`.`)
+    if (blocked > 0) lines.push(`- ${blocked} ${blocked === 1 ? 'picture' : 'pictures'} the game points at ${blocked === 1 ? 'is' : 'are'} blocked after a report and not included; listed in \`blocked\`, and the cards that used ${blocked === 1 ? 'it' : 'them'} stand without.`)
+    if (cards || rulebook) lines.push(`- \`tryck/\` — ${cards ? `print-ready PDFs of version ${m.print.rev}, with bleed: one per face of each card${rulebook ? ', and the rulebook as a booklet' : ''}` : `the rulebook of version ${m.print.rev} as a booklet`}.`)
+    if (m.print.errors.length > 0) lines.push(`- The cards' print-ready PDFs are left out: the print checks stopped version ${m.print.rev} (${m.print.errors.length} ${m.print.errors.length === 1 ? 'finding' : 'findings'}, listed in \`print.errors\`).`)
+    if (m.print.failed.length > 0) lines.push(`- ${m.print.failed.length} print ${m.print.failed.length === 1 ? 'file' : 'files'} could not be made and ${m.print.failed.length === 1 ? 'is' : 'are'} left out; listed in \`print.failed\`.`)
     return `# ${m.project.name}, exported ${when}
 
 This is the whole of the game as it stood at version ${m.current.rev}, and every version before it.
 It needs nothing but this folder to be read.
 
-- \`spel.json\` — the game. \`versions\` holds every saved version of the document, oldest first, each complete; \`current.rev\` is the latest. \`assets\` says which file is which picture or typeface, and \`print\` which PDF is which card's which face.
-- \`schema.json\` — the JSON Schema of \`spel.json\`.
-- \`assets/\` — every picture and typeface the game uses. A file is named by the SHA-256 of its bytes, and the document refers to it as \`asset:<that hash>\`.${m.absent.length > 0 ? `\n  ${m.absent.length} the game points at were not on the server when it was exported; they are listed in \`absent\`.` : ''}${(m.blocked?.length ?? 0) > 0 ? `\n  ${m.blocked?.length} the game points at ${m.blocked?.length === 1 ? 'is' : 'are'} blocked after a report and not included; ${m.blocked?.length === 1 ? 'it is' : 'they are'} listed in \`blocked\`, and the cards that used ${m.blocked?.length === 1 ? 'it' : 'them'} stand without.` : ''}
-- \`tryck/\` — print-ready PDFs of version ${m.print.rev}, with bleed: one per face of each card, and the rulebook as a booklet.${m.print.errors.length > 0 ? `\n  They are left out: the print checks stopped this version (${m.print.errors.length} findings, listed in \`print.errors\`).` : ''}
+${lines.join('\n')}
 
 Format \`${m.format}\`, version ${m.formatVersion}.
 `
+  }
+  lines.push(
+    `- \`spel.json\` — spelet. \`versions\` håller varje sparad version av dokumentet, äldst först och var och en hel; \`current.rev\` är den senaste. \`assets\` säger vilken fil som är vilken bild eller vilket typsnitt, och \`print\` vilken PDF som är vilket korts vilken sida.`,
+    `- \`schema.json\` — JSON Schema för \`spel.json\`.`,
+  )
+  if (m.assets.length > 0) lines.push(`- \`assets/\` — varje bild och typsnitt spelet använder. En fil heter efter SHA-256 av sina byte, och dokumentet pekar på den som \`asset:<den hashen>\`.`)
+  if (m.absent.length > 0) lines.push(`- ${m.absent.length} ${m.absent.length === 1 ? 'bild eller typsnitt' : 'bilder eller typsnitt'} som spelet pekar på fanns inte på servern när det exporterades; de står i \`absent\`.`)
+  if (blocked > 0) lines.push(`- ${blocked} ${blocked === 1 ? 'bild' : 'bilder'} som spelet pekar på ${blocked === 1 ? 'är spärrad' : 'är spärrade'} efter en anmälan och följer inte med; de står i \`blocked\`, och korten som använde dem står kvar utan.`)
+  if (cards || rulebook) lines.push(`- \`tryck/\` — ${cards ? `tryckfärdiga PDF:er av version ${m.print.rev}, med utfall: en per sida av varje kort${rulebook ? ', och regelhäftet som häfte' : ''}` : `regelhäftet för version ${m.print.rev} som häfte`}.`)
+  if (m.print.errors.length > 0) lines.push(`- Kortens tryckfärdiga PDF:er är utelämnade: tryckkontrollen stoppade version ${m.print.rev} (${m.print.errors.length} fynd, listade i \`print.errors\`).`)
+  if (m.print.failed.length > 0) lines.push(`- ${m.print.failed.length} ${m.print.failed.length === 1 ? 'tryckfil' : 'tryckfiler'} kunde inte skapas och följer inte med; de står i \`print.failed\`.`)
   return `# ${m.project.name}, exporterat ${when}
 
 Det här är hela spelet som det stod i version ${m.current.rev}, och varje version före den.
 Det behöver ingenting utöver den här mappen för att läsas.
 
-- \`spel.json\` — spelet. \`versions\` håller varje sparad version av dokumentet, äldst först och var och en hel; \`current.rev\` är den senaste. \`assets\` säger vilken fil som är vilken bild eller vilket typsnitt, och \`print\` vilken PDF som är vilket korts vilken sida.
-- \`schema.json\` — JSON Schema för \`spel.json\`.
-- \`assets/\` — varje bild och typsnitt spelet använder. En fil heter efter SHA-256 av sina byte, och dokumentet pekar på den som \`asset:<den hashen>\`.${m.absent.length > 0 ? `\n  ${m.absent.length} som spelet pekar på fanns inte på servern när det exporterades; de står i \`absent\`.` : ''}${(m.blocked?.length ?? 0) > 0 ? `\n  ${m.blocked?.length} som spelet pekar på ${m.blocked?.length === 1 ? 'är spärrad' : 'är spärrade'} efter en anmälan och följer inte med; de står i \`blocked\`, och korten som använde dem står kvar utan.` : ''}
-- \`tryck/\` — tryckfärdiga PDF:er av version ${m.print.rev}, med utfall: en per sida av varje kort, och regelhäftet som häfte.${m.print.errors.length > 0 ? `\n  De är utelämnade: tryckkontrollen stoppade den här versionen (${m.print.errors.length} fynd, listade i \`print.errors\`).` : ''}
+${lines.join('\n')}
 
 Formatet \`${m.format}\`, version ${m.formatVersion}.
 `
+}
+
+// What the window that hands the zip over says about it (#1356), in a header beside the zip: the
+// version, how many findings stopped its card PDFs, and how many print files could not be made.
+// Read off the same manifest LASMIG is written from, so the two cannot say different things.
+export const EXPORT_SUMMARY_HEADER = 'x-byd-export'
+export function exportSummaryOf(m: ProjectExport): string {
+  return JSON.stringify({ rev: m.print.rev, errors: m.print.errors.length, failed: m.print.failed.length })
 }
 
 // Why an export could not be read (#528, #529): a code and what it is about, never a sentence. The
