@@ -55,4 +55,5 @@ Det är samma mätning som fällde L60:s variant B («Bordet kör (8) ▾» i hu
 - **F** är enklast att bygga och tar ingen yta, men huvudet rymmer det inte (mätt ovan), vägen in är två tryck bort och sparka tre.
 - **A** flyttar minst; **B** kostar 24 px; **C** ger 24 px tillbaka men behöver × i Bord-flikens rad.
 
-**Beslut:** väntar på beställaren.
+**Beslut (2026-10-26):** beställaren svarade «B» på frågan om riktning: **B · Biljetten** — bandet står kvar under huvudet, på två rader, med koden som biljett till vänster, bordets fakta och hur ni sitter bredvid, platserna som brickor med ansikte på egen rad och «Öppna bordet» till höger.
+Byggs i ett eget issue; DESIGN-BESLUT får en ny L-post när det är byggt.
