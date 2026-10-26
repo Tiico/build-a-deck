@@ -365,12 +365,15 @@ async function pinned({ html, deck }: Table, extra = ''): Promise<Record<Place, 
           const scroll = document.querySelector('.byd-data-scroll') as HTMLElement
           const far = scroll.scrollWidth - scroll.clientWidth
           if (where === 'veil') {
-            // Scroll until the first × that can reach the fade has its right edge 12 px in front
-            // of the pin. The pin is sticky, so its left edge does not move while this is decided.
+            // Scroll until the first heading name that can reach the fade has its right edge 12 px
+            // in front of the pin. The pin is sticky, so its left edge does not move while this is
+            // decided. It was the first ×, which left the head with #46; halfway along stood in
+            // for it since, and on the Linux runner's wider faces halfway along is not a place a
+            // name happens to stand (#1408). A locked heading never reaches the pin (L92).
             scroll.scrollLeft = 0
             const front = (scroll.querySelector('thead .byd-data-remove') as HTMLElement).getBoundingClientRect().left
-            const reach = [...scroll.querySelectorAll('thead .byd-data-dropfield')]
-              .map((drop) => Math.round(drop.getBoundingClientRect().right - (front - 12)))
+            const reach = [...scroll.querySelectorAll('thead th[data-col]:not([data-pinned]) > button')]
+              .map((name) => Math.round(name.getBoundingClientRect().right - (front - 12)))
               .find((delta) => delta > 0 && delta <= far)
             scroll.scrollLeft = reach ?? Math.round(far / 2)
           } else scroll.scrollLeft = where === 'rest' ? 0 : where === 'mid' ? Math.round(far / 2) : far

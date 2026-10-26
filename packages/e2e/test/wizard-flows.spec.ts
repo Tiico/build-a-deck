@@ -98,8 +98,9 @@ test('opens the editor s table with the columns in the order the guide listed th
   await page.getByRole('button', { name: /Skapa spelet/ }).click()
   await expect(page).toHaveURL(/\/editor\?/)
   await page.locator('#byd-editor-tab-table').click()
-  // The count stands on the rail beside the card's id, before them all (#695).
-  const listed = ['antal', 'title', 'Kostnad', 'Regeltext', 'Illustration']
+  // The title stands on the rail, first (#1408), and the count right after the card's id, before
+  // the rest (#695).
+  const listed = ['title', 'antal', 'Kostnad', 'Regeltext', 'Illustration']
   await expect(page.locator('table.byd-data th[data-col]').first()).toBeVisible()
   const columns = await page.locator('table.byd-data th[data-col]').evaluateAll((cells) => cells.map((cell) => cell.getAttribute('data-col')))
   expect(columns.filter((col) => listed.includes(col!))).toEqual(listed)
