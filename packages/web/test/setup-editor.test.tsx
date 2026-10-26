@@ -82,7 +82,7 @@ describe('the setup editor (B5, K2): the list of zones', () => {
     expect(row('hand:A').textContent).toMatch(/A/)
 
     fireEvent.click(screen.getByRole('button', { name: 'Ta bort Kasthög' }))
-    expect(rows()).toEqual(['draw', 'table', 'hand:*', 'hand:A', 'hand:B'])
+    expect(rows()).toEqual(['table', 'draw', 'hand:*', 'hand:A', 'hand:B'])
     expect(handle('discard')).toBeNull()
     expect(document.querySelector('[data-table] [data-zone="discard"]')).toBeNull()
 
@@ -106,7 +106,7 @@ describe('the setup editor (B5, K2): what the table cannot be without', () => {
     // Why it stays is said to the keyboard too (#558 F-10): it was a title and an aria-label on a
     // span with no role, which neither a keyboard nor the tree could reach. The row's name button
     // is described by it now, and the mark itself is only the word.
-    const name = within(row('table')).getByRole('button', { name: /Spelyta/ })
+    const name = within(row('table')).getByRole('button', { name: 'Spelyta' })
     expect(document.getElementById(name.getAttribute('aria-describedby') ?? '')?.textContent).toBe('Filten är bordet självt och kan inte tas bort.')
     expect(row('table').querySelector('.byd-setup-fast')!.hasAttribute('aria-label')).toBe(false)
 
@@ -411,7 +411,7 @@ describe('högens bottenkort', () => {
   it('an area has no bottom card to choose', async () => {
     await run.projects.create(run.projectId, projectDoc())
     await openBord()
-    fireEvent.click(within(row('table')).getByRole('button', { name: /Spelyta/ }))
+    fireEvent.click(within(row('table')).getByRole('button', { name: 'Spelyta' }))
     expect(screen.queryByLabelText('Bottenkort för Spelyta')).toBeNull()
   })
 })

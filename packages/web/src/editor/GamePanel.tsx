@@ -26,7 +26,7 @@ export function GamePanel({ client, setup }: { client: ProjectClient; setup: Set
   const turns = setup.turns ?? null
   const players = recipe.players
   const summary = [
-    players === 1 ? t('setup.game.players.one') : t('setup.game.players', { n: players }),
+    players === 1 ? t('setup.game.players.one') : t('setup.game.players.other', { n: players }),
     t(turns === null ? 'setup.game.turns.none' : `setup.game.turns.${turns}`),
     t('setup.game.deck', { name: deck?.name ?? '' }),
   ]

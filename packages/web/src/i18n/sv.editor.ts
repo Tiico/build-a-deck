@@ -1512,7 +1512,7 @@ export const svEditor = {
   'setup.help.list': 'Listan visar alla zoner på bordet.',
   'setup.invalid': 'Bordet går inte att bygga: varje hand behöver en ägare och en hög att lämna tillbaka till, och varje ägare måste vara en plats.',
   'setup.game': 'Spelet',
-  'setup.game.players': '{n} spelare',
+  'setup.game.players.other': '{n} spelare',
   'setup.game.players.one': '1 spelare',
   'setup.game.turns.none': 'ingen turordning',
   'setup.game.turns.clockwise': 'medurs',
@@ -1529,7 +1529,6 @@ export const svEditor = {
   'setup.add.to': 'Lägg till i {name}',
   'setup.die.row': '{count} × d{faces}',
   'setup.players': 'Spelare',
-  'setup.counters': 'Räknare',
   'setup.counter.name': 'Namn för räknare {n}',
   'setup.counter.from': 'från',
   'setup.counter.start': 'Startvärde för räknare {n}',
@@ -1543,7 +1542,6 @@ export const svEditor = {
   'setup.turns.counterclockwise': 'Moturs',
   'setup.turns.help': 'Filten visar vems tur det är, och «Klar» skickar turen vidare runt bordet. Ingen hindras: vem som helst kan ge turen till en annan plats.',
   'setup.turns.help.topic': 'turordningen',
-  'setup.dice': 'Tärningar',
   'setup.dice.help': 'Varje rad lägger tärningar på bordet när spelet startar. En yta vid platserna ger varje plats sitt antal, och en yta på bordet tar antalet totalt eller en gång per spelare.',
   'setup.dice.help.topic': 'tärningarna',
   'setup.die.count': 'Antal för tärning {n}',
@@ -1561,8 +1559,6 @@ export const svEditor = {
   'setup.addSeatArea': '＋ Yta per plats',
   'setup.addSeatCounters': '＋ Räknarzon per plats',
   // Under rubriken «Vid platserna» säger rubriken redan «per plats» (#711), och de två ryms då på en rad.
-  'setup.addSeatArea.short': '＋ Yta',
-  'setup.addSeatCounters.short': '＋ Räknarzon',
   'zone.copy': 'Kopia av {name}',
   'setup.copied': '{name} kopierad',
   // Vad en zon frågar efter och vad den kan (B5, K14), skrivet som meningar: rattarna sitter inne
