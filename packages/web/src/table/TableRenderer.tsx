@@ -2288,6 +2288,7 @@ function Pile({ zone, count, topCard, bottomCard, faces, back, left, top, px, li
       <div
         className="byd-pile-top"
         data-face={topCard?.cardRef ? 'front' : 'back'}
+        data-pile-top={topCard?.cardRef ? topCard.id : undefined}
         data-back={own ? 'own' : undefined}
         {...topInspects}
         {...topHandlers}
