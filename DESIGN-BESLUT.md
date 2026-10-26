@@ -1178,6 +1178,11 @@ Följdkrav:
 Tillbakaspolning förbi ett versionsbyte måste återställa korten också.
 Enkäten måste kunna fråga om två versioner.
 
+Byggt 2026-10-25 (beställarens fynd):
+`version.change` bär uppställningens zoner bredvid komponenterna, så en hög som «Uppdatera» flyttar till en ny version heter, visar och erbjuder det den versionen säger — dess egna åtgärder (K14) med.
+En zon bordet har tar den nya definitionen och behåller sina kort; en zon bordet saknar läggs inte ut mitt i spelet, och en hög som staplats under spelet är ingens definition.
+En zon som byter slag under bordet avvisas, och en rad från före fältet lämnar zonerna som de var, så en gammal logg spelas upp som förut.
+
 ### C8. Observatörsrollen: full insyn, alltid synlig (fråga 37)
 
 Observatören ser allt — alla händer, alla dolda högar — och alla vid bordet ser att hon är där och vad rollen innebär.
@@ -2642,6 +2647,9 @@ Byggt 2026-10-25 (#1280, beställarens beslut A ur [prototypen](https://github.c
   Utdraget är `GET /me/data`, en zip i formen av G5:s export: `uppgifter.json`, dess `schema.json` ur samma zod-schema och en `LASMIG.md` på läsarens språk (A4), under namnet `deckster-uppgifter-<dag>.zip`.
   Det innehåller kontot (adress, namn, när det skapades, nivå och varje godkänd villkorsversion), passkeys utan nyckel, inloggningarna och inloggningslänkarna, AI-nyckelns leverantör och fyra sista tecken, spelen med rollen, versionerna hon sparat och hur många ändringar hon gjort, inbjudningarna hon skickat och fått, borden hon claimat med namnet, flaggorna, anteckningarna och enkätsvaret, och hur många bord och renderingar hon bär.
   Spelens innehåll är spelets export, och ingenting om ett annat konto står i det: ett spel står med hennes roll, aldrig med medlemmarna.
+  `LASMIG.md` förklarar varje del av `uppgifter.json` och varje fält i den, på läsarens språk (#1350); grinden läser delarna ur schemat, så att en ny del utan förklaring ger rött.
+  En flagga om ett kort bär kortets namn bredvid dess id vid bordet, som bordet självt hade det, så att ett kort som sedan tagits ur spelet ändå heter något (#1350).
+  Ett kort som låg med baksidan upp för henne nämns inte vid namn, eftersom namnet var det bordet dolde (B6); då, och när kortet saknar namn eller bordet inte längre känner det, säger `why` det.
   Formatet står i `packages/server/src/account-data.ts`, och grinden `packages/server/test/account-data.test.ts` håller varje personlig kolumn i kolumnkartan (#1276) mot en plats i utdraget eller ett skäl, så att en ny personlig kolumn som utdraget saknar ger rött.
 - «Radera kontot…» frågar först i L9:s remsa, där frågan ställdes (`Question`, med en lista under meningen): varje spel som försvinner, vem mer som förlorar ett delat spel, bord som pågår och avslutas, spelen hon lämnar och vems de är, och att hon loggas ut överallt.
   Remsan öppnar på «Avbryt»; «Ja, radera kontot» står i rött ett tabbsteg bort.
@@ -2924,6 +2932,19 @@ Kortet på filten räknas inom kamerans overscan (C5, #322), som `onFit` inte r�
 - Observatörens skärm läses vid ett skrivbord och behåller sin spalt med INSPEKTION, platserna och SENAST.
 
 Grindarna: `packages/web/test/tv-stage-width.test.ts` (bredden mot kortets golv), `tv-chrome.test.tsx` (scenen, raden, foten och observatörens spalt), `tv-show.test.tsx` (scenens kort mot K26:s golv vid 1920 × 1080 och skrivbordets vid 1280 × 800), och `packages/e2e/test/surfaces/tv-feed-rows.spec.ts` på det byggda bordet.
+
+Reviderat 2026-10-25 (#1343, beställarens beslut A, [prototyp](https://github.com/Tiico/build-a-deck/blob/d63f44f46ad040fa9bd1edc753e7b5d7637e96e8/docs/ux-audits/2026-10-25-tv-hjalpen/README.md)): **hjälpens «?» på vägen in står på radens rubrik**, «Öppna på telefonen ?», vid alla bredder.
+Förut stod den efter koden och rutan (#305).
+Vid 1024 och 1280 står scenen på sitt golv på 360 px, och foten har 320 px innehåll, men koden (237 px), rutan (52), ringen (36) och två mellanrum på 18 behövde 361.
+«?» stod därför ensam på en egen rad under koden.
+Tre former prototypades: «?» på rubriken (A), «?» efter värden (B), och en tätare kodplatta vid golvet (C). A valdes.
+- Det är L32:s egen form, rubriken och dess frågetecken, och den står på samma plats vid varje bredd.
+- Koden och rutan är orörda (K26) och har sin rad för sig, med 13 px över vid golvet.
+- Foten blir 44 px lägre vid golvet och är lika hög som förut vid 1440 och 1920.
+  Ringen på 36 px står på rubrikens rad på 24 px utan att göra den högre: prototypens 8 px skulle ha tagits från scenens kort, och det kortet håller K26:s 24 px brödtext vid 1920 × 1080 med mindre än en bildpunkt till godo på Linux. Träffytan är kvar på 44 px.
+- B hade lagt ringen på raden vars längd beror på värdens namn, och C krympte kodens platta med 32 px och lämnade 7 px.
+
+Grinden: `packages/e2e/test/surfaces/tv-join-help-fit.spec.ts`, vid 1024, 1280, 1440 och 1920 på sv och en, i maskinens typsnitt och med Verdana/DejaVu på allt utom koden, som har ett typsnitt med fast bredd på varje maskin.
 
 ### K9. Bordsvyns utseende: filtbord som renderare, sändningslayout som TV-omgivning (prototypat 2026-09-06)
 
@@ -4559,6 +4580,15 @@ Priset är erkänt: brickans text är filtskalad och ligger under 24 px på TV:n
 Grindarna: `packages/web/test/start-waits-for-textures.test.tsx` (spaltens rad, den släckta brickan, att den tänds när sista kortet landar, «Starta ändå» vid stillastående kö och distansvyns bricka) och `packages/e2e/test/tv-chrome-floor.spec.ts` (raden vid golvet i den byggda produkten, där sviten inte kör någon renderare).
 Sviter vars fråga är starten och inte renderingen öppnar TV:n med `facesReady`, som svarar att korten är klara.
 
+**Tillägg 2026-10-25 (#1344): platsernas skyltar står fritt från brickan.**
+Pillren under högarna trycker ned brickan i pixlar, mot platserna, och platsens skylt på TV:n (#683) står i pixlar ovanför platsens zoner.
+Vid 1024, 1280 och 1440 låg brickan därför över plats A:s skylt med två till fyra platser, och vid 1440 och 1920 över E:s med fem och sex.
+Brickans plats och form är orörda.
+Det som ändrats är att brickan och dess skugga är en sak till som skylten ska stå fri från när den söker sin plats, i #683:s egen ordning; när spelet startat och brickan gått till hörnet läggs skyltarna ut igen och står på sina egna platser.
+Från 1280 och uppåt hittar varje skylt en fri plats som hel skylt.
+Vid 1024 med två till fyra platser ryms den inte någonstans på filten som den är inpassad, och A står som sin bricka med platsens mark tills spelet startat, vilket är #750:s sista utväg och inte en ny form.
+Grind: `packages/e2e/test/surfaces/start-tile-clear-of-piles.spec.ts`, som mäter ritade pixlar mot varje skylt vid 2–8 platser, 1024–1920, sv och en, och i ett typsnitt lika brett som CI:s.
+
 ### K26. Läsbar korttext på skärm: ett golv per skärm, och en handling dit (beslutat 2026-09-28, #505, #506)
 
 E5 och E6 sätter golvet för text **i tryck**, K9 sätter kortets storlek som kontroll på filten och K18 räknar läsbarhet i kortsida på tre meter — men inget beslut sa vad **texten på kortet** blir när kortet ritas på en skärm.
@@ -4852,6 +4882,17 @@ Att byta yta i radens väljare tar bort punkten, eftersom en punkt i en yta inte
 
 **Nya typer väntar.**
 Meeple, kub och bricka visades i prototypen för att se att listan rymmer dem, men varje typ är ett eget registerbeslut som tärningen var (B1–B3), och de byggs inte här.
+
+### K32. Material hålls aldrig på handen (beslutat 2026-10-25, #1377)
+
+Beställaren: «Material ska inte gå att ha på handen.»
+En tärning som släpptes över en hands solfjäder hamnade i handen, men ingen skärm ritar en bit i en hand: telefonen ritar handen som en rad kort.
+Tärningen försvann alltså från filten och gick inte att ta ut igen.
+
+**Material är en typ som går att slå eller har en räknare** (`isMaterial` i `packages/engine`), och det läses ur typens deklarerade beteenden som varje annan vägran i motorn.
+Motorn vägrar lägga material i en hand, vilket verb det än kommer med: `move`, `draw`, `deal`, `split` och `version.change`.
+Filten lägger en bit som släpps över en hand på det handen ligger över, oftast filten (`pieceAt`), och tangentbordets «Flytta till» erbjuder ingen hand för en bit.
+Kort hålls som förut.
 
 ## L. Editorn (grillad 2026-09-06)
 
@@ -6650,6 +6691,7 @@ Inventeringen räknade bort 19 sådana strängar (1 515 tecken) innan något ann
 Mönstret är editorns och gäller hela produkten: #304, #305, #297, #298 och #302 använder det och hittar inte på ett eget.
 *Tillagt 2026-10-20 (#695):* frågetecknet står också i ett tabellhuvud — på den kolumn mallen grupperas av, efter märket «kortgrupp» — och lådan säger vad kolumnen styr och att utseendet ändras i Mall under Kortgrupper (L4).
 Ringens träffyta står 11 px utanför ringen, och en rubrik klipper sitt eget spill, så raden lämnar plats för den.
+*Ändrat 2026-10-25 (#1343):* på rummets TV står frågetecknet för att gå med på vägen ins rubrik, «Öppna på telefonen ?», och inte längre efter koden och QR-rutan som #305 satte det. Vid scenens golv rymdes de tre inte på en rad (K8).
 
 **Prövat vid 390 px (2026-09-20, #305): lådan är densamma på telefonen.**
 Tre former mättes i spelarvyn — samma låda, ett ark från nederkanten, och helskärm:

@@ -9,7 +9,7 @@ const swedish: T = (key, params) => translate('sv', key, params)
 // a place too, and a tab that says nothing is a tab nobody can find their way back to.
 export const APP = 'Deckster'
 
-export const ROUTES = ['home', 'landing', 'login', 'new', 'claim', 'invite', 'profile', 'terms', 'editor', 'table', 'join', 'play', 'online', 'observe', 'prototype', 'unknown'] as const
+export const ROUTES = ['home', 'landing', 'login', 'new', 'claim', 'invite', 'profile', 'terms', 'report', 'survey', 'editor', 'table', 'join', 'play', 'online', 'observe', 'prototype', 'unknown'] as const
 export type Route = (typeof ROUTES)[number]
 
 const PATHS: Record<string, Route> = {
@@ -20,6 +20,10 @@ const PATHS: Record<string, Route> = {
   '/claim': 'claim',
   '/profile': 'profile',
   '/villkor': 'terms',
+  // A report of a picture (#1274) is a page of its own, and its tab says what it is for (#1351).
+  '/villkor/anmal': 'report',
+  // The survey an account answers from Mina spel (#1143).
+  '/survey': 'survey',
   // The print package is a part of a game, named as the editor's tabs are (#1208): «game · Tryckpaketet».
   '/print-package': 'editor',
   '/editor': 'editor',
@@ -74,6 +78,10 @@ function nameOf(route: Route, ctx: TitleContext, t: T): string[] {
       return [t('title.profile')]
     case 'terms':
       return [t('title.terms')]
+    case 'report':
+      return [t('title.report')]
+    case 'survey':
+      return [t('title.survey')]
     case 'editor':
       // The game's own name is the designer's and is never translated (A4); only the word beside
       // it is the tool's. The tab that is open stands in for the word «Editor» (#477): seven tabs of
