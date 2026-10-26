@@ -76,6 +76,8 @@ export type Changes = { seqs: number[]; guests: number[]; drop: number[]; mask: 
 
 const sameGuest = (g: GuestRecord, seat: string | null, issuedAt: string): boolean => g.seat === seat && Date.parse(g.issuedAt) === Date.parse(issuedAt)
 const masked = (name: string): boolean => name.startsWith(REDACTED)
+// Whether an admission's name is the placeholder an erasure left in its place.
+export const isMasked = masked
 // A survey answered under the admission: who answered is the admission's name (#1021).
 const answeredBy = (s: SurveyRecord, g: GuestRecord): boolean => (g.kind === 'observer' ? s.observer === true && s.who === g.name : s.observer !== true && s.seat === g.seat && s.who === g.name)
 

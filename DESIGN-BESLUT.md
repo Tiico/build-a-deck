@@ -2630,6 +2630,14 @@ Byggt 2026-10-25 (#1281): gästens egen väg, som L87 beskriver.
 Token slås upp och prövas inte som dörren prövar den, så en gäst som lämnat, blivit sparkad eller vars bord är slut kan fortfarande radera sig; vid ett annat bord är den ingen, och raderar ingenting.
 En maskad plats, kommentar eller anteckning sägs på läsarens språk, «Utan namn», «Kommentaren är borttagen.» och «Anteckningen är borttagen.», och aldrig som platshållaren.
 Bordsklienten säger dem en gång för varje yta vid bordet (`masked` i `TableClient`), och Resultat och Mina spel säger dem ur sina egna svar.
+
+Rättat 2026-10-26 (#1348): ett inträde som är slut skriver ingenting mer.
+En telefon som laddats om vid bordet hade aldrig själv tagit platsen, och när hennes väg ut frigjorde den tog den platsen igen under hennes namn, efter raderingen, på en anslutning som släppts in före återkallelsen.
+Aktören frågar därför lagret om gästens inträde för varje kuvert, i kön och före `decide`, så att frågan ställs efter varje rad före den.
+Ett återkallat inträde, eller en anslutning som en tömd plats redan tagit bort från bordet, får ingenting skrivet.
+Ett raderat inträde får bara lämna sin egen plats, eftersom det inte säger något om henne och är hur hon går; allt annat vägras, också det hon skulle skriva i anteckningsblocket eller i en flagga.
+Platsen står alltså kvar som tagen under «Utan namn» tills hon lämnar den eller värden sparkar den, men inget nytt skrivs från den.
+Och en sida som öppnas på en plats som redan är tagen räknar sig som sittande (`useSitDown`), eftersom dörren bara släpper in en plats till den token som håller den.
 Liggaren är tabellen `erasures`: id, när, vad (`guest`, `table` eller `game`), varför (`request`, `retention` eller `removed`), och bordet, platsen och stunden eller spelet; inget namn, ingen adress och ingen token.
 Operatörsskriptet är `pnpm --filter @byd/server erase`, med `table <session> [--seat <plats> | --name <namn>]`, `game <id>`, `ledger` och `replay [--from <fil>]`, och det säger vad det gjorde i en rad utan namn.
 `erase game` maskar ett spels bord och lämnar spelet, som är designerns att ta bort; `replay` tar bort ett spel igen bara när designern hade tagit bort det.

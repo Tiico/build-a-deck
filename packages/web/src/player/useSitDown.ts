@@ -12,16 +12,26 @@ import type { TableClient } from '../client.js'
 // standing beside a seat it never took, with its own name in the link, until somebody thinks to
 // reload. So the latch is set by the answer, and an unanswered claim is asked again — on the
 // next thing the table says, which after a drop is the snapshot the reconnection brings.
+//
+// And a seat she already holds is a seat she sat down in (#1348). A page opened onto it — reloaded,
+// or the link opened again — never asked for it itself, and without this it would ask the moment her
+// own way out freed it: under her name, straight after she had removed it. The door admits a seat
+// only to the token that holds it (DRIFT §9), so whoever holds it is her.
 type Sitting = 'no' | 'asking' | 'yes'
 
 export function useSitDown(client: TableClient | null, view: Snapshot | null, seat: string | null, name: string | null): void {
-  const seatFree = view?.seats.find((s) => s.id === seat)?.name === null
+  const held = view?.seats.find((s) => s.id === seat)?.name
+  const seatFree = held === null
   const sat = useRef<Sitting>('no')
   useEffect(() => {
+    if (held !== null && held !== undefined) {
+      sat.current = 'yes'
+      return
+    }
     if (!client || !view || !seat || !name || !seatFree || sat.current !== 'no') return
     sat.current = 'asking'
     void client.send({ v: 'seat.claim', seat, name }).then((result) => {
       sat.current = result.ok ? 'yes' : 'no'
     })
-  }, [client, view, seat, name, seatFree])
+  }, [client, view, seat, name, seatFree, held])
 }

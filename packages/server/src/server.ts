@@ -934,7 +934,8 @@ type Admission = { seat: string | null; role: 'observer' | 'lobby' | null; name:
 // `host` marks the project owner's own seat or watch (L77): not the table's screen, but hers.
 // `told` is the name the connection is told it sits as: a guest's, on the admission her token bought
 // (#1278), and the owner's own seat's, the name she gave her account (#1306).
-type Admitted = { seat: string | null; observer?: string; lobby?: true; host?: true; told?: string }
+// `admission` is the guest's, by the moment it was given, so the table can ask whether it is still hers (#1348).
+type Admitted = { seat: string | null; observer?: string; lobby?: true; host?: true; told?: string; admission?: { issuedAt: string } }
 async function admit(opts: ServerOptions, req: IncomingMessage, session: SessionRecord, ask: Admission): Promise<Admitted | { refused: string }> {
   if (ask.role === 'lobby') return { seat: null, lobby: true }
   // An editor marks its project-owner connection explicitly. Accounts verify the cookie; when
@@ -975,8 +976,8 @@ async function admit(opts: ServerOptions, req: IncomingMessage, session: Session
   const live = ask.token !== null
     ? await opts.store.activateGuest(session.id, hash(ask.token), now.toISOString(), new Date(now.getTime() + CODE_TTL_MS).toISOString())
     : null
-  if (ask.role === 'observer') return live?.kind === 'observer' ? { seat: null, observer: live.name, told: live.name } : { refused: 'an observer needs a token' }
-  if (ask.seat !== null) return live?.kind === 'seat' && live.seat === ask.seat ? { seat: ask.seat, told: live.name } : { refused: 'a seat needs its token' }
+  if (ask.role === 'observer') return live?.kind === 'observer' ? { seat: null, observer: live.name, told: live.name, admission: { issuedAt: live.issuedAt } } : { refused: 'an observer needs a token' }
+  if (ask.seat !== null) return live?.kind === 'seat' && live.seat === ask.seat ? { seat: ask.seat, told: live.name, admission: { issuedAt: live.issuedAt } } : { refused: 'a seat needs its token' }
   return { refused: 'the table needs the host key' }
 }
 
@@ -1248,7 +1249,7 @@ async function openTableDoor(opts: ServerOptions, req: IncomingMessage, ws: WebS
   // puts the socket into CLOSING at once, where `send` drops every later frame. Waiting a macro
   // tick costs nothing and hangs up on nobody mid-sentence — the actor has already taken the
   // subscriber off the table, so the wait carries no frames of its own.
-  const sub: Subscriber = { seat, id: randomUUID(), send, close: () => setImmediate(() => ws.close(4003, 'gone')), ...(who.observer !== undefined ? { observer: who.observer } : {}), ...(who.lobby ? { lobby: true } : {}), ...(who.host ? { host: true } : {}) }
+  const sub: Subscriber = { seat, id: randomUUID(), send, close: () => setImmediate(() => ws.close(4003, 'gone')), ...(who.observer !== undefined ? { observer: who.observer } : {}), ...(who.lobby ? { lobby: true } : {}), ...(who.host ? { host: true } : {}), ...(who.admission ? { admission: who.admission } : {}) }
   actor.subscribe(sub)
   // A connection keeps the code alive for another few hours (DRIFT §9); the host's screen is
   // told the code, since it is what the room is joined by.
@@ -1296,7 +1297,7 @@ async function openTableDoor(opts: ServerOptions, req: IncomingMessage, ws: WebS
           return sub.observer !== undefined ? { ...flag, observer: sub.observer } : flag
         }),
       }
-      void actor.submit(envelope).then(
+      void actor.submit(envelope, sub).then(
         (decision) => {
           if (decision.ok) send({ t: 'ack', id: msg.envelope.id, seqs: decision.applied.map((l) => l.seq) })
           else send({ t: 'reject', id: msg.envelope.id, reason: decision.reason })
