@@ -16,4 +16,4 @@ Ramens höjd växlas mellan 1440 × 900 och 1024 × 640.
 
 I alla fyra blir leken en egenskap hos spelet («korten delas ut från»), inte en knapp i högens panel.
 
-**Beslut:** väntar på beställaren.
+**Beslut (2026-10-26):** C · Bordet som träd, se Tiico/build-a-deck#1403.
