@@ -80,6 +80,8 @@ describe.each([390, 320, 1280])('Mina spel at %i px (#555)', (width) => {
       const open = (await page.locator('.byd-home-running').getByRole('link', { name: /^Öppna bordet / }).boundingBox())!
       // And the band stays inside the window, its code whole, at every width.
       const band = (await page.locator('.byd-home-running-row').boundingBox())!
+      // What the row is made of, in this machine's fonts, for when it does not (#1411).
+      console.log(`${width} px: the row's parts are ${await page.evaluate(`(() => { const r = (el) => { const b = el.getBoundingClientRect(); return Math.round(b.left) + '–' + Math.round(b.right) }; const row = document.querySelector('.byd-home-running-row'); return [['card', r(row.parentElement)], ['row', r(row)], ...[...row.children].map((c) => [c.tagName.toLowerCase() + (c.className ? '.' + String(c.className.baseVal ?? c.className).split(' ')[0] : ''), r(c), getComputedStyle(c).fontFamily.slice(0, 24)])].map((p) => p.join(' ')).join('; ') })()`)}`)
       expect(band.x + band.width).toBeLessThanOrEqual(width)
       expect(await page.evaluate(`(() => { const c = document.querySelector('.byd-home-running-row strong'); return c.scrollWidth <= c.clientWidth })()`)).toBe(true)
 
@@ -129,7 +131,8 @@ describe.each([1024, 1280, 1440])('«Pågår nu» at %i px (#1282, #1411)', (wid
         if (face) await page.addStyleTag({ content: face })
         const m = (await page.evaluate(`(() => {
           const card = document.querySelector('.byd-home-running-game').getBoundingClientRect()
-          const lines = (el) => { const words = document.createRange(); words.selectNodeContents(el); return new Set([...words.getClientRects()].filter((r) => r.width > 0).map((r) => Math.round(r.top))).size }
+          // The words alone: the chevron drawn after them is an inline box of its own, not a line.
+          const lines = (el) => { const words = document.createRange(); words.selectNodeContents(el.firstChild); return new Set([...words.getClientRects()].filter((r) => r.width > 0).map((r) => Math.round(r.top))).size }
           const inside = (el) => { const box = el.getBoundingClientRect(); return box.left >= card.left && box.right <= card.right }
           const editor = document.querySelector('.byd-home-running-editor')
           const row = document.querySelector('.byd-home-running-row')

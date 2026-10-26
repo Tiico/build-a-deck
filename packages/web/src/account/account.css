@@ -257,9 +257,11 @@ input.byd-code-field { font: 700 22px/1 ui-monospace, Menlo, monospace; letter-s
    form — the game's name and the way to its editor on the card's head, and each table a row that
    is the way to the table: how its people sit on its own ground, what it is up to with a dot,
    when and on which version, the code on the plate the TV writes it on, and a chevron. */
-.byd-home-running { display: grid; gap: 8px; }
+/* One track of the column's width, never of the card's content, so a card can never push the
+   column past the page (#1411: it did at 320 on CI's fonts). */
+.byd-home-running { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
 .byd-home-running > h2 { margin: 0; }
-.byd-home-running-game { display: grid; border-radius: 16px; background: var(--byd-account-card-bg); border: 1px solid #262a35; overflow: hidden; }
+.byd-home-running-game { display: grid; min-width: 0; border-radius: 16px; background: var(--byd-account-card-bg); border: 1px solid #262a35; overflow: hidden; }
 .byd-home-running-head { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 4px 8px 4px 16px; border-bottom: 1px solid #262a35; }
 .byd-home-running-head > b { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; color: #fff; }
 /* The way to the game is quiet (#1217): the card is the game's, and the rows are what it is for. */
