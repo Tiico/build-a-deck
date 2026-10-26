@@ -109,6 +109,7 @@ for (const backend of backends) {
           ended: true,
           endedAt: expect.any(String),
           moves: 2,
+          played: true,
           people: [
             { name: 'Ada', seat: 'A', observer: false },
             { name: 'Bo', seat: 'B', observer: false },
@@ -125,7 +126,7 @@ for (const backend of backends) {
           ],
         },
       ])
-      expect(read.versions).toEqual([{ version: 'rev-1', ended: 1, running: 0, players: 2, answered: 1, observers: 1, flags: 2, distribution: { fun: [0, 0, 0, 1, 0], clarity: [0, 0, 1, 0, 0], balance: [0, 0, 0, 1, 0] } }])
+      expect(read.versions).toEqual([{ version: 'rev-1', ended: 1, running: 0, untouched: 0, players: 2, answered: 1, observers: 1, flags: 2, distribution: { fun: [0, 0, 0, 1, 0], clarity: [0, 0, 1, 0, 0], balance: [0, 0, 0, 1, 0] } }])
     })
 
     // A flag about a card (#1142) is read with the card's textures in the version it was raised on —

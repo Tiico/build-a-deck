@@ -78,6 +78,9 @@ describe('the account and its two rights, in the Konto card (#1280)', () => {
     expect((await fetch(`${run.http}/invites/${link}`, { method: 'POST' })).status).toBe(200)
     await fetch(`${run.http}/auth/logout`, { method: 'POST' })
     await loggedIn()
+    // A table started at Stjärnhandel and never played (#1376): it is not «playing», and is said by
+    // the name the Bord tab files it under.
+    expect((await fetch(`${run.http}/projects/star/sessions`, { method: 'POST' })).status).toBeLessThan(300)
     open()
     const opener = await screen.findByRole('button', { name: 'Radera kontot…' })
     fireEvent.click(opener)
@@ -85,6 +88,7 @@ describe('the account and its two rights, in the Konto card (#1280)', () => {
     expect(within(strip).getAllByRole('listitem').map((li) => li.textContent)).toEqual([
       'Stjärnhandel och Skogens råd tas bort med alla versioner och bord, som när du tar bort dem ett och ett.',
       'kim@example.com förlorar Skogens råd. Vill hen ha det kvar, exportera det först och ge hen zippen.',
+      'Startade, aldrig spelade i Stjärnhandel: 1 bord, som avslutas.',
       'Du loggas ut överallt.',
     ])
     expect([...strip.querySelectorAll('li b')].map((b) => b.textContent)).toEqual(['Stjärnhandel', 'Skogens råd'])

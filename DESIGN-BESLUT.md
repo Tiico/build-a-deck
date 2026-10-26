@@ -2458,6 +2458,7 @@ Enkäter lagras bredvid loggen (tabellen `surveys`), aldrig i den.
 Preciserat 2026-10-18 (#1021):
 - **Svaret kommer från ett inträde.** Telefonen och observatören skickar sin token, och servern prövar den som dörren gör (ej återkallad, ej utgången); namnet och platsen läses ur inträdet, aldrig ur kroppen, och en token för en plats svarar inte för en annan. Utan token är det bara projektets värd, från editorns egna vägar in (`owner=1`), som svarar — med sin inloggning, och för platsen under det namn bordet känner den vid. Bordsskärmens värdnyckel svarar inte.
 - **Ett svar per plats och per observatör och bord, och ett andra svar ersätter det första.** Telefonen minns att den svarat bara i flikens egen lagring, och en telefon som glömt det frågar igen; att ta emot det nya svaret i stället för det gamla är vad den redan uttrycker, medan ett avslag skulle göra «Skicka» till ett fel för någon som inget fel gjort. Observatören känns igen på namnet hennes inträde köptes under, som «Bord du spelat vid» redan gör.
+  Ändrat 2026-10-26 (#1355, beställarens beslut 2026-10-25): **telefonen frågar servern om platsen redan har svarat** (`POST /sessions/:id/survey/mine`, med inträdets token i kroppen och aldrig i adressen), och visar i så fall tacket med «Svara igen» och «Ta bort mitt namn och mina svar…» i stället för första frågan. Den som svarar igen får meningen «Ditt nya svar ersätter det första.» över frågorna, och svaret ersätter det första som förut. Varken tacket eller raderingens besked hänger längre på flikens egen lagring: en ny flik, en omladdning och en annan telefon visar detsamma. Ett inträde som raderats (L87) sägs som raderat, och tacket säger då ingen version, eftersom svaren inte finns (#1353).
 - Unika nycklar i `surveys` håller det i Postgres; migreringen kortar befintliga dubbletter till det senaste svaret, det som ett ersättande svar hade lämnat kvar.
 
 Utvidgat 2026-10-22 (#1142, prototypat och beslutat): **en flagga kan gälla ett kort.**
@@ -8373,6 +8374,16 @@ Namnen härleds ur `seat.claim` och inträdena, aldrig i klienten; «drag n av N
 Ett enkätsvar kommer från ett inträde och ett per plats och observatör (#1021), så summorna räknar bara svar som deltagarna gav.
 `playtest-route.test.ts` prövar endpointen mot minne och Postgres, och att betraktaren får 403; `playtest-results.spec.ts` spelar ett bord från två telefoner, flaggar, avslutar och svarar, och läser svaren i Resultat i det byggda appen.
 
+Tillägg 2026-10-26 (#1357, beställarens beslut 2026-10-25): **Resultat visar även flaggorna från bord som pågår**, så att länken från Mina spel landar där flaggan finns.
+«Väntar på dig» räknar en flagga som ny från det ögonblick den restes (#1225), och Resultat sa en flagga färre än länken som ledde dit.
+En flagga från ett bord som pågår står bland de andra, i spelets ordning, med märket «bordet pågår» på raden, och versionens flaggor räknar den.
+**Enkätsvaren räknas fortfarande bara för avslutade bord:** fördelningen, «n av N spelare svarade» och borden med filter läser bara bord som slutat, och ett bord som pågår sägs som förut, «1 bord pågår och räknas inte än».
+
+Tillägg 2026-10-26 (#1376 punkt 1, beställarens beslut 2026-10-25): **ett bord som startats men aldrig spelats heter «Startade, aldrig spelade» överallt** och räknas inte som pågående.
+Det är Bord-flikens grupp (#176): ett bord utan ett enda fysiskt drag i loggen, och som inte avslutats.
+Resultat säger «Startade, aldrig spelade: 1 bord» där det sa «1 bord pågår», «Pågår nu» på Mina spel listar det inte utan under en egen rubrik med samma namn, spelraden säger det i stället för «Pågår», «Bord du har spelat vid» säger det i stället för «pågår», och frågan när kontot raderas säger det på en egen rad.
+Servern säger det, så att ingen yta räknar själv: `PlaytestTable.played` och `PlaytestVersion.untouched` i `GET /projects/:id/playtest`, `untouched` i `/me/played` och i `/me/deletion`, och `lastAt: null` i `/projects/:id/sessions` som förut.
+
 ### L71. Ikonbiblioteken söks som typsnitten, och ikonlagret har en färg och en ikon per värde (prototypat och beslutat 2026-10-21, #1087)
 
 En enkel ikon som visar vilken typ ett kort är, ett svärd på anfallen och en sköld på försvaren, är något nästan varje lek vill ha.
@@ -8959,7 +8970,7 @@ Efteråt landar hon på en egen sida, «Du har lämnat bordet, och ditt namn är
 Platsväljaren hade erbjudit henne platsen igen under ett namn som inte längre finns.
 Byggandet hittade att en telefon som lämnar aldrig fick sitt svar på lådan: platsen töms i samma varv som raden skrivs, och tömningen stänger platsens anslutningar innan dörren hunnit kvittera, så med Postgres tid för att återkalla inträdet gick kvittot förlorat.
 Aktören kvitterar nu kuvertet som lämnade platsen före beskedet och stängningen (`emptied`, `leaving.test.ts`).
-Under tacket byts sparandet mot beskedet «Ditt namn och dina svar är borttagna.», tacket säger bara «Tack.», och fliken minns det vid en omladdning som den minns att svaren skickats.
+Under tacket byts sparandet mot beskedet «Ditt namn och dina svar är borttagna.», tacket säger bara «Tack.» och ingen version, och servern säger det vid en omladdning och i en ny flik (#1353, #1355).
 Observatören har samma väg under sitt tack.
 Ägarens egen plats har ingen token och därför ingen sådan knapp; kontots radering är #1280:s.
 

@@ -16,7 +16,7 @@ import { useShuffles } from '../table/shuffle.js'
 import { useRolls } from '../table/Die.js'
 import { HeldCard } from '../player/HeldCard.js'
 import { Survey } from '../player/Survey.js'
-import { submitSurvey } from '../player/surveyApi.js'
+import { submitSurvey, useSurveyStanding } from '../player/surveyApi.js'
 import { claimUrl, withCredentials } from '../account/session.js'
 import { takeGuestToken } from '../guestAddress.js'
 import { dropOwnerName } from '../hostSeat.js'
@@ -143,6 +143,8 @@ export function ObserverPage({ timing = DEFAULT_TIMING }: ObserverPageProps = {}
   const [version, setVersion] = useState<string | null>(null)
   // Whether the table had a rulebook, which is what the survey's second question asks about (#744).
   const rulebook = useHasRulebook(http, sessionId ?? '', !!sessionId && !!view?.ended)
+  // Whether she has answered already (#1355), as the server says it, by the admission she watched under.
+  const standing = useSurveyStanding(http, sessionId ?? '', { token, seat: null, observer: true, who: name }, !!sessionId && !!view?.ended)
   useEffect(() => {
     if (!toast) return
     const timer = setTimeout(() => setToast(null), 2000)
@@ -251,7 +253,7 @@ export function ObserverPage({ timing = DEFAULT_TIMING }: ObserverPageProps = {}
         </Suspense>
       )}
       </div>
-      {view.ended && <Survey saveUrl={token ? claimUrl(token, params.get('server')) : null} saved={params.get('saved') === '1'} onward={back} who={name} version={version ?? '…'} rulebook={rulebook} onSubmit={(answers) => submitSurvey(http, sessionId, { token, who: name, seat: null, observer: true, answers })} watched {...(token ? { onForget: () => forgetMe(http, sessionId, token) } : {})} />}
+      {view.ended && <Survey standing={standing ?? 'asking'} saveUrl={token ? claimUrl(token, params.get('server')) : null} saved={params.get('saved') === '1'} onward={back} who={name} version={version ?? '…'} rulebook={rulebook} onSubmit={(answers) => submitSurvey(http, sessionId, { token, who: name, seat: null, observer: true, answers })} watched {...(token ? { onForget: () => forgetMe(http, sessionId, token) } : {})} />}
       <RouteStatus status={live.state === 'missing' ? { ...live, notice: asObserver(guestNotice('missing', t), t) } : live} over="card" links={links} onRetry={conn.retry} />
     </>
   )

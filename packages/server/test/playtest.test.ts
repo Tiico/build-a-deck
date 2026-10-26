@@ -55,6 +55,7 @@ describe('a table’s playtest', () => {
       ended: true,
       endedAt: ended,
       moves: 3,
+      played: true,
       people: [
         { name: 'Ada', seat: 'A', observer: false },
         { name: 'Bo', seat: 'B', observer: false },
@@ -106,8 +107,8 @@ describe('a version’s playtest', () => {
       table('t1', 'rev-1', logOf(...seated(['A', 'Ada'], ['B', 'Bo']), draw('A'), end), [answer('Bo', 'B', 2, 2, 2)]),
     ])
     expect(read.versions).toEqual([
-      { version: 'rev-2', ended: 1, running: 1, players: 2, answered: 2, observers: 1, flags: 0, distribution: { fun: [0, 0, 0, 2, 0], clarity: [0, 0, 1, 0, 1], balance: [0, 2, 0, 0, 0] } },
-      { version: 'rev-1', ended: 1, running: 0, players: 2, answered: 1, observers: 0, flags: 0, distribution: { fun: [0, 1, 0, 0, 0], clarity: [0, 1, 0, 0, 0], balance: [0, 1, 0, 0, 0] } },
+      { version: 'rev-2', ended: 1, running: 1, untouched: 0, players: 2, answered: 2, observers: 1, flags: 0, distribution: { fun: [0, 0, 0, 2, 0], clarity: [0, 0, 1, 0, 1], balance: [0, 2, 0, 0, 0] } },
+      { version: 'rev-1', ended: 1, running: 0, untouched: 0, players: 2, answered: 1, observers: 0, flags: 0, distribution: { fun: [0, 1, 0, 0, 0], clarity: [0, 1, 0, 0, 0], balance: [0, 1, 0, 0, 0] } },
     ])
   })
 
@@ -135,6 +136,33 @@ describe('a version’s playtest', () => {
       ['rev-2', 1, 1, 1],
       ['rev-1', 0, 0, 1],
     ])
+  })
+
+  // Beställarens beslut i #1357: Resultat shows the flags of a table that is still running, so that
+  // Mina spel's «3 nya flaggor» lands where all three are; its survey still counts for nothing (L70).
+  it('counts the flags of a running table on the version they were raised on, and none of its people', () => {
+    const read = playtestOf([
+      table('t2', 'rev-2', logOf([null, { v: 'seat.claim', seat: 'A', name: 'Ada' }], draw('A'), ['A', { v: 'flag', note: 'nu' }])),
+      table('t3', 'rev-1', logOf([null, { v: 'seat.claim', seat: 'A', name: 'Bo' }], draw('A'), ['A', { v: 'flag', note: 'före' }], [null, { v: 'version.change', to: 'rev-2', components: [] }])),
+    ])
+    expect(read.versions.map((v) => [v.version, v.ended, v.running, v.players, v.flags])).toEqual([
+      ['rev-2', 0, 2, 0, 1],
+      ['rev-1', 0, 0, 0, 1],
+    ])
+  })
+
+  // Beställarens beslut i #1376, punkt 1: a table started and never played is «Startade, aldrig
+  // spelade», as the Bord tab files it, and is not counted as running.
+  it('counts a table started and never played apart from the running ones', () => {
+    const read = playtestOf([
+      table('t1', 'rev-2', logOf([null, { v: 'seat.claim', seat: 'A', name: 'Ada' }])),
+      table('t2', 'rev-2', logOf([null, { v: 'seat.claim', seat: 'A', name: 'Bo' }], draw('A'))),
+    ])
+    expect(read.tables.map((t) => [t.id, t.played])).toEqual([
+      ['t1', false],
+      ['t2', true],
+    ])
+    expect(read.versions.map((v) => [v.version, v.running, v.untouched])).toEqual([['rev-2', 1, 1]])
   })
 })
 

@@ -746,7 +746,7 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
                             <span className="byd-home-chips">
                               {live.map((table) => (
                                 <span key={table.id} className="byd-home-chip byd-home-live">
-                                  {t('home.row.live', { code: table.code })}
+                                  {t(table.lastAt === null ? 'home.row.untouched' : 'home.row.live', { code: table.code })}
                                 </span>
                               ))}
                               {flags > 0 && (
@@ -772,11 +772,16 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
         </div>
         {/* «Pågår nu» (#724, beslut C): every table that is running, by its game and its room code,
             with the way to its screen as the game's own — in the column of what is happening
-            (#1204), and first of everything on a phone. */}
-        {runningList.length > 0 && (
-          <section className="byd-home-running" aria-labelledby="byd-home-running">
-            <h2 id="byd-home-running" className="byd-home-h2">{t('home.running.title')}</h2>
-            {runningList.map((table) => (
+            (#1204), and first of everything on a phone. A table started and never played is not
+            running (#1376): it stands in a band of its own under the name the Bord tab files it
+            by, in the same form. */}
+        {[
+          { id: 'byd-home-running', title: t('home.running.title'), tables: runningList.filter((table) => table.lastAt !== null) },
+          { id: 'byd-home-untouched', title: t('home.untouched.title'), tables: runningList.filter((table) => table.lastAt === null) },
+        ].map(({ id, title, tables }) => tables.length > 0 && (
+          <section key={id} className="byd-home-running" aria-labelledby={id}>
+            <h2 id={id} className="byd-home-h2">{title}</h2>
+            {tables.map((table) => (
               <div key={table.id} className="byd-home-running-row" data-running={table.id}>
                 <b>{table.name}</b>
                 <strong>{table.code}</strong>
@@ -802,7 +807,7 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
               </div>
             ))}
           </section>
-        )}
+        ))}
         {/* «Väntar på dig» (#1225, #1204 beslut B): what is left for the account to deal with, each a
             row with its icon, what it is, where it comes from and an arrow, leading to where it is
             dealt with. Not drawn until what is waiting has been read, nor when nothing is. */}
@@ -875,7 +880,7 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
                       {t('home.played.surveyed')}
                     </span>
                   ) : (
-                    <span className="byd-home-facts">{p.ended ? t('home.played.ended') : t('home.played.running')}</span>
+                    <span className="byd-home-facts">{p.ended ? t('home.played.ended') : t(p.untouched ? 'home.played.untouched' : 'home.played.running')}</span>
                   )}
                   {p.ended && !p.surveyed && !p.deleted && (
                     <a className="byd-home-survey" href={`/survey?${suffix(new URLSearchParams({ session: p.session }))}`} onClick={(e) => { e.preventDefault(); onNavigate(`/survey?${suffix(new URLSearchParams({ session: p.session }))}`) }}>

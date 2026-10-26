@@ -55,8 +55,11 @@ export function rowSummary(table: PlaytestTable, t: T): string {
 export function versionSums(v: PlaytestVersion, t: T): string {
   const flags = t(v.flags === 1 ? 'results.flags.one' : 'results.flags.other', { n: v.flags })
   if (v.ended > 0) return [t(v.ended === 1 ? 'results.tables.one' : 'results.tables.other', { n: v.ended }), t(v.answered === 1 ? 'results.answers.one' : 'results.answers.other', { n: v.answered }), flags].join(' · ')
-  return [...(v.running > 0 ? [t(v.running === 1 ? 'results.running.one' : 'results.running.other', { n: v.running })] : []), ...(v.flags > 0 ? [flags] : [])].join(' · ')
+  return [...(v.running > 0 ? [t(v.running === 1 ? 'results.running.one' : 'results.running.other', { n: v.running })] : []), ...(v.untouched > 0 ? [untouchedWords(v.untouched, t)] : []), ...(v.flags > 0 ? [flags] : [])].join(' · ')
 }
+
+// Tables started on a version and never played (#1376), by the name the Bord tab files them under.
+export const untouchedWords = (n: number, t: T): string => t(n === 1 ? 'results.untouched.one' : 'results.untouched.other', { n })
 
 // The people who were at a table and left no answer: a seat that has none, an observer by name.
 export function silent(table: PlaytestTable): PlaytestPerson[] {
@@ -67,6 +70,13 @@ export function silent(table: PlaytestTable): PlaytestPerson[] {
 // before an update moved them on (C7) — a flag belongs to the version it was raised on.
 export function tablesFor(tables: readonly PlaytestTable[], version: string): PlaytestTable[] {
   return tables.filter((t) => t.ended && (t.version === version || t.flags.some((f) => f.version === version)))
+}
+
+// The tables whose flags are read on a version: those above, and every table still running that
+// raised one on it (#1357, beställarens beslut 2026-10-25). Their flags are shown and marked as from
+// a table that runs; their surveys, which they do not have yet, count for nothing (L70).
+export function flaggedFor(tables: readonly PlaytestTable[], version: string): PlaytestTable[] {
+  return tables.filter((t) => (t.ended ? tablesFor([t], version).length > 0 : t.flags.some((f) => f.version === version)))
 }
 
 // A table is called by its room code (#706), as its row in the Bord view calls it; one that never

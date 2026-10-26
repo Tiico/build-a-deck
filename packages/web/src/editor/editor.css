@@ -4768,19 +4768,22 @@ label.byd-ai-rules { cursor: pointer; }
 .byd-results .byd-results-pick { display: grid; gap: 2px; width: 100%; min-height: var(--byd-tap); padding: var(--byd-s2) var(--byd-s3); text-align: left; font-size: 13px; }
 .byd-results-pick small { color: var(--byd-tables-quiet); font-size: 12px; font-weight: 400; }
 .byd-results-pick[data-none='true'] > span { color: var(--byd-tables-quiet); }
-.byd-results-main { overflow: auto; display: grid; gap: var(--byd-s5); align-content: start; padding: 0 var(--byd-s2) var(--byd-s5) 0; }
+.byd-results-main { overflow: auto; display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--byd-s5); align-content: start; padding: 0 var(--byd-s2) var(--byd-s5) 0; }
 .byd-results-head { display: grid; gap: var(--byd-s1); }
 .byd-results-head h2 { margin: 0; color: #fff; font-size: 18px; }
 .byd-results-quiet, .byd-results-empty { margin: 0; color: var(--byd-tables-quiet); font-size: 12px; line-height: 1.5; }
 .byd-results-empty { font-size: 13px; max-width: 62ch; }
 .byd-results-ink { color: var(--byd-tables-ink); }
-.byd-results-sec { display: grid; gap: var(--byd-s2); max-width: 880px; }
+.byd-results-sec { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--byd-s2); max-width: 880px; }
 .byd-results-sec h3 { margin: 0; color: var(--byd-tables-ink); font-size: 14px; }
 .byd-results-sec h4 { margin: var(--byd-s3) 0 0; }
 .byd-results-code { font-family: ui-monospace, Menlo, monospace; font-weight: 700; letter-spacing: 1px; color: var(--byd-tables-ink); }
 .byd-results-badge { font-style: normal; font-size: 11px; padding: 0 var(--byd-s2); border-radius: 999px; border: 1px solid #4a5268; color: var(--byd-editor-part-many); white-space: nowrap; }
 
 /* How the answers fall: a real table, the bars for the eye and the words in the cell. */
+/* The column is as wide as the screen and the table may not be (#1372): only the table scrolls. */
+.byd-results-scroll { max-width: 100%; overflow-x: auto; justify-self: start; }
+.byd-results-scroll:focus-visible { outline: 2px solid var(--byd-editor-primary-mark); outline-offset: 2px; }
 .byd-results-dist { border-collapse: collapse; font-size: 12px; color: var(--byd-tables-quiet); justify-self: start; }
 .byd-results-dist th, .byd-results-dist td { padding: var(--byd-s1) var(--byd-s2); text-align: center; vertical-align: bottom; font-weight: 400; }
 .byd-results-dist td { min-width: 44px; }

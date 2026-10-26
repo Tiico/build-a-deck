@@ -396,7 +396,11 @@ describe('claiming a guest session to an account (G1)', () => {
     await post(run.http, '/guests/claim', { token }, { cookie: bo })
 
     const open = (await (await fetch(`${run.http}/me/played`, { headers: { cookie: bo } })).json()) as Record<string, unknown>[]
-    expect(open).toEqual([expect.objectContaining({ session: id, seat: 'A', name: 'Ada', game: null, version: 'v1', ended: false, surveyed: false, flags: 1, code })])
+    // Sat down at and flagged, but nothing done on it: «Startade, aldrig spelade», not running (#1376).
+    expect(open).toEqual([expect.objectContaining({ session: id, seat: 'A', name: 'Ada', game: null, version: 'v1', ended: false, untouched: true, surveyed: false, flags: 1, code })])
+    await ada.send('A', { v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
+    const playing = (await (await fetch(`${run.http}/me/played`, { headers: { cookie: bo } })).json()) as Record<string, unknown>[]
+    expect(playing[0]).not.toHaveProperty('untouched')
 
     await ada.send('A', { v: 'session.end' })
     expect((await post(run.http, `/sessions/${id}/survey`, { token, seat: 'A', answers: { fun: 4, clarity: 3, balance: 5, change: '' } })).status).toBe(201)

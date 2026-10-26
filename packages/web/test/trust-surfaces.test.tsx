@@ -65,8 +65,7 @@ describe('what a guest leaves behind, said where she saves (#757, #1281)', () =>
   // time instead of a year.
   const KEPT = 'Sparar du bordet till ett konto står ditt namn och dina svar kvar så länge kontot finns, i stället för ett år.'
   it('says what saving keeps and for how long, beside «Spara till ditt konto»', () => {
-    sessionStorage.setItem('byd.survey.sent.t1', '1')
-    render(<Survey who="Ada" version="rev-1" saveUrl="/save" remember="t1" onSubmit={async () => undefined} />)
+    render(<Survey who="Ada" version="rev-1" saveUrl="/save" standing={{ answered: true, forgotten: false }} onSubmit={async () => undefined} />)
     expect(screen.getByRole('link', { name: 'Spara till ditt konto' })).toBeTruthy()
     expect(screen.getByText(KEPT)).toBeTruthy()
     // The row's first two beside it (#1272), to the page of their own.

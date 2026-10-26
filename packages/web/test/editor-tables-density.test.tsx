@@ -270,3 +270,84 @@ describe('the Bord tab with twelve tables on it', () => {
     expect(measured).toEqual([])
   }, 120_000)
 })
+
+// Resultat at 375 (#1372, WCAG 1.4.10): the distribution is a real table and may be wider than the
+// phone, but it was the table that set the column's width, so the running text beside it was cut
+// off at the right edge instead of breaking. The text breaks inside the screen, and only the table
+// scrolls sideways. Measured line by line: every rectangle of every text node in the view outside
+// the table lies inside the screen, and the table's scroller does too.
+describe('Resultat at 375 px (#1372)', () => {
+  async function ended(): Promise<void> {
+    const id = await startTable()
+    const seat = await asSeat(run, id, 'A', 'Beatrice Långström-Ekelund')
+    const player = TableClient.connect(seat)
+    await player.ready()
+    await player.send({ v: 'seat.claim', seat: 'A', name: 'Beatrice Långström-Ekelund' })
+    await player.send({ v: 'draw', from: 'draw', to: 'table', count: 1 })
+    await player.send({ v: 'flag', note: 'Draken kom för tidigt och ingen hade något att svara med' })
+    player.close()
+    const table = TableClient.connect(await asTable(run, id))
+    await table.ready()
+    await table.send({ v: 'session.end' })
+    await waitFor(async () => expect((await run.store.read(id)).map((l) => l.intent.v)).toContain('session.end'))
+    table.close()
+    const change = 'Färre kort i första rundan, så att alla hinner förstå vad draken gör.'
+    const answer = await fetch(`${run.http}/sessions/${id}/survey`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token: seat.token, seat: 'A', answers: { fun: 4, clarity: 3, balance: 2, change } }) })
+    expect(answer.status).toBe(201)
+    // A table still running, which is what the head's longest line says (the issue's «1 bord pågå…»).
+    await playedTable('Ada')
+  }
+
+  it('breaks every line of text inside the screen, and lets only the distribution scroll sideways', async () => {
+    all = 0
+    await ended()
+    atWidth(375)
+    history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
+    const { unmount } = render(<EditorPage />)
+    let html = ''
+    try {
+      await screen.findByText('Skogens herrar')
+      fireEvent.click(document.getElementById(tabId('tables'))!)
+      fireEvent.click(await screen.findByRole('button', { name: 'Resultat' }))
+      await screen.findByRole('table', { name: /^Fördelningen per fråga/ })
+      await screen.findByText(/Färre kort i första rundan/)
+      html = document.querySelector('.byd-editor')!.outerHTML
+    } finally {
+      unmount()
+    }
+    const page = await browser.newPage({ viewport: { width: 375, height: 812 } })
+    try {
+      await page.setContent(document_(html), { waitUntil: 'load' })
+      const measured = await page.evaluate(() => {
+        const edge = document.documentElement.clientWidth
+        const view = document.querySelector('.byd-results-main')!
+        const dist = view.querySelector('table.byd-results-dist')!
+        const walker = document.createTreeWalker(view, NodeFilter.SHOW_TEXT)
+        const outside: string[] = []
+        let lines = 0
+        for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+          if (!node.textContent?.trim() || dist.contains(node) || node.parentElement?.closest('.byd-offscreen')) continue
+          const range = document.createRange()
+          range.selectNodeContents(node)
+          for (const rect of range.getClientRects()) {
+            if (rect.width === 0) continue
+            lines++
+            if (rect.left < -0.5 || rect.right > edge + 0.5) outside.push(`${node.textContent.trim().slice(0, 40)}: ${Math.round(rect.left)}–${Math.round(rect.right)}`)
+          }
+        }
+        const scroller = dist.parentElement!
+        return {
+          // Not vacuous: the view has its text, and the table is wider than the box it scrolls in.
+          lines: lines > 20,
+          outside,
+          table: dist.getBoundingClientRect().width > scroller.clientWidth,
+          scroller: scroller.getBoundingClientRect().right <= edge + 0.5 && getComputedStyle(scroller).overflowX === 'auto',
+          page: document.documentElement.scrollWidth <= edge,
+        }
+      })
+      expect(measured).toEqual({ lines: true, outside: [], table: true, scroller: true, page: true })
+    } finally {
+      await page.close()
+    }
+  }, 120_000)
+})

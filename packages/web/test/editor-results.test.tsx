@@ -121,6 +121,37 @@ describe('an ended table’s row and the Resultat view (#1010)', () => {
     expect(within(fun).getAllByRole('cell').map(heard)).toEqual(['0 svarade 1', '0 svarade 2', '0 svarade 3', '1 svarade 4', '0 svarade 5', '4,0'])
   })
 
+  // Beställarens beslut i #1357: a running table's flags stand in Resultat, marked as running, so
+  // that Mina spel's link lands where they are; its survey still counts for nothing (L70). And in
+  // #1376: a table started and never played is «Startade, aldrig spelade», not one that runs.
+  it('shows a running table’s flag marked as running, and calls a table never played by its own name', async () => {
+    await playedAndAnswered()
+    const sat = async (name: string, act: (seat: TableClient) => Promise<unknown>) => {
+      const made = (await (await fetch(`${run.http}/projects/${run.projectId}/sessions`, { method: 'POST' })).json()) as { id: string; code: string; hostKey: string }
+      registerRoom(made.id, made)
+      const seat = TableClient.connect(await asSeat(run, made.id, 'A', name))
+      await seat.ready()
+      await seat.send({ v: 'seat.claim', seat: 'A', name })
+      await act(seat)
+      seat.close()
+      return made.code
+    }
+    const running = await sat('Dan', async (seat) => {
+      await seat.send({ v: 'draw', from: 'draw', to: 'table', count: 1 })
+      await seat.send({ v: 'flag', note: 'Mitt i spelet' })
+    })
+    await sat('Eva', async () => undefined)
+    const user = await openTables()
+    await user.click(screen.getByRole('button', { name: 'Resultat' }))
+    await screen.findByRole('heading', { level: 2, name: 'Version 1' })
+    expect(screen.getByText(/^1 avslutat bord/).textContent).toBe('1 avslutat bord · 1 av 2 spelare svarade · 1 observatör svarade · 2 flaggor · 1 bord pågår och räknas inte än · Startade, aldrig spelade: 1 bord')
+    const flag = screen.getByText(/«Mitt i spelet»/).closest('li')!
+    expect(flag.textContent).toContain(`bord ${running}`)
+    expect(within(flag).getByText('bordet pågår')).toBeTruthy()
+    expect(screen.getByText(/«Draken är för stark»/).closest('li')!.textContent).not.toContain('bordet pågår')
+    expect(document.body.textContent).not.toContain('2 bord pågår')
+  })
+
   it('has a real chosen state in the list of versions, and the switch back to the board', async () => {
     await playedAndAnswered()
     const user = await openTables()

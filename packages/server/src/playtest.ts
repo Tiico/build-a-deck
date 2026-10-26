@@ -1,5 +1,5 @@
 import { activityOf, canSeeFace, componentOf, initialState, movesOf, project, replay, zoneOf, type DeckFacts, type TypeRegistry } from '@byd/engine'
-import type { Applied, VisibleComponentState, ZoneKind } from '@byd/protocol'
+import { PHYSICAL_VERBS, type Applied, type VisibleComponentState, type ZoneKind } from '@byd/protocol'
 import type { GuestRecord, SessionRecord } from './store.js'
 import type { SurveyRecord } from './surveys.js'
 
@@ -39,6 +39,9 @@ export type PlaytestTable = {
   ended: boolean
   endedAt: string | null
   moves: number
+  // Whether anything was ever done on the table, as the Bord tab files it (#176): a table started
+  // and never played is «Startade, aldrig spelade» and not a table that is running (#1376).
+  played: boolean
   people: PlaytestPerson[]
   answers: PlaytestAnswer[]
   flags: PlaytestFlag[]
@@ -47,14 +50,17 @@ export type PlaytestTable = {
 export type Distribution = Record<PlaytestQuestion, number[]>
 export type PlaytestVersion = {
   version: string
-  // Tables that ended on this version, and tables still running on it, which count for nothing yet.
+  // Tables that ended on this version, tables still running on it, whose surveys count for nothing
+  // yet, and tables started on it and never played (#1376), which are not running.
   ended: number
   running: number
+  untouched: number
   // Who played at the ended tables, and how many of them answered; observers apart.
   players: number
   answered: number
   observers: number
-  // Flags raised on this version, at tables that have ended.
+  // Flags raised on this version, at every table: a running one's are shown too, marked, so that
+  // the new flags Mina spel counts are where its link lands (#1357).
   flags: number
   distribution: Distribution
 }
@@ -108,6 +114,7 @@ function tableOf({ id, session, log, surveys, admissions, decks }: PlaytestSourc
     ended: endedAt !== null,
     endedAt,
     moves: moves.length,
+    played: log.some((l) => PHYSICAL_VERBS.includes(l.intent.v)),
     people,
     answers: surveys.map((s) => ({ who: s.who, seat: s.seat, observer: s.observer === true, at: s.at, answers: s.answers })),
     flags,
@@ -138,7 +145,7 @@ function versionsOf(tables: readonly PlaytestTable[]): PlaytestVersion[] {
   const named = new Set<string>()
   for (const t of tables) {
     named.add(t.version)
-    if (t.ended) for (const f of t.flags) named.add(f.version)
+    for (const f of t.flags) named.add(f.version)
   }
   return [...named]
     .sort((a, b) => revOf(b) - revOf(a))
@@ -149,11 +156,12 @@ function versionsOf(tables: readonly PlaytestTable[]): PlaytestVersion[] {
       return {
         version,
         ended: ended.length,
-        running: tables.filter((t) => !t.ended && t.version === version).length,
+        running: tables.filter((t) => !t.ended && t.played && t.version === version).length,
+        untouched: tables.filter((t) => !t.ended && !t.played && t.version === version).length,
         players: ended.reduce((n, t) => n + t.people.filter((p) => !p.observer).length, 0),
         answered: counted.length,
         observers: ended.reduce((n, t) => n + t.answers.filter((a) => a.observer).length, 0),
-        flags: tables.filter((t) => t.ended).reduce((n, t) => n + t.flags.filter((f) => f.version === version).length, 0),
+        flags: tables.reduce((n, t) => n + t.flags.filter((f) => f.version === version).length, 0),
         distribution,
       }
     })
