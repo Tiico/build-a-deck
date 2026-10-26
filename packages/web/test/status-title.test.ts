@@ -18,6 +18,8 @@ describe('which route a path is', () => {
     ['/observe', 'observe'],
     ['/profile', 'profile'],
     ['/villkor', 'terms'],
+    ['/villkor/anmal', 'report'],
+    ['/survey', 'survey'],
   ])('reads %s as %s', (path, route) => {
     expect(routeOf(path)).toBe(route)
   })

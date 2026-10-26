@@ -142,6 +142,13 @@ export function dropAt(view: Snapshot, mode: TableMode, p: Point): Drop {
   return zoneAt(view.zones.filter((z) => !fanned.has(z.id)), view.floor, p.x, p.y)
 }
 
+// Where a piece lands (#1377, K32): as a card would, except that a hand is not there. Material is
+// never held, so a die or a chip let go over a hand's fan or strip lies on whatever the hand lies
+// over — the felt, as often as not.
+export function pieceAt(view: Snapshot, p: Point): Drop {
+  return zoneAt(view.zones.filter((z) => z.kind !== 'hand'), view.floor, p.x, p.y)
+}
+
 // How far a box must move to lie on the felt (C5, K2, #66): the frame around the felt is drawn in
 // screen pixels outside the millimetres a drop is measured in, and nothing lies *on* it, so what
 // would come to rest past the floor's edge is drawn back until it lies on the floor, whole. The
@@ -202,14 +209,14 @@ function aimedAt(view: Snapshot, d: Drag, mode: TableMode): Intent[] {
     // chip's answer said once for each chip. Nothing here knows the word "pile" (#89).
     const ids = d.target.kind === 'counter' ? [d.target.id] : d.target.ids
     const o = d.origin[ids[0] ?? ''] ?? d.grab
-    const dest = at({ x: o.x + dx, y: o.y + dy })
+    const dest = pieceAt(view, { x: o.x + dx, y: o.y + dy })
     const s = keptOnFelt(view, dest.zone, { x: dest.x, y: dest.y, w: TOKEN_MM, h: TOKEN_MM })
     return ids.map((id): Intent => ({ v: 'move', component: id, to: dest.zone, x: dest.x + s.x, y: dest.y + s.y }))
   }
   // A die lies where it was let go of, as a chip does: it stacks on nothing and joins no pile.
   if (d.target.kind === 'die') {
     const o = d.origin[d.target.id] ?? d.grab
-    const dest = at({ x: o.x + dx, y: o.y + dy })
+    const dest = pieceAt(view, { x: o.x + dx, y: o.y + dy })
     const s = keptOnFelt(view, dest.zone, { x: dest.x, y: dest.y, w: DIE_MM, h: DIE_MM })
     return [{ v: 'move', component: d.target.id, to: dest.zone, x: dest.x + s.x, y: dest.y + s.y }]
   }
