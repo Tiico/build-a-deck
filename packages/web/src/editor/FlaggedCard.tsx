@@ -3,6 +3,7 @@ import type { PlaytestCard, PlaytestFlag } from '@byd/server/doc'
 import { BackTexture, Texture } from '../table/Texture.js'
 import { useT, type T } from '../i18n/index.js'
 import { useFocusTrap } from './focusTrap.js'
+import { isMasked } from '../masked.js'
 
 // The card a flag is about (#1142, beställarens val 2026-10-22: «1 · miniatyren i raden»), as it
 // was: the texture of the version the flag was raised on, with the side up that the flagger saw.
@@ -81,7 +82,9 @@ export function LiftedCard({ origin, flag, card, version, when, onClose }: { ori
               </div>
             </figure>
           )}
-          {flag.note && <p className="byd-results-said">«{flag.note}»</p>}
+          {/* What she wrote, quoted; or that it is removed (#1349), never a quotation of the
+              placeholder. A flag without a comment says nothing here, as the row already says so. */}
+          {isMasked(flag.note) ? <p className="byd-results-quiet">{t('masked.comment')}</p> : flag.note && <p className="byd-results-said">«{flag.note}»</p>}
           <button type="button" className="byd-results-lift-close" onClick={onClose}>
             {t('results.card.close')}
           </button>
