@@ -26,8 +26,22 @@ import './flagflow.css'
 // the phone's sheet but a panel docked beside the felt (`docked`, #1255, beställarens val B): the
 // table is not dimmed, and while the panel stands a press on a card points it out, with no mode
 // in between. The phone keeps its sheet.
-const CARDS = '[data-component], [data-hand-card], [data-area-card], [data-mine-card]'
-const idOf = (el: Element): string | null => el.getAttribute('data-component') ?? el.getAttribute('data-hand-card') ?? el.getAttribute('data-area-card') ?? el.getAttribute('data-mine-card')
+
+// What a card that can be pointed out carries its id in: a card on the felt, in a hand, in a target,
+// in front of a seat, and the face up top of a pile on the felt (#1397).
+const MARKS = ['data-component', 'data-hand-card', 'data-area-card', 'data-mine-card', 'data-pile-top'] as const
+const CARDS = MARKS.map((mark) => `[${mark}]`).join(', ')
+const idOf = (el: Element): string | null => MARKS.reduce<string | null>((id, mark) => id ?? el.getAttribute(mark), null)
+
+// The card a flag is about keeps the ring the pointer draws on it, wherever it is drawn, until the
+// flag is sent, cancelled or rid of it (#1397, the prototype `play-arken.html?v=A`): with the
+// mouse gone to the note, nothing else says which card the flag is about. A rule rather than an
+// attribute set on the card, since the card is drawn anew where it moves, and a rule finds it
+// there too. The look is `flagflow.css`'s ring under the pointer.
+function PointedRing({ id }: { id: string }) {
+  const at = MARKS.map((mark) => `:root[data-flag-pointing='panel'] [${mark}="${CSS.escape(id)}"]`).join(', ')
+  return <style>{`${at} { outline: 3px solid var(--byd-warn, #ffd98a); outline-offset: 2px; }`}</style>
+}
 
 export type FlagFlowProps = {
   client: TableClient
@@ -225,6 +239,7 @@ function FlagPanel({ client, view, faces, refusal, note, onNote, card, onPoint, 
   const send = () => onFlag(note.trim() || undefined)
   return (
     <aside className="byd-flag-panel" ref={box} role="dialog" aria-labelledby={`${id}-title`}>
+      {card ? <PointedRing id={card.id} /> : null}
       <header className="byd-flag-panel-head">
         <FlagGlyph />
         <h2 id={`${id}-title`}>{t('flag.panel.title')}</h2>

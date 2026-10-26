@@ -18,10 +18,11 @@
 .byd-flag-point button { flex: none; min-height: 44px; padding: 0 16px; border: 0; border-radius: 10px; background: var(--byd-warn-bg, #2a2417); color: var(--byd-warn, #ffd98a); font: inherit; cursor: pointer; }
 .byd-flag-point:focus { outline: none; }
 .byd-flag-point button:focus-visible { outline: 2px solid var(--byd-warn-bg, #2a2417); outline-offset: 2px; }
-:root[data-flag-pointing] :is([data-component], [data-hand-card], [data-area-card], [data-mine-card]) { cursor: crosshair; }
-:root[data-flag-pointing='band'] :is([data-component], [data-hand-card], [data-area-card], [data-mine-card]) { outline: 3px solid var(--byd-warn, #ffd98a); outline-offset: 2px; }
-/* A pile on the desk whose top is face up holds a card that can be pointed out (#1376). */
-:root[data-flag-pointing] :is(button, summary, input, select, textarea):not([data-component], [data-hand-card], [data-area-card], [data-mine-card], .byd-flag-point *, .byd-flag-panel *, summary, :has([data-component])) { opacity: 0.35; }
+:root[data-flag-pointing] :is([data-component], [data-hand-card], [data-area-card], [data-mine-card], [data-pile-top]) { cursor: crosshair; }
+:root[data-flag-pointing='band'] :is([data-component], [data-hand-card], [data-area-card], [data-mine-card], [data-pile-top]) { outline: 3px solid var(--byd-warn, #ffd98a); outline-offset: 2px; }
+/* A pile on the desk whose top is face up holds a card that can be pointed out (#1376), and so does
+   one on the felt, whose top carries its id in `data-pile-top` (#1397). */
+:root[data-flag-pointing] :is(button, summary, input, select, textarea):not([data-component], [data-hand-card], [data-area-card], [data-mine-card], [data-pile-top], .byd-flag-point *, .byd-flag-panel *, summary, :has([data-component])) { opacity: 0.35; }
 /* A press points out and reads nothing (#1142), so the card a resting mouse would lift is not lifted. */
 :root[data-flag-pointing] [data-lift] { display: none; }
 
@@ -30,7 +31,7 @@
    its own column beside the felt when the hand is the band under it, and where the television's
    column stands for the observer at a desk. Nothing is dimmed; the card under the pointer is
    ringed, since a press on it is what points it out. */
-:root[data-flag-pointing='panel'] :is([data-component], [data-hand-card], [data-area-card], [data-mine-card]):hover { outline: 3px solid var(--byd-warn, #ffd98a); outline-offset: 2px; }
+:root[data-flag-pointing='panel'] :is([data-component], [data-hand-card], [data-area-card], [data-mine-card], [data-pile-top]):hover { outline: 3px solid var(--byd-warn, #ffd98a); outline-offset: 2px; }
 .byd-flag-panel { flex: none; display: flex; flex-direction: column; box-sizing: border-box; width: 360px; min-height: 0; margin: 12px; border: 1px solid var(--byd-line, #343a4a); border-radius: 12px; background: var(--byd-surface, #1a1d26); color: var(--byd-ink-strong, #fff); font: 14px/1.4 system-ui; box-shadow: 0 12px 40px #0009; overflow: hidden auto; }
 .byd-flag-panel *, .byd-flag-panel *::before { box-sizing: border-box; }
 .byd-online-play[data-hand='band']:has(> .byd-flag-panel) { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: minmax(0, 1fr) auto; }
