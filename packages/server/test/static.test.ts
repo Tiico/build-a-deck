@@ -1,4 +1,5 @@
 import { randomBytes } from 'node:crypto'
+import { readFileSync } from 'node:fs'
 import { mkdtemp, mkdir, readFile, readdir, stat, utimes, writeFile } from 'node:fs/promises'
 import { request as httpRequest } from 'node:http'
 import { tmpdir } from 'node:os'
@@ -7,6 +8,7 @@ import { brotliCompressSync, brotliDecompressSync, constants, gunzipSync, gzipSy
 import { afterEach, describe, expect, it } from 'vitest'
 import { TableHost, createServer, MemoryLogStore, MemoryProjectStore } from '../src/index.js'
 import { precompress } from '../src/compress.js'
+import { routesOf } from '../../web/scripts/route-table.js'
 import { listenInBand, registry } from './fixture.js'
 
 // In production the web app and the API share one origin (README): the server serves the built
@@ -85,6 +87,25 @@ describe('serving the web app (DRIFT §1)', () => {
     // Only the link itself is a page; the rest of the prefix stays the API's.
     expect((await fetch(`${http}/invites`, { headers: { accept: 'text/html' } })).status).toBe(404)
     expect((await fetch(`${http}/invites/a/b`, { headers: { accept: 'text/html' } })).status).toBe(404)
+  })
+
+  // Every page the web app's router draws is the app when a browser opens it, never the API's 404:
+  // a new page whose address sits under an API prefix would be dead on the box and alive in dev
+  // (#1351). The routes are read off `fetchPage` as the build reads them.
+  it('answers every page the router draws with the app', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'byd-static-'))
+    await writeFile(join(dir, 'index.html'), '<!doctype html><title>byd</title>')
+    const http = await serve(dir, new MemoryLogStore(), undefined, new MemoryProjectStore())
+    const app = readFileSync(new URL('../../web/src/App.tsx', import.meta.url), 'utf8')
+    const paths = routesOf(app).map((r) => (r.kind === 'code' ? '/K7MQ2X' : r.kind === 'prefix' ? `${r.path}abc_DEF-123` : r.path))
+    expect(paths).toContain('/villkor/anmal')
+    const answers = await Promise.all(
+      paths.map(async (path) => {
+        const res = await fetch(`${http}${path}`, { headers: { accept: 'text/html,application/xhtml+xml,*/*;q=0.8' } })
+        return [path, res.status, (await res.text()).includes('<title>byd</title>')] as const
+      }),
+    )
+    expect(answers).toEqual(paths.map((path) => [path, 200, true]))
   })
 
   it('without STATIC_DIR unknown paths are 404 as before', async () => {

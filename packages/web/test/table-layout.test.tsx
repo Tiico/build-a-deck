@@ -488,11 +488,13 @@ describe('the room television’s «?» discs stand on the column’s edge (#921
         return {
           heading: Math.round((right - document.querySelector('.byd-tv-head')!.getBoundingClientRect().right) * 2) / 2,
           left: { code: at('.byd-tv-join strong'), shortcuts: at('.byd-tv-corner .byd-shortcut-open > span') },
-          // In the stage's foot the help's disc stands on the code's own line, after the square.
-          helpBesideCode: (() => {
+          // In the stage's foot the help's disc stands on the way in's own heading, after its words
+          // and above the code (#1343, beslut A).
+          helpBesideHeading: (() => {
+            const head = document.querySelector('.byd-tv-join [data-join-head] > span')!.getBoundingClientRect()
             const code = document.querySelector('.byd-tv-join strong')!.getBoundingClientRect()
             const ask = document.querySelector('.byd-tv-join .byd-help-ask')!.getBoundingClientRect()
-            return ask.left >= code.right && ask.top < code.bottom && ask.bottom > code.top
+            return ask.left >= head.left && ask.top < head.bottom && ask.bottom > head.top && ask.bottom <= code.top
           })(),
           targets: { help: target('.byd-tv-join .byd-help-ask') >= 44, shortcuts: target('.byd-tv-corner .byd-shortcut-open') >= 44 },
         }
@@ -500,7 +502,7 @@ describe('the room television’s «?» discs stand on the column’s edge (#921
     )
     expect(seen.left).toEqual({ code: 0, shortcuts: 0 })
     expect(seen.heading).toBe(0)
-    expect(seen.helpBesideCode).toBe(true)
+    expect(seen.helpBesideHeading).toBe(true)
     expect(seen.targets).toEqual({ help: true, shortcuts: true })
   }, 60_000)
 })

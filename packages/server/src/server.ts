@@ -2780,7 +2780,7 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     return true
   }
   // "Uppdatera bordet" on a running table (C7, L5): the project's current rev becomes a
-  // version.change line, and the actor gets the new textures.
+  // version.change line, with the piles as that rev defines them, and the actor gets the new textures.
   const refresh = /^\/sessions\/([^/]+)\/refresh$/.exec(url.pathname)
   if (refresh && req.method === 'POST') {
     const sessionId = decodeURIComponent(refresh[1] ?? '')
@@ -2814,7 +2814,7 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     // names, which is never read.
     await opts.store.addDeck(sessionId, version, deck)
     await actor.refreshDeck(deck, setup)
-    const decision = await actor.submit({ id: randomUUID(), seat: null, intents: [{ v: 'version.change', to: version, components: setup.components, ...(setup.cards ? { cards: setup.cards } : {}) }] })
+    const decision = await actor.submit({ id: randomUUID(), seat: null, intents: [{ v: 'version.change', to: version, components: setup.components, zones: setup.zones, ...(setup.cards ? { cards: setup.cards } : {}) }] })
     if (!decision.ok) json(res, 409, { error: decision.reason })
     else json(res, 200, { version, seqs: decision.applied.map((l) => l.seq) })
     return true

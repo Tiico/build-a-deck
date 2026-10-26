@@ -721,7 +721,11 @@
 [data-tv] .byd-tv-render b { color: #ffd98a; font-variant-numeric: tabular-nums; }
 [data-tv] .byd-tv-render i { grid-column: 1 / -1; height: 6px; border-radius: 3px; background: linear-gradient(90deg, #ffd98a var(--byd-render-done, 0%), #232733 0); }
 [data-tv] .byd-tv-join { display: flex; align-items: center; gap: 8px 18px; flex-wrap: wrap; }
-[data-tv] .byd-tv-join > span { color: #7d8597; font-size: 14px; flex: 1 0 100%; }
+[data-tv] .byd-tv-join > span, [data-tv] .byd-tv-join > [data-join-head] > span { color: #7d8597; font-size: 14px; flex: 1 0 100%; }
+/* The way in's heading carries the help's «?» on its own line (#1343, beslut A): the words first and
+   the ring beside them, never at the line's far end. */
+[data-tv] .byd-tv-join > [data-join-head] { flex: 1 0 100%; gap: 12px; }
+[data-tv] .byd-tv-join > [data-join-head] > span { flex: 0 1 auto; }
 [data-tv] .byd-qr { border-radius: 6px; background: #fff; }
 [data-tv] .byd-tv-join strong {
   font-family: ui-monospace, Menlo, monospace; font-size: 26px; letter-spacing: 6px;
@@ -836,8 +840,9 @@
 /* The foot, in two columns where the stage is wide and one where it is not: the way in and the
    corner's buttons to the left, on the column's edge (#921); the brand, the game's name and who is
    watching to the right; and the cards still drawing, while they are, on a line under both. The
-   way in keeps the old column's form but brings its «?» up beside the code and the square, where
-   it costs no line of its own. */
+   way in keeps the old column's form but brings its «?» up onto its heading (#1343, beslut A),
+   where it costs no line of its own: beside the code and the square it needed 361 px of the 320 the
+   foot has where the stage stands on its floor, and took a line of its own under them. */
 [data-tv] .byd-tv-foot {
   display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 16px 24px;
   border-top: 1px solid #232733; padding-top: 16px; min-width: 0;
@@ -1400,7 +1405,7 @@
    which only the table screen sets. */
 [data-tv][data-room] aside h2:where(:not(.byd-rules-panel *)) { font-size: 24px; letter-spacing: 1px; margin-bottom: 8px; }
 [data-tv][data-room] .byd-tv-head h1 { font-size: 28px; }
-[data-tv][data-room] .byd-tv-join > span { font-size: 24px; }
+[data-tv][data-room] .byd-tv-join > span, [data-tv][data-room] .byd-tv-join > [data-join-head] > span { font-size: 24px; }
 /* The room's code at the size beslut C set (#675): 40 px, under the host at K26's 24. */
 [data-tv][data-room] .byd-tv-join strong { font-size: 40px; line-height: 1.1; }
 [data-tv][data-room] .byd-tv-render { font-size: 24px; }
