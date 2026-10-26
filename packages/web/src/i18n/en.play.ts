@@ -394,7 +394,7 @@ export const enPlay: Record<keyof typeof svPlay, string> = {
   'flag.panel.note': 'Note',
   'flag.panel.keys': 'flags',
   'end.sheet.title': 'End the table?',
-  'end.sheet.body': 'The game ends for everyone and cannot go on. Every player gets the survey on their phone.',
+  'end.sheet.body': 'The game ends for everyone and cannot go on. Every player gets the survey where they hold their hand.',
   'end.sheet.end': 'End for everyone',
   'end.sheet.not': 'Cancel',
 
@@ -561,4 +561,8 @@ export const enPlay: Record<keyof typeof svPlay, string> = {
   'desk.says.mouse.turned': 'Click turns it up · drag it to a place to play it face down',
   'desk.help.read': 'Rest the mouse on a card to read it. A click turns it over, and a card turned over is played face down.',
   'desk.help.play': 'Drag a card to a place above the hand to play it there. Click a pile to draw a card.',
+  'desk.panel.close': 'Close',
+  'desk.panel.esc': 'stays',
+  'desk.survey.answer': 'answer',
+  'desk.survey.next': 'next',
 }

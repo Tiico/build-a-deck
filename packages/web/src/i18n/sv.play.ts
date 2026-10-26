@@ -478,7 +478,7 @@ export const svPlay = {
   'flag.panel.note': 'Kommentar',
   'flag.panel.keys': 'flaggar',
   'end.sheet.title': 'Avsluta bordet?',
-  'end.sheet.body': 'Spelet avslutas för alla och kan inte fortsätta. Alla spelare får enkäten på sin telefon.',
+  'end.sheet.body': 'Spelet avslutas för alla och kan inte fortsätta. Alla spelare får enkäten där de håller sin hand.',
   'end.sheet.end': 'Avsluta för alla',
   'end.sheet.not': 'Avbryt',
 
@@ -691,4 +691,8 @@ export const svPlay = {
   'desk.says.mouse.turned': 'Klick vänder upp · dra till en yta spelar nedvänt',
   'desk.help.read': 'Vila musen på ett kort för att läsa det. Ett klick vänder det, och ett vänt kort spelas nedvänt.',
   'desk.help.play': 'Dra ett kort till en yta ovanför handen för att spela det dit. Klicka på en hög för att dra ett kort.',
+  'desk.panel.close': 'Stäng',
+  'desk.panel.esc': 'stannar',
+  'desk.survey.answer': 'svarar',
+  'desk.survey.next': 'nästa',
 } as const

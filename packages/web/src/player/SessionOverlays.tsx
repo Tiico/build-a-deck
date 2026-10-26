@@ -101,12 +101,16 @@ export type SessionOverlaysProps = {
   stay?: ReactNode
   // The screen draws the flag itself, docked beside its felt (`DockedFlag`, #1255).
   flagDocked?: boolean
+  // The desk's panel (#1376, beställarens beslut A): the flag, the way out, «Avsluta bordet?» and
+  // the removal of a name stand in the panel at the window's right, where these overlays are
+  // mounted, instead of in sheets over the hand.
+  docked?: boolean
   // Leaving with the name removed (#1281), and where that leads once it is done.
   forget?: Forget | undefined
   onForgotten?: () => void
 }
 
-export function SessionOverlays({ client, view, seat, sheet, onSheet, onLeft, toast, onToast, version, faces, stay, flagDocked = false, forget, onForgotten }: SessionOverlaysProps) {
+export function SessionOverlays({ client, view, seat, sheet, onSheet, onLeft, toast, onToast, version, faces, stay, flagDocked = false, docked = false, forget, onForgotten }: SessionOverlaysProps) {
   const t = useT()
   const proposal = standingRewind(view)
   // A sheet that sends something can be answered no, and the answer stands beside the button
@@ -155,6 +159,7 @@ export function SessionOverlays({ client, view, seat, sheet, onSheet, onLeft, to
       {sheet === 'flag' && !flagDocked && (
         <Suspense fallback={null}>
           <FlagFlow
+            docked={docked}
             client={client}
             view={view}
             faces={faces}
@@ -181,6 +186,7 @@ export function SessionOverlays({ client, view, seat, sheet, onSheet, onLeft, to
       )}
       {sheet === 'exit' && (
         <ExitSheet
+          panel={docked}
           pile={returnPile(view, seat)}
           refusal={gone}
           stay={stay}
@@ -211,6 +217,7 @@ export function SessionOverlays({ client, view, seat, sheet, onSheet, onLeft, to
       )}
       {sheet === 'forget' && forget && (
         <ForgetSheet
+          panel={docked}
           name={forget.name}
           leaving
           refusal={forgot}
@@ -224,6 +231,7 @@ export function SessionOverlays({ client, view, seat, sheet, onSheet, onLeft, to
       )}
       {sheet === 'end' && (
         <EndSheet
+          panel={docked}
           version={version ?? t('session.version.this')}
           refusal={ended}
           onEnd={() => {
@@ -266,15 +274,18 @@ export type SeatSurveyProps = {
   saved?: boolean | undefined
   // The way on under the thanks: the owner's back to the game's editor (#1217).
   onward?: ReactNode
+  // In the desk's panel beside the ended table (#1376), rather than over the whole screen.
+  docked?: boolean
 }
 
-export function SeatSurvey({ view, seat, name, http, sessionId, version, token, saveUrl, saved, onward }: SeatSurveyProps) {
+export function SeatSurvey({ view, seat, name, http, sessionId, version, token, saveUrl, saved, onward, docked = false }: SeatSurveyProps) {
   const rulebook = useHasRulebook(http, sessionId, view.ended)
   // Whether this seat has answered already (#1355), as the server says it.
   const standing = useSurveyStanding(http, sessionId, { token, seat }, view.ended)
   if (!view.ended) return null
   return (
     <Survey
+      docked={docked}
       who={name}
       version={version ?? '…'}
       saveUrl={saveUrl}
@@ -335,7 +346,8 @@ export function useSheetOpener(sheet: Sheet, onSheet: (sheet: Sheet) => void): R
 // `words`: the label stands beside the glyph, in the phone's «Mer» (#1147), where each is a row of
 // its own. Without it the word is the button's name, out of sight in the DOM and on the pointer as
 // its title (L73, led 3).
-type SessionButtonProps = { view: Snapshot; raise: RaiseSheet; words?: boolean }
+// `open`: the desk's panel this button opened stands (#1376), said as a disclosure is.
+type SessionButtonProps = { view: Snapshot; raise: RaiseSheet; words?: boolean; open?: boolean | undefined }
 
 // «Ångra» switches itself off by being pressed: the one thing there was to undo is undone. A
 // `disabled` button cannot hold the focus, so the focus that pressed it fell to nothing and the
@@ -358,20 +370,20 @@ export function UndoButton({ client, view, raise, words = false }: SessionButton
   )
 }
 
-export function FlagButton({ view, raise, words = false }: SessionButtonProps) {
+export function FlagButton({ view, raise, words = false, open }: SessionButtonProps) {
   const t = useT()
   return (
-    <button className="byd-flag" disabled={view.ended} onClick={raise('flag')} title={t('session.flag')}>
+    <button className="byd-flag" disabled={view.ended} onClick={raise('flag')} title={t('session.flag')} aria-expanded={open}>
       <FlagGlyph />
       <span className={words ? undefined : 'byd-offscreen'}>{t('session.flag')}</span>
     </button>
   )
 }
 
-export function ExitButton({ view, raise, words = false }: SessionButtonProps) {
+export function ExitButton({ view, raise, words = false, open }: SessionButtonProps) {
   const t = useT()
   return (
-    <button className="byd-exit" aria-label={t('session.exit.aria', { label: t('session.exit') })} title={t('session.exit')} disabled={view.ended} onClick={raise('exit')}>
+    <button className="byd-exit" aria-label={t('session.exit.aria', { label: t('session.exit') })} title={t('session.exit')} disabled={view.ended} onClick={raise('exit')} aria-expanded={open}>
       <ExitGlyph />
       <span className={words ? undefined : 'byd-offscreen'}>{t('session.exit')}</span>
     </button>

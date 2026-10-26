@@ -5,7 +5,7 @@ import { HandFace, TURNED_GROUND } from './HandFace.js'
 import { CountersRow } from './SeatExtras.js'
 import { DicePill, diceOf } from './Dice.js'
 import { TurnBadge } from './TurnBadge.js'
-import { ExitButton, FlagButton, UndoButton, type RaiseSheet } from './SessionOverlays.js'
+import { ExitButton, FlagButton, UndoButton, type RaiseSheet, type Sheet } from './SessionOverlays.js'
 import { overviewOf, type Placement } from './PlaySheet.js'
 import { emptyHandText } from './HandGrid.js'
 import { LastMove } from '../online/LastMove.js'
@@ -22,6 +22,7 @@ import { Refusal, type RefusalHandle } from '../status/Refusal.js'
 import { useT, type T } from '../i18n/index.js'
 import type { TurnedHand } from './turned.js'
 import './desk.css'
+import './desk-panel.css'
 
 // `/play` in a wide window (#1310, beställarens beslut A i #1308): a computer at a table around a
 // TV. The phone's four tabs (C4, #1147) put a 580 px column in the middle of the screen and what
@@ -62,12 +63,20 @@ export type PlayerDeskProps = {
   raiseMore: RaiseSheet
   onRoll(): void
   rolling: boolean
-  // Out of reach while a card is held up or another seat's rewind is asked (#483, #715).
+  // Out of reach while a card is held up or another seat's rewind is asked (#483, #715), while the
+  // panel asks something that cannot be undone, and once the table has ended (#1376).
   behind: { inert?: boolean }
+  // The sheet the seat has raised, which the head's Flagga and Lämna say they opened (#1376).
+  sheet: Sheet
+  // What stands in the panel at the right, from the head down to the foot (#1376, beställarens
+  // beslut A): the flag, the way out and its questions, and once the table has ended the survey.
+  side?: ReactNode
+  // How wide that panel is: the flag's and the way out's, or the survey's, which is wider.
+  sideWidth?: 'narrow' | 'wide' | undefined
 }
 
 export function PlayerDesk(props: PlayerDeskProps) {
-  const { client, view, activity, seat, name, sessionId, faces, turnedHand, openHand, raiseHead, raiseMore, behind } = props
+  const { client, view, activity, seat, name, sessionId, faces, turnedHand, openHand, raiseHead, raiseMore, behind, sheet, side, sideWidth } = props
   const t = useT()
   const playing = !view.ended && !view.rewind
   // Drawn as the grid draws it, from the bottom up (#415): the card just drawn is the last.
@@ -79,7 +88,7 @@ export function PlayerDesk(props: PlayerDeskProps) {
   const atOf = (zone: string): Placement => [...groups.lead, ...groups.mine, ...groups.piles, ...groups.rest].find((z) => z.id === zone)?.at ?? 'top'
   const tile = (z: DeskTarget) => <Target key={z.id} z={z} {...props} aimed={aimed === z.id} t={t} />
   return (
-    <div className="byd-desk" style={{ ['--seat' as string]: seatColor(Math.max(0, view.seats.findIndex((s) => s.id === seat))) }}>
+    <div className="byd-desk" data-side={sideWidth} data-ended={view.ended ? '' : undefined} style={{ ['--seat' as string]: seatColor(Math.max(0, view.seats.findIndex((s) => s.id === seat))) }}>
       <header className="byd-desk-head" {...behind}>
         <h1 className="byd-offscreen">{t('desk.heading')}</h1>
         <span className="byd-player-who byd-desk-who">
@@ -104,11 +113,22 @@ export function PlayerDesk(props: PlayerDeskProps) {
             <p>{t('play.help.hand.hidden')}</p>
           </Help>
           {playing && <RuleDrawer http={faces} sessionId={sessionId} placement="tv" live={view} />}
-          <FlagButton view={view} raise={raiseMore} words />
-          <ExitButton view={view} raise={raiseMore} words />
+          <FlagButton view={view} raise={raiseMore} words open={!view.ended && sheet === 'flag'} />
+          <ExitButton view={view} raise={raiseMore} words open={!view.ended && (sheet === 'exit' || sheet === 'end' || sheet === 'forget')} />
         </div>
       </header>
-      <main className="byd-desk-targets" ref={targets} {...behind}>
+      {/* The targets and the hand, and beside them the panel (#1376), which they give its width
+          while it stands; the head stays the whole window's. */}
+      <div className="byd-desk-body">
+      <div className="byd-desk-play" {...behind}>
+      {/* The table as it lay when it ended, behind the survey: said once over it, in the words the
+          survey's own head uses. */}
+      {view.ended && (
+        <span className="byd-desk-ended" aria-hidden="true">
+          {t('survey.title')}
+        </span>
+      )}
+      <main className="byd-desk-targets" ref={targets}>
         {groups.lead.map(tile)}
         {groups.mine.length > 0 && <div className="byd-desk-mine">{groups.mine.map(tile)}</div>}
         {groups.piles.length > 0 && <div className="byd-desk-stack" data-stack="piles" style={stackStyle(groups.piles.length, rows)}>{groups.piles.map(tile)}</div>}
@@ -125,9 +145,11 @@ export function PlayerDesk(props: PlayerDeskProps) {
         onPlay={(card, zone) => {
           if (playing) props.onDrop(card, zone, atOf(zone))
         }}
-        behind={behind}
         t={t}
       />
+      </div>
+      {side}
+      </div>
     </div>
   )
 }
@@ -239,10 +261,13 @@ function Target({ z, aimed, t, view, faces, onDraw, drawn, refusedPile, dropped,
 
 // The top of a pile, as the table shows it: its face where the pile is open and the card face up,
 // and a back otherwise.
+//
+// A face up top is a card a flag may be about (#1376, #1255): it carries its id as the felt's cards
+// do, so a click on it while the flag's panel stands points it out and draws nothing.
 function PileTop({ top, faces }: { top: VisibleComponentState | undefined; faces: string }) {
   if (top && top.cardRef !== null) {
     return (
-      <span className="byd-desk-top" style={{ ['--hue' as string]: hue(top.cardRef) }}>
+      <span className="byd-desk-top" data-component={top.id} style={{ ['--hue' as string]: hue(top.cardRef) }}>
         <Texture faces={faces} c={top} />
       </span>
     )
@@ -259,7 +284,6 @@ type HandRowProps = {
   onOpen(card: VisibleComponentState): void
   onAim(zone: string | null): void
   onPlay(card: VisibleComponentState, zone: string): void
-  behind: { inert?: boolean }
   t: T
 }
 
@@ -272,14 +296,15 @@ const targetAt = (x: number, y: number): string | null => document.elementFromPo
 // Worked out here and not by the browser's shrinking, as `fan.ts` does it for the band, because an
 // overlapped card's name has to know how much of it shows.
 const ROW_PAD_PX = 24
+// The window less the panel beside the hand (#1376), which `desk-panel.css` says while it stands.
 function rowStyle(n: number): CSSProperties {
-  return n > 1 ? { ['--byd-desk-step' as string]: `clamp(${FAN_MIN_PX}px, (100vw - ${2 * ROW_PAD_PX}px - var(--fan-card)) / ${n - 1}, var(--fan-card) + 8px)` } : {}
+  return n > 1 ? { ['--byd-desk-step' as string]: `clamp(${FAN_MIN_PX}px, (100vw - var(--byd-desk-side, 0px) - ${2 * ROW_PAD_PX}px - var(--fan-card)) / ${n - 1}, var(--fan-card) + 8px)` } : {}
 }
 
 // The hand along the foot (prototype A): every card in full size side by side, overlapping when
 // the row runs out of room and scrolling in its own box past a fingertip's step, never the page
 // (L10). The last card is always whole.
-function HandRow({ view, cards, faces, locked, turnedHand, onOpen, onAim, onPlay, behind, t }: HandRowProps) {
+function HandRow({ view, cards, faces, locked, turnedHand, onOpen, onAim, onPlay, t }: HandRowProps) {
   const { turned } = turnedHand
   const hand = useHandGestures({
     cards,
@@ -311,7 +336,7 @@ function HandRow({ view, cards, faces, locked, turnedHand, onOpen, onAim, onPlay
       </div>
     )
   return (
-    <div className="byd-desk-hand" data-hand-row {...behind}>
+    <div className="byd-desk-hand" data-hand-row>
       <div className="byd-desk-hand-head">
         <span>{t('desk.hand', { cards: t(cards.length === 1 ? 'play.cards.one' : 'play.cards.other', { n: cards.length }) })}</span>
         <span>{t('desk.hint')}</span>
