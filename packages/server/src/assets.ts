@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto'
 import { z } from 'zod'
 import { croppedMotif, type Element, type Motif, type RuleDoc, type Template } from '@byd/template'
-import { ASSET_PREFIX, MemoryObjectStore, assetFromPostgres, assetKey, type ObjectStore } from '@byd/render'
+import { ASSET_PREFIX, MemoryObjectStore, assetFromPostgres, assetKey, type ObjectStore } from '@byd/render/queue'
 import type { Sql } from 'postgres'
 import { svgRefusal, type Picture } from '@byd/protocol'
 import type { ProjectRow } from './projects.js'
