@@ -352,6 +352,8 @@ export function placePlates(root: ParentNode, home = false): Record<string, Plat
   // How far the start tile's shadow (`table.css`: `0 6px 16px`) reaches past its box, in screen
   // pixels: the blur's 16 px, less the 6 px it is moved down by above, plus them below.
   const TILE_SHADOW = { up: 10, side: 16, down: 22 }
+  // A card lying loose on the felt, and not one on its way there.
+  const LOOSE = '.byd-card:not([data-ghost]):not(.byd-peer-ghost):not([data-dragging])'
 
   type Box = { l: number; t: number; r: number; b: number }
   type Found = { tag: string; x: number; y: number; w: number; h: number; form: PlateAt['form'] }
@@ -423,6 +425,15 @@ export function placePlates(root: ParentNode, home = false): Record<string, Plat
       if (!r) continue
       const b = toFelt(r)
       fixed.push({ l: b.l - TILE_SHADOW.side / k, t: b.t - TILE_SHADOW.up / k, r: b.r + TILE_SHADOW.side / k, b: b.b + TILE_SHADOW.down / k })
+    }
+    // And every card lying loose on the felt (#1389, beställarens beslut A 2026-10-26). A card laid
+    // freely from a seat lands in front of it, in millimetres (#1368), and the plate stands in
+    // pixels: at five seats the band between the piles' words and E's plate is narrower than a card,
+    // so the plate gives way, as it does to the tile, and the card stays where it was laid. A card
+    // still in a hand's grip, or a peer's carried ghost, has not been laid yet.
+    for (const el of felt.querySelectorAll(LOOSE)) {
+      const r = shown(el)
+      if (r) fixed.push(toFelt(r))
     }
     // The felt, and of it what its frame shows.
     const frame = felt.closest('.byd-table-frame')

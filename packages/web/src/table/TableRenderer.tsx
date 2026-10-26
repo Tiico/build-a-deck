@@ -547,8 +547,11 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   // laid out again when it leaves, and go back to their own places.
   const start = onAct ? startOf(view) : null
   const tileOnFelt = start !== null && !view.played && startTile
+  // And the things lying loose on the floor, on the room's television: the plates stand clear of a
+  // loose card (#1389), so they are laid out again when one is laid or taken away, and go home.
+  const onFloor = forTheRoom ? view.components.filter((c) => c.zone === view.floor).map((c) => [c.id, c.x, c.y, c.rot]) : null
   const namesKey = measured
-    ? JSON.stringify([namesResized, mode, rotate, Math.round(fit * 1e4), forTheRoom, [...(lit ?? [])].sort(), view.zones.map((z) => [z.id, z.kind, z.name, z.geometry.x, z.geometry.y, z.geometry.w, z.geometry.h]), view.seats.map((s) => s.name), tileOnFelt])
+    ? JSON.stringify([namesResized, mode, rotate, Math.round(fit * 1e4), forTheRoom, [...(lit ?? [])].sort(), view.zones.map((z) => [z.id, z.kind, z.name, z.geometry.x, z.geometry.y, z.geometry.w, z.geometry.h]), view.seats.map((s) => s.name), tileOnFelt, onFloor])
     : null
   const liveScale = (fixedScale ?? placed?.scale ?? fitted ?? 1) * zoomed
   const deciding = namesKey !== null && namesAt.current !== namesKey && liveScale !== fit
