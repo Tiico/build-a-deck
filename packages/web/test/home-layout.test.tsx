@@ -114,36 +114,35 @@ describe.each([390, 320, 1280])('Mina spel at %i px (#555)', (width) => {
   }, 60_000)
 })
 
-// «Öppna bordet» in «Pågår nu» broke over two lines at 1024 (#1282), where the side column is 300 px
-// and the two ways of a band shared it half and half. Each way says itself on one line at every
-// desk width, side by side where both fit and one under the other where they do not, and in a wide
-// face too (Verdana or DejaVu), since the Mac's narrow system font hides what the runner's does not.
-describe.each([1024, 1280, 1440])('«Pågår nu» at %i px (#1282)', (width) => {
-  it('says each way of a running table on one line, inside its band', async () => {
+// «Öppna bordet» in «Pågår nu» broke over two lines at 1024 (#1282), where the side column is 300 px.
+// Since #1411 the band is a card per game: «Öppna spelet» on its head, and each table a row that
+// is the way to it. Each says itself on one line at every desk width, inside its card, and in a
+// wide face too (Verdana or DejaVu), since the Mac's narrow system font hides what the runner's
+// does not; the code's plate stands whole inside the row.
+describe.each([1024, 1280, 1440])('«Pågår nu» at %i px (#1282, #1411)', (width) => {
+  it('says the way to the game and the table’s row on one line each, inside the card', async () => {
     const html = await started()
     const page = await browser.newPage({ viewport: { width, height: 800 } })
     try {
       await page.setContent(document_(html), { waitUntil: 'load' })
       for (const face of ['', `* { font-family: Verdana, 'DejaVu Sans', sans-serif !important; }`]) {
         if (face) await page.addStyleTag({ content: face })
-        const ways = (await page.evaluate(`(() => {
-          const band = document.querySelector('.byd-home-running-row').getBoundingClientRect()
-          return [...document.querySelectorAll('.byd-home-running-row a')].map((a) => {
-            const words = document.createRange()
-            words.selectNodeContents(a)
-            const box = a.getBoundingClientRect()
-            return {
-              text: a.textContent,
-              lines: new Set([...words.getClientRects()].filter((r) => r.width > 0).map((r) => Math.round(r.top))).size,
-              height: box.height,
-              inside: box.left >= band.left && box.right <= band.right,
-              cut: a.scrollWidth > a.clientWidth,
-            }
-          })
-        })()`)) as { text: string; lines: number; height: number; inside: boolean; cut: boolean }[]
-        expect(ways.map((w) => w.text)).toEqual(['Öppna spelet', 'Öppna bordet'])
-        for (const way of ways) expect({ ...way, face }).toEqual({ ...way, face, lines: 1, inside: true, cut: false })
-        for (const way of ways) expect(way.height).toBeGreaterThanOrEqual(44)
+        const m = (await page.evaluate(`(() => {
+          const card = document.querySelector('.byd-home-running-game').getBoundingClientRect()
+          const lines = (el) => { const words = document.createRange(); words.selectNodeContents(el); return new Set([...words.getClientRects()].filter((r) => r.width > 0).map((r) => Math.round(r.top))).size }
+          const inside = (el) => { const box = el.getBoundingClientRect(); return box.left >= card.left && box.right <= card.right }
+          const editor = document.querySelector('.byd-home-running-editor')
+          const row = document.querySelector('.byd-home-running-row')
+          const code = row.querySelector('strong')
+          const state = row.querySelector('.byd-home-running-text > b')
+          return {
+            editor: { text: editor.textContent, lines: lines(editor), inside: inside(editor), cut: editor.scrollWidth > editor.clientWidth },
+            row: { height: row.getBoundingClientRect().height, inside: inside(row), lines: lines(state), cut: code.scrollWidth > code.clientWidth || state.scrollWidth > state.clientWidth, codeInside: inside(code) },
+          }
+        })()`)) as { editor: { text: string; lines: number; inside: boolean; cut: boolean }; row: { height: number; inside: boolean; lines: number; cut: boolean; codeInside: boolean } }
+        expect({ ...m.editor, face }).toEqual({ text: 'Öppna spelet', lines: 1, inside: true, cut: false, face })
+        expect({ ...m.row, face }).toEqual({ ...m.row, face, inside: true, lines: 1, cut: false, codeInside: true })
+        expect(m.row.height).toBeGreaterThanOrEqual(44)
       }
     } finally {
       await page.close()

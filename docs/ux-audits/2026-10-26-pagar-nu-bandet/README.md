@@ -44,5 +44,5 @@ Den ger bandet det som saknas, en bild och fakta, med former sidan redan har: hj
 B är det bättre valet om kolumnen ska rymma många bord, men den säger minst om varje och ser mest ut som en lista.
 C är vacker för ett bord och tröttsam för tre.
 
-Beslut: **B, med en ikon för hur man sitter**, beställaren 2026-10-26.
+Beslut: **B, med en ikon för hur man sitter**, beställaren 2026-10-26 (L89, #1411).
 Ikonerna är nya glyfer i `glyphs.tsx` (`screen`, `computer`); listan `GET /projects/:id/sessions` bär redan `seating`.
