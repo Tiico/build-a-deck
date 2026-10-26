@@ -24,14 +24,21 @@ export const pageLang = (): { lang?: string } => {
   return lang ? { lang } : {}
 }
 
-export async function requestLink(http: string, email: string, next: string): Promise<'sent' | 'logged-in' | 'too-many' | 'invalid'> {
+// What the server said to a link asked for. A refusal from the limiter carries how many seconds
+// until the next link can go (#1360), or `null` when the answer did not say.
+export type LinkAnswer = { is: 'sent' } | { is: 'logged-in' } | { is: 'invalid' } | { is: 'too-many'; retryAfter: number | null }
+
+export async function requestLink(http: string, email: string, next: string): Promise<LinkAnswer> {
   const res = await fetch(`${http}/auth/login`, withCredentials({ method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email, next, ...pageLang() }) }))
-  if (res.status === 429) return 'too-many'
-  if (res.status === 400) return 'invalid'
+  if (res.status === 429) return { is: 'too-many', retryAfter: secondsOf(res.headers.get('retry-after')) }
+  if (res.status === 400) return { is: 'invalid' }
   if (!res.ok) throw new Error(`could not ask for a link: ${res.status}`)
   const body = (await res.json()) as { loggedIn?: boolean }
-  return body.loggedIn ? 'logged-in' : 'sent'
+  return { is: body.loggedIn ? 'logged-in' : 'sent' }
 }
+
+// Retry-After in seconds; the HTTP date it may also be is not what this server sends.
+const secondsOf = (header: string | null): number | null => (header !== null && /^\d+$/.test(header.trim()) ? Number(header.trim()) : null)
 
 export async function whoAmI(http: string): Promise<string | null> {
   const res = await fetch(`${http}/auth/me`, withCredentials())

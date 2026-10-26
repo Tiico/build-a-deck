@@ -65,6 +65,7 @@ export const TOKEN_TTL_MS = 15 * 60 * 1000
 export const SESSION_TTL_MS = 30 * 24 * 3600 * 1000
 export const COOKIE = 'byd_session'
 const LOGINS_PER_HOUR = 5
+const HOUR_MS = 3600_000
 
 // The language the reader asked for (A4). Anything the tool does not speak is not an error: the
 // mail simply goes out in Swedish, which is the language the tool is written in.
@@ -224,15 +225,18 @@ export function mailerFromEnv(env: Record<string, string | undefined>): Mailer {
   return new ResendMailer(apiKey, env['MAIL_FROM'] || 'Deckster <login@example.com>')
 }
 
-// Five links an hour per address (DRIFT §9 is the outer wall; this is the inner one).
+// Five links an hour per address (DRIFT §9 is the outer wall; this is the inner one). A refusal says
+// how long until the next link may go (#1360): the seconds, rounded up, until the oldest of the five
+// is an hour old, which is when the receipt on the card can say it will.
+export type LoginAllowance = { ok: true } | { ok: false; retryAfter: number }
 export class LoginLimiter {
   private readonly sent = new Map<string, number[]>()
-  allow(email: string, now: number): boolean {
-    const recent = (this.sent.get(email) ?? []).filter((t) => now - t < 3600_000)
-    if (recent.length >= LOGINS_PER_HOUR) return false
+  allow(email: string, now: number): LoginAllowance {
+    const recent = (this.sent.get(email) ?? []).filter((t) => now - t < HOUR_MS)
+    if (recent.length >= LOGINS_PER_HOUR) return { ok: false, retryAfter: Math.ceil(((recent[0] ?? now) + HOUR_MS - now) / 1000) }
     recent.push(now)
     this.sent.set(email, recent)
-    return true
+    return { ok: true }
   }
 }
 

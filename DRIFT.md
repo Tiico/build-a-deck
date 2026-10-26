@@ -476,6 +476,7 @@ Passkey-återställning är UX som måste designas.
 
 Byggt 2026-09-06: eget, litet — inga beroenden.
 Tokens och sessions-id:n är slumpade och lagras hashade (`login_tokens`, `auth_sessions`, `accounts`); fem länkar i timmen per adress innanför Cloudflares gräns (§9).
+Den sjätte får 429 med `Retry-After`, sekunderna tills den äldsta av de fem är en timme gammal, så att kvittot på `/login` kan säga när nästa kan gå (#1360).
 Mejl går genom Resend (`RESEND_API_KEY`, `MAIL_FROM`); utan nyckel hamnar länken i loggen, vilket är utvecklingsläget.
 `PUBLIC_ORIGIN` styr vart länkarna pekar och om kakan får `Secure`.
 Sedan 2026-10-25 (#1277, DESIGN-BESLUT G6) rensar sveparen i `main.ts`, när appen startar och varje timme, inloggningslänkar som är använda eller har gått ut, kakor som har gått ut, och inbjudningar 30 dygn efter att de använts eller gått ut (`INVITE_KEEP_MS`, som kan korta tiden men aldrig förlänga den); startraden och timraden `swept` säger hur många rader som gick per tabell, aldrig vilka (§8).
