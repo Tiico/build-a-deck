@@ -10,7 +10,7 @@
 // Every edit here is applied by the one pure function the actor applies it with, so what is
 // asserted is the head the designer would be looking at and not a spy's log.
 import { useState } from 'react'
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import { fireEvent, render } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { applyEdit } from '@byd/server/doc'
@@ -23,11 +23,17 @@ function wideDoc(): ProjectDoc {
   return ['kostnad', 'typ'].reduce((doc, field) => applyEdit(doc, { v: 'addField', field }), projectDoc())
 }
 
+// Nothing locked (#1408): a locked column stands on the rail and is neither carried nor a place
+// to land, so the order is tried with the rail empty — the title is unlocked for this project.
+const PROJECT = 'p-order'
+beforeEach(() => localStorage.setItem('byd.locks', JSON.stringify({ [PROJECT]: [] })))
+
 function Editing({ doc: initial = wideDoc(), moves }: { doc?: ProjectDoc; moves?: [string, string | null][] }) {
   const [doc, setDoc] = useState(initial)
   return (
     <DataTable
       doc={doc}
+      project={PROJECT}
       selectedRow={null}
       onSelectRow={() => undefined}
       onCell={() => undefined}

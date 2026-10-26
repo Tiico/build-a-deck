@@ -45,9 +45,12 @@ const GROUNDS = {
 } as const
 type Ground = keyof typeof GROUNDS
 
-// De fastnålade cellerna (#145, #53). De ska lyftas med resten av raden, var och en från sin egen
-// vila: `byd-data-check` och `byd-data-id` ärver radens grund, `byd-data-remove` har en egen.
-const PINNED = ['byd-data-check', 'byd-data-id', 'byd-data-remove'] as const
+// De fastnålade cellerna (#145, #53, #1408). De ska lyftas med resten av raden, var och en från
+// sin egen vila: bocken och titeln — som står på listen från start sedan #1408 — ärver radens
+// grund, `byd-data-remove` har en egen. Namn och väljare, eftersom titeln är en kolumn och inte
+// en klass.
+const PINNED = { 'byd-data-check': '.byd-data-check', title: 'td[data-col="title"]', 'byd-data-remove': '.byd-data-remove' } as const
+type Pin = keyof typeof PINNED
 
 // Kortet som står kvar i den äldre versionen är det som blir `data-change='removed'`; det som bara
 // finns nu blir `added`. De tre första rörs inte, så de bär sin grund av andra skäl än jämförelsen.
@@ -212,7 +215,8 @@ async function edgesOf(page: Page, where: Record<string, string>): Promise<Recor
 /** Var en grunds egen ruta står: en vanlig cell för raden, och de tre fastnålade. */
 const cellsOf = (ground: Ground): Record<string, string> => {
   const row = `.byd-data tbody tr[data-card-ref="${GROUNDS[ground]}"]`
-  return Object.fromEntries([[ground, `${row} td[data-col="title"]`], ...PINNED.map((pin) => [`${ground} · ${pin}`, `${row} .${pin}`])])
+  // Radens egen grund läses i en cell som rullar — body — eftersom titeln står på listen (#1408).
+  return Object.fromEntries([[ground, `${row} td[data-col="body"]`], ...(Object.keys(PINNED) as Pin[]).map((pin) => [`${ground} · ${pin}`, `${row} ${PINNED[pin]}`])])
 }
 
 const EVERY_CELL: Record<string, string> = Object.assign({}, ...Object.keys(GROUNDS).map((g) => cellsOf(g as Ground)))
@@ -223,12 +227,12 @@ type Readings = {
   hover: Record<string, string>
   /** Den text raden faktiskt bär, som motorn räknar fram den. */
   ink: Record<Ground, string>
-  /** Det `id` raden står under, som motorn räknar fram det (#609). */
+  /** Det `id` raden står under, som motorn räknar fram det (#609); i raden sedan #1408. */
   idInk: Record<Ground, string>
-  /** Och det `antal` raden bär, som står på listen bredvid `id` sedan #695. */
-  antalInk: Record<Ground, string>
+  /** Och titelns bläck på listen, där den står från start sedan #1408. */
+  titleInk: Record<Ground, string>
   /** Den målade kanten längst in i listens sista cell, mot det som glider in under den (#609) —
-   *  `antal` sedan #695, som står sist på listen. */
+   *  titeln sedan #1408, som står ensam på listen från start. */
   edge: Record<Ground, string>
 }
 
@@ -282,13 +286,10 @@ async function measure(): Promise<Readings> {
       (rows) => Object.fromEntries(Object.entries(rows).map(([ground, cardRef]) => [ground, getComputedStyle(document.querySelector(`.byd-data tbody tr[data-card-ref="${cardRef}"] .byd-data-id`)!).color])),
       GROUNDS as Record<string, string>,
     )
-    const antalInk = await page.evaluate(
-      (rows) => Object.fromEntries(Object.entries(rows).map(([ground, cardRef]) => [ground, getComputedStyle(document.querySelector(`.byd-data tbody tr[data-card-ref="${cardRef}"] td[data-col="antal"] :is(input, s)`)!).color])),
-      GROUNDS as Record<string, string>,
-    )
+    const titleInk = ink
     await page.mouse.move(0, 0)
-    const edge = await edgesOf(page, Object.fromEntries(Object.entries(GROUNDS).map(([ground, cardRef]) => [ground, `.byd-data tbody tr[data-card-ref="${cardRef}"] td[data-col="antal"]`])))
-    return { rest, hover, ink: ink as Record<Ground, string>, idInk: idInk as Record<Ground, string>, antalInk: antalInk as Record<Ground, string>, edge: edge as Record<Ground, string> }
+    const edge = await edgesOf(page, Object.fromEntries(Object.entries(GROUNDS).map(([ground, cardRef]) => [ground, `.byd-data tbody tr[data-card-ref="${cardRef}"] td[data-col="title"]`])))
+    return { rest, hover, ink: ink as Record<Ground, string>, idInk: idInk as Record<Ground, string>, titleInk: titleInk as Record<Ground, string>, edge: edge as Record<Ground, string> }
   } finally {
     await page.close()
   }
@@ -350,8 +351,9 @@ describe('hovringen över en rad i tabellen (#400)', () => {
     // svåraste kombinationen aldrig mätts.
     expect(new Set(Object.values(r.ink)).size).toBeGreaterThan(1)
     expect(r.ink['jämförelse · borttagen']).not.toBe(r.ink['vanlig'])
+    // Mot listens hovrade grund, där titeln står sedan #1408.
     const under = (Object.keys(GROUNDS) as Ground[])
-      .map((g) => ({ g, ratio: contrastRatio(r.ink[g]!, r.hover[g]!) }))
+      .map((g) => ({ g, ratio: contrastRatio(r.ink[g]!, r.hover[`${g} · title`]!) }))
       .filter(({ ratio }) => ratio < 4.5)
       .map(({ g, ratio }) => `${g} hovrad: ${ratio.toFixed(2)}:1`)
     expect(under).toEqual([])
@@ -360,24 +362,25 @@ describe('hovringen över en rad i tabellen (#400)', () => {
   it('lyfter de fastnålade cellerna med resten av raden, hela vägen ut till högerkanten', async () => {
     const r = await readings()
     const dead = (Object.keys(GROUNDS) as Ground[])
-      .flatMap((g) => PINNED.map((pin) => `${g} · ${pin}`))
+      .flatMap((g) => (Object.keys(PINNED) as Pin[]).map((pin) => `${g} · ${pin}`))
       .filter((what) => !(lift(r, what) > VISIBLE))
       .map((what) => `${what} lyfts ${(lift(r, what) * 1000).toFixed(1)}`)
     expect(dead).toEqual([])
   }, 120_000)
 })
 
-// Bocken och `id` står på en list av sin egen (#609, beställarens beslut B). De glider aldrig i
-// sidled, och det syntes inte: de ärvde radens grund, och det enda som skilde dem från det som
-// gled in under dem var en skugga på tolv bildpunkter som bara ritades när något redan låg under.
-// Listen är en slöja över radens egen grund och inte en färg i stället för den, så att allt raden
-// säger med sin grund — markerad, påtittad, jämförd — står kvar i den.
-const PINNED_RAIL = ['byd-data-check', 'byd-data-id'] as const
+// Bocken och `id` stod på en list av sin egen (#609, beställarens beslut B); sedan #1408 står det
+// designern låst där, titeln från start, och `id` rullar med raden. De glider aldrig i sidled, och
+// det syntes inte: de ärvde radens grund, och det enda som skilde dem från det som gled in under
+// dem var en skugga på tolv bildpunkter som bara ritades när något redan låg under. Listen är en
+// slöja över radens egen grund och inte en färg i stället för den, så att allt raden säger med
+// sin grund — markerad, påtittad, jämförd — står kvar i den.
+const PINNED_RAIL = ['byd-data-check', 'title'] as const
 // Det prototypen visade och beställaren valde: listen mot en vanlig rad mätte 1,19:1.
 const RAIL = 1.15
 
 describe('listen de fastnålade cellerna står på (#609)', () => {
-  it('ritar bocken och id ljusare än raden de står i, på var och en av radens fem grunder', async () => {
+  it('ritar bocken och titeln ljusare än raden de står i, på var och en av radens fem grunder', async () => {
     const r = await readings()
     const flat = (Object.keys(GROUNDS) as Ground[])
       .flatMap((g) => PINNED_RAIL.map((pin) => ({ what: `${g} · ${pin}`, ratio: contrastRatio(r.rest[`${g} · ${pin}`]!, r.rest[g]!), lighter: relativeLuminance(r.rest[`${g} · ${pin}`]!) > relativeLuminance(r.rest[g]!) })))
@@ -395,21 +398,20 @@ describe('listen de fastnålade cellerna står på (#609)', () => {
     expect(faint).toEqual([])
   }, 120_000)
 
-  it('läser id med AA på listen, på varje grund', async () => {
+  it('läser titeln med AA på listen, på varje grund', async () => {
     const r = await readings()
     const under = (Object.keys(GROUNDS) as Ground[])
-      .map((g) => ({ g, ratio: contrastRatio(r.idInk[g]!, r.rest[`${g} · byd-data-id`]!) }))
+      .map((g) => ({ g, ratio: contrastRatio(r.titleInk[g]!, r.rest[`${g} · title`]!) }))
       .filter(({ ratio }) => ratio < 4.5)
       .map(({ g, ratio }) => `${g}: ${ratio.toFixed(2)}:1`)
     expect(under).toEqual([])
   }, 120_000)
 
-  // `antal` står på samma list sedan #695 och läses på samma grund: listen är en slöja och inte en
-  // färg per kolumn, så `id`-cellens grund är `antal`-cellens också.
-  it('läser antal med AA på listen, på varje grund (#695)', async () => {
+  // `id` rullar med raden sedan #1408 och läses på radens egen grund, i sitt dämpade bläck.
+  it('läser id med AA i raden, på varje grund (#1408)', async () => {
     const r = await readings()
     const under = (Object.keys(GROUNDS) as Ground[])
-      .map((g) => ({ g, ratio: contrastRatio(r.antalInk[g]!, r.rest[`${g} · byd-data-id`]!) }))
+      .map((g) => ({ g, ratio: contrastRatio(r.idInk[g]!, r.rest[g]!) }))
       .filter(({ ratio }) => ratio < 4.5)
       .map(({ g, ratio }) => `${g}: ${ratio.toFixed(2)}:1`)
     expect(under).toEqual([])

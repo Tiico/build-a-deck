@@ -155,7 +155,7 @@ describe("the head's own door for its columns (#32, #46)", () => {
     expect(open.door).not.toBeNull()
     expect(open.door!.h).toBeGreaterThan(open.row.h)
     expect(shut.door).toBeNull()
-    expect(shut.headings.map((h) => h.name)).toEqual(['id', 'Antal', 'Titel', 'body¶', 'Ta bort'])
+    expect(shut.headings.map((h) => h.name)).toEqual(['Titel', 'id', 'Antal', 'body¶', 'Ta bort'])
     expect(open.headings.map((h) => h.name)).toEqual(shut.headings.map((h) => h.name))
 
     // The condition itself: the head is exactly as tall as it was, every heading cell stands
@@ -218,7 +218,7 @@ describe("the head's own door for its columns (#32, #46)", () => {
     // And that is exactly the fault the prototype had: every heading beside it is pushed down,
     // and so is the first card.
     const pushed = inFlow.headings.filter((h, i) => h.ink.y > held.headings[i]!.ink.y)
-    expect(pushed.map((h) => h.name)).toEqual(['id', 'Antal', 'Titel', 'body¶'])
+    expect(pushed.map((h) => h.name)).toEqual(['Titel', 'id', 'Antal', 'body¶'])
     expect(inFlow.firstRow.y).toBeGreaterThan(held.firstRow.y)
   }, 60_000)
 })
@@ -239,7 +239,7 @@ describe('the head and the rows are the same table (#32)', () => {
 
     // The head is the shape it is meant to be, named rather than counted, so this is not a guard
     // over a table without the cells in question.
-    expect(columns.map((c) => c.head)).toEqual(['check', 'id', 'Antal', 'Titel', 'body¶', 'remove'])
+    expect(columns.map((c) => c.head)).toEqual(['check', 'Titel', 'id', 'Antal', 'body¶', 'remove'])
 
     // Nothing in the head stands over nothing.
     expect(columns.filter((c) => c.bodyBox === null).map((c) => c.head)).toEqual([])
@@ -265,7 +265,7 @@ describe('the head and the rows are the same table (#32)', () => {
 
     // Every column from the missing cell on has drifted, and the head still has all of its own.
     const drift = short.columns.filter((c) => c.bodyBox === null || c.bodyBox.x !== c.headBox.x || c.bodyBox.w !== c.headBox.w)
-    expect(drift.map((c) => c.head)).toEqual(['id', 'Antal', 'Titel', 'body¶', 'remove'])
+    expect(drift.map((c) => c.head)).toEqual(['id', 'Antal', 'body¶', 'remove'])
 
     // And the drift is the one that shipped: the × has slid a whole heading to the left, onto the
     // last field — `antal` then, `body` since `antal` stands on the rail (#695) — and taken that
@@ -365,12 +365,15 @@ async function pinned({ html, deck }: Table, extra = ''): Promise<Record<Place, 
           const scroll = document.querySelector('.byd-data-scroll') as HTMLElement
           const far = scroll.scrollWidth - scroll.clientWidth
           if (where === 'veil') {
-            // Scroll until the first × that can reach the fade has its right edge 12 px in front
-            // of the pin. The pin is sticky, so its left edge does not move while this is decided.
+            // Scroll until the first heading name that can reach the fade has its right edge 12 px
+            // in front of the pin. The pin is sticky, so its left edge does not move while this is
+            // decided. It was the first ×, which left the head with #46; halfway along stood in
+            // for it since, and on the Linux runner's wider faces halfway along is not a place a
+            // name happens to stand (#1408). A locked heading never reaches the pin (L92).
             scroll.scrollLeft = 0
             const front = (scroll.querySelector('thead .byd-data-remove') as HTMLElement).getBoundingClientRect().left
-            const reach = [...scroll.querySelectorAll('thead .byd-data-dropfield')]
-              .map((drop) => Math.round(drop.getBoundingClientRect().right - (front - 12)))
+            const reach = [...scroll.querySelectorAll('thead th[data-col]:not([data-pinned]) > button')]
+              .map((name) => Math.round(name.getBoundingClientRect().right - (front - 12)))
               .find((delta) => delta > 0 && delta <= far)
             scroll.scrollLeft = reach ?? Math.round(far / 2)
           } else scroll.scrollLeft = where === 'rest' ? 0 : where === 'mid' ? Math.round(far / 2) : far

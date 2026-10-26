@@ -342,10 +342,12 @@ describe('a cell keeps inside its own column (#46)', () => {
     // vocabulary — three words over six cards — and since #617 such a column carries its filter's
     // handle in its head, which is what keeps it over the floor. The head is still measured, so
     // that is said here rather than left for the next reader to rediscover.
-    expect([...new Set(over.spill.map((c) => c.col))]).toEqual(['antal', 'title', 'cost'])
+    // `title` no longer spills: its heading carries its lock since #1408 and the column is the
+    // wider for it, so the floor is met by the values. The number columns still run over.
+    expect([...new Set(over.spill.map((c) => c.col))]).toEqual(['antal', 'cost'])
     expect(over.width.art!).toBeGreaterThanOrEqual(80)
     expect(over.spill.every((c) => c.px === 80 - over.width[c.col]!)).toBe(true)
-    expect(over.spill.length).toBe(CARDS.length * 3)
+    expect(over.spill.length).toBe(CARDS.length * 2)
   }, 60_000)
 })
 
@@ -405,8 +407,9 @@ describe('the row ends where the last field ends (#46)', () => {
 
     // Named rather than counted: the column that went is named by its absence from this list, so
     // a rename cannot quietly satisfy a count. `newfield` stood between `antal` and `remove`, when
-    // `antal` was last; it stands on the rail beside `id` since #695.
-    expect(after.columns.map((c) => c.head)).toEqual(['check', 'id', 'antal', 'art', 'title', 'body', 'cost', 'remove'])
+    // `antal` was last; it stands after `id` since #695, and the title stands first, on the rail,
+    // since #1408.
+    expect(after.columns.map((c) => c.head)).toEqual(['check', 'title', 'id', 'antal', 'art', 'body', 'cost', 'remove'])
 
     // And every one of them has cells: the tick column holds a tick per card, the pinned column
     // holds a button per card, and each column of the deck holds its values. A column with no
@@ -573,7 +576,7 @@ describe("a heading is the column's name and the way it sorts (#46 on #32)", () 
     const { heads, width } = await measure(deckDoc())
 
     // The head really has both kinds of column, so this is not a guard that matches nothing.
-    expect(heads.map((h) => h.col)).toEqual(['id', 'antal', 'art', 'title', 'body', 'cost'])
+    expect(heads.map((h) => h.col)).toEqual(['title', 'id', 'antal', 'art', 'body', 'cost'])
     // And not one of them carries an × or a mark: no control, and no hole where one was.
     expect(heads.filter((h) => h.canRemove || h.badge > 0 || h.says !== '')).toEqual([])
 

@@ -313,10 +313,11 @@ describe('DataTable filtering from the keyboard (#16)', () => {
     await user.tab()
     expect(document.activeElement).toBe(screen.getByLabelText('Markera alla synliga'))
     await user.tab()
-    expect(document.activeElement).toBe(screen.getByRole('button', { name: /^id/ }))
+    // The title stands first since #1408, on the rail.
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: /^Titel/ }))
     // The column's filter stands right after what the column is called and sorts on (#617); the
     // columns before it are words with no vocabulary and have no filter to stop at.
-    for (let i = 0; i < 6 && document.activeElement !== screen.getByRole('button', { name: /^typ/ }); i++) await user.tab()
+    for (let i = 0; i < 8 && document.activeElement !== screen.getByRole('button', { name: /^typ/ }); i++) await user.tab()
     expect(document.activeElement).toBe(screen.getByRole('button', { name: /^typ/ }))
     await user.tab()
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Filtrera på typ' }))
@@ -327,7 +328,8 @@ describe('DataTable filtering from the keyboard (#16)', () => {
     renderTable(bigDoc())
     const handle = screen.getByRole('button', { name: 'Filtrera på typ' })
 
-    for (let i = 0; i < 10 && document.activeElement !== handle; i++) await user.tab()
+    // Over the title's lock as well (#1408).
+    for (let i = 0; i < 14 && document.activeElement !== handle; i++) await user.tab()
     expect(document.activeElement).toBe(handle)
 
     await user.keyboard('{Enter}')

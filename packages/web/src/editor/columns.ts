@@ -260,18 +260,19 @@ export function fitColumns(box: Element, deck: Record<string, readonly string[]>
   table.style.setProperty('--byd-data-lane', `${pinned}px`)
   // Samma tal är det rum en cell tas in i (#695, #1067): arket sätter det som `scroll-margin` på det
   // som rullar, så att en cell som tas in inte står med sitt slut under listen.
-  // Och var varje fastnålad kolumn börjar, som stilmallen behöver för den som inte står först
-  // (#695): `antal` står efter `id`, och hur bred `id` är vet bara mätningen. Sagt per kolumn och
-  // med kolumnens eget namn, så att arket kan säga `--byd-data-at-antal` utan att räkna kolumner.
-  // Sagt till tabellen och inte till lådan: cellerna som läser det står i tabellen.
+  // Och var varje fastnålad kolumn börjar, som cellerna behöver för den som inte står först
+  // (#695): hur breda kolumnerna före den är vet bara mätningen. Sagt per kolumn och med kolumnens
+  // plats i raden (#1408), inte dess namn: vilken kolumn som står på listen är designerns att låsa,
+  // och ett namn hon valt är inte alltid ett ord en egenskap kan bära. Cellen säger sitt `left`
+  // som `var(--byd-data-at-<n>)`, så arket behöver inte veta vad som är låst. Sagt till tabellen
+  // och inte till lådan: cellerna som läser det står i tabellen.
   let at = 0
   for (const [i, track] of tracks.entries()) {
     const th = heads[i]
     if (!th) continue
     const how = getComputedStyle(th)
     if (how.position !== 'sticky' || how.left === 'auto') continue
-    const name = track.col.getAttribute('data-col')
-    if (name && /^[\w-]+$/.test(name)) table.style.setProperty(`--byd-data-at-${name}`, `${at}px`)
+    table.style.setProperty(`--byd-data-at-${i}`, `${at}px`)
     at += track.width
   }
   // And nothing else may have an opinion about it. The stylesheet's `min-width: 100%` was written
