@@ -41,28 +41,34 @@ async function openBord(page: Page): Promise<string> {
   return project.id
 }
 
+// ＋ Tärning sits in the menu of the zone it is laid in (#1403, beslut C).
+async function addIn(page: Page, node: string, item: string): Promise<void> {
+  await page.getByRole('button', { name: `Lägg till i ${node}` }).click()
+  await page.getByRole('menuitem', { name: item }).click()
+}
+
 test.describe('tärningarna i fliken Bord', () => {
   test('läggs till i editorn, sparas och ligger där de ska när ett bord startas', async ({ page, browser, baseURL }) => {
     const project = await openBord(page)
-    const add = page.getByRole('button', { name: '＋ Tärning' })
 
     // «2 d6 per spelare i Framför»: en yta vid platserna, så varje plats får två i sin egen.
-    await add.click()
-    await expect(page.getByRole('heading', { name: 'Tärningar' })).toBeVisible()
+    await addIn(page, 'Framför', '＋ Tärning')
     await expect(page.getByRole('spinbutton', { name: 'Antal för tärning 1' })).toBeFocused()
     await page.getByRole('spinbutton', { name: 'Antal för tärning 1' }).fill('2')
     await page.getByRole('spinbutton', { name: 'Antal för tärning 1' }).press('Enter')
-    await page.getByRole('combobox', { name: 'Yta för tärning 1' }).selectOption({ label: 'Framför' })
     await expect(page.getByRole('combobox', { name: 'Hur antalet räknas för tärning 1' })).toHaveCount(0)
 
-    // «1 d20 totalt i Spelyta», med tangentbordet hela vägen.
-    await add.focus()
+    // «1 d20 totalt i Spelyta», med tangentbordet hela vägen: ＋, pilarna till Tärning, Enter.
+    await page.getByRole('button', { name: 'Lägg till i Spelyta' }).focus()
+    await page.keyboard.press('Enter')
+    await expect(page.getByRole('menuitem', { name: '＋ Yta' })).toBeFocused()
+    await page.keyboard.press('ArrowDown')
+    await page.keyboard.press('ArrowDown')
+    await expect(page.getByRole('menuitem', { name: '＋ Tärning' })).toBeFocused()
     await page.keyboard.press('Enter')
     await expect(page.getByRole('spinbutton', { name: 'Antal för tärning 2' })).toBeFocused()
     await page.getByRole('combobox', { name: 'Sort för tärning 2' }).selectOption({ label: 'd20' })
-    await page.getByRole('combobox', { name: 'Yta för tärning 2' }).selectOption({ label: 'Spelyta' })
-    await expect(page.getByRole('combobox', { name: 'Hur antalet räknas för tärning 2' })).toHaveValue('perSeat')
-    await page.getByRole('combobox', { name: 'Hur antalet räknas för tärning 2' }).selectOption('total')
+    await expect(page.getByRole('combobox', { name: 'Hur antalet räknas för tärning 2' })).toHaveValue('total')
 
     await page.locator('.byd-editor-save').click()
     await expect(page.locator('.byd-editor-saved-word')).toHaveText('Sparat')
@@ -80,39 +86,30 @@ test.describe('tärningarna i fliken Bord', () => {
     await tv.close()
   })
 
-  // Raden är två rader med avsikt, inte en rad som råkar brytas (#1139): antal, sort, hur antalet
-  // räknas och krysset på den första, «i [yta]» på den andra rakt under antalet. Som en flexrad
-  // bröt den var den hade lust, och «i» hängde ensamt vid kanten med krysset efter ytan.
-  test('står som två raka rader i kolumnen, krysset sist på den första', async ({ page }) => {
+  // Raden är en rad med avsikt (#1139, #1403): antal, sort och hur antalet räknas på en linje under
+  // radens namn, inne i kolumnen, och krysset på namnets rad och inte bland fälten.
+  test('håller fälten på en rad i kolumnen, krysset på namnets rad', async ({ page }) => {
     await openBord(page)
-    const add = page.getByRole('button', { name: '＋ Tärning' })
-    await add.click()
-    await add.click()
-    await page.getByRole('combobox', { name: 'Yta för tärning 2' }).selectOption({ label: 'Framför' })
-    // Varje rad fyller kolumnen: krysset står på samma ställe vare sig raden har en väljare för hur
-    // antalet räknas eller orden «per spelare», som är kortare.
-    const ends = await Promise.all([1, 2].map(async (n) => (await page.getByRole('button', { name: `Ta bort tärning ${n}` }).boundingBox())!))
-    expect(Math.abs(ends[0]!.x - ends[1]!.x), 'krysset på samma ställe i båda raderna').toBeLessThan(2)
+    await addIn(page, 'Spelyta', '＋ Tärning')
+    await addIn(page, 'Framför', '＋ Tärning')
+    const column = (await page.locator('.byd-setup-side').boundingBox())!
     for (const n of [1, 2]) {
+      // Fälten står bakom raden; den senast lagda står öppen, den andra öppnas.
+      const row = page.locator(`[data-material-row="die:${n - 1}"]`)
+      if ((await row.getAttribute('data-open')) !== 'true') await row.locator('.byd-setup-name').click()
       const box = async (name: string, role: 'spinbutton' | 'combobox' | 'button') => (await page.getByRole(role, { name }).boundingBox())!
       const count = await box(`Antal för tärning ${n}`, 'spinbutton')
       const kind = await box(`Sort för tärning ${n}`, 'combobox')
-      const place = await box(`Yta för tärning ${n}`, 'combobox')
       const remove = await box(`Ta bort tärning ${n}`, 'button')
       const mid = (b: { y: number; height: number }) => b.y + b.height / 2
-      // Första raden: antal, sort och kryss på samma linje, krysset längst till höger.
       expect(Math.abs(mid(kind) - mid(count)), `tärning ${n}: sorten på antalets rad`).toBeLessThan(2)
-      expect(Math.abs(mid(remove) - mid(count)), `tärning ${n}: krysset på antalets rad`).toBeLessThan(2)
-      expect(remove.x, `tärning ${n}: krysset efter sorten`).toBeGreaterThan(kind.x + kind.width)
-      // Andra raden: ytan under, och den slutar där krysset slutar.
-      expect(place.y, `tärning ${n}: ytan under första raden`).toBeGreaterThanOrEqual(count.y + count.height)
-      expect(Math.abs(place.x + place.width - (remove.x + remove.width)), `tärning ${n}: ytan når krysset`).toBeLessThan(2)
-      // Ordet «i» står vid antalets vänsterkant, inte intryckt.
-      const word = (await page.getByRole('combobox', { name: `Yta för tärning ${n}` }).evaluate((el) => {
-        const r = el.parentElement!.getBoundingClientRect()
-        return { x: r.x }
-      }))
-      expect(Math.abs(word.x - count.x), `tärning ${n}: «i» rakt under antalet`).toBeLessThan(2)
+      expect(kind.x + kind.width, `tärning ${n}: fälten inne i kolumnen`).toBeLessThanOrEqual(column.x + column.width + 1)
+      expect(remove.y + remove.height, `tärning ${n}: krysset över fälten`).toBeLessThanOrEqual(count.y + 1)
+      if (n === 1) {
+        const mode = await box(`Hur antalet räknas för tärning ${n}`, 'combobox')
+        expect(Math.abs(mid(mode) - mid(count)), `tärning ${n}: räkningen på antalets rad`).toBeLessThan(2)
+        expect(mode.x + mode.width, `tärning ${n}: räkningen inne i kolumnen`).toBeLessThanOrEqual(column.x + column.width + 1)
+      }
     }
   })
 })

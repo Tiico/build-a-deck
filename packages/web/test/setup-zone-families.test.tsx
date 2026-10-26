@@ -5,6 +5,7 @@ import { userEvent } from '@testing-library/user-event'
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
+import { addVia, openGame } from './bord-tab.js'
 
 let run: Running
 beforeEach(async () => {
@@ -24,15 +25,16 @@ async function openBord(): Promise<void> {
 // Åtta platser med allt tre: en hand, en yta framför sig och en räknarzon — tjugofyra zoner, som
 // är precis det tal granskningen mätte listan på (#175).
 function eightSeatsWithEverything(): void {
+  openGame()
   const seats = screen.getByRole('spinbutton', { name: /Antal spelare/ })
   fireEvent.change(seats, { target: { value: '8' } })
   fireEvent.keyDown(seats, { key: 'Enter' })
-  fireEvent.click(screen.getByRole('button', { name: '＋ Yta per plats' }))
-  fireEvent.click(screen.getByRole('button', { name: '＋ Räknare' }))
-  fireEvent.click(screen.getByRole('button', { name: '＋ Räknarzon per plats' }))
+  addVia('Varje plats', '＋ Yta per plats')
+  addVia('Varje plats', '＋ Räknare')
+  addVia('Varje plats', '＋ Räknarzon per plats')
 }
 
-const seatsList = () => screen.getByRole('list', { name: 'Vid platserna' })
+const seatsList = () => screen.getByRole('list', { name: 'Varje plats' })
 // Vad som faktiskt står i listan vid platserna, rad för rad på den översta nivån.
 const seatRows = () => [...seatsList().querySelectorAll(':scope > li')].map((li) => (li.querySelector('.byd-setup-name') as HTMLElement).textContent)
 // Raderna i en utfälld familj, i platsordning.
@@ -77,9 +79,9 @@ describe('zonlistan vid platserna (#175): familjen är raden', () => {
   it('låter en zon som inte är per plats stå som sin egen rad, också när den bär familjens namn', async () => {
     await run.projects.create(run.projectId, projectDoc())
     await openBord()
-    fireEvent.click(screen.getByRole('button', { name: '＋ Yta per plats' }))
+    addVia('Varje plats', '＋ Yta per plats')
 
-    fireEvent.click(screen.getByRole('button', { name: '＋ Yta' }))
+    addVia('Spelyta', '＋ Yta')
     fireEvent.change(screen.getByLabelText('Namn för Yta 1'), { target: { value: 'Framför A' } })
     fireEvent.change(screen.getByLabelText('Ägare för Framför A'), { target: { value: 'A' } })
 
@@ -91,7 +93,7 @@ describe('zonlistan vid platserna (#175): familjen är raden', () => {
   it('fäller ut familjen och öppnar raden för den zon som väljs på filten', async () => {
     await run.projects.create(run.projectId, projectDoc())
     await openBord()
-    fireEvent.click(screen.getByRole('button', { name: '＋ Yta per plats' }))
+    addVia('Varje plats', '＋ Yta per plats')
     expect(screen.getByRole('button', { name: 'Framför 2 platser' }).getAttribute('aria-expanded')).toBe('false')
 
     fireEvent.click(document.querySelector('[data-zone-handle="mine:B"]') as HTMLElement)
@@ -178,7 +180,7 @@ describe('zonlistan vid platserna (#175): familjeraden under tangentbord och sk�
   it('fälls ut från tangentbordet, säger att den är det, och namnger både zon och plats', async () => {
     await run.projects.create(run.projectId, projectDoc())
     await openBord()
-    fireEvent.click(screen.getByRole('button', { name: '＋ Yta per plats' }))
+    addVia('Varje plats', '＋ Yta per plats')
 
     const head = screen.getByRole('button', { name: 'Framför 2 platser' })
     expect(head.getAttribute('aria-expanded')).toBe('false')

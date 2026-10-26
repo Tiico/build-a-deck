@@ -175,6 +175,25 @@ describe('material i trädet (#1403, beslut C)', () => {
   })
 })
 
+// Hur en tärnings antal räknas (#1139): per spelare i en yta varje plats har, där det inte finns
+// något att välja; totalt eller per spelare på bordet, där «per spelare» gör antalet gånger platserna.
+describe('tärningens sort och räkning (#1403, #1139)', () => {
+  it('byter sort, och räknar per spelare på en delad yta', async () => {
+    await openBord()
+    addVia('Spelyta', '＋ Tärning')
+    const select = (name: string) => screen.getByRole('combobox', { name }) as HTMLSelectElement
+    await waitFor(() => expect(select('Sort för tärning 1')).toBeTruthy())
+    fireEvent.change(select('Sort för tärning 1'), { target: { value: '20' } })
+    await waitFor(async () => expect((await truth()).setup.dice).toEqual([{ faces: 20, count: 1, zone: 'table' }]))
+    expect(names('Spelyta')).toEqual(['Draghög leken', 'Kasthög', '1 × d20 totalt'])
+    fireEvent.change(select('Hur antalet räknas för tärning 1'), { target: { value: 'perSeat' } })
+    await waitFor(async () => expect((await truth()).setup.dice).toEqual([{ faces: 20, count: 1, zone: 'table', perSeat: true }]))
+    expect(names('Spelyta')).toEqual(['Draghög leken', 'Kasthög', '1 × d20 per spelare'])
+    fireEvent.change(select('Hur antalet räknas för tärning 1'), { target: { value: 'total' } })
+    await waitFor(async () => expect((await truth()).setup.dice).toEqual([{ faces: 20, count: 1, zone: 'table' }]))
+  })
+})
+
 // Som räknarna utan räknarzon: en tärning vars yta tagits bort står kvar och säger varför den inte
 // hamnar på bordet, så att ett steg tillbaka över borttagningen ger tillbaka tärningen där den låg.
 describe('en tärning vars yta försvinner (#1403, #1139)', () => {

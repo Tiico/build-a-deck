@@ -1,11 +1,11 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { fireEvent, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import type { ProjectDoc } from '@byd/server'
 import { MAX_PLAYERS } from '@byd/server/doc'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
-import { addZone, bordTab, drawn, shares } from './bord-tab.js'
+import { addVia, addZone, bordTab, drawn, shares } from './bord-tab.js'
 
 // Var en ny delad yta föds (#440, K2, B5). En zon som läggs rakt ovanpå en annan är ingen
 // placering formgivaren har gjort: hon måste dra undan den innan hon ser vad hon gjort, och tills
@@ -71,7 +71,7 @@ describe('en filt utan ledig plats säger det (#440)', () => {
     const close = await bordTab(run, null, covered())
     try {
       const before = drawn().length
-      fireEvent.click(screen.getByRole('button', { name: '＋ Yta' }))
+      addVia('Spelyta', '＋ Yta')
       const said = screen.getByText(/ingen ledig plats på bordet för en ny yta/)
       expect(said.getAttribute('role')).toBe('status')
       // Och inget lades: en yta som inte fick plats får inte ha hamnat någonstans ändå.

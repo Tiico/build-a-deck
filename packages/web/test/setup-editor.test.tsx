@@ -6,6 +6,7 @@ import { EditorPage } from '../src/editor/EditorPage.js'
 import { StatusLive } from '../src/status/StatusLive.js'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
+import { addVia, openGame } from './bord-tab.js'
 
 let run: Running
 beforeEach(async () => {
@@ -74,10 +75,10 @@ describe('the setup editor (B5, K2): the list of zones', () => {
     await openBord()
     // I dokumentets egen ordning, för den ordningen betyder något: ett släpp landar i den minsta
     // zonen, och mellan lika stora i den som står först (K2).
-    expect(rows()).toEqual(['draw', 'discard', 'table', 'hand:*'])
+    expect(rows()).toEqual(['table', 'draw', 'discard', 'hand:*'])
     // Vid platserna är raden familjens (#175): platserna står under den när någon fällt ut den.
     fireEvent.click(screen.getByRole('button', { name: 'Hand 2 platser' }))
-    expect(rows()).toEqual(['draw', 'discard', 'table', 'hand:*', 'hand:A', 'hand:B'])
+    expect(rows()).toEqual(['table', 'draw', 'discard', 'hand:*', 'hand:A', 'hand:B'])
     expect(row('hand:A').textContent).toMatch(/A/)
 
     fireEvent.click(screen.getByRole('button', { name: 'Ta bort Kasthög' }))
@@ -111,15 +112,16 @@ describe('the setup editor (B5, K2): what the table cannot be without', () => {
 
     fireEvent.click(within(row('draw')).getByRole('button', { name: /Draghög/ }))
     // Said in the open row, and as the row's description (#558).
-    expect(screen.getAllByText(/Lägg leken i en annan hög först/).some((el) => !el.classList.contains('byd-offscreen'))).toBe(true)
+    expect(screen.getAllByText(/Välj en annan hög under Spelet/).some((el) => !el.classList.contains('byd-offscreen'))).toBe(true)
     fireEvent.click(screen.getByRole('button', { name: 'Hand 2 platser' }))
     const hand = within(row('hand:A')).getByRole('button', { name: /Hand/ })
     expect(document.getElementById(hand.getAttribute('aria-describedby') ?? '')?.textContent).toMatch(/En plats är en hand/)
 
-    // En egen hög tar rollen; först då går draghögen att ta bort.
-    fireEvent.click(screen.getByRole('button', { name: '＋ Hög' }))
+    // En egen hög tar rollen, vald under Spelet (#1403); först då går draghögen att ta bort.
+    addVia('Spelyta', '＋ Hög')
     fireEvent.change(screen.getByLabelText('Namn för Hög 1'), { target: { value: 'Leken' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Lägg leken i Leken' }))
+    openGame()
+    fireEvent.change(screen.getByRole('combobox', { name: 'Korten delas ut från' }), { target: { value: 'hog-1' } })
     expect(row('hog-1').textContent).toMatch(/leken/)
     fireEvent.click(screen.getByRole('button', { name: 'Ta bort Draghög' }))
     expect(handle('draw')).toBeNull()
@@ -174,7 +176,8 @@ describe('the setup editor (B5, K2): the seats knob, and giving the seats a zone
     await run.projects.create(run.projectId, projectDoc())
     await openBord()
     fireEvent.click(screen.getByRole('button', { name: 'Ta bort Kasthög' }))
-    // Platsantalet är en stegare sedan #620: ett steg upp från två.
+    // Platsantalet är en stegare sedan #620, bakom Spelets remsa sedan #1403: ett steg upp från två.
+    openGame()
     fireEvent.click(screen.getByRole('button', { name: 'En spelare fler' }))
     expect((screen.getByRole('spinbutton', { name: 'Antal spelare, 1 till 8' }) as HTMLInputElement).value).toBe('3')
     // Den nya platsen syns på familjeraden innan någon fällt ut den (#175).
@@ -185,19 +188,19 @@ describe('the setup editor (B5, K2): the seats knob, and giving the seats a zone
     // Kasthögen är borta, och den kommer inte tillbaka för att någon vrider på platsantalet.
     expect(row('discard')).toBeNull()
 
-    // En räknare utan räknarzon lägger inga brickor på bordet, och panelen säger det.
-    fireEvent.click(screen.getByRole('button', { name: '＋ Räknare' }))
+    // En räknare utan räknarzon lägger inga brickor på bordet, och raden säger det.
+    addVia('Varje plats', '＋ Räknare')
     expect(screen.getByText(/Ingen plats har någon räknarzon/)).toBeTruthy()
     expect(document.querySelectorAll('[data-table] [data-counter-token]')).toHaveLength(0)
 
-    fireEvent.click(screen.getByRole('button', { name: '＋ Räknarzon per plats' }))
+    addVia('Varje plats', '＋ Räknarzon per plats')
     expect(rows()).toEqual(expect.arrayContaining(['counters:*']))
     fireEvent.click(screen.getByRole('button', { name: 'Räknare 3 platser' }))
     expect(rows()).toEqual(expect.arrayContaining(['counters:A', 'counters:B', 'counters:C']))
     expect(screen.queryByText(/Ingen plats har någon räknarzon/)).toBeNull()
     expect(document.querySelectorAll('[data-table] [data-counter-token]')).toHaveLength(3)
 
-    fireEvent.click(screen.getByRole('button', { name: '＋ Yta per plats' }))
+    addVia('Varje plats', '＋ Yta per plats')
     expect(rows()).toEqual(expect.arrayContaining(['mine:*']))
     fireEvent.click(screen.getByRole('button', { name: 'Framför 3 platser' }))
     expect(rows()).toEqual(expect.arrayContaining(['mine:A', 'mine:B', 'mine:C']))
@@ -221,6 +224,7 @@ describe('the setup editor (K30): the turn order', () => {
   it('chooses none, clockwise or counterclockwise, and the choice is the document\'s', async () => {
     await run.projects.create(run.projectId, projectDoc())
     await openBord()
+    openGame()
     const order = screen.getByRole('group', { name: 'Turordning' })
     expect(within(order).getByRole('button', { name: 'Ingen' }).getAttribute('aria-pressed')).toBe('true')
     fireEvent.click(within(order).getByRole('button', { name: 'Medurs' }))
@@ -242,10 +246,11 @@ describe('the setup editor (B5, C4): the phone’s sheet as a preview', () => {
   it('shows one seat’s sheet, not every seat’s', async () => {
     await run.projects.create(run.projectId, projectDoc())
     await openBord()
+    openGame()
     fireEvent.click(screen.getByRole('button', { name: 'En spelare fler' }))
-    fireEvent.click(screen.getByRole('button', { name: '＋ Räknare' }))
-    fireEvent.click(screen.getByRole('button', { name: '＋ Räknarzon per plats' }))
-    fireEvent.click(screen.getByRole('button', { name: '＋ Yta per plats' }))
+    addVia('Varje plats', '＋ Räknare')
+    addVia('Varje plats', '＋ Räknarzon per plats')
+    addVia('Varje plats', '＋ Yta per plats')
     // Arket står hopfällt tills det efterfrågas (#301).
     fireEvent.click(screen.getByRole('button', { name: 'Visa spelarvyn' }))
 
@@ -458,7 +463,7 @@ describe('Delete takes a zone away only where the zone is (#558)', () => {
   it('leaves the chosen zone alone when the focus is on a control elsewhere', async () => {
     await run.projects.create(run.projectId, projectDoc())
     await openBord()
-    fireEvent.click(screen.getByRole('button', { name: '＋ Hög' }))
+    addVia('Spelyta', '＋ Hög')
     expect(handle('hog-1')).toBeTruthy()
     const tab = screen.getByRole('tab', { name: 'Bord' })
     tab.focus()
@@ -513,10 +518,10 @@ describe('per plats när alla platser redan har en (#480)', () => {
     await run.projects.create(run.projectId, projectDoc())
     await openBord()
     const zones = () => document.querySelectorAll('[data-zone-handle]').length
-    fireEvent.click(screen.getByRole('button', { name: '＋ Yta per plats' }))
+    addVia('Varje plats', '＋ Yta per plats')
     await waitFor(() => expect(zones()).toBeGreaterThan(0))
     const had = zones()
-    fireEvent.click(screen.getByRole('button', { name: '＋ Yta per plats' }))
+    addVia('Varje plats', '＋ Yta per plats')
     expect(await screen.findByText('Varje plats har redan «Framför».')).toBeTruthy()
     expect(zones()).toBe(had)
   })
@@ -673,11 +678,12 @@ describe('a new counter in the recipe', () => {
     doc.setup.counters = [{ name: 'Guld', start: 0 }]
     await run.projects.create(run.projectId, doc)
     await openBord()
-    const add = await screen.findByRole('button', { name: '＋ Räknare' })
-    fireEvent.click(add)
-    fireEvent.click(add)
-    fireEvent.click(add)
-    const names = [1, 2, 3, 4].map((n) => (screen.getByLabelText(`Namn för räknare ${n}`) as HTMLInputElement).value)
+    await screen.findByRole('button', { name: 'Lägg till i Varje plats' })
+    addVia('Varje plats', '＋ Räknare')
+    addVia('Varje plats', '＋ Räknare')
+    addVia('Varje plats', '＋ Räknare')
+    // Raderna säger namnen (#1403): utan räknarzon står de under Varje plats.
+    const names = [...document.querySelectorAll('[data-material-row^="counter:"] .byd-setup-name > span')].map((el) => el.textContent)
     expect(names).toEqual(['Guld', 'Liv', 'Liv 2', 'Liv 3'])
   })
 })
@@ -692,8 +698,10 @@ describe('a counter keeps what the rules call it (#708)', () => {
     doc.rules = { title: 'Skogens herrar', blocks: [{ kind: 'text', id: 't1', text: 'Ta ett [[räknare:Guld]].' }] }
     await run.projects.create(run.projectId, doc)
     await openBord()
-    fireEvent.change(await screen.findByLabelText('Namn för räknare 1'), { target: { value: 'Dukater' } })
-    fireEvent.click(screen.getByRole('button', { name: '＋ Räknare' }))
+    // Räknarens fält står bakom dess rad (#1403).
+    fireEvent.click((await screen.findByRole('button', { name: /^Guld/ })) as HTMLElement)
+    fireEvent.change(screen.getByLabelText('Namn för räknare 1'), { target: { value: 'Dukater' } })
+    addVia('Varje plats', '＋ Räknare')
     await spara()
     const stored = await run.projects.load(run.projectId)
     const [gold, life] = stored?.setup.counters ?? []
