@@ -36,10 +36,12 @@ export function GamePanel({ client, setup }: { client: ProjectClient; setup: Set
         <ChevronGlyph to="right" />
       </span>
       <span className={open ? undefined : 'byd-offscreen'}>{t('setup.game')}</span>
+      {/* Two lines by design: the players and the turns on the first, the deck's pile on its own,
+          so that a long pile name never leaves a lone «·» at the head of a wrapped line. */}
       {!open &&
         summary.map((part, i) => (
-          <span key={i} className="byd-setup-game-part">
-            {i > 0 && <i aria-hidden="true">·</i>}
+          <span key={i} className="byd-setup-game-part" data-line={i === summary.length - 1 ? 'own' : undefined}>
+            {i === 1 && <i aria-hidden="true">·</i>}
             {part}
           </span>
         ))}
