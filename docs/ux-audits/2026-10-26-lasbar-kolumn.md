@@ -48,8 +48,10 @@ Rullad så att body fyller rummet: Nu 895 px, A 960.
 ## Rekommendation
 
 A, med B:s underrad i den låsta titelkolumnen som en möjlig förening: id i listens bläck under titeln skulle ge namnet tillbaka utan en kolumn.
-Beslutet är beställarens; se frågorna i sessionen.
 
 ## Beslut
 
-*(väntar)*
+**Beställarens val 2026-10-26: A · Låset.**
+Designern låser vilken kolumn som helst, i dörren och på rubriken; titeln är låst från start, id och antal rullar.
+Byggs enligt [#1408](https://github.com/Tiico/build-a-deck/issues/1408), som också bär acceptansen och vad som skrivs om i L4 och L55.
+«A med B:s underrad» står kvar som nästa prototyp om de fyra «Duel» visar sig störa.
