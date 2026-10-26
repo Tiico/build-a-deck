@@ -5071,7 +5071,7 @@ Typvalet som togs bort då bytte bara namnförslaget; det som infördes 2026-10-
 En bildcell är en referens till en innehållsadresserad asset; vid import löses URL eller filnamn upp mot uppladdade filer.
 Varje rad har en systemkolumn `antal` med standard 1.
 Setup skapar så många instanser med samma `cardRef`; tryckmanifestet summerar.
-I tabellen står `antal` direkt efter `id`, två Tab-tryck från radens bock (#695, se tillägget 2026-10-20 nedan; sedan #1408 rullar den med raden, se L91); i CSV:n och i dokumentets ordning står den fortfarande sist.
+I tabellen står `antal` direkt efter `id`, två Tab-tryck från radens bock (#695, se tillägget 2026-10-20 nedan; sedan #1408 rullar den med raden, se L92); i CSV:n och i dokumentets ordning står den fortfarande sist.
 
 *Tillagt 2026-09-27 (#479, beställarens beslut efter prototyp 13 och 15):*
 En import som skulle ta bort kort frågar först och säger hur många som finns och hur många filen har; en import som bara lägger till eller ändrar landar direkt.
@@ -5158,7 +5158,7 @@ En rubrik bär sitt ord och sättet den sorterar på, och ingenting mer — vilk
 Hänglaset flyttar med: i en panel finns plats för skälet i ord, vilket en rubrik aldrig hade, och `antal` får tillbaka de nitton pixlar det tog.
 Huvudets tabbordning är ett stopp per kolumn och en dörr, där den förr hade en kontroll som tar bort en kolumn mellan varje par av namn.
 Kolumnlistan i dörren rullar och blanketten under den står stilla: en lek med tjugo kolumner hängde annars dörren utanför fönstrets nederkant, och det som föll av var vägen att göra den tjugoförsta.
-Varken `id` eller `antal` kan bäras, är en plats att lägga en kolumn på, eller har en kant att dra i: id är en maskinnyckel och `antal` står bredvid den, först i raden (L55, #695; sedan #1408 kan båda låsas till listen som varje annan kolumn, L91).
+Varken `id` eller `antal` kan bäras, är en plats att lägga en kolumn på, eller har en kant att dra i: id är en maskinnyckel och `antal` står bredvid den, först i raden (L55, #695; sedan #1408 kan båda låsas till listen som varje annan kolumn, L92).
 Pilen utan Alt är läsarens egen och rörs inte, och en rubrik som kan bäras har inte slutat vara en som kan tryckas för att sortera.
 En flytt sägs i den enda kanal allt på en skärm talar i (#7): ett drag är sitt eget svar för ögat, men en kolumn som flyttat sig under fokus utan att något sagts är en kolumn läsaren har tappat.
 
@@ -5193,7 +5193,7 @@ I en lek på 308 kort med elva fält stod dessutom sju kolumner till utanför vi
   En cell som tas in i bild — av fokus eller av `scrollIntoView` — tas in i det rum som går att läsa och inte till lådans kant: listens mätta bredd till vänster och ×:ets tryckbredd till höger.
   Med listen bredare och Linux-text började kolumnen efter body utanför lådan, och togs den in stod dess slut under ×.
   *Ändrat 2026-10-21 (#1067):* rummet är en `scroll-margin` på det som rullar och inte lådans `scroll-padding`.
-  *Ändrat 2026-10-26 (L91, #1408, beställarens val A):* `antal` står inte längre på listen utan först i raden efter `id`, och rullar med den; i bild vid rullning 0 vid 1024 och 1280, och foten säger var den är när den rullat bort. Listen är det designern låst, titeln från start. `fitColumns` säger var varje fastnålad kolumn börjar i `--byd-data-at-<n>`, per plats i raden och inte per namn.
+  *Ändrat 2026-10-26 (L92, #1408, beställarens val A):* `antal` står inte längre på listen utan först i raden efter `id`, och rullar med den; i bild vid rullning 0 vid 1024 och 1280, och foten säger var den är när den rullat bort. Listen är det designern låst, titeln från start. `fitColumns` säger var varje fastnålad kolumn börjar i `--byd-data-at-<n>`, per plats i raden och inte per namn.
   Som lådans gällde det också det fastnålade, som står i lådans kant och alltså aldrig i rummet, och Chromium centrerar ett fokuserat element som inte står helt i rummet.
   Handtaget «Kolumner» rullade därför lådan (bredd − list) / 2 åt sidan när det fick fokus, 432 px vid 1280, och bocken i en rad drog en rullad låda tillbaka till början, utan att någon av dem själv flyttade sig.
   Det fastnålade har ingen marginal och står alltid i bild; `packages/e2e/test/surfaces/table-sticky-focus.spec.ts` är grinden.
@@ -7916,7 +7916,7 @@ Jämförelsens tinter ligger nu som ett lager över cellens grund i stället fö
 Som grund gjorde de de fastnålade cellerna genomskinliga, så att ett värde som skrollats in under dem syntes igenom.
 `data-table-hover.test.tsx` mäter listen, kanten och bläcket på målade bildpunkter, på alla fem grunderna.
 *Ändrat 2026-10-20 (#695, beställarens val D + A):* listen är tre kolumner — bocken, `id` och `antal` — och kanten står på `antal`, listens sista.
-*Ändrat 2026-10-26 (L91, #1408, beställarens val A):* listen är bocken och det designern låst, titeln från start; `id` och `antal` rullar med raden tills de låses. Kanten står på listens sista kolumn, vilken den än är, och arket nålar fast på märket `data-pinned` som tabellen sätter, inte på kolumnens namn.
+*Ändrat 2026-10-26 (L92, #1408, beställarens val A):* listen är bocken och det designern låst, titeln från start; `id` och `antal` rullar med raden tills de låses. Kanten står på listens sista kolumn, vilken den än är, och arket nålar fast på märket `data-pinned` som tabellen sätter, inte på kolumnens namn.
 `antal` stod sist och syntes inte vid någon bredd (L4); på listen läses den i listens bläck, som `id`.
 
 **Kolumndörrens handtag blir × medan dörren står** (variant A av tre: ＋ blir ×, en stängknapp i dörren och klick utanför stänger).
@@ -9138,7 +9138,75 @@ Följdkrav:
 `GET /projects/:id/sessions` säger `startedAt`, så ett orört bord kan säga när det startades; `SessionSummary` bär det ur båda affärerna.
 `account-page.test.tsx` visar grupperingen, ikonen per `seating` och raden som väg; `home-layout.test.tsx` mäter raden och «Öppna spelet» vid 320, 390, 1024, 1280 och 1440; `glyph-hand.test.ts` håller glyferna.
 
-### L91. Designern låser vilken kolumn som står still i Tabell, och titeln är låst från start (prototypat och beslutat 2026-10-26, #1408)
+### L91. Spelets låda, steg 1: tuckboxen följer leken, nätet redigerar och produktbilden visar upp (prototypat och beslutat 2026-10-26, #1406)
+
+Beställaren: «Vi vill spela på att en användare kommer vilja ha spelet som fysisk kopia. Ett stort fokus måste ligga på snygg rendering av paketet och leken.»
+Samma dag preciserat: «Det ska inte kännas som en case opening.»
+Stöd för att designa spelets låda byggs därför i två steg.
+Steg 1 är lådan som typ, dess ytor, måtten ur leken och lådan som spelets omslag digitalt.
+Steg 2, med stansform, utfall och CMYK enligt partnerns krav och lådan i tryckpaketet och ordern, väntar på en vald tryckpartner (F1, F2).
+Två rundor prototypades i [`docs/ux-audits/2026-10-26-ladan`](docs/ux-audits/2026-10-26-ladan/README.md): A nätet, B produktbilden och C en yta i taget i Mall, och sedan hybriden och tre sätt att introducera lådan.
+
+**Lådan är ett lugnt föremål och aldrig en lådöppning.**
+Den visas i 3D med ljus, glans och kartongkänsla, och den går att vrida.
+Det finns ingen avtäckning i spelstil, inga kort som glimmar och ingenting som påminner om slump eller belöning.
+Presentationen visar texturer från den enda renderaren (E2) och ritar aldrig ett kort eller en yta själv.
+
+**Typen är en tuckbox i registret, och måtten räknas fram ur leken.**
+Lådan är en typ i typregistret (B1, B2), `box.tuck` version 1, med fysisk spec, sex ytor (framsida, baksida, vänster och höger sida, lock och botten), editorschema och tryckprofil.
+Steg 1 har bara tuckbox; en låda med lock och botten vore en egen typ.
+Bredden är kortets bredd plus två gånger luften runt kortet, och höjden likaså.
+Djupet är antalet kort gånger kortets tjocklek plus luften i djupet, avrundat uppåt till en halv millimeter.
+Luften är 1 mm runt kortet och 2 mm i djupet, och designern kan ändra den, till exempel för kortfickor.
+108 kort på 63 × 88 × 0,3 mm ger 65 × 90 × 34,5 mm, och 120 kort ger 38 mm.
+
+**Ett lås per mått.**
+Varje mått kan låsas för sig, och ett låst mått behåller värdet det hade när det låstes.
+Ett olåst mått följer leken.
+Fysisk kontroll säger när en låst låda inte rymmer leken, med antalet kort som inte får plats och måtten i ord: med djupet låst på 34,5 mm ryms 108 kort, och av 120 får 12 inte plats.
+Det är en varning och inget fel, eftersom leken trycks som förut och lådan går till tryck först i steg 2.
+
+**A redigerar och B visar upp.**
+Fliken «Låda» öppnar på nätet (A), med ytorna, lagren, ett lås per mått, formeln och luften.
+En yta redigeras med samma lager, verktyg och egenskaper som ett kort i Mall.
+«Visa upp» viker ihop nätet till produktbilden (B) på ungefär 0,9 s, och ett klick på en sida, «Redigera nätet» eller Escape viker ut den igen med den sidan vald.
+Vikningen är den enda rörelsen utanför «Visa upp», och vid `prefers-reduced-motion` byts läget direkt.
+
+**Lådan växer i editorn (introduktion 2).**
+En designer som just har börjat på sin lek är inte intresserad av lådan, men att den går att styra är en säljpunkt.
+Från första kortet står därför en liten neutral låda i kortväggens fot och blir tjockare för varje kort.
+När leken är spelbar blir den en knapp och fliken «Låda» kommer.
+Spelbar betyder samma villkor som för «Starta bord».
+
+**Omslaget är lådans framsida.**
+Det syns i heron i Mina spel, i de delade länkarnas bild (rumskod och inbjudan) och i en egen vy, «Visa upp».
+Det syns inte på TV:n och inte på landningssidan, där tryck ännu inte finns att beställa (L36).
+Heron har C:s stilla form, med lådan bakom lekens första kort, utan rotation och utan ljus, och den visar lådan först när designern själv har öppnat den.
+Den animerade produktbilden, som roterar och går att vrida, finns bara i «Visa upp».
+Länkbilden följer heron och är en stillbild som renderaren fotograferar per version, och den får visa omslaget också för den som inte har loggat in.
+En låda som inte är ritad är neutral, med spelets namn och lekens färg.
+
+**Exporten bär lådan.**
+Exporten (G5) bär lådans ytor, mått, lås och luft, och tryckpaketet visar lådan som del 3 och säger att lådans tryckfiler kommer med partnern (F1).
+
+Motivering:
+Den fysiska kopian är affären, så lådan är den digitala ytan som säljer den, och den ska kännas som ett föremål man vill ha och inte som en vinst.
+Bara nätet visar hur en yta står på arket, med locket upp och ner, och bara produktbilden visar föremålet; hybriden ger båda utan att vyn byts.
+En låda som följer leken säger sanningen utan att designern gör något, och ett lås per mått är det en färdig insats eller en kortficka kräver.
+Introduktion 2 står aldrig i vägen och säger ändå alltid sanningen, och wow-faktorn är själva växandet.
+
+Följdkrav:
+Måtten räknas på ett ställe, `boxFit` i `packages/engine/src/box.ts`, och dokumentets låda läses av `boxOf` i `packages/server/src/box.ts`; editorn, kontrollen, nätet och produktbilden frågar där.
+Tuckboxen står i `BOX_TYPES` och inte i `STANDARD_TYPES`, eftersom ett bord aldrig lägger en låda och tryckarna görs ur den listan; en låda där hade varit en låda Testtryckeriet säger att det trycker.
+Dokumentets `box` är valfri och bär typen spelet pinnar (B3), luften när den inte är typens, de låsta måtten och ytornas mallar; ett spel utan post har typens låda som följer leken, så varje dokument skrivet före lådan läser tillbaka som förut.
+Låsen och luften är redigeringarna `lockBox` och `setBoxClearance` i editorns vokabulär, inte bordets slutna intents, och ett lås bär sitt värde i loggen så att uppspelningen låser det mått designern såg.
+Varje yta ritas av samma mallkompilator och renderare som korten (E2): inte en SVG, inte en canvas och inte en egen CSS-version av mallen.
+Lådans text vid skapandet skrivs på designerns språk och blir hennes (A4).
+
+Byggt 2026-10-26 (#1412): typen, måtten, låsen, luften och raden i Fysisk kontroll.
+Fliken och nätet (#1413), «Visa upp» (#1414), lådan i foten (#1415), heron (#1416), länkbilden (#1417) och exporten (#1418) är egna skivor.
+
+### L92. Designern låser vilken kolumn som står still i Tabell, och titeln är låst från start (prototypat och beslutat 2026-10-26, #1408)
 
 Beställaren: id och antal tar för mycket plats till vänster i tabellen, och ingen av dem är det man tittar på hela tiden — det är fritexten man utgår ifrån.
 Listen (L55) var bocken, `id` och `antal` (#145, #695): 302 px i provleken, 315 i den täta, vid varje fönsterbredd, och det som stod still när man skrev långt ut i body var `sals-saloon-guld · 2` medan titeln rullat bort.

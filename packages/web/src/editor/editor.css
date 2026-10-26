@@ -1334,10 +1334,12 @@
 .byd-wall-checks ul { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 8px; }
 .byd-wall-checks li { border-radius: 10px; overflow: hidden; border-left: 3px solid #f0b64a; background: #1b1f2a; }
 .byd-wall-checks li[data-severity='error'] { border-left-color: #e05c5c; }
-.byd-wall-checks li > button { display: flex; width: 100%; align-items: center; gap: 10px; border: 0; background: transparent; padding: 8px 12px; color: #e6ecfa; font: inherit; text-align: left; cursor: pointer; }
-.byd-wall-checks li > button b { color: #fff; }
+.byd-wall-checks li > :is(button, .byd-wall-check-head) { display: flex; width: 100%; align-items: center; gap: 10px; border: 0; background: transparent; padding: 8px 12px; color: #e6ecfa; font: inherit; text-align: left; cursor: pointer; }
+.byd-wall-checks li > :is(button, .byd-wall-check-head) b { color: #fff; }
+/* Lådans anmärkning (#1412) har inget att fälla ut: samma rad som en grupps, men ingen knapp. */
+.byd-wall-checks li > .byd-wall-check-head { cursor: default; }
 .byd-wall-checks li > button span { color: #9aa3b8; white-space: nowrap; }
-.byd-wall-checks li > button small { margin-left: auto; color: var(--byd-editor-quiet); text-transform: uppercase; letter-spacing: 1px; font-size: 10px; }
+.byd-wall-checks li > :is(button, .byd-wall-check-head) small { margin-left: auto; color: var(--byd-editor-quiet); text-transform: uppercase; letter-spacing: 1px; font-size: 10px; }
 .byd-wall-check-detail { padding: 0 12px 8px; display: grid; gap: 6px; }
 .byd-wall-check-detail p { margin: 0; color: #cfd5e3; font-size: 12px; line-height: 1.5; }
 .byd-wall-check-detail span { color: var(--byd-editor-quiet); font: 11px ui-monospace, Menlo, monospace; }
