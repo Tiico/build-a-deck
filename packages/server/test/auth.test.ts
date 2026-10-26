@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { start, type Running } from './fixture.js'
 import { template } from './deck.js'
 import { twoSeatSetup } from './fixture.js'
+import { LoginLimiter } from '../src/auth.js'
 
 // Accounts for creators (G1, DRIFT §11): a magic link by mail, a session cookie, no passwords.
 // Guests never log in: tables, phones and observers are reached by room code alone.
@@ -103,6 +104,33 @@ describe('logging in with a magic link', () => {
     expect((await post('/auth/login', { email: 'bo@example.com' })).status).toBe(429)
     expect(run.mail.sent.filter((m) => m.to === 'bo@example.com')).toHaveLength(5)
     expect((await post('/auth/login', { email: 'not an address' })).status).toBe(400)
+  })
+
+  // The receipt says when the next link can go (#1360), so the refusal says it: the seconds until the
+  // oldest of the five falls out of the hour, readable by a page on another origin as in development.
+  it('says in Retry-After when the next link can be sent', async () => {
+    for (let i = 0; i < 5; i++) await post('/auth/login', { email: 'bo@example.com' })
+    const refused = await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json', origin: 'http://elsewhere.example' }, body: JSON.stringify({ email: 'bo@example.com' }) })
+    expect(refused.status).toBe(429)
+    const seconds = Number(refused.headers.get('retry-after'))
+    expect(seconds).toBeGreaterThan(3500)
+    expect(seconds).toBeLessThanOrEqual(3600)
+    expect(refused.headers.get('access-control-expose-headers') ?? '').toMatch(/retry-after/)
+  })
+})
+
+describe('the limiter on sign-in links (#1360)', () => {
+  it('counts from the oldest of the five: the wait is until that one is an hour old, in whole seconds up', () => {
+    const limiter = new LoginLimiter()
+    const start = 1_000_000
+    for (let i = 0; i < 5; i++) expect(limiter.allow('bo@example.com', start + i * 600_000)).toEqual({ ok: true })
+    // Ten minutes after the fifth, the first is fifty minutes old: ten minutes left on it.
+    expect(limiter.allow('bo@example.com', start + 3_000_000)).toEqual({ ok: false, retryAfter: 600 })
+    expect(limiter.allow('bo@example.com', start + 3_599_500)).toEqual({ ok: false, retryAfter: 1 })
+    // Another address has its own five.
+    expect(limiter.allow('ada@example.com', start + 3_000_000)).toEqual({ ok: true })
+    // And once the oldest is an hour old, the next one goes.
+    expect(limiter.allow('bo@example.com', start + 3_600_000)).toEqual({ ok: true })
   })
 })
 

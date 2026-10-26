@@ -421,8 +421,9 @@ const CORS_BASE: Record<string, string> = {
   'access-control-max-age': '86400',
   // A zip is saved under the name the server gives it (#542, #1280), which a page on another
   // origin, as in development, can read only when it is exposed; and the export's summary beside
-  // it (#1356), which the window says when it hands the zip over.
-  'access-control-expose-headers': 'content-disposition, x-byd-export',
+  // it (#1356), which the window says when it hands the zip over; and when the next sign-in link
+  // may go (#1360), which the receipt on the login card says.
+  'access-control-expose-headers': 'content-disposition, x-byd-export, retry-after',
 }
 
 function originOf(value: string | undefined): string | null {
@@ -2919,7 +2920,12 @@ async function routeAuth(opts: ServerOptions, auth: AuthStore, req: IncomingMess
     const parsed = LoginBody.safeParse(JSON.parse(await readBody(req)))
     if (!parsed.success) return json(res, 400, { error: 'that is not an address' })
     const email = parsed.data.email.trim().toLowerCase()
-    if (opts.limiter && !opts.limiter.allow(email, Date.now())) return json(res, 429, { error: 'too many links; try again later' })
+    const allowance = opts.limiter?.allow(email, Date.now()) ?? { ok: true }
+    if (!allowance.ok) {
+      res.writeHead(429, { 'content-type': 'application/json', 'retry-after': String(allowance.retryAfter) })
+      res.end(JSON.stringify({ error: 'too many links; try again later' }))
+      return
+    }
     if (opts.authBypass) {
       res.writeHead(200, {
         'content-type': 'application/json',
