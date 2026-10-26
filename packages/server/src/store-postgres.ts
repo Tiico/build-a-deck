@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import postgres from 'postgres'
-import { assetKey, outputKey, type ObjectStore } from '@byd/render'
+import { assetKey, outputKey, type ObjectStore } from '@byd/render/queue'
 import { PHYSICAL_VERBS, REDACTED, type Applied, type Seating } from '@byd/protocol'
 import { liftLine, type SetupDef } from '@byd/engine'
 import { ACCOUNT_SWEEP_DAYS, NOTHING_ERASED, changesAt, maskedIntent, type Erased, type ErasureStore, type LedgerEntry } from './erase.js'

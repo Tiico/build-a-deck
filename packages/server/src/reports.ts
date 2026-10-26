@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { ASSET_PREFIX } from '@byd/render'
+import { ASSET_PREFIX } from '@byd/render/queue'
 import type { Motif } from '@byd/template'
 import { assetHash, type AssetStore } from './assets.js'
 import { LANGS, type Lang } from './auth.js'

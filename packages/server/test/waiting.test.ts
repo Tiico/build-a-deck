@@ -211,6 +211,10 @@ for (const backend of backends) {
 
     // Många spel och många flaggor (sample-deck-hides-density): varje spel räknas för sig, och ett
     // bord med långa loggar räknas lika rätt som ett kort.
+    // Det som prövas är att varje spel räknar sina egna bord och flaggor och inget annat spels. Det
+    // kräver många spel, olika många bord per spel och flaggor med drag mellan sig, inte många drag:
+    // varje rad är en tur till Postgres, och under last tog tolv drag per bord testets femton sekunder
+    // (#1426).
     it('räknar rätt för många spel med många bord och flaggor', async () => {
       const cookie = await login(`many-${++games}@example.com`)
       const owner = as(cookie)
@@ -218,20 +222,20 @@ for (const backend of backends) {
       for (let g = 0; g < 8; g++) {
         const project = `p-${process.pid}-${games}-${g}`
         ids.push(project)
-        await owner('POST', '/projects', { id: project, ...game(`Spel ${g}`, 40) })
+        await owner('POST', '/projects', { id: project, ...game(`Spel ${g}`) })
         for (let t = 0; t < g % 3; t++) {
           const made = await table(owner, project)
           const seat = await WireClient.connect(run.base, made.id, 'A', undefined, { token: await run.admit(made.id, 'A', 'Ada') })
           await seat.send('A', { v: 'seat.claim', seat: 'A', name: 'Ada' })
-          for (let m = 0; m < 12; m++) {
+          for (let m = 0; m < 2; m++) {
+            await seat.send('A', { v: 'flag', note: `${g}-${t}-${m}` })
             await seat.send('A', { v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
-            if (m % 2 === 0) await seat.send('A', { v: 'flag', note: `${g}-${t}-${m}` })
           }
           await seat.close()
         }
       }
       const read = await waiting(cookie)
-      for (const [g, project] of ids.entries()) expect(read[project]!.playtest).toMatchObject({ flags: (g % 3) * 6, tables: g % 3 })
+      for (const [g, project] of ids.entries()) expect(read[project]!.playtest).toMatchObject({ flags: (g % 3) * 2, tables: g % 3 })
     })
   })
 }
