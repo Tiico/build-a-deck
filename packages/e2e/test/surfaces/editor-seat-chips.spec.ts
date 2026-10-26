@@ -43,14 +43,20 @@ for (const locale of ['sv-SE', 'en-GB']) {
           const outer = box(band)
           const chips = [...band.querySelectorAll('[data-host-seat]')].map((chip) => {
             const button = chip.querySelector('button')!
-            return { text: (chip.textContent ?? '').replace(/\s+/g, ''), cross: button.querySelector('[data-glyph="close"]') !== null, chip: box(chip).toJSON() as DOMRect, button: box(button).toJSON() as DOMRect, form: chip.classList.contains('byd-chip') }
+            // The face is a letter for the eye only (#1422); what the chip reads is the name.
+            const read = [...chip.childNodes].filter((n) => !(n instanceof Element && n.getAttribute('aria-hidden') === 'true')).map((n) => n.textContent ?? '').join('')
+            return { text: read.replace(/\s+/g, ''), cross: button.querySelector('[data-glyph="close"]') !== null, chip: box(chip).toJSON() as DOMRect, button: box(button).toJSON() as DOMRect, form: chip.classList.contains('byd-chip') }
           })
-          const code = box(band.querySelector('.byd-editor-room button')!)
+          // The band's other target: the ⋯ the host's choices live in (#1422).
+          const code = box(band.querySelector('.byd-tables-more')!)
+          // The first line of the facts — the sentence, how you sit, «Kopiera länk» — which the seats stand under.
+          const first = box(band.querySelector('.byd-editor-table-line')!)
           return {
             over: band.scrollWidth - band.clientWidth,
             across: document.documentElement.scrollWidth - document.documentElement.clientWidth,
             outer: { left: outer.left, right: outer.right },
             code: { bottom: code.bottom, height: code.height },
+            first: { bottom: first.bottom },
             chips,
           }
         })
@@ -78,9 +84,10 @@ for (const locale of ['sv-SE', 'en-GB']) {
           // As tall as the strip's other button, so the row reads as one row of targets.
           expect(Math.abs(chip.height - drawn.code.height)).toBeLessThan(1)
         }
-        // At 1024 eight chips do not fit after the room code, and they go below it together
-        // rather than one by one: the first chip starts a row of its own.
-        if (width === 1024) expect(drawn.chips[0]!.chip.top).toBeGreaterThanOrEqual(drawn.code.bottom)
+        // The seats have a line of their own under the facts' first line, at every width (#1422,
+        // beslut B): the band never breaks in the middle of the chips, and nothing of the first
+        // line stands among them.
+        for (const { chip } of drawn.chips) expect(chip.top).toBeGreaterThanOrEqual(drawn.first.bottom - 0.5)
       })
     })
   }
@@ -188,8 +195,8 @@ test.describe('a seat kicked from the keyboard (#621)', () => {
     const strip = page.locator('.byd-editor-table-link')
     const ada = strip.locator('[data-host-seat]').getByRole('button', { name: 'Ta bort Ada', exact: true })
     await expect(ada).toBeVisible()
-    // From «Ny kod» the next stop is the first seat's ×: nothing between them takes a Tab.
-    await strip.getByRole('button', { name: 'Ny kod' }).focus()
+    // From «Kopiera länk» the next stop is the first seat's ×: nothing between them takes a Tab.
+    await strip.getByRole('button', { name: 'Kopiera länk' }).focus()
     await page.keyboard.press('Tab')
     await expect(ada).toBeFocused()
     // The ring is drawn on a real keypress only (Chromium's :focus-visible), which is why this
@@ -220,7 +227,7 @@ test.describe('a seat kicked from the keyboard (#621)', () => {
     await expect(strip.getByRole('button', { name: 'Ta bort Bo', exact: true })).toBeFocused()
   })
 
-  test('hands the focus to «Ny kod» when the last seat goes', async ({ page, host }) => {
+  test('hands the focus to the band’s ⋯ when the last seat goes', async ({ page, host }) => {
     await logIn(page.request)
     const doc = gameDoc({ name: 'En vid bordet', players: 2, cards: 3 })
     const project = await makeProjectOf(page.request, doc)
@@ -233,13 +240,14 @@ test.describe('a seat kicked from the keyboard (#621)', () => {
     // Ada's chip first: the seat arrives on the line after the page, and a Tab pressed before it
     // stood went past where it was about to be (a flake under load).
     await expect(ada).toBeVisible()
-    await strip.getByRole('button', { name: 'Ny kod' }).focus()
+    await strip.getByRole('button', { name: 'Kopiera länk' }).focus()
     await page.keyboard.press('Tab')
     await expect(ada).toBeFocused()
     await page.keyboard.press('Enter')
     await strip.getByRole('alertdialog', { name: 'Ta bort Ada från bordet?' }).getByRole('button', { name: 'Ta bort Ada' }).click()
     await expect(ada).toHaveCount(0)
-    await expect(strip.getByRole('button', { name: 'Ny kod' })).toBeFocused()
+    // «Ny kod» stands in the ⋯ since #1422, so the ⋯ is what the focus falls to.
+    await expect(strip.getByRole('button', { name: /^Fler val för bordet / })).toBeFocused()
   })
 })
 

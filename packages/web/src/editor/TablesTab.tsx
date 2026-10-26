@@ -699,7 +699,7 @@ function TableRow({ table, server, rev, onEnded, onPlayed, onUpdate, textures: w
 const STATE_WORD: Record<TableGroupId, Key> = { played: 'tables.state.played', untouched: 'tables.state.untouched', ended: 'tables.ended' }
 
 // One entry in the row's menu: a way into the table, or something the row does to itself.
-type WayItem = { id: string; label: Key; href?: string; target?: string; press?(): void; expanded?: boolean; apart?: boolean }
+export type WayItem = { id: string; label: Key; href?: string; target?: string; press?(): void; expanded?: boolean; apart?: boolean }
 
 // The five other ways, behind one press (#176). A real menu (APG): the button says what it opens
 // and whether it is open, the arrows move inside it, Enter and Space take the item under them —
@@ -708,7 +708,7 @@ type WayItem = { id: string; label: Key; href?: string; target?: string; press?(
 //
 // It is drawn only while it is open, and the button that opens it is drawn always: a control that
 // appears when a pointer rests on a row is not there at all for a thumb or a keyboard (#184).
-function RowWays({ table, ways, button }: { table: string; ways: WayItem[]; button: RefObject<HTMLButtonElement | null> }) {
+export function RowWays({ table, ways, button }: { table: string; ways: WayItem[]; button: RefObject<HTMLButtonElement | null> }) {
   const t = useT()
   const [open, setOpen] = useState(false)
   const menuId = useId()

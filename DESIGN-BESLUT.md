@@ -9103,3 +9103,35 @@ Följdkrav:
 Per-plats-material visas en gång under familjen, aldrig en gång per plats.
 Meeple, kub och bricka kommer som rader i ＋-menyn när deras typer finns (B1–B3), inte förr: en spärrad rad för något som inte finns är ett löfte i gränssnittet.
 `setup-column.test.tsx` pinnar remsan, rötterna, menyerna och materialets plats i trädet.
+
+### L90. Bordsbandet är en biljett: koden störst, platserna på egen rad, «Öppna bordet» som knapp (prototypat och beslutat 2026-10-26, #1422)
+
+Bandet under huvudet när ett bord kör var en mening: «Bordet kör version 7 — öppna bordet · rumskod UF6H2W [Ny kod] · vid bordet: [Ada ×] …».
+Vägen in var en länk i gemener mitt i meningen, koden ett fetstilt ord, och «Ny kod», som trycks en gång i månaden, en kantad knapp bredvid det som läses högt till alla i rummet.
+Beställaren: «Banderollen för öppna bord ser lite placeholderaktig ut.»
+
+Sju former prövades i [`docs/ux-audits/2026-10-26-bordsbandet/`](docs/ux-audits/2026-10-26-bordsbandet/README.md), i två rundor.
+A, B och C polerade bandet på plats (raden med struktur, biljetten, en smal statusrad); D, E och F flyttade bordet ut ur bandet (en «nu spelas»-docka längst ned, ett flytande bordskort, en Bord-flik som lyser).
+Valet blev **B · Biljetten**.
+F mättes bort: huvudet rymmer inte «Bord ● UF6H2W» i CI:s typsnitt (namnet klipptes till 34 px vid 1440, fliken vid 1280), samma mätning som fällde L60:s variant B.
+
+**Koden är en biljett till vänster.**
+«rumskod» i versaler och koden under, i TV:ns bokstäver, monospace, spärrad, på en mörk bricka, som Bord-fliken och TV:n redan ritar den (K12, #706).
+Koden är det största på bandet, därför att den är det som läses högt; den är ingen träffyta, och «Kopiera länk» bredvid fakta är det som trycks om den (L77).
+
+**Bordets fakta står bredvid på två rader.**
+Rad ett: en levande punkt, samma mening som förut i samma live region, hur ni sitter i startens egna ord («Runt en skärm», «Var och en vid sin dator», L86; ett bord från före frågan säger inget), och «Kopiera länk».
+Rad två: lägets mening medan bordet har ett, kort som laddas eller kort som inte kunde laddas med «Försök igen», och annars platserna som brickor med × (L60, L61) och ett ansikte i platsens färg (`seatColor`, K9), en andra berättelse om platsen och aldrig den enda (L12).
+Platserna har alltid en egen rad: bandet bryter aldrig mitt i brickorna, och det som står på rad ett flyttar inte när någon sätter sig.
+
+**Vägen in och resten står till höger.**
+«Öppna bordet» är samma kantade knapp som Bord-flikens rad har, med samma namn för skärmläsaren och flikens tecken, och visas som förut först när korten är laddade (#765).
+Ett ⋯ «Fler val för bordet KOD» är radens egen meny (`RowWays`) med «Ny kod» och «Avsluta bordet»; båda frågar först som förut (#679, C9), och frågorna står under bandet.
+Punkten står stilla vid nedsatt rörelse och blir rosa när kort saknas, med bandets övriga färger.
+
+Måtten: 85 px vid 1440 med tre platser (61 förut), 137 vid 1024 med åtta i CI:s typsnitt (109 förut).
+Priset är de 24 pixlarna på varje flik så länge bordet kör, och det är det priset formen valdes med.
+
+Följdkrav:
+Bandets egen anslutning till bordet är ägarens (`owner`), som radens, så att avslutet går samma väg som radens (C9) och platserna och slutet läses på en lina.
+`editor-seat-chips.spec.ts` mäter att platserna står under första raden vid 1024 och 1280, att ×-et är helt och att fokus faller till ⋯ när sista platsen går; `editor-page.test.tsx` visar hur ni sitter, vägen in med radens namn, kopian, «Ny kod» och slutet ur ⋯.
