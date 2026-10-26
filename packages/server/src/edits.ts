@@ -1,8 +1,10 @@
 import type { AssetCrop as Crop, CardQuery, FaceId, ZoneAction, ZoneBeside } from '@byd/protocol'
 import { RuleBlock, isSymbolName, type Element, type FaceTemplate, type Variant } from '@byd/template'
 import { showsWholePicture } from '@byd/protocol'
-import { AssetCrop, PictureName, ProjectDice } from './projects.js'
+import { BOX_SIDES, type BoxClearance, type BoxSide } from '@byd/engine'
+import { AssetCrop, PictureName, ProjectBox, ProjectDice } from './projects.js'
 import type { Cell, Picture, ProjectDie, ProjectCredit, ProjectDoc, ProjectFont, ProjectRow, ProjectTheme, RuleDoc } from './projects.js'
+import { DEFAULT_BOX_TYPE } from './box.js'
 import { applyRevert, decideRevert, type Revert } from './undo.js'
 import { columnsOf } from './columns.js'
 import { applyRecipe, newAreaSpot, newPileSpot, seatZones, type Geometry, type Recipe, type RecipeWords, type SeatRole, type Setup, type Shortcut, type Zone } from './recipe.js'
@@ -244,6 +246,14 @@ export type EditIntent =
       palette: Record<string, string>
       icons?: Record<string, { url: string; credit?: ProjectCredit }>
     }
+  // Spelets låda (#1412): ett lås per mått och luften (#1406, beslut 4), en redigering per sak
+  // designern gör, så att ett lås är en version och ett steg tillbaka (B4). `mm` är värdet måttet
+  // har när det låses, räknat där redigeringen görs och skrivet i loggen, så att uppspelningen låser
+  // det mått designern såg och inte det leken råkar ge i dag. `null` låser upp, och lådan följer
+  // leken igen. Luften med `null` är typens luft igen. Editorns vokabulär och inte bordets slutna
+  // intents (D3), så de är ingen protokollmigrering.
+  | { v: 'lockBox'; side: BoxSide; mm: number | null }
+  | { v: 'setBoxClearance'; side: keyof BoxClearance; mm: number | null }
   // Taking an older version back (B4) is an edit like any other: it lands in the log, everyone
   // with the project open sees it, and it becomes the next version when saved.
   | { v: 'restore'; doc: ProjectDoc }
@@ -788,6 +798,14 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
       return { ...doc, fonts: without(doc.fonts ?? {}, intent.family) }
     case 'setTheme':
       return themed(doc, intent)
+    case 'lockBox': {
+      if (!BOX_SIDES.includes(intent.side)) throw new Error(`a box has no side ${String(intent.side)}`)
+      return boxed(doc, (box) => ({ ...box, locked: { ...box.locked, [intent.side]: intent.mm ?? undefined } }))
+    }
+    case 'setBoxClearance': {
+      if (intent.side !== 'around' && intent.side !== 'depth') throw new Error(`a box has no clearance ${String(intent.side)}`)
+      return boxed(doc, (box) => ({ ...box, clearance: { ...box.clearance, [intent.side]: intent.mm ?? undefined } }))
+    }
     case 'restore':
       return intent.doc
     case 'revert':
@@ -803,6 +821,24 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
     default:
       throw new Error(`an edit this version does not know: ${(intent as { v: string }).v}`)
   }
+}
+
+// Lådan ändrad (#1412). Ett spel som aldrig rört sin låda får en med typen det har i dag. Det som
+// inte längre säger något tas bort: ett upplåst mått, typens luft igen, en tom samling. En låda som
+// bara bär sin typ är ingen post alls, så att ett lås och dess upplåsning lämnar dokumentet som det
+// var. Hållen mot dokumentets schema här, eftersom ingen annan dörr prövar vad en redigering skriver.
+function boxed(doc: ProjectDoc, change: (box: ProjectBox) => ProjectBox): ProjectDoc {
+  const changed = change(doc.box ?? { type: { ...DEFAULT_BOX_TYPE } })
+  const said = <T extends object>(part: T | undefined): T | undefined => {
+    if (!part) return undefined
+    const kept = Object.fromEntries(Object.entries(part).filter(([, v]) => v !== undefined))
+    return Object.keys(kept).length > 0 ? (kept as T) : undefined
+  }
+  const parts = { clearance: said(changed.clearance), locked: said(changed.locked), faces: said(changed.faces) }
+  const { box: _was, ...rest } = doc
+  if (!parts.clearance && !parts.locked && !parts.faces) return rest
+  const box = ProjectBox.parse({ type: changed.type, ...Object.fromEntries(Object.entries(parts).filter(([, v]) => v !== undefined)) })
+  return { ...rest, box }
 }
 
 // A theme laid over the document (L57, #632). The families are only *rewritten*: a text keeps its

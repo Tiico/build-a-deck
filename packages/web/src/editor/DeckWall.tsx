@@ -3,7 +3,7 @@ import { cellLine } from './proposals.js'
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { ProjectDoc } from '@byd/server'
 import { oversetOf, type FitReport, type Motif, type Warning } from '@byd/template'
-import { titleOfRow } from '@byd/server/doc'
+import { boxOf, titleOfRow, type GameBox } from '@byd/server/doc'
 import { CardPreview } from './CardPreview.js'
 import { OversetMarks } from './OversetMarks.js'
 import { overflowing, oversetWords } from './overset.js'
@@ -265,6 +265,11 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
   const found = deckIssues(doc, { [face]: cut })
   const groups = groupIssues(found)
   const errors = groups.filter((g) => g.severity === 'error')
+  // Lådan som inte rymmer leken (#1412) är en anmärkning bland de andra, men om spelet och inte om
+  // ett kort, så den står utanför grupperna och räknas med dem.
+  const box = boxOf(doc)
+  const boxShort = box.over > 0 ? box : null
+  const remarks = groups.length + (boxShort ? 1 : 0)
   const open = groups.find((g) => g.code === openGroup)
   const marked = new Set(open?.cards ?? [])
   const words = issueWords(t)
@@ -550,7 +555,7 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
               (L81), so they stand together at the row's end: the two things on this surface that
               are not about which cards are shown. */}
           <CrownBox name={t('wall.eyes')} state={viewSaid} short={viewShort} open={panel === 'view'} onToggle={() => togglePanel('view')} boxRef={viewBox} end />
-          <CrownBox name={t('wall.checks.title')} count={groups.length} short={t('wall.checks.short')} open={panel === 'checks'} onToggle={() => togglePanel('checks')} boxRef={checksBox} />
+          <CrownBox name={t('wall.checks.title')} count={remarks} short={t('wall.checks.short')} open={panel === 'checks'} onToggle={() => togglePanel('checks')} boxRef={checksBox} />
         </Crown>
       </div>
       {grouping && (
@@ -780,6 +785,7 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
               <Checks
                 groups={groups}
                 errors={errors.length}
+                box={boxShort}
                 words={words}
                 openGroup={openGroup}
                 onOpenGroup={setOpenGroup}
@@ -820,11 +826,11 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
         {/* The remarks are a door to the panel's Kontroll (L81): the count is where the eye finds them. */}
         {doc.rows.length === 0 ? (
           <span />
-        ) : groups.length === 0 ? (
+        ) : remarks === 0 ? (
           <span>{t('wall.foot.checked')}</span>
         ) : (
           <button type="button" className="byd-wall-foot-door" aria-expanded={panel === 'checks'} onClick={() => showPanel('checks')}>
-            {t(groups.length === 1 ? 'wall.foot.remarks.one' : 'wall.foot.remarks.other', { n: groups.length })}
+            {t(remarks === 1 ? 'wall.foot.remarks.one' : 'wall.foot.remarks.other', { n: remarks })}
           </button>
         )}
         {/* What just happened, after what the wall adds up to (#698, beslut B). */}
@@ -840,6 +846,7 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
 function Checks({
   groups,
   errors,
+  box,
   words,
   openGroup,
   onOpenGroup,
@@ -855,6 +862,7 @@ function Checks({
 }: {
   groups: ReturnType<typeof groupIssues>
   errors: number
+  box: GameBox | null
   words: Record<string, string>
   openGroup: string | null
   onOpenGroup(code: string | null): void
@@ -871,7 +879,7 @@ function Checks({
   const { lang } = useLang()
   return (
     <div className="byd-wall-checks">
-      {groups.length === 0 ? (
+      {groups.length === 0 && !box ? (
         <p className="byd-wall-ok">{t('wall.checks.ok')}</p>
       ) : (
         <>
@@ -941,6 +949,7 @@ function Checks({
                 )}
               </li>
             ))}
+            {box && <BoxRemark box={box} t={t} />}
           </ul>
         </>
       )}
@@ -958,6 +967,32 @@ function Checks({
         </a>
       )}
     </div>
+  )
+}
+
+// Lådan som inte rymmer leken (#1412, #1406): hur många kort som inte får plats, och det låsta mått
+// som håller dem ute, i läsarens ord (A4). En varning och inget fel: leken trycks som förut, och
+// lådan går till tryck först i steg 2 (F1). Låsen ändras i fliken «Låda» (#1413).
+function BoxRemark({ box, t }: { box: GameBox; t: T }) {
+  const { lang } = useLang()
+  const mm = (n: number) => n.toLocaleString(lang, { maximumFractionDigits: 1 })
+  const card = box.short === 'height' ? box.card.heightMm : box.card.widthMm
+  const why =
+    box.short === 'depth'
+      ? t('wall.box.depth', { deck: mm(box.deckMm), room: mm(box.roomMm) })
+      : t(box.short === 'height' ? 'wall.box.height' : 'wall.box.width', { card: mm(card), room: mm((box.short === 'height' ? box.size.height : box.size.width) - 2 * box.clearance.around) })
+  return (
+    <li data-check="box" data-severity="warning">
+      <div className="byd-wall-check-head">
+        <b>{t('wall.box.title')}</b>
+        <small>{t('wall.severity.warning')}</small>
+      </div>
+      <div className="byd-wall-check-detail">
+        <p>
+          {t(box.over === 1 ? 'wall.box.over.one' : 'wall.box.over.other', { n: box.over })} {why}
+        </p>
+      </div>
+    </li>
   )
 }
 

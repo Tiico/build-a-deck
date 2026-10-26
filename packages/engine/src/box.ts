@@ -15,6 +15,8 @@ export const BOX_SIDES = ['width', 'height', 'depth'] as const
 export type BoxSide = (typeof BOX_SIDES)[number]
 export type BoxMeasure = Record<BoxSide, number>
 export type BoxClearance = { around: number; depth: number }
+// What a game may leave unsaid, which is then the type's or the deck's.
+export type Unsaid<T> = { [K in keyof T]?: T[K] | undefined }
 export type BoxCard = Pick<ComponentTypeDef['physical'], 'widthMm' | 'heightMm' | 'thicknessMm'>
 
 // Floating point must not move a measure that stands on its step one step up (0,3 × 10 is
@@ -23,14 +25,14 @@ const EPSILON = 1e-9
 const tidy = (mm: number): number => Math.round(mm * 1e6) / 1e6
 const upTo = (mm: number, step: number): number => tidy(Math.ceil((mm - EPSILON) / step) * step)
 
-const clearanceOf = (type: BoxTypeDef, clearance: Partial<BoxClearance> | undefined): BoxClearance => ({
+const clearanceOf = (type: BoxTypeDef, clearance: Unsaid<BoxClearance> | undefined): BoxClearance => ({
   around: clearance?.around ?? type.holds.clearanceMm.around,
   depth: clearance?.depth ?? type.holds.clearanceMm.depth,
 })
 const countOf = (cards: number): number => Math.max(0, Math.floor(cards) || 0)
 
 // The box the deck asks for, with the type's air unless the game has its own.
-export function boxMeasure(type: BoxTypeDef, card: BoxCard, cards: number, clearance?: Partial<BoxClearance>): BoxMeasure {
+export function boxMeasure(type: BoxTypeDef, card: BoxCard, cards: number, clearance?: Unsaid<BoxClearance>): BoxMeasure {
   const air = clearanceOf(type, clearance)
   return {
     width: tidy(card.widthMm + 2 * air.around),
@@ -43,8 +45,8 @@ export type BoxFitInput = {
   type: BoxTypeDef
   card: BoxCard
   cards: number
-  clearance?: Partial<BoxClearance> | undefined
-  locked?: Partial<BoxMeasure> | undefined
+  clearance?: Unsaid<BoxClearance> | undefined
+  locked?: Unsaid<BoxMeasure> | undefined
 }
 
 export type BoxFit = {

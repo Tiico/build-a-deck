@@ -1,6 +1,7 @@
 import { z } from 'zod'
-import { CardQuery, FaceId, Picture, ZoneAction, ZoneBeside } from '@byd/protocol'
-import { RuleDoc, Template, liftTemplate, type Row } from '@byd/template'
+import { BoxFace } from '@byd/engine'
+import { CardQuery, FaceId, Picture, TypeRef, ZoneAction, ZoneBeside } from '@byd/protocol'
+import { FaceTemplate, RuleDoc, Template, liftTemplate, type Row } from '@byd/template'
 import type { Deck } from './faces.js'
 import type { AppliedEdit } from './project-actor.js'
 import type { Role } from './roles.js'
@@ -134,6 +135,26 @@ export type ProjectFont = z.infer<typeof ProjectFont>
 export const ProjectTheme = z.object({ from: z.string().min(1) })
 export type ProjectTheme = z.infer<typeof ProjectTheme>
 
+// Spelets låda (#1412, L90). `type` är lådtypen spelet pinnar (B3), i steg 1 alltid tuckboxen.
+// Måtten står inte här, för de räknas fram ur leken (`boxOf`). Det som står här är designerns svar
+// på dem:
+// - `clearance` är luften runt kortet och i djupet, när den inte är typens.
+// - `locked` är de mått hon har låst, vart och ett på det värde det hade när det låstes.
+// - `faces` är ytornas mallar, en per sida av lådan, ritade med samma mallsystem som korten (E2).
+// Ett spel som aldrig rört lådan har ingen post, och dess låda är typens och följer leken. Därför är
+// posten valfri: varje dokument skrivet före lådan läser tillbaka precis som det alltid gjort.
+export const BOX_CLEARANCE_MAX_MM = 10
+export const BOX_SIDE_MAX_MM = 500
+const clearanceMm = z.number().min(0).max(BOX_CLEARANCE_MAX_MM)
+const sideMm = z.number().positive().max(BOX_SIDE_MAX_MM)
+export const ProjectBox = z.object({
+  type: TypeRef,
+  clearance: z.object({ around: clearanceMm.optional(), depth: clearanceMm.optional() }).optional(),
+  locked: z.object({ width: sideMm.optional(), height: sideMm.optional(), depth: sideMm.optional() }).optional(),
+  faces: z.partialRecord(BoxFace, FaceTemplate).optional(),
+})
+export type ProjectBox = z.infer<typeof ProjectBox>
+
 export const ProjectDoc = z.object({
   name: z.string().min(1),
   template: Template,
@@ -185,6 +206,7 @@ export const ProjectDoc = z.object({
   rules: RuleDoc.optional(),
   fonts: z.record(z.string(), ProjectFont).optional(),
   theme: ProjectTheme.optional(),
+  box: ProjectBox.optional(),
   setup: ProjectSetup,
 })
 export type ProjectDoc = z.infer<typeof ProjectDoc>

@@ -54,7 +54,7 @@ export const isMaterial = (def: ComponentTypeDef): boolean => def.behaviours.rol
 
 export const typeKey = (ref: TypeRef): string => `${ref.id}@${ref.version}`
 
-// The game's box (#1412, #1406): a type in the same registry (B1, B2), but not a component. It never
+// The game's box (#1412, L90): a type in the same registry (B1, B2), but not a component. It never
 // lies on a table, and its size is not its own: it holds the deck, so its measure is worked out of
 // the deck's cards (`boxMeasure`) rather than declared here. What it declares is how much air it
 // leaves around the card and in the depth, and the step its depth is rounded up to.
@@ -197,7 +197,7 @@ export const DICE: readonly ComponentTypeDef[] = [die(4, 18), die(6, 16), die(8,
 // What every table knows.
 export const STANDARD_TYPES: readonly ComponentTypeDef[] = [CARD_STANDARD_63x88, TOKEN_COUNTER, ...DICE]
 
-// The tuckbox (#1412): the one box of step 1 (#1406, beslut 4). The deck stands in it on its edge
+// The tuckbox (#1412, L90): the one box of step 1 (#1406, beslut 4). The deck stands in it on its edge
 // and the lid tucks in at the top. Its measure follows the deck with 1 mm of air around the card and
 // 2 mm in the depth, the depth rounded up to half a millimetre, which is the prototype's formula and
 // gives 65 × 90 × 34,5 mm for 108 standard cards. The designer may change the air and lock any

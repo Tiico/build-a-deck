@@ -166,6 +166,12 @@ const EVERY: Record<EditIntent['v'], { mine: (doc: ProjectDoc) => EditIntent; th
   setFont: { mine: () => ({ v: 'setFont', family: 'Lora', font: { stack: 'Lora, serif' } }) },
   removeFont: { mine: () => ({ v: 'removeFont', family: 'Cinzel' }) },
   setTheme: { mine: () => ({ v: 'setTheme', theme: { from: 'skogssaga' }, heading: 'Cinzel', body: 'Lora', prose: ['body'], fonts: { Lora: { stack: 'Lora, serif' } }, palette: { kostnad: '#8f2d20' }, icons: { blad: { url: `asset:${HASH}` } } }) },
+  lockBox: { mine: () => ({ v: 'lockBox', side: 'depth', mm: 34.5 }), theirs: { v: 'setBoxClearance', side: 'around', mm: 2 } },
+  setBoxClearance: {
+    start: (doc) => applyEdit(doc, { v: 'lockBox', side: 'width', mm: 65 }),
+    mine: () => ({ v: 'setBoxClearance', side: 'depth', mm: 3 }),
+    theirs: { v: 'lockBox', side: 'height', mm: 92 },
+  },
   restore: { mine: (doc) => ({ v: 'restore', doc: { ...game(), name: doc.name } }) },
   compound: { mine: () => ({ v: 'compound', edits: [{ v: 'setCell', cardRef: 'kort-1', field: 'body', value: 'Ada.' }, { v: 'removeRow', cardRef: 'kort-2' }, { v: 'rename', name: 'Skogen' }] }) },
   // Ett steg tillbaka är också en redigering, och gör om är dess invers.
