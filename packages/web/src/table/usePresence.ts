@@ -21,7 +21,17 @@ export function usePresence(client: TableClient | null, view: Snapshot | null): 
       clearInterval(timer)
     }
   }, [client])
-  return presence
+  // Named as the table names them now (#1390). A pointer travels apart from the table's state and
+  // can arrive before the name a seat sat down with; the name it was folded in under then stood on
+  // the cursor, the seat's bare letter, until the pointer happened to move again.
+  const name = nameRef.current
+  const peers: PresenceState['peers'] = {}
+  for (const [id, peer] of Object.entries(presence.peers)) peers[id] = { ...peer, name: name(peer.seat) }
+  return {
+    peers,
+    pulses: presence.pulses.map((p) => ({ ...p, name: name(p.seat) })),
+    shown: presence.shown && { ...presence.shown, name: name(presence.shown.seat) },
+  }
 }
 
 export function useRecent(activity: readonly Activity[]): Recent[] {

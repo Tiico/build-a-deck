@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type RefObject } from 'react'
+import { useEffect, useId, useLayoutEffect, useRef, useState, type RefObject } from 'react'
 import type { Snapshot, VisibleComponentState } from '@byd/protocol'
 import type { TableClient } from '../client.js'
 import { Refusal, type RefusalHandle } from '../status/Refusal.js'
@@ -126,10 +126,14 @@ function PointOut({ onPoint, onCancel }: { onPoint(id: string): void; onCancel()
 // (#1147), since the card may lie folded away under one or on a tab that is not open. `how` is what
 // the root says while it lasts: the band rings every card it can point out, the panel the one under
 // the pointer.
+//
+// Put up and taken down in the commit that draws and removes the band or the panel, and not an
+// effect later (#1390): a passive effect runs after the commit, so for a while after the panel had
+// left the screen every button stood dimmed and the next press — «Lämna…» — was caught and eaten.
 function usePointOut({ how, keep, onPoint, onEscape }: { how: 'band' | 'panel'; keep: RefObject<HTMLElement | null>; onPoint(id: string): void; onEscape(): void }) {
   const latest = useRef({ onPoint, onEscape })
   latest.current = { onPoint, onEscape }
-  useEffect(() => {
+  useLayoutEffect(() => {
     const root = document.documentElement
     root.setAttribute('data-flag-pointing', how)
     const ours = (target: EventTarget | null): Element | null => {
