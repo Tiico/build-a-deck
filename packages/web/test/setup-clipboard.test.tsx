@@ -63,10 +63,10 @@ describe('att kopiera en zon i fliken Bord', () => {
 
     select('discard')
     press('x')
-    expect(rows()).toEqual(['draw', 'table', 'hand:*'])
+    expect(rows()).toEqual(['table', 'draw', 'hand:*'])
 
     press('v')
-    expect(rows()).toEqual(['draw', 'table', 'discard-2', 'hand:*'])
+    expect(rows()).toEqual(['table', 'draw', 'discard-2', 'hand:*'])
     expect(document.body.textContent).toMatch(/Kasthög/)
   })
 
@@ -108,7 +108,7 @@ describe('att kopiera en zon i fliken Bord', () => {
 
     select('table')
     press('x')
-    expect(rows()).toEqual(['draw', 'discard', 'table', 'hand:*'])
+    expect(rows()).toEqual(['table', 'draw', 'discard', 'hand:*'])
     expect((document.querySelector('[data-setup-said]') as HTMLElement).textContent).toMatch(/Filten är bordet/)
   })
 
@@ -120,6 +120,6 @@ describe('att kopiera en zon i fliken Bord', () => {
     const name = screen.getByLabelText(/Namn för Draghög/)
     fireEvent.keyDown(name, { key: 'c', ctrlKey: true })
     fireEvent.keyDown(name, { key: 'v', ctrlKey: true })
-    expect(rows()).toEqual(['draw', 'discard', 'table', 'hand:*'])
+    expect(rows()).toEqual(['table', 'draw', 'discard', 'hand:*'])
   })
 })

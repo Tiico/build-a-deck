@@ -37,6 +37,8 @@ async function openBord(page: Page, players: number): Promise<Locator> {
   await page.goto(project.editorUrl)
   await page.locator('#byd-editor-tab-tables').click()
   await expect(page.locator('[data-setup-editor]')).toBeVisible()
+  // The stepper stands behind the game's strip (#1403, beslut C).
+  await page.getByRole('button', { name: /^Spelet/ }).click()
   return page.locator('.byd-setup-recipe section').filter({ has: page.locator('#byd-setup-players') })
 }
 

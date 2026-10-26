@@ -22,6 +22,8 @@ test('an editor opened on work nobody saved says so, and the table it starts has
     await on.goto(project.editorUrl)
     await expect(on.getByText('Svansen').first()).toBeVisible()
     await on.locator('#byd-editor-tab-tables').click()
+    // The seat count stands behind the game's strip (#1403, beslut C).
+    await on.getByRole('button', { name: /^The game/ }).click()
     await expect(stepper(on)).toHaveValue(players)
   }
 

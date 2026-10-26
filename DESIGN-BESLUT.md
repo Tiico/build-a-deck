@@ -8277,7 +8277,7 @@ Menyn öppnar på sitt första val, länk eller knapp.
 Startsidan frågar `GET /projects/:id/sessions` för varje spel som har bord och vars roll får starta bord; bara ett bord med en giltig kod räknas som pågående.
 `account-page.test.tsx` visar bandet efter en omladdning, länkens adress och menyns ordning; `home-layout.test.tsx` mäter bandets länk till 44 px vid 320, 390 och 1280.
 Prototypen: `docs/ux-audits/2026-10-05-pagaende-bord/prototyper/724/`.
-Tillägg 2026-10-26 (#1411): bandets form är L89:s, ett kort per spel med en rad per bord; sektionen, dess rubriker och vägen som ägare står kvar.
+Tillägg 2026-10-26 (#1411): bandets form är L90:s, ett kort per spel med en rad per bord; sektionen, dess rubriker och vägen som ägare står kvar.
 
 ### L65. Bord-flikens rad heter rumskoden och uppdateras där den står (prototypat och beslutat 2026-10-05, #706)
 
@@ -9072,7 +9072,40 @@ Följdkrav:
 Ordet «spärrad» och hashen går bara till ägaren och medredigerarna; för alla andra är en spärrad bild en som inte finns, och det prövas på råa frames.
 Remsan och rutan läser `GET /projects/:id/blocked`, och utan svar ritas bilden tom ändå.
 
-### L89. «Pågår nu» är ett kort per spel, och varje bord en rad som säger hur man sitter (prototypat och beslutat 2026-10-26, #1411)
+### L89. Bords vänsterkolumn är ett träd, och leken är spelets egenskap (prototypat och beslutat 2026-10-26, #1403)
+
+Beställaren: «Vi behöver snygga till vänsterkolumnen på bord fliken, den är inte anpassad för de framtida förbättringarna vi kommer göra med fler saker än räknare och tärningar. Vissa funktioner som "Lägg leken i X" förstår jag inte heller syftet med.»
+Kolumnen var sex paneler staplade i den ordning de kom till: spelare, räknare, tärningar, på bordet, vid platserna, turordning.
+Varje ny sorts material (meeple, kub, bricka; B1–B3) hade blivit en panel till, och vid 1024 × 640 låg det som läggs till under vecket igen (#711).
+Fyra varianter prototypades i [`docs/ux-audits/2026-10-26-bordets-vansterkolumn`](docs/ux-audits/2026-10-26-bordets-vansterkolumn/README.md): A en lista med en «Lägg till»-meny, B tre flikar, C bordet som träd, D palett och inspektör.
+Beställaren valde C.
+
+**Kolumnen speglar filten: allt ligger i något.**
+Listan är ett träd med två rötter: Spelyta, som rymmer högarna, ytorna och det material som ligger på den, och «Varje plats», som rymmer det varje plats har, en rad per familj (#175) och under familjen det material som ligger i dess zon (K31).
+En zon som kan rymma något har ett ＋ på sin rad, och menyn bakom säger vad som går att lägga just där: yta, hög och tärning i Spelyta; yta per plats, räknarzon per plats och räknare vid platserna; tärning i en yta; räknare och tärning i en familjs yta.
+En ny sorts material är en rad i en meny, aldrig en panel i kolumnen.
+Menyn står i kolumnens flöde under raden och inte svävande över den: kolumnen rullar, och en svävande meny vid dess fot hade klippts.
+Ett material är en rad som en zon, «2 × d6 · per spelare», «Guld · från 0», och öppnas till sina fält.
+Var det ligger säger trädet, så raden har ingen väljare för det; en tärning vars yta försvunnit står under Spelyta, säger det, och får då en väljare.
+En räknare utan räknarzon står under Varje plats med skälet på raden.
+
+**Spelet står överst som en remsa.**
+Spelare, turordning och var leken ligger är spelets och inte zonernas: de står i en rad som säger alla tre i ett andetag («4 spelare · medurs · leken i Kortlek») och fälls ut till sina fält.
+Leken väljs där, som «Korten delas ut från», med raden under som säger vad det betyder.
+Knappen «Lägg leken i X» i varje annan högs panel är borta: den flyttade en roll hos spelet men lästes som en handling på högen, och ingen förstod den.
+Högen som bär leken bär ordet i listan och går inte att ta bort medan den gör det, som förut (B5).
+
+Motivering:
+Modellen är redan trädets: K31 lägger en bit i en yta, och B5 gör leken till en roll en hög bär.
+En kolumn som säger samma sak som filten går att läsa mot filten, och ett ＋ per zon håller tilläggen vid sin plats också vid 640.
+Priset är en djupare lista, en räknare ligger tre nivåer ner, och det är det priset varianten valdes med.
+
+Följdkrav:
+Per-plats-material visas en gång under familjen, aldrig en gång per plats.
+Meeple, kub och bricka kommer som rader i ＋-menyn när deras typer finns (B1–B3), inte förr: en spärrad rad för något som inte finns är ett löfte i gränssnittet.
+`setup-column.test.tsx` pinnar remsan, rötterna, menyerna och materialets plats i trädet.
+
+### L90. «Pågår nu» är ett kort per spel, och varje bord en rad som säger hur man sitter (prototypat och beslutat 2026-10-26, #1411)
 
 Beställaren: «Banderollen för öppna bord ser lite placeholder-aktig ut, nu när vi börjar närma oss release tycker jag vi kan polera den.»
 L64:s band var en platt grön ruta med spelets namn, koden i naken monotyp och två lika tunga knappar: ingen bild, inga fakta om bordet fast listan redan bar version, senaste drag och hur man sitter (L77), och ingen väg som stod redo (L13).

@@ -6,6 +6,7 @@ import { EditorPage } from '../src/editor/EditorPage.js'
 import { StatusLive } from '../src/status/StatusLive.js'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
+import { addVia } from './bord-tab.js'
 import { dragVia, laidOut, target } from './drag.js'
 
 let run: Running
@@ -392,7 +393,8 @@ describe('a zone on the felt as one step back', () => {
   async function openTheFelt() {
     await openEditor()
     fireEvent.click(screen.getByRole('tab', { name: 'Bord' }))
-    fireEvent.click(await screen.findByRole('button', { name: '＋ Yta' }))
+    await screen.findByRole('button', { name: 'Lägg till i Spelyta' })
+    addVia('Spelyta', '＋ Yta')
     return document.querySelector('[data-zone-handle="yta-1"]') as HTMLElement
   }
   const where = () => document.querySelector('[data-zone-where]')?.textContent ?? ''
@@ -454,7 +456,8 @@ describe('a counter named as one step back', () => {
   it('takes the whole name back in one press, and leaves the counter standing', async () => {
     await openEditor()
     fireEvent.click(screen.getByRole('tab', { name: 'Bord' }))
-    fireEvent.click(await screen.findByRole('button', { name: '＋ Räknare' }))
+    await screen.findByRole('button', { name: 'Lägg till i Varje plats' })
+    addVia('Varje plats', '＋ Räknare')
     expect(counter().value).toBe('Poäng')
 
     await userEvent.clear(counter())

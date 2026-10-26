@@ -20,7 +20,7 @@ async function openZone(id: string): Promise<void> {
   render(<EditorPage />)
   await screen.findByText('Skogens herrar')
   fireEvent.click(screen.getByRole('tab', { name: 'Bord' }))
-  fireEvent.click(within(document.querySelector(`[data-zone-row="${id}"]`) as HTMLElement).getByRole('button', { name: /Draghög|Kasthög|Spelyta/ }))
+  fireEvent.click(document.querySelector(`[data-zone-row="${id}"] > .byd-setup-row > .byd-setup-name`) as HTMLElement)
 }
 
 const panel = () => document.querySelector('[data-zone-actions]') as HTMLElement

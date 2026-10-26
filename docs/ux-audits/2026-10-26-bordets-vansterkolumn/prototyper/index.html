@@ -1,0 +1,402 @@
+<!doctype html>
+<!-- PROTOTYP: vänsterkolumnen i fliken Bord. Dagens kolumn som referens (0) och fyra varianter (A–D),
+     växla med ?v= eller ←/→. Höjden växlas mellan 900 och 640 för att se vad som hamnar under vecket
+     (#711). Kastas när en variant är vald. -->
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bordets vänsterkolumn — prototyp</title>
+<style>
+:root { --bg: #0f1117; --panel: #1b1d23; --panel2: #171a23; --ink: #e6ecfa; --quiet: #9aa3b8; --line: #2f333d; --amber: #ffd98a; --blue: #8ad0ff; --green: #8fd3a5; --felt: #1d4a36; --felt-edge: #163a2a; }
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--ink); font: 13px system-ui, -apple-system, sans-serif; }
+body { padding: 16px 16px 96px; }
+.rubrik { max-width: 1240px; margin: 0 0 10px; color: var(--amber); font-size: 13px; line-height: 1.5; }
+.rubrik b { color: #ffe9b8; }
+.anteckning { max-width: 1240px; margin: 0 0 14px; padding: 8px 12px; border-radius: 8px; background: #1f1b12; border: 1px solid #4a4230; color: #e9d7a8; font-size: 13px; line-height: 1.55; }
+.anteckning b { color: #ffe9b8; } .plus { color: #b7dca0; } .minus { color: #f0a58a; }
+.verktyg { max-width: 1240px; display: flex; gap: 12px; align-items: center; margin: 0 0 10px; color: var(--quiet); font-size: 12px; }
+.verktyg button { min-height: 28px; padding: 0 10px; font-size: 12px; }
+.verktyg button[aria-pressed=true] { border-color: var(--amber); color: var(--amber); }
+
+/* Editorns ram: huvud + tre kolumner som i dag (300 / 1fr / 320), höjden växlas. */
+.editor { max-width: 1240px; border: 1px solid #2a2d36; border-radius: 10px; overflow: hidden; background: var(--bg); display: grid; grid-template-rows: 40px 1fr; height: var(--h, 760px); }
+.huvud { display: flex; align-items: center; gap: 18px; padding: 0 14px; border-bottom: 1px solid #1f232c; font-size: 12px; color: var(--quiet); background: #0c0e13; }
+.huvud b { color: var(--ink); } .huvud .flik { color: var(--ink); border-bottom: 2px solid var(--amber); padding: 11px 0; }
+.kropp { display: grid; grid-template-columns: 300px minmax(0, 1fr) 300px; gap: 24px; padding: 16px; min-height: 0; }
+.kropp > * { min-width: 0; min-height: 0; }
+.kol { overflow: auto; padding-right: 4px; display: grid; gap: 16px; align-content: start; scrollbar-width: thin; }
+.mitt { display: flex; flex-direction: column; gap: 8px; }
+.hoger { color: var(--quiet); font-size: 12px; line-height: 1.5; }
+.hoger .ruta { border: 1px solid var(--line); border-radius: 12px; padding: 10px; margin-top: 8px; }
+.vack { position: sticky; bottom: 0; height: 0; }
+.vack::after { content: 'vecket vid 1024 × 640'; position: absolute; left: 0; right: 0; top: -1px; border-top: 1px dashed #ff9a9a; color: #ff9a9a; font-size: 10px; letter-spacing: 1px; text-transform: uppercase; padding-top: 2px; pointer-events: none; }
+
+h2 { margin: 0 0 4px; font-size: 13px; text-transform: uppercase; letter-spacing: 2px; color: var(--quiet); font-weight: 600; display: flex; align-items: center; gap: 8px; }
+h2 .hjalp { display: inline-grid; place-items: center; width: 16px; height: 16px; border: 1px solid var(--line); border-radius: 50%; font-size: 10px; letter-spacing: 0; text-transform: none; }
+h2 .antal { font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--quiet); font-size: 12px; }
+h2 .plus-k { margin-left: auto; }
+button { font: inherit; color: #fff; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; min-height: 36px; padding: 0 12px; cursor: pointer; font-weight: 700; }
+button.tyst { background: transparent; border-color: transparent; color: var(--quiet); font-weight: 600; }
+button.liten { min-height: 28px; padding: 0 8px; font-size: 12px; }
+button.x { width: 32px; min-height: 32px; padding: 0; color: #c7cede; font-weight: 400; font-size: 15px; }
+button.x:hover { background: #2a1b1b; border-color: #6b2b2b; color: #ff9a9a; }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+input, select { background: var(--panel); border: 1px solid var(--line); color: var(--ink); border-radius: 8px; min-height: 36px; padding: 0 8px; font: inherit; min-width: 0; }
+input[type=number] { width: 64px; }
+label.falt { display: grid; gap: 4px; color: var(--quiet); font-size: 12px; }
+label.falt > span { font-size: 11px; }
+.verk { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 4px 0 8px; }
+.val { display: flex; flex-wrap: wrap; gap: 6px; }
+.val button { min-height: 32px; padding: 0 10px; font-weight: 600; }
+.val button[aria-pressed=true] { background: #2a2f3c; border-color: var(--amber); color: var(--amber); }
+.stepper { display: inline-flex; align-items: center; gap: 2px; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.stepper button { border: 0; border-radius: 0; min-width: 36px; background: transparent; }
+.stepper b { min-width: 36px; text-align: center; }
+.rad { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.rad .namn { flex: 1; min-width: 0; display: flex; gap: 8px; align-items: center; border: 0; background: transparent; color: var(--ink); text-align: left; padding: 8px; border-radius: 8px; cursor: pointer; font: inherit; font-weight: 400; min-height: 36px; }
+.rad .namn:hover { background: var(--panel); }
+.rad .namn > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rad .namn em { flex: none; font-style: normal; color: var(--quiet); font-size: 11px; border: 1px solid #6d7486; border-radius: 999px; padding: 0 8px; }
+.rad .namn strong { flex: none; color: var(--blue); font-size: 10px; text-transform: uppercase; letter-spacing: 1px; }
+.rad .namn small { flex: none; color: var(--quiet); font-size: 11px; }
+.fast { flex: none; color: var(--quiet); font-size: 10px; text-transform: uppercase; letter-spacing: 1px; border: 1px solid var(--line); border-radius: 999px; padding: 4px 8px; }
+.ik { flex: none; display: inline-block; width: 11px; height: 14px; border: 1px solid var(--quiet); border-radius: 2px; box-shadow: 2px -2px 0 -1px #6d7486; }
+.ik.area { width: 16px; height: 11px; border-style: dashed; box-shadow: none; }
+.ik.hand { width: 16px; height: 7px; box-shadow: none; }
+.ik.die { width: 14px; height: 14px; border-radius: 3px; background: #f3e9d6; border-color: #f3e9d6; box-shadow: none; position: relative; }
+.ik.die::after { content: ''; position: absolute; inset: 4px; border-radius: 50%; background: #1c1c1c; }
+.ik.counter { width: 14px; height: 14px; border-radius: 50%; background: #2a2f3c; border-color: var(--amber); box-shadow: none; }
+.ik.meeple { width: 14px; height: 14px; border: 0; box-shadow: none; background: var(--quiet); clip-path: polygon(50% 0, 65% 25%, 100% 40%, 75% 60%, 90% 100%, 10% 100%, 25% 60%, 0 40%, 35% 25%); opacity: .6; }
+.ik.cube { width: 12px; height: 12px; border-radius: 2px; background: var(--quiet); border: 0; box-shadow: none; opacity: .6; }
+.ik.chip { width: 14px; height: 14px; border-radius: 50%; border: 3px double var(--quiet); box-shadow: none; opacity: .6; }
+.caret { flex: none; width: 10px; color: #c7cede; font-size: 10px; transition: transform 120ms; }
+li[data-open=true] > .rad .caret { transform: rotate(90deg); }
+ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+li[data-open=true] { background: var(--panel2); border-radius: 10px; }
+li > ul { padding-left: 16px; }
+.props { display: grid; gap: 8px; padding: 4px 8px 12px; }
+.props .hint, .hint { margin: 0; color: var(--quiet); font-size: 12px; line-height: 1.5; }
+.kommer { color: #ffd98a99; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; border: 1px dashed #8a7440; border-radius: 999px; padding: 1px 6px; margin-left: auto; }
+.meny { position: absolute; z-index: 10; min-width: 240px; padding: 6px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); box-shadow: 0 16px 40px rgba(0,0,0,.6); display: none; }
+.meny.open { display: block; }
+.meny h3 { margin: 6px 8px 2px; font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--quiet); font-weight: 600; }
+.meny button { display: flex; gap: 10px; align-items: center; width: 100%; text-align: left; background: transparent; border-color: transparent; font-weight: 500; min-height: 34px; }
+.meny button:hover { background: #2a2f3c; }
+.meny button[disabled] { color: var(--quiet); cursor: default; }
+.hall { position: relative; }
+.segment { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.segment button { border: 0; border-radius: 0; min-height: 40px; background: transparent; color: var(--quiet); font-weight: 600; display: grid; gap: 0; line-height: 1.2; }
+.segment button span { font-size: 10px; font-weight: 400; }
+.segment button[aria-selected=true] { background: #2a2f3c; color: var(--ink); box-shadow: inset 0 -2px 0 var(--amber); }
+.sticky-top { position: sticky; top: 0; z-index: 3; background: var(--bg); padding-bottom: 6px; }
+.palett { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.palett button { display: grid; grid-template-columns: 20px 1fr; gap: 8px; align-items: center; text-align: left; min-height: 44px; font-weight: 600; padding: 0 10px; font-size: 12px; }
+.palett button .ik { justify-self: center; }
+.palett button[disabled] { color: var(--quiet); border-style: dashed; cursor: default; }
+.palett button:not([disabled]):hover { border-color: var(--amber); }
+.spelet { display: grid; gap: 8px; padding: 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel2); }
+.spelet .rad2 { display: grid; gap: 4px; color: var(--quiet); font-size: 11px; }
+.spelet .rad2 > span:first-child { font-size: 11px; }
+.spelet-strip { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel2); cursor: pointer; }
+.spelet-strip b { font-weight: 600; } .spelet-strip .caret { margin-left: auto; }
+.spelet-strip .sep { color: #4a5062; }
+
+/* Filten: dagens geometri för fyra platser, ritad som i editorn. */
+.felt-ram { position: relative; flex: 1 1 auto; min-height: 240px; background: #0d0f14; border-radius: 16px; overflow: hidden; display: grid; place-items: center; }
+.felt { position: relative; background: #1b2131; border-radius: 10px; }
+.z { position: absolute; border: 1.5px dashed #e9dcb455; border-radius: 6px; }
+.z.hand { border-style: dotted; }
+.z.lys { border-color: var(--amber); background: #f0b64a1f; }
+.hog { position: absolute; width: 30px; height: 42px; margin: -21px 0 0 -15px; border-radius: 4px; background: #2a3c63; border: 1px solid #5d74a8; display: grid; place-items: center; font-size: 11px; font-weight: 700; }
+.hog.tom { background: #1b2131; border-style: dashed; }
+.hog.deck { border-color: var(--blue); }
+.hog.deck::after { content: 'LEKEN'; position: absolute; top: 100%; margin-top: 3px; font-size: 8px; letter-spacing: 1px; color: var(--blue); }
+.chip { position: absolute; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; background: #2a2f3c; border: 1px solid var(--amber); font-size: 8px; display: grid; place-items: center; }
+.die { position: absolute; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 3px; background: #f3e9d6; color: #1c1c1c; font-size: 9px; font-weight: 700; display: grid; place-items: center; }
+.sits { position: absolute; width: 18px; height: 18px; margin: -9px 0 0 -9px; border-radius: 50%; display: grid; place-items: center; font-size: 9px; font-weight: 700; color: #111; }
+.over-felt { display: flex; gap: 8px; align-items: center; min-height: 36px; color: var(--quiet); font-size: 12px; }
+.over-felt .choice { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.over-felt .choice span { padding: 6px 12px; } .over-felt .choice span:first-child { background: #2a2f3c; color: var(--ink); }
+
+.vaxlare { position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%); z-index: 60; display: flex; align-items: center; gap: 4px; padding: 5px; border-radius: 999px; background: #ffd98a; color: #1f1b12; box-shadow: 0 10px 30px rgba(0,0,0,.6); font: 700 13px system-ui; white-space: nowrap; }
+.vaxlare button { min-width: 36px; min-height: 36px; border: 0; border-radius: 999px; background: #1f1b12; color: #ffd98a; padding: 0 12px; }
+.vaxlare button[aria-pressed='false'] { background: transparent; color: #1f1b12; }
+</style>
+</head>
+<body>
+<div class="rubrik"><b>Bordets vänsterkolumn.</b> Kolumnen i fliken Bord är en hög av paneler som lades dit en i taget: spelare, räknare, tärningar, zoner på bordet, zoner vid platserna, turordning.
+Med meeple, kub och bricka på väg (B1–B3, K31) och fler saker per plats växer den på höjden, och vid 1024 × 640 ligger det som läggs till under vecket igen (#711).
+Fyra varianter prövar hur kolumnen ska vara byggd för att rymma <i>sorter</i> och inte bara rader — och alla fyra gör samma sak med «Lägg leken i …»: leken blir en egenskap hos <b>spelet</b> («korten delas ut från»), inte en knapp i en annan högs panel.</div>
+<div class="anteckning" id="anteckning"></div>
+<div class="verktyg">Ramens höjd:
+  <button data-h="900" aria-pressed="true">1440 × 900</button>
+  <button data-h="640" aria-pressed="false">1024 × 640 (plattan)</button>
+  <span id="hojdnot"></span>
+</div>
+<div class="editor" id="editor">
+  <div class="huvud"><span>Mina spel</span><b>Sal's Saloon</b><span>v1</span><span style="margin-left:auto">Kortvägg</span><span>Mall</span><span>Tabell</span><span>Speltema</span><span>Media</span><span>Regler</span><span class="flik">Bord</span><span style="margin-left:auto">Spara</span></div>
+  <div class="kropp">
+    <div class="kol" id="kol"></div>
+    <div class="mitt">
+      <div class="over-felt"><span class="choice"><span>Bord</span><span>Resultat</span></span><span id="overfelt"></span></div>
+      <div class="felt-ram" id="feltram"></div>
+    </div>
+    <div class="hoger">› Visa spelarvyn<div class="ruta">Bord för det här spelet. Ett nytt bord startar från sparad version 1.<br><br><button class="liten">▷ Starta nytt bord</button></div></div>
+  </div>
+</div>
+<div class="vaxlare" role="group" aria-label="Variant">
+  <button id="prev" aria-label="Föregående variant">←</button>
+  <button data-v="0">0 · Idag</button>
+  <button data-v="A">A · En lista, en knapp</button>
+  <button data-v="B">B · Tre flikar</button>
+  <button data-v="C">C · Bordet som träd</button>
+  <button data-v="D">D · Palett och inspektör</button>
+  <button id="next" aria-label="Nästa variant">→</button>
+</div>
+<script>
+const $ = (s) => document.querySelector(s)
+const KEYS = ['0', 'A', 'B', 'C', 'D']
+let V = new URL(location).searchParams.get('v') ?? 'C'
+if (!KEYS.includes(V)) V = 'C'
+let H = 900
+const NOTES = {
+  0: `<b>0 — Idag.</b> Sex paneler staplade i den ordning de kom till. «Tärningar» dyker upp som egen rubrik vid första tärningen, och varje ny sorts material blir en panel till. «Lägg leken i Kasthög» står i Kasthögens panel: knappen flyttar lekens <i>roll</i> (varifrån korten delas ut, och dit händerna lämnar tillbaka) från Kortlek till Kasthög — vilket också är enda sättet att kunna ta bort Kortlek. Det är en egenskap hos spelet, formulerad som en handling i en annan högs panel, och det är därför den inte går att förstå.
+  <span class="minus">− Växer på höjden med varje sort.</span> <span class="minus">− Vid 640 ligger «＋ Yta per plats» och turordningen under vecket.</span> <span class="minus">− Leken är en knapp ingen förstår.</span>`,
+  A: `<b>A — En lista, en knapp.</b> Det som är <i>spelets</i> (spelare, turordning, varifrån korten delas ut) står överst i en ruta. Sedan en enda knapp, «＋ Lägg till», med en meny som grupperar allt som går att lägga på bordet — zoner, zoner per plats, material — och där nya sorter är nya rader i menyn. Material står i samma två listor som zonerna («På bordet», «Vid platserna») som en rad var, och fälls ut som en zon gör.
+  <span class="plus">+ En plats att lägga till från, alltid synlig, hur många sorter som än kommer.</span> <span class="plus">+ Två listor i stället för fem paneler; samma rad för en tärning som för en hög.</span>
+  <span class="minus">− Menyn är ett klick till för de fyra vanligaste (yta, hög, räknare, tärning).</span> <span class="minus">− Material vid platserna hamnar under familjeraderna och kan läsas som en zon.</span>`,
+  B: `<b>B — Tre flikar i kolumnen.</b> Kolumnen delas i <b>Zoner · Material · Spelet</b>. Varje flik får hela höjden, och sina «＋»-knappar överst där de syns också vid 640. Material är en egen flik med räknare, tärningar och — när de kommer — meeple, kub, bricka; Spelet samlar spelare, turordning och leken.
+  <span class="plus">+ Varje lista får hela kolumnens höjd; knapparna kan aldrig hamna under vecket.</span> <span class="plus">+ Nya sorter kostar ingen höjd i zonfliken.</span>
+  <span class="minus">− Det som ligger på bordet är delat på två flikar: en tärning i Spelyta syns inte där Spelyta står.</span> <span class="minus">− Att välja något på filten måste byta flik åt en.</span>`,
+  C: `<b>C — Bordet som träd.</b> Kolumnen speglar filten: allt ligger <i>i</i> något. Spelyta rymmer högarna, ytorna och tärningen som ligger på den; «Varje plats» rymmer handen, ytan framför, räknarzonen och räknaren i den. Varje zon som kan rymma något har ett «＋» på sin rad, och menyn säger vad som går att lägga <i>just där</i>: en tärning i en yta, en räknare bara i en zon varje plats har (K31). Att dra en bit till en annan yta i filten flyttar den i trädet. Spelets egna rattar står som en remsa överst och fälls ut vid behov.
+  <span class="plus">+ Samma modell som filten och K31: en bit ligger i en yta. Ingen separat «var»-väljare på tärningsraden.</span> <span class="plus">+ Nya sorter är nya rader i ＋-menyn; kolumnen får inga nya paneler.</span> <span class="plus">+ Ett ＋ per zon håller tilläggen vid sin plats också vid 640.</span>
+  <span class="minus">− En djupare lista: en räknare ligger tre nivåer ner.</span> <span class="minus">− «Varje plats» som en nod kräver att per-plats-material visas en gång och inte fyra.</span>`,
+  D: `<b>D — Palett och inspektör.</b> Listan går nästan bort: kolumnen är en <b>palett</b> av det som går att lägga på bordet (dra till filten eller tryck för att lägga mitt på), och under den en <b>inspektör</b> för det som är valt på filten. Filten är listan. En hopfälld «Alla zoner och material» står kvar för tangentbordet och för det som ligger under något annat.
+  <span class="plus">+ Skalar bäst med sorter: en ruta till i paletten.</span> <span class="plus">+ Inspektören får hela höjden för sina fält i stället för att fällas ut mitt i en lista.</span>
+  <span class="minus">− Överblicken över vad som finns försvinner från kolumnen; filten måste bära den själv, också för det som ligger under annat.</span> <span class="minus">− Två paradigm i en kolumn (palett överst, formulär under).</span>`,
+}
+const HEIGHT_NOTE = { 900: 'Kolumnen är ~760 px hög.', 640: 'Kolumnen är ~550 px hög: det under den röda linjen nås bara med rullning.' }
+
+// Bordets geometri (mm, origo i mitten), ur openingSetup för fyra platser.
+const FELT = { w: 1200, h: 800 }
+const ZONES = [
+  { id: 'mine:A', g: [-250, 230, 365, 100] }, { id: 'mine:B', g: [-250, -330, 365, 100] }, { id: 'mine:C', g: [430, -250, 100, 365] }, { id: 'mine:D', g: [-530, -250, 100, 365] },
+  { id: 'counters:A', g: [125, 230, 125, 100] }, { id: 'counters:B', g: [125, -330, 125, 100] }, { id: 'counters:C', g: [430, 125, 100, 125] }, { id: 'counters:D', g: [-530, 125, 100, 125] },
+  { id: 'hand:A', hand: true, g: [-250, 340, 500, 60] }, { id: 'hand:B', hand: true, g: [-250, -400, 500, 60] }, { id: 'hand:C', hand: true, g: [540, -250, 60, 500] }, { id: 'hand:D', hand: true, g: [-600, -250, 60, 500] },
+  { id: 'saloon', g: [-250, -60, 500, 120] },
+]
+function drawFelt(lit) {
+  const ram = $('#feltram')
+  const W = ram.clientWidth - 40, Hh = ram.clientHeight - 40
+  const S = Math.min(W / FELT.w, Hh / FELT.h)
+  const px = (mm) => mm * S
+  const at = (x, y) => `left:${px(x + 600)}px;top:${px(y + 400)}px`
+  let s = ''
+  for (const z of ZONES) {
+    const [x, y, w, h] = z.g
+    s += `<div class="z ${z.hand ? 'hand' : ''} ${lit?.includes(z.id) ? 'lys' : ''}" style="left:${px(x + 600)}px;top:${px(y + 400)}px;width:${px(w)}px;height:${px(h)}px"></div>`
+  }
+  s += `<div class="hog deck" style="${at(-140, 0)}">146</div><div class="hog tom" style="${at(140, 0)}">0</div>`
+  s += `<div class="die" style="${at(0, 0)}">1</div>`
+  for (const [x, y] of [[187, 280], [187, -280], [480, 187], [-480, 187]]) s += `<div class="chip" style="${at(x, y)}">0</div>`
+  const seats = [['A', 0, 440, '#f0b64a'], ['B', 0, -440, '#8ad0ff'], ['C', 640, 0, '#8fd3a5'], ['D', -640, 0, '#f0b64a']]
+  for (const [n, x, y, c] of seats) s += `<div class="sits" style="${at(x, y)};background:${c}">${n}</div>`
+  ram.innerHTML = `<div class="felt" style="width:${px(FELT.w)}px;height:${px(FELT.h)}px">${s}</div>`
+}
+
+// Delade småbitar.
+const ik = (k) => `<i class="ik ${k}" aria-hidden="true"></i>`
+const fast = `<span class="fast" title="Kan inte tas bort">fast</span>`
+const xk = `<button class="x" aria-label="Ta bort">×</button>`
+const h2 = (txt, extra = '') => `<h2>${txt}<span class="hjalp" aria-hidden="true">?</span>${extra}</h2>`
+const stepper = `<span class="stepper"><button aria-label="Färre">−</button><b>4</b><button aria-label="Fler">+</button></span><small style="color:var(--quiet);margin-left:8px">1–8</small>`
+const turns = `<span class="val"><button aria-pressed="false">Ingen</button><button aria-pressed="true">Medurs</button><button aria-pressed="false">Moturs</button></span>`
+const deckSel = `<select aria-label="Korten delas ut från"><option>Kortlek</option><option>Kasthög</option></select>`
+const spelet = `<div class="spelet">${h2('Spelet')}
+  <div class="rad2"><span>Spelare</span><span>${stepper}</span></div>
+  <div class="rad2"><span>Turordning</span>${turns}</div>
+  <div class="rad2"><span>Korten delas ut från</span>${deckSel}</div>
+  <p class="hint">Högen leken ligger i: härifrån delas korten ut vid start, och hit lämnar händerna tillbaka.</p></div>`
+const zoneRow = (name, kind, { tag = '', isFast = false, open = false, props = '', id = '' } = {}) =>
+  `<li data-id="${id}" data-open="${open}"><div class="rad"><button class="namn" aria-expanded="${open}">${ik(kind)}<span>${name}</span>${tag}</button>${isFast ? fast : xk}</div>${open ? props : ''}</li>`
+const famRow = (name, kind, { isFast = false, open = false, children = '', id = '', add = '' } = {}) =>
+  `<li data-id="${id}" data-open="${open}"><div class="rad"><button class="namn" aria-expanded="${open}"><span class="caret">▶</span>${ik(kind)}<span>${name}</span> <em>4 platser</em></button>${add}${isFast ? fast : ''}</div>${open ? `<ul>${children}</ul>` : ''}</li>`
+const pileProps = (name, { deckButton = false } = {}) => `<div class="props">
+  <label class="falt"><span>Namn</span><input value="${name}"></label>
+  <label class="falt"><span>Genväg på telefonen</span><input value="${name === 'Kasthög' ? 'Kasta' : ''}" placeholder="${name}"></label>
+  <label class="falt"><span>Placering</span><select><option>överst</option><option>underst</option></select></label>
+  <label class="falt"><span>Bredvid högen</span><select><option>till vänster</option><option>till höger</option><option>ovanför</option><option>under</option></select></label>
+  <label class="falt"><span>Bottenkort</span><select><option>inget</option></select></label>
+  ${deckButton ? `<button>Lägg leken i ${name}</button>` : ''}
+  <label class="falt"><span>Ägare</span><select><option>ingen</option></select></label>
+  <label class="falt"><span>Syns för</span><select><option>alla</option><option>ägaren</option><option>ingen</option></select></label>
+  <span class="hint" style="font-family:ui-monospace,Menlo,monospace">140, 0 mm</span></div>`
+const dieFields = `<div class="props"><div class="rad" style="gap:6px;flex-wrap:wrap"><input type="number" value="1" aria-label="Antal"><select aria-label="Sort"><option>d6</option><option>d4</option><option>d8</option><option>d10</option><option>d12</option><option>d20</option></select><select aria-label="Hur antalet räknas"><option>totalt</option><option>per spelare</option></select></div></div>`
+const dieFieldsWhere = `<div class="props"><div class="rad" style="gap:6px;flex-wrap:wrap"><input type="number" value="1" aria-label="Antal"><select aria-label="Sort"><option>d6</option><option>d4</option><option>d8</option><option>d10</option><option>d12</option><option>d20</option></select><select aria-label="Hur antalet räknas"><option>totalt</option><option>per spelare</option></select></div><div class="rad" style="gap:6px"><span style="color:var(--quiet)">i</span><select style="flex:1"><optgroup label="På bordet"><option>Spelyta</option><option>Sal's Saloon</option></optgroup><optgroup label="Vid platserna"><option>Framför</option><option>Räknare</option></optgroup></select></div></div>`
+const counterFields = `<div class="props"><div class="rad" style="gap:6px"><input value="Guld" aria-label="Namn" style="flex:1"><span style="color:var(--quiet)">från</span><input type="number" value="0" aria-label="Startvärde"></div></div>`
+const dieRow = (open, where, fields = dieFields) => zoneRow('1 × d6', 'die', { id: 'die', open, tag: `<small>totalt${where ? ' · i ' + where : ''}</small>`, props: fields })
+const counterRow = (open, where) => zoneRow('Guld', 'counter', { id: 'guld', open, tag: `<small>från 0${where ? ' · ' + where : ''}</small>`, props: counterFields })
+const materialMenu = (ctx) => `<h3>Material</h3>
+  <button>${ik('counter')} Räknare${ctx === 'table' ? '<span class="kommer" style="border-style:solid">bara vid platserna</span>' : ''}</button>
+  <button>${ik('die')} Tärning</button>
+  <button disabled>${ik('meeple')} Meeple <span class="kommer">kommer</span></button>
+  <button disabled>${ik('cube')} Kub <span class="kommer">kommer</span></button>
+  <button disabled>${ik('chip')} Bricka <span class="kommer">kommer</span></button>`
+
+// Läget som varje variant ritas ur.
+const st = { open: new Set(), menu: null, seg: 'zoner', sel: 'kast', strip: false, lista: false }
+const isOpen = (id) => st.open.has(id)
+
+const VARIANTS = {
+  0: () => `
+    <section>${h2('Spelare')}<div>${stepper}</div></section>
+    <section>${h2('Räknare')}<div class="rad" style="gap:6px;margin-bottom:6px"><input value="Guld" style="flex:1;max-width:140px"><span style="color:var(--quiet)">från</span><input type="number" value="0"><button class="tyst x">×</button></div>
+      <div class="verk"><button>＋ Räknare</button></div></section>
+    <section>${h2('Tärningar')}<div class="rad" style="gap:6px;flex-wrap:wrap;margin-bottom:6px"><input type="number" value="1"><select><option>d6</option></select><select><option>totalt</option></select><button class="tyst x" style="margin-left:auto">×</button><div class="rad" style="width:100%;gap:6px"><span style="color:var(--quiet)">i</span><select style="flex:1"><option>Spelyta</option></select></div></div>
+      <div class="verk"><button>＋ Tärning</button></div></section>
+    <section>${h2('På bordet')}<div class="verk"><button>＋ Yta</button><button>＋ Hög</button></div><ul>
+      ${zoneRow('Spelyta', 'area', { isFast: true })}
+      ${zoneRow('Kortlek', 'pile', { isFast: true, tag: '<strong>leken</strong>' })}
+      ${zoneRow('Kasthög', 'pile', { id: 'kast', open: isOpen('kast'), props: pileProps('Kasthög', { deckButton: true }) })}
+      ${zoneRow("Sal's Saloon", 'area')}</ul></section>
+    <section>${h2('Vid platserna')}<div class="verk"><button>＋ Yta</button><button>＋ Räknarzon</button></div><ul>
+      ${famRow('Framför', 'area', { id: 'fram' })}${famRow('Räknare', 'area', { id: 'rakn' })}${famRow('Hand', 'hand', { isFast: true, id: 'hand' })}</ul></section>
+    <section>${h2('Turordning')}${turns}</section>`,
+
+  A: () => `
+    ${spelet}
+    <div class="sticky-top hall"><button style="width:100%;display:flex;justify-content:space-between" aria-expanded="${st.menu === 'add'}" data-menu="add"><span>＋ Lägg till</span><span>▾</span></button>
+      <div class="meny ${st.menu === 'add' ? 'open' : ''}" style="left:0;right:0;top:42px">
+        <h3>Zoner på bordet</h3><button>${ik('area')} Yta</button><button>${ik('pile')} Hög</button>
+        <h3>Zoner vid varje plats</h3><button>${ik('area')} Yta per plats</button><button>${ik('area')} Räknarzon per plats</button>
+        ${materialMenu('any')}</div></div>
+    <section>${h2('På bordet')}<ul>
+      ${zoneRow('Spelyta', 'area', { isFast: true })}
+      ${zoneRow('Kortlek', 'pile', { isFast: true, tag: '<strong>leken</strong>' })}
+      ${zoneRow('Kasthög', 'pile', { id: 'kast', open: isOpen('kast'), props: pileProps('Kasthög') })}
+      ${zoneRow("Sal's Saloon", 'area')}
+      ${dieRow(isOpen('die'), 'Spelyta', dieFieldsWhere)}</ul></section>
+    <section>${h2('Vid platserna')}<ul>
+      ${famRow('Framför', 'area', { id: 'fram', open: isOpen('fram'), children: ['A', 'B', 'C', 'D'].map((s) => zoneRow('Framför', 'area', { tag: `<em>${s}</em>` })).join('') })}
+      ${famRow('Räknare', 'area', { id: 'rakn' })}
+      ${famRow('Hand', 'hand', { isFast: true, id: 'hand' })}
+      ${counterRow(isOpen('guld'), 'i Räknare')}</ul></section>`,
+
+  B: () => {
+    const seg = `<div class="sticky-top"><div class="segment" role="tablist">
+      <button role="tab" aria-selected="${st.seg === 'zoner'}" data-seg="zoner">Zoner<span>7 på bordet</span></button>
+      <button role="tab" aria-selected="${st.seg === 'material'}" data-seg="material">Material<span>2 sorter</span></button>
+      <button role="tab" aria-selected="${st.seg === 'spelet'}" data-seg="spelet">Spelet<span>4 spelare</span></button></div></div>`
+    if (st.seg === 'zoner') return `${seg}
+      <section>${h2('På bordet')}<div class="verk"><button>＋ Yta</button><button>＋ Hög</button></div><ul>
+        ${zoneRow('Spelyta', 'area', { isFast: true })}
+        ${zoneRow('Kortlek', 'pile', { isFast: true, tag: '<strong>leken</strong>' })}
+        ${zoneRow('Kasthög', 'pile', { id: 'kast', open: isOpen('kast'), props: pileProps('Kasthög') })}
+        ${zoneRow("Sal's Saloon", 'area')}</ul></section>
+      <section>${h2('Vid platserna')}<div class="verk"><button>＋ Yta</button><button>＋ Räknarzon</button></div><ul>
+        ${famRow('Framför', 'area', { id: 'fram' })}${famRow('Räknare', 'area', { id: 'rakn' })}${famRow('Hand', 'hand', { isFast: true, id: 'hand' })}</ul></section>`
+    if (st.seg === 'material') return `${seg}
+      <div class="verk hall"><button>＋ Räknare</button><button>＋ Tärning</button><button class="tyst" data-menu="more" aria-expanded="${st.menu === 'more'}">Mer ▾</button>
+        <div class="meny ${st.menu === 'more' ? 'open' : ''}" style="left:0;top:40px">${materialMenu('any')}</div></div>
+      <section>${h2('Vid varje plats')}<ul>${counterRow(isOpen('guld'), 'i Räknare')}</ul>
+        <p class="hint" style="margin-top:6px">En räknare ligger i en zon varje plats har. En plats utan räknarzon får ingen bricka.</p></section>
+      <section>${h2('På bordet')}<ul>${dieRow(isOpen('die'), 'Spelyta', dieFieldsWhere)}</ul></section>
+      <section>${h2('Kommer')}<ul>
+        <li><div class="rad"><span class="namn" style="color:var(--quiet)">${ik('meeple')}<span>Meeple</span><span class="kommer">B2</span></span></div></li>
+        <li><div class="rad"><span class="namn" style="color:var(--quiet)">${ik('cube')}<span>Kub</span><span class="kommer">B2</span></span></div></li>
+        <li><div class="rad"><span class="namn" style="color:var(--quiet)">${ik('chip')}<span>Bricka</span><span class="kommer">B2</span></span></div></li></ul></section>`
+    return `${seg}
+      <section>${h2('Spelare')}<div>${stepper}</div><p class="hint" style="margin-top:8px">En ny plats får en hand och det platserna redan har.</p></section>
+      <section>${h2('Turordning')}${turns}</section>
+      <section>${h2('Leken')}<label class="falt"><span>Korten delas ut från</span>${deckSel}</label><p class="hint" style="margin-top:6px">Härifrån delas korten ut vid start, och hit lämnar händerna tillbaka. Högen leken ligger i kan inte tas bort.</p></section>`
+  },
+
+  C: () => {
+    const strip = st.strip
+      ? spelet.replace('<div class="spelet">', '<div class="spelet" data-strip="1" style="cursor:pointer">')
+      : `<div class="spelet-strip" data-strip="1" role="button" aria-expanded="false"><b>4 spelare</b><span class="sep">·</span><span>medurs</span><span class="sep">·</span><span>leken i <b>Kortlek</b></span><span class="caret">▶</span></div>`
+    const plus = (id, menu) => `<span class="hall"><button class="liten" aria-label="Lägg till här" data-menu="${id}" aria-expanded="${st.menu === id}">＋</button><div class="meny ${st.menu === id ? 'open' : ''}" style="right:0;top:32px">${menu}</div></span>`
+    const tableMenu = `<h3>I Spelyta</h3><button>${ik('area')} Yta</button><button>${ik('pile')} Hög</button>${materialMenu('table')}`
+    const seatMenu = `<h3>Vid varje plats</h3><button>${ik('area')} Yta</button><button>${ik('area')} Räknarzon</button>${materialMenu('seat')}`
+    const areaMenu = (n) => `<h3>I ${n}</h3><button>${ik('die')} Tärning</button><button disabled>${ik('meeple')} Meeple <span class="kommer">kommer</span></button>`
+    const counterZoneMenu = `<h3>I Räknare</h3><button>${ik('counter')} Räknare</button><button>${ik('die')} Tärning</button>`
+    const node = (id, name, kind, { tag = '', isFast = false, add = '', children = '', props = '', count = '' } = {}) => {
+      const open = isOpen(id)
+      const hasKids = children !== '' || props !== ''
+      return `<li data-id="${id}" data-open="${open}"><div class="rad"><button class="namn" aria-expanded="${open}">${hasKids ? '<span class="caret">▶</span>' : '<span class="caret" style="visibility:hidden">▶</span>'}${ik(kind)}<span>${name}</span>${count}${tag}</button>${add}${isFast ? fast : xk}</div>${open && children ? `<ul>${children}</ul>` : ''}${open && props ? props : ''}</li>`
+    }
+    return `${strip}
+      <section>${h2('Bordet')}<ul>
+        ${node('spelyta', 'Spelyta', 'area', { isFast: true, add: plus('m-table', tableMenu), children: [
+          node('kortlek', 'Kortlek', 'pile', { isFast: true, tag: '<strong>leken</strong>', props: pileProps('Kortlek') }),
+          node('kast', 'Kasthög', 'pile', { props: pileProps('Kasthög') }),
+          node('saloon', "Sal's Saloon", 'area', { add: plus('m-saloon', areaMenu("Sal's Saloon")) }),
+          node('die', '1 × d6', 'die', { tag: '<small>totalt</small>', props: dieFields }),
+        ].join('') })}
+        ${node('seats', 'Varje plats', 'hand', { count: '<em>4</em>', isFast: true, add: plus('m-seat', seatMenu), children: [
+          node('hand', 'Hand', 'hand', { isFast: true }),
+          node('fram', 'Framför', 'area', { add: plus('m-fram', areaMenu('Framför')) }),
+          node('rakn', 'Räknare', 'area', { add: plus('m-rakn', counterZoneMenu), children: node('guld', 'Guld', 'counter', { tag: '<small>från 0</small>', props: counterFields }) }),
+        ].join('') })}</ul>
+        <p class="hint" style="margin-top:8px">Dra en bit till en annan yta i filten, så flyttar den i trädet. ＋ på en rad lägger till i just den zonen.</p></section>`
+  },
+
+  D: () => {
+    const tile = (kind, name, off) => `<button ${off ? 'disabled' : ''} data-tile="${name}">${ik(kind)}<span>${name}${off ? '<br><span class="kommer" style="margin:0">kommer</span>' : ''}</span></button>`
+    const inspector = st.sel === 'kast'
+      ? `<section>${h2('Kasthög <span class="antal">· hög</span>', `<button class="x" style="margin-left:auto" aria-label="Ta bort Kasthög">×</button>`)}${pileProps('Kasthög')}</section>`
+      : `<section>${h2('1 × d6 <span class="antal">· tärning i Spelyta</span>', `<button class="x" style="margin-left:auto" aria-label="Ta bort tärningen">×</button>`)}${dieFields}<p class="hint">Dra den till en annan yta i filten för att flytta den.</p></section>`
+    return `${spelet}
+      <section>${h2('Lägg på bordet')}<div class="palett">
+        ${tile('area', 'Yta')}${tile('pile', 'Hög')}${tile('area', 'Yta per plats')}${tile('area', 'Räknarzon per plats')}
+        ${tile('counter', 'Räknare')}${tile('die', 'Tärning')}${tile('meeple', 'Meeple', true)}${tile('cube', 'Kub', true)}${tile('chip', 'Bricka', true)}</div>
+        <p class="hint" style="margin-top:6px">Dra en ruta till filten, eller tryck för att lägga den mitt på bordet.</p></section>
+      ${inspector}
+      <section><ul><li data-id="lista" data-open="${st.lista}"><div class="rad"><button class="namn" aria-expanded="${st.lista}"><span class="caret">▶</span><span>Alla zoner och material</span><em>9</em></button></div>
+        ${st.lista ? `<ul>${zoneRow('Spelyta', 'area', { isFast: true })}${zoneRow('Kortlek', 'pile', { isFast: true, tag: '<strong>leken</strong>' })}${zoneRow('Kasthög', 'pile')}${zoneRow("Sal's Saloon", 'area')}${zoneRow('1 × d6', 'die')}${famRow('Framför', 'area')}${famRow('Räknare', 'area')}${famRow('Hand', 'hand', { isFast: true })}${zoneRow('Guld', 'counter', { tag: '<small>från 0</small>' })}</ul>` : ''}</li></ul></section>`
+  },
+}
+
+function render() {
+  document.querySelectorAll('.vaxlare [data-v]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === V)))
+  document.querySelectorAll('.verktyg [data-h]').forEach((b) => b.setAttribute('aria-pressed', String(Number(b.dataset.h) === H)))
+  $('#anteckning').innerHTML = NOTES[V]
+  $('#hojdnot').textContent = HEIGHT_NOTE[H]
+  $('#editor').style.setProperty('--h', (H === 900 ? 900 - 140 : 640 - 90) + 'px')
+  $('#editor').style.maxWidth = H === 900 ? '1240px' : '1024px'
+  $('#kol').innerHTML = VARIANTS[V]()
+  $('#overfelt').textContent = V === 'D' ? 'Kasthög  x 140  y 0 mm' : ''
+  const url = new URL(location); url.searchParams.set('v', V); history.replaceState(null, '', url)
+  drawFelt(V === 'C' && st.menu === 'm-saloon' ? ['saloon'] : [])
+}
+document.addEventListener('click', (e) => {
+  const v = e.target.closest('[data-v]'); if (v) { V = v.dataset.v; st.menu = null; render(); return }
+  const h = e.target.closest('[data-h]'); if (h) { H = Number(h.dataset.h); render(); return }
+  if (e.target.closest('#prev')) { V = KEYS[(KEYS.indexOf(V) + KEYS.length - 1) % KEYS.length]; st.menu = null; render(); return }
+  if (e.target.closest('#next')) { V = KEYS[(KEYS.indexOf(V) + 1) % KEYS.length]; st.menu = null; render(); return }
+  const m = e.target.closest('[data-menu]'); if (m) { st.menu = st.menu === m.dataset.menu ? null : m.dataset.menu; render(); return }
+  if (e.target.closest('.meny')) return
+  const seg = e.target.closest('[data-seg]'); if (seg) { st.seg = seg.dataset.seg; st.menu = null; render(); return }
+  const strip = e.target.closest('[data-strip]'); if (strip && !e.target.closest('input,select,button')) { st.strip = !st.strip; render(); return }
+  const tile = e.target.closest('[data-tile]'); if (tile) { st.sel = tile.dataset.tile === 'Tärning' ? 'die' : 'kast'; render(); return }
+  const name = e.target.closest('.namn'); if (name) {
+    const li = name.closest('li'); const id = li?.dataset.id; if (!id) return
+    if (id === 'lista') { st.lista = !st.lista; render(); return }
+    if (st.open.has(id)) st.open.delete(id); else st.open.add(id)
+    if (V === 'D') st.sel = id === 'die' ? 'die' : 'kast'
+    render(); return
+  }
+  if (st.menu) { st.menu = null; render() }
+})
+document.addEventListener('keydown', (e) => {
+  if (['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement?.tagName)) return
+  if (e.key === 'ArrowLeft') $('#prev').click(); if (e.key === 'ArrowRight') $('#next').click()
+})
+window.addEventListener('resize', () => drawFelt([]))
+st.open.add('spelyta'); st.open.add('seats'); st.open.add('rakn')
+render()
+</script>
+</body>
+</html>

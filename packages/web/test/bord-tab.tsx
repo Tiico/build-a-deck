@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import type { ProjectDoc } from '@byd/server'
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { projectDoc } from './project-doc.js'
@@ -8,9 +8,24 @@ import { atWidth } from './viewport.js'
 // The seat count in Bord's recipe column, as a designer writes it into the stepper's field (#620,
 // L59): the number, then Enter. It was a click on one of eight numbered buttons.
 export function chooseSeats(seats: number): void {
+  openGame()
   const field = screen.getByRole('spinbutton', { name: /Antal spelare/ })
   fireEvent.change(field, { target: { value: String(seats) } })
   fireEvent.keyDown(field, { key: 'Enter' })
+}
+
+// Spelets remsa överst i kolumnen (#1403, beslut C) fälls ut: spelare, turordning och leken står
+// bakom den, och ett test som vrider på dem öppnar den först.
+export function openGame(): void {
+  const strip = screen.getByRole('button', { name: /^Spelet/ })
+  if (strip.getAttribute('aria-expanded') !== 'true') fireEvent.click(strip)
+}
+
+// Öppnar ＋-menyn på en rad i trädet och trycker ett av dess val (#1403): «Lägg till i Spelyta»
+// har ＋ Yta, ＋ Hög och ＋ Tärning; «Lägg till i Varje plats» har det platserna får.
+export function addVia(node: string, item: string): void {
+  fireEvent.click(screen.getByRole('button', { name: `Lägg till i ${node}` }))
+  fireEvent.click(within(screen.getByRole('menu', { name: `Lägg till i ${node}` })).getByRole('menuitem', { name: item }))
 }
 
 // Fliken **Bord** ur ett riktigt projekt på en riktig server, monterad som den skeppas — och
@@ -94,9 +109,9 @@ export async function bordTab(run: Running, seats: number | null, doc: ProjectDo
   fireEvent.click(screen.getByRole('tab', { name: 'Bord' }))
   if (seats !== null) {
     chooseSeats(seats)
-    fireEvent.click(screen.getByRole('button', { name: /Räknare$/ }))
-    fireEvent.click(screen.getByRole('button', { name: '＋ Yta per plats' }))
-    fireEvent.click(screen.getByRole('button', { name: '＋ Räknarzon per plats' }))
+    addVia('Varje plats', '＋ Räknare')
+    addVia('Varje plats', '＋ Yta per plats')
+    addVia('Varje plats', '＋ Räknarzon per plats')
     await handleFor('counters:A')
   }
   return () => {
@@ -108,9 +123,9 @@ export async function bordTab(run: Running, seats: number | null, doc: ProjectDo
   }
 }
 
-/** Trycker en av panelens två knappar och svarar med den nya zonens id — den fliken just valde. */
+/** Lägger en zon från Spelytas ＋ och svarar med den nya zonens id — den fliken just valde. */
 export async function addZone(kind: 'area' | 'pile', n: number): Promise<string> {
-  fireEvent.click(screen.getByRole('button', { name: kind === 'pile' ? '＋ Hög' : '＋ Yta' }))
+  addVia('Spelyta', kind === 'pile' ? '＋ Hög' : '＋ Yta')
   const id = `${kind === 'pile' ? 'hog' : 'yta'}-${n}`
   await handleFor(id)
   return id

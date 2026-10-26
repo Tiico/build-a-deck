@@ -23,7 +23,7 @@ import { placeNames } from '../src/table/freeSide.js'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
 import { atWidth } from './viewport.js'
-import { chooseSeats } from './bord-tab.js'
+import { addVia, chooseSeats } from './bord-tab.js'
 import { FACE, FELT_FONT, READ, READ_AS_LAID, expectClear, feltOf, namesOf, sceneOf, seatNameOf, sheet, type Reading } from './felt-labels.js'
 
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
@@ -360,13 +360,13 @@ async function bordTab(seats: number, felt: { w: number; h: number } | null, des
     // of it and a counter beside that, which is the recipe that puts two names in one seat's own
     // place setting.
     chooseSeats(seats)
-    fireEvent.click(screen.getByRole('button', { name: /Räknare$/ }))
-    fireEvent.click(screen.getByRole('button', { name: '＋ Yta per plats' }))
-    fireEvent.click(screen.getByRole('button', { name: '＋ Räknarzon per plats' }))
+    addVia('Varje plats', '＋ Räknare')
+    addVia('Varje plats', '＋ Yta per plats')
+    addVia('Varje plats', '＋ Räknarzon per plats')
     // Marknaden är en yta som vilken annan sedan B5 reviderades: den läggs och namnges, och det
     // är namnet som är hela poängen här — det är det som ska mätas mot grannarnas.
     if (market) {
-      fireEvent.click(screen.getByRole('button', { name: '＋ Yta' }))
+      addVia('Spelyta', '＋ Yta')
       fireEvent.change(screen.getByLabelText('Namn för Yta 1'), { target: { value: 'Marknad' } })
     }
     // One zone picked up, because picking one up is when the editor has always drawn a second

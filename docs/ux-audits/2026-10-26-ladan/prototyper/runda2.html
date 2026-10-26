@@ -1,0 +1,414 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp — spelets låda, runda 2 (#1406)</title>
+<link rel="stylesheet" href="proto.css">
+<link rel="stylesheet" href="lada.css">
+<style>
+  /* ── Frågan, runda 2 ─────────────────────────────────────────────────────────────────────
+     Beställarens beslut 2026-10-26 efter runda 1: B presenterar och A redigerar; omslaget i heron,
+     i länkarnas bild och i «Visa upp», inte på TV:n; ett lås per mått och luften går att ändra;
+     bara tuckbox; en neutral låda med spelets namn och lekens färg när den inte är ritad.
+     Två frågor: 1. hybriden, hur man går från produktbilden till nätet och tillbaka; 2. när och
+     hur lådan visar sig under designerns resa, utan att stå i vägen och utan att likna en
+     lådöppning. PROTOTYP. Slängs när beslutet står i DESIGN-BESLUT.md.
+     ────────────────────────────────────────────────────────────────────────────────────── */
+
+  /* ── Hybriden ───────────────────────────────────────────────────────────────────────────── */
+  .h-kropp { height: calc(100% - 56px); display: grid; grid-template-columns: 0 minmax(0, 1fr) 0; grid-template-rows: minmax(0, 1fr) auto; transition: grid-template-columns .7s ease-in-out; }
+  .h-kropp[data-lage='nat'] { grid-template-columns: 250px minmax(0, 1fr) 300px; }
+  .h-kropp.direkt, .h-kropp.direkt * { transition: none !important; }
+  .h-sida { min-width: 0; min-height: 0; overflow: hidden auto; grid-row: 1 / span 2; }
+  .h-sida > div { padding: 12px; width: 250px; box-sizing: border-box; opacity: 0; transition: opacity .4s; }
+  .h-sida.hoger > div { width: 300px; }
+  .h-kropp[data-lage='nat'] .h-sida > div { opacity: 1; transition-delay: .5s; }
+  .h-sida.vanster { grid-column: 1; border-right: 1px solid var(--line); }
+  .h-sida.hoger { grid-column: 3; border-left: 1px solid var(--line); }
+  .h-scen { grid-column: 2; grid-row: 1; }
+  .h-fot { grid-row: 2; }
+  .h-sida h2 { margin: 0 0 8px; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--hint-ink); }
+  .h-scen { position: relative; min-width: 0; min-height: 0; overflow: hidden; background: radial-gradient(60% 70% at 50% 45%, #333845, #17191f 70%); transition: background .7s; cursor: grab; touch-action: none; }
+  .h-kropp[data-lage='nat'] .h-scen { background: repeating-conic-gradient(#20232b 0 25%, #1b1d23 0 50%) 0 0 / 24px 24px; cursor: default; }
+  .h-mitt { position: absolute; left: 50%; top: 50%; width: 0; height: 0; perspective: 2400px; }
+  .h-skala { position: absolute; left: 0; top: 0; transform-style: preserve-3d; transition: transform .9s cubic-bezier(.6, 0, .25, 1); }
+  .h-rot { position: absolute; left: 0; top: 0; transform-style: preserve-3d; transition: transform .9s cubic-bezier(.6, 0, .25, 1); }
+  .h-rot.haller { transition: none; }
+  .h-yta { position: absolute; overflow: hidden; border-radius: 1px; backface-visibility: hidden; transition: transform .9s cubic-bezier(.6, 0, .25, 1), opacity .35s; cursor: pointer; }
+  .h-yta svg { display: block; width: 100%; height: 100%; }
+  .h-yta .ljus { position: absolute; inset: 0; background: #000; pointer-events: none; transition: opacity .5s; }
+  .h-yta .glans { position: absolute; inset: -40%; pointer-events: none; mix-blend-mode: screen; background: linear-gradient(115deg, transparent 38%, rgb(255 255 255 / 85%) 50%, transparent 62%); transition: opacity .5s; }
+  .h-yta .slitage { position: absolute; inset: 0; pointer-events: none; box-shadow: inset 0 0 0 .6px rgb(255 248 230 / 45%), inset 0 0 5px rgb(0 0 0 / 28%); transition: opacity .5s; }
+  .h-yta.kortkant { background: repeating-linear-gradient(90deg, #f4ecda 0 1px, #cdbf9f 1px 1.6px); }
+  .h-yta.kortkant.liggande { background: repeating-linear-gradient(0deg, #f4ecda 0 1px, #cdbf9f 1px 1.6px); }
+  .h-kropp[data-lage='nat'] .h-yta .ljus, .h-kropp[data-lage='nat'] .h-yta .glans, .h-kropp[data-lage='nat'] .h-yta .slitage { opacity: 0 !important; }
+  .h-kropp[data-lage='nat'] .h-yta.lek { opacity: 0; pointer-events: none; }
+  .h-golv { position: absolute; pointer-events: none; background: radial-gradient(closest-side, rgb(0 0 0 / 60%), rgb(0 0 0 / 22%) 55%, transparent); transition: opacity .5s; }
+  .h-kropp[data-lage='nat'] .h-golv { opacity: 0; }
+  .h-nat { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); opacity: 0; pointer-events: none; transition: opacity .3s; }
+  .h-kropp[data-klar] .h-nat { opacity: 1; pointer-events: auto; }
+  .h-kropp[data-klar] .h-yta:not(.lek) { opacity: 0; }
+  .h-nat [data-yta] { cursor: pointer; }
+  .h-fot { grid-column: 2; display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-top: 1px solid var(--line); background: var(--chrome); }
+  .h-fot .matt { color: #c3cbdd; font-variant-numeric: tabular-nums; }
+  .h-fot .matt b { color: #fff; }
+  .h-fot .tips { color: var(--hint-ink); font-size: 12px; }
+  .h-namn { position: absolute; left: 0; right: 0; bottom: 18px; display: flex; justify-content: center; align-items: baseline; gap: 18px; color: #9aa3b8; font-variant-numeric: tabular-nums; transition: opacity .4s; }
+  .h-namn b { font: 700 30px Georgia, serif; color: #f3e7c9; }
+  .h-kropp[data-lage='nat'] .h-namn { opacity: 0; }
+  .h-tips { position: absolute; left: 16px; top: 12px; color: var(--hint-ink); font-size: 12px; transition: opacity .4s; }
+  .h-kropp[data-lage='nat'] .h-tips { opacity: 0; }
+  .luft { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 8px; }
+  .luft label { display: grid; gap: 3px; font-size: 11px; color: #9aa3b8; }
+
+  /* ── Resan ──────────────────────────────────────────────────────────────────────────────── */
+  .resa { display: grid; gap: 18px; width: 100%; max-width: 1400px; }
+  .resa .rad { display: grid; grid-template-columns: 170px auto auto; gap: 18px; align-items: start; }
+  .resa .steg { display: grid; gap: 4px; padding-top: 18px; }
+  .resa .steg b { color: #fff; font-size: 14px; }
+  .resa .steg span { color: var(--quiet-2); font-size: 12px; line-height: 1.4; }
+  .resa .steg em { font-style: normal; color: #ffd98a; font-size: 12px; line-height: 1.4; }
+  .resa .steg i { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: #2a2417; border: 1px solid #4a4230; color: #ffd98a; font-style: normal; font-weight: 700; font-size: 12px; margin-bottom: 2px; }
+  .liten-ram { position: relative; flex: none; }
+  .liten-ram > .etikett { margin: 0 0 4px; color: var(--quiet-2); font-size: 11px; }
+  .liten-ram > div { position: relative; overflow: hidden; outline: 1px solid #3a3f4b; box-shadow: 0 6px 24px rgb(0 0 0 / 40%); }
+  .liten-ram > div > div { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+  .hj { width: 980px; height: 300px; box-sizing: border-box; background: #0f1117; padding: 0; font: 14px system-ui, sans-serif; color: #e6e6e6; }
+  .hj .hero { height: 100%; box-sizing: border-box; border-radius: 0; }
+  .hj .ms { height: auto; display: block; }
+  .vagg { width: 1280px; height: 300px; background: var(--chrome); color: #dce3f2; font: 13px system-ui, sans-serif; display: grid; grid-template-rows: 56px 64px minmax(0, 1fr) 40px; }
+  .vagg .krona { display: flex; align-items: center; gap: 10px; padding: 0 16px; border-bottom: 1px solid var(--line); }
+  .vagg .krona .sok { width: 220px; min-height: 40px; border: 1px solid #3b414e; border-radius: 8px; background: #1b1d23; color: #9aa3b8; display: flex; align-items: center; padding: 0 12px; }
+  .vagg .krona .knapp { min-height: 40px; padding: 0 12px; border: 1px solid #3b414e; border-radius: 8px; display: inline-flex; align-items: center; gap: 6px; font-weight: 700; color: #fff; }
+  .vagg .korten { display: flex; gap: 14px; padding: 14px 16px; overflow: hidden; align-items: start; }
+  .vagg .korten svg { flex: none; }
+  .vagg .tomt { margin: auto; color: #9aa3b8; text-align: center; display: grid; gap: 8px; justify-items: center; }
+  .vagg .tomt b { color: #fff; font-size: 16px; }
+  .vagg .fot { display: flex; align-items: center; gap: 14px; padding: 0 16px; border-top: 1px solid var(--line); color: #c3cbdd; font-variant-numeric: tabular-nums; }
+  .vagg .fot .ladfot { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; min-height: 32px; padding: 0 10px; border-radius: 8px; color: #9aa3b8; border: 1px solid transparent; font-size: 12px; }
+  .vagg .fot .ladfot[data-knapp] { border-color: #3b414e; color: #dce3f2; font-weight: 600; }
+  .vagg .fot .ladfot svg.mini { width: 26px; height: 26px; }
+  .vagg .ed-flikar button[data-ny] { color: #ffe9b8; }
+  .tp { width: 1280px; height: 300px; background: #0f1117; color: #e6e6e6; font: 14px system-ui, sans-serif; padding: 18px 28px; box-sizing: border-box; display: grid; gap: 10px; align-content: start; }
+  .tp h1 { margin: 0; font-size: 22px; }
+  .tp ol { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .tp li { padding: 12px 14px; border-radius: 12px; background: #171a23; border: 1px solid #262a35; color: #c3cbdd; font-size: 13px; line-height: 1.45; }
+  .tp li b { display: block; color: #fff; font-size: 14px; margin-bottom: 2px; }
+  .tp li[data-lada] { border-color: #6f5a2c; display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: center; }
+  .tp li u { color: #ffe9b8; text-underline-offset: 3px; }
+  .stund { display: grid; grid-template-columns: 330px minmax(0, 1fr); gap: 26px; align-items: center; height: 100%; box-sizing: border-box; padding: 18px 28px; border: 1px solid #3a4a3e; border-radius: 0; background: radial-gradient(70% 120% at 15% 50%, #2f3640, #171a23 65%); }
+  .stund .over { color: #9fc9b0; font-size: 13px; text-transform: uppercase; letter-spacing: 2px; font-weight: 700; }
+  .stund h2 { margin: 6px 0 8px; font: 700 28px/1.15 Georgia, serif; color: #f3e7c9; }
+  .stund p { margin: 0 0 14px; color: #c3cbdd; line-height: 1.5; }
+  .stund .knappar { display: flex; gap: 10px; align-items: center; }
+  .stund .tyst { color: #9aa3b8; text-decoration: underline; text-underline-offset: 3px; padding: 0 8px; }
+  .ms .lockrad { display: inline-flex; align-items: center; gap: 8px; margin-top: 10px; color: #9aa3b8; font-size: 13px; }
+  .ms .lockrad u { color: #dce3f2; text-underline-offset: 3px; }
+</style>
+</head>
+<body>
+<div class="protorad" role="region" aria-label="Prototypens rad (inte en del av förslaget)">
+  <div class="fraga" style="all:unset;flex:1 1 320px;min-width:0">
+    <p><b>PROTOTYP #1406, runda 2.</b> Beslutet: B presenterar, A redigerar. Nu prövas hybriden mellan dem, och när lådan visar sig under designerns resa.</p>
+    <p>«Hybriden» är klickbar: «Redigera nätet» viker ut lådan och «Visa lådan» viker ihop den. «Resan» visar fem steg för en vald variant; växla med 1/2/3 eller ← →.</p>
+  </div>
+  <div class="grupp"><span>Del</span><div class="flikar" id="del"></div></div>
+  <div class="vaxlare" role="group" aria-label="Variant" id="vaxlare"></div>
+  <div class="grupp" id="lekgrupp"><span>Leken</span><div class="flikar" id="lek"></div></div>
+  <div class="grupp"><span>Språk</span><div class="flikar" id="lang"></div></div>
+  <p class="anteckning" id="anteckning"></p>
+</div>
+<main class="scen" id="scen"></main>
+<script src="lada.js"></script>
+<script>
+// ── Tillståndet för runda 2 ──────────────────────────────────────────────────────────────────────
+let del = q.get('del') || 'hybrid'
+let iv = q.get('v') && /^[123]$/.test(q.get('v')) ? q.get('v') : '2'
+let lage = q.get('lage') === 'bild' ? 'bild' : 'nat'
+v = 'A' // lås per mått, som A (beslut 4)
+const hst = { rx: -12, ry: -28, held: false }
+
+// ═══ 1. HYBRIDEN ════════════════════════════════════════════════════════════════════════════════
+// Samma tolv plan är produktbilden och nätet: varje yta har en plats i 3D och en på arket, och
+// övergången flyttar dem mellan de två. När de ligger platt tonas det riktiga nätet in under, med
+// flikar, vik- och snittlinjer, och det är där man redigerar (A). Tillbaka går samma väg.
+// Ritat i produktbildens skala och förminskat på arket, så att bilden aldrig förstoras och blir suddig.
+const S = 3.8 // px per mm i produktbilden
+const NATSKALA = 0.6 // arket: 2,28 px per mm
+function platser(d) {
+  const W = d.W * S, H = d.H * S, D = d.D * S
+  const cw = KORT.w * S, gap = 16 * S
+  const total = W + gap + cw
+  const bx = -total / 2 + W / 2
+  const nm = natMatt(d)
+  const xL = GLIM, xF = GLIM + d.D, xR = GLIM + d.D + d.W, xB = GLIM + 2 * d.D + d.W
+  const yLid = TUCK, yK = TUCK + d.D, yBot = TUCK + d.D + d.H
+  const p = (mx, my) => [(mx - nm.w / 2) * S, (my - nm.h / 2) * S]
+  return {
+    bild: {
+      fram: [bx, 0, D / 2, 0, 0, 0], bak: [bx, 0, -D / 2, 0, 180, 0], hoger: [bx + W / 2, 0, 0, 0, 90, 0],
+      vanster: [bx - W / 2, 0, 0, 0, -90, 0], lock: [bx, -H / 2, 0, 90, 0, 0], botten: [bx, H / 2, 0, -90, 0, 0],
+    },
+    nat: {
+      fram: [...p(xF + d.W / 2, yK + d.H / 2), 0, 0, 0, 0], bak: [...p(xB + d.W / 2, yK + d.H / 2), 0, 0, 360, 0],
+      hoger: [...p(xR + d.D / 2, yK + d.H / 2), 0, 0, 0, 0], vanster: [...p(xL + d.D / 2, yK + d.H / 2), 0, 0, 0, 0],
+      lock: [...p(xB + d.W / 2, yLid + d.D / 2), 0, 0, 0, 0, 180], botten: [...p(xF + d.W / 2, yBot + d.D / 2), 0, 0, 0, 0],
+    },
+    lek: { x: total / 2 - cw / 2, total },
+  }
+}
+const tf = ([x, y, z, rx, ry, rz = 0]) => `translate3d(${x}px,${y}px,${z}px) rotateX(${rx}deg) rotateY(${ry}deg) rotateZ(${rz}deg)`
+const NORMAL = { fram: '0,0,1', bak: '0,0,-1', hoger: '1,0,0', vanster: '-1,0,0', lock: '0,-1,0', botten: '0,1,0' }
+function hybridScen(d) {
+  const pl = platser(d)
+  const pos = pl[lage]
+  const plan = (k, w, h) => `<div class="h-yta" data-yta="${k}" data-n="${NORMAL[k]}" data-glans="${k === 'fram' || k === 'lock' ? 1 : .4}" style="width:${w}px;height:${h}px;left:${-w / 2}px;top:${-h / 2}px;transform:${tf(pos[k])}">${designad ? ytaSVG(k, d, S).replace(/width="[\d.]+" height="[\d.]+"/, '') : neutralSVG(k, d)}<i class="ljus"></i><i class="glans"></i><i class="slitage"></i></div>`
+  const W = d.W * S, H = d.H * S, D = d.D * S
+  let ytor = plan('fram', W, H) + plan('bak', W, H) + plan('hoger', D, H) + plan('vanster', D, H) + plan('lock', W, D) + plan('botten', W, D)
+  // Leken står bredvid, i samma ljus; i nätet tonas den bort.
+  const cw = KORT.w * S, ch = KORT.h * S, t = n * KORT.t * S, kx = pl.lek.x, ky = (H - ch) / 2, kz = D / 2 - t / 2 + 6 * S
+  const lek = (w, h, x, y, z, ry, rx, inne, cls, nn, gl = 0) => `<div class="h-yta lek ${cls}" data-n="${nn}" data-glans="${gl}" style="width:${w}px;height:${h}px;left:${-w / 2}px;top:${-h / 2}px;transform:translate3d(${x}px,${y}px,${z}px) rotateX(${rx}deg) rotateY(${ry}deg)">${inne}<i class="ljus"></i>${gl ? '<i class="glans"></i>' : ''}<i class="slitage"></i></div>`
+  ytor += lek(cw, ch, kx, ky, kz + t / 2, 0, 0, kortSVG(ch).replace(/width="[\d.]+"/, '').replace(/height="[\d.]+"/, ''), '', '0,0,1', .6)
+  ytor += lek(t, ch, kx + cw / 2, ky, kz, 90, 0, '', 'kortkant', '1,0,0')
+  ytor += lek(t, ch, kx - cw / 2, ky, kz, -90, 0, '', 'kortkant', '-1,0,0')
+  ytor += lek(cw, t, kx, ky - ch / 2, kz, 0, 90, '', 'kortkant liggande', '0,-1,0')
+  const golv = `<div class="h-golv" style="width:${pl.lek.total * 1.5}px;height:${D * 3.2}px;left:${-pl.lek.total * .75}px;top:${-D * 1.6}px;transform:translate3d(0,${H / 2 + 1}px,0) rotateX(90deg)"></div>`
+  const rot = lage === 'nat' ? 'rotateX(0deg) rotateY(0deg)' : `rotateX(${hst.rx}deg) rotateY(${hst.ry}deg)`
+  return `<span class="h-tips">${g('varv')} ${L('Visa upp · dra för att vrida. Klicka på en sida för att redigera den. Escape går tillbaka till nätet.', 'Show off · drag to turn. Click a side to edit it. Escape goes back to the net.')}</span>
+    <div class="h-namn"><b>Skogens råd</b><span>${n} ${L('kort', 'cards')} · ${L('låda', 'box')} ${tal(d.W)} × ${tal(d.H)} × ${tal(d.D)} mm · ${L('lek', 'deck')} ${tal(n * KORT.t)} mm</span></div>
+    <div class="h-mitt"><div class="h-skala" style="transform:scale(${lage === 'nat' ? NATSKALA : 1})"><div class="h-rot" style="transform:${rot}">${golv}${ytor}</div></div></div>
+    <div class="h-nat">${nat(d, S * NATSKALA, { vald: st.yta })}</div>`
+}
+function hybrid() {
+  const m = matt(), d = m.d
+  const vald = ytNamn(st.yta)
+  return `${huvud('box', true)}
+  <div class="h-kropp" data-lage="${lage}" ${lage === 'nat' ? 'data-klar' : ''}>
+    <div class="h-sida vanster"><div><h2>${L('Lådans ytor', 'Box faces')}</h2><div role="listbox">${ytLista(d)}</div><p class="lagerrubrik">${L('Lager', 'Layers')} · ${vald}</p>${lagerLista()}</div></div>
+    <div class="h-scen" data-drag>${hybridScen(d)}</div>
+    <div class="h-sida hoger"><div class="m-props" style="padding:12px;border:0;overflow:visible"><section class="m-sek"><h3>${L('Lådans mått', 'Box size')}</h3>${mattA(m)}</section>
+      <section class="m-sek"><h3>${L('Luft', 'Clearance')}</h3><div class="luft"><label>${L('Runt kortet', 'Around the card')}<input data-luft="sida" value="${tal(LUFT)} mm"></label><label>${L('I djupet', 'In the depth')}<input data-luft="djup" value="${tal(DJUPLUFT)} mm"></label></div><p class="hint">${L('Mer luft för kortfickor: 2 mm runt kortet ger 67 × 92 mm.', 'More clearance for sleeves: 2 mm around the card gives 67 × 92 mm.')}</p></section>${textProps()}</div></div>
+    <div class="h-fot">${lage === 'bild'
+      ? `<button class="ed-knapp primar" data-do="nat">${g('pen')} ${L('Redigera nätet', 'Edit the net')}</button><button class="ed-knapp kantad">${L('Spara bilden', 'Save the picture')}</button><button class="ed-knapp kantad">${L('Dela länken', 'Share the link')}</button>`
+      : `<button class="ed-knapp primar" data-do="bild">${g('lada')} ${L('Visa upp', 'Show off')}</button><span class="tips">${L('Redigerar', 'Editing')} ${vald}</span>`}
+      <span class="spacer"></span><span class="matt"><b>${tal(d.W)} × ${tal(d.H)} × ${tal(d.D)} mm</b> · ${n} ${L('kort', 'cards')} · ${Object.values(st.las).some(Boolean) ? L('låst', 'locked') : L('följer leken', 'follows the deck')}</span></div>
+  </div>`
+}
+function bytLage(till, yta) {
+  if (yta) st.yta = yta
+  const k = scen.querySelector('.h-kropp')
+  if (!k || lage === till) { render(); return }
+  lage = till
+  const pl = platser(matt().d)
+  k.removeAttribute('data-klar')
+  k.dataset.lage = till
+  const rot = k.querySelector('.h-rot'); rot.classList.remove('haller'); void rot.offsetWidth
+  rot.style.transform = till === 'nat' ? 'rotateX(0deg) rotateY(0deg)' : `rotateX(${hst.rx}deg) rotateY(${hst.ry}deg)`
+  k.querySelector('.h-skala').style.transform = `scale(${till === 'nat' ? NATSKALA : 1})`
+  hst.byter = true
+  for (const y of k.querySelectorAll('.h-yta[data-yta]')) y.style.transform = tf(pl[till][y.dataset.yta])
+  clearTimeout(bytLage.t)
+  bytLage.t = setTimeout(() => { hst.byter = false; render(); history.replaceState(null, '', url()) }, till === 'nat' ? 950 : 950)
+}
+// Ljuset i produktbilden, som i runda 1; platt på arket släcks det.
+function ljusHybrid(tid) {
+  const k = scen.querySelector('.h-kropp')
+  if (k && lage === 'bild' && !hst.held && !hst.byter && !lugn.matches && !document.hidden) {
+    hst.ry = -28 + 18 * Math.sin(tid / 3400)
+    const rot = k.querySelector('.h-rot'); rot.classList.add('haller'); rot.style.transform = `rotateX(${hst.rx}deg) rotateY(${hst.ry}deg)`
+  }
+  if (k && lage === 'bild') {
+    const el = { dataset: { rx: hst.rx, ry: hst.ry } }
+    const rx = hst.rx * Math.PI / 180, ry = hst.ry * Math.PI / 180
+    const [lx, ly, lz] = LJUS.studio; const ll = Math.hypot(lx, ly, lz); const Lv = [lx / ll, ly / ll, lz / ll]
+    const Hh = [Lv[0], Lv[1], Lv[2] + 1]; const hl = Math.hypot(...Hh)
+    for (const p of k.querySelectorAll('.h-yta')) {
+      const [x, y, z] = p.dataset.n.split(',').map(Number)
+      const x1 = x * Math.cos(ry) + z * Math.sin(ry), z1 = -x * Math.sin(ry) + z * Math.cos(ry)
+      const y2 = y * Math.cos(rx) - z1 * Math.sin(rx), z2 = y * Math.sin(rx) + z1 * Math.cos(rx)
+      const diff = Math.max(0, x1 * Lv[0] + y2 * Lv[1] + z2 * Lv[2])
+      p.querySelector('.ljus').style.opacity = (0.62 * (1 - (0.28 + 0.72 * diff))).toFixed(3)
+      const gl = p.querySelector('.glans')
+      if (gl) { gl.style.opacity = (0.55 * Math.pow(Math.max(0, (x1 * Hh[0] + y2 * Hh[1] + z2 * Hh[2]) / hl), 18) * Number(p.dataset.glans)).toFixed(3); gl.style.transform = `translateX(${(x1 * 60).toFixed(1)}%)` }
+    }
+  }
+  for (const el of document.querySelectorAll('.produkt')) {
+    if (el.dataset.auto !== undefined && !lugn.matches) { el.dataset.bas ??= el.dataset.ry; el.dataset.ry = (Number(el.dataset.bas) + 18 * Math.sin(tid / 3400)).toFixed(2) }
+    belys(el)
+  }
+  requestAnimationFrame(ljusHybrid)
+}
+
+// ═══ 2. RESAN ═══════════════════════════════════════════════════════════════════════════════════
+const STEG = [
+  { k: 'tom', n: 0, sv: ['Tom lek', 'Spelet är skapat i guiden. Inga kort än.'], en: ['Empty deck', 'The game is made in the wizard. No cards yet.'] },
+  { k: 'nagra', n: 12, sv: ['Några kort', 'Tolv kort i Tabell, mallen påbörjad.'], en: ['A few cards', 'Twelve cards in Table, the template begun.'] },
+  { k: 'spelbar', n: 108, sv: ['En spelbar lek', '108 kort och ett bord som går att starta.'], en: ['A playable deck', '108 cards and a table that can start.'] },
+  { k: 'speltest', n: 108, sv: ['Efter första speltestet', 'Första bordet är avslutat, tre enkätsvar.'], en: ['After the first playtest', 'The first table has ended, three survey answers.'] },
+  { k: 'tryck', n: 108, sv: ['Före tryck', 'Designern öppnar tryckpaketet (F1).'], en: ['Before print', 'The designer opens the print package (F1).'] },
+]
+const IV = {
+  1: { sv: ['1 · Lådan står i heron', '<b>Lådan visar sig själv i Mina spel</b> när leken går att spela: den neutrala lådan ställer sig bakom första kortet i heron, i C:s stilla form, och raden under säger «Lådan följer leken. Rita den ›». Editorn får fliken «Låda» samtidigt och inget annat. <span class="plus">+ syns för alla som kommer så långt, på det ställe man ser varje gång; editorn orörd</span> <span class="minus">− den dyker upp utan att designern gjort något; heron byter bild en dag utan förklaring</span>'],
+       en: ['1 · The box stands in the hero', '<b>The box shows itself in My games</b> once the deck is playable: the neutral box stands behind the first card in the hero, in C’s still form, and the line below says «The box follows the deck. Draw it ›». The editor gets the «Box» tab at the same time and nothing else. <span class="plus">+ seen by everyone who gets that far, where they look every time; the editor untouched</span> <span class="minus">− it appears without the designer doing anything; the hero changes picture one day without a word</span>'] },
+  2: { sv: ['2 · Lådan växer i editorn · rekommenderas', '<b>Lådan växer fram med leken</b>, längst ut i kortväggens fot: från första kortet står en liten neutral låda där med sitt djup, och den blir tjockare för varje kort. När leken går att spela blir raden en knapp, «Låda ›», och fliken kommer. Heron visar lådan först när designern har öppnat den. <span class="plus">+ aldrig i vägen och alltid sann; själva växandet är wow-faktorn; designern väljer själv när</span> <span class="minus">− den som aldrig tittar ner i foten hittar lådan först i tryckpaketet</span>'],
+       en: ['2 · The box grows in the editor · recommended', '<b>The box grows with the deck</b>, at the far end of the card wall’s foot: from the first card a small neutral box stands there with its depth, and it gets thicker with every card. Once the deck is playable the line becomes a button, «Box ›», and the tab arrives. The hero shows the box only once the designer has opened it. <span class="plus">+ never in the way and always true; the growing itself is the wow; the designer chooses when</span> <span class="minus">− whoever never looks down at the foot finds the box first in the print package</span>'] },
+  3: { sv: ['3 · En stund efter första speltestet', '<b>Ingenting om lådan förrän spelet har spelats.</b> När första bordet är avslutat står en stund i herons ställe, en gång: den neutrala lådan bakom första kortet, stilla, och «Så här kan Skogens råd se ut i en låda», med «Rita lådan», «Visa upp ›» och «Inte nu». Ingen ruta över sidan och ingen rörelse; den som vill se lådan vridas går till «Visa upp». Sedan står lådan i heron och fliken finns. <span class="plus">+ kommer när spelet blivit verkligt; starkast intryck</span> <span class="minus">− den som inte speltestar ser aldrig stunden; en engångsstund måste minnas att den visats</span>'],
+       en: ['3 · A moment after the first playtest', '<b>Nothing about the box until the game has been played.</b> When the first table has ended a moment stands in the hero’s place, once: the neutral box behind the first card, still, and «This is how Skogens råd could look in a box», with «Draw the box», «Show off ›» and «Not now». No dialog over the page and no motion; whoever wants to see the box turn goes to «Show off». After that the box stands in the hero and the tab is there. <span class="plus">+ arrives when the game has become real; the strongest impression</span> <span class="minus">− whoever does not playtest never sees the moment; a one-time moment must remember it was shown</span>'] },
+}
+const ivText = (k) => IV[k][en() ? 'en' : 'sv']
+// Var lådan står i varje steg, per variant.
+function vad(steg) {
+  const i = STEG.findIndex((s) => s.k === steg)
+  return {
+    1: { hero: i >= 2 ? 'lada' : 'idag', flik: i >= 2, fot: 'ingen' },
+    2: { hero: i >= 3 ? 'lada' : 'idag', flik: i >= 2, fot: i === 0 ? 'ingen' : i === 1 ? 'vaxer' : 'knapp' },
+    3: { hero: i === 3 ? 'stund' : i >= 4 ? 'lada' : 'idag', flik: i >= 3, fot: 'ingen' },
+  }[iv]
+}
+// Mina spel i C:s form (beslut 2026-10-26): lådan står stilla bakom lekens första kort.
+// Ingen rotation och inget ljus här; det rörliga hör bara till «Visa upp».
+const cForm = (d) => `<div class="ladmedkort" style="transform:scale(.92)"><div class="lada">${lada3d(d, 2.45, -6, -24, { tom: true })}</div>${kortSVG(160, undefined, undefined, 'class="kortet"')}</div>`
+function heroResa(s, typ) {
+  const d = rakna(108)
+  const kort = s.n
+  let bild = kort === 0 ? `<div style="width:150px;height:210px;border:1px dashed #3b414e;border-radius:6px;display:grid;place-items:center;color:#9aa3b8;font-size:13px">${L('inga kort än', 'no cards yet')}</div>` : kortSVG(210)
+  let rad = ''
+  if (typ === 'lada') {
+    bild = cForm(d)
+    rad = iv === '1' ? `<span class="lockrad">${g('lada')} ${L('Lådan följer leken.', 'The box follows the deck.')} <u>${L('Rita den ›', 'Draw it ›')}</u></span>` : ''
+  }
+  if (typ === 'stund') {
+    return `<div class="hj"><section class="stund"><div style="display:grid;place-items:center">${cForm(d)}</div><div>
+      <span class="over">${L('Första bordet är spelat', 'The first table has been played')}</span>
+      <h2>${L('Så här kan Skogens råd se ut i en låda', 'This is how Skogens råd could look in a box')}</h2>
+      <p>${L('Lådan följer leken: 108 kort ger 65 × 90 × 34,5 mm. Tills du ritar den bär den spelets namn och lekens färg.', 'The box follows the deck: 108 cards give 65 × 90 × 34.5 mm. Until you draw it, it carries the game’s name and the deck’s colour.')}</p>
+      <div class="knappar"><a class="knapp prim" style="min-height:44px;display:inline-flex;align-items:center;padding:0 16px;border-radius:10px;background:#7dd3a0;color:#0b2a18;font-weight:700">${L('Rita lådan', 'Draw the box')}</a><a style="min-height:44px;display:inline-flex;align-items:center;padding:0 16px;border-radius:10px;border:1px solid #6f7a90;color:#dce3f2;font-weight:700">${L('Visa upp ›', 'Show off ›')}</a><a class="tyst">${L('Inte nu', 'Not now')}</a></div></div></section></div>`
+  }
+  return `<div class="hj"><div class="ms"><section class="hero" style="grid-template-columns:330px minmax(0,1fr);padding:20px 28px">${`<div style="display:grid;place-items:center;height:250px">${bild}</div>`}<div>
+    <span class="over">${L('Fortsätt där du slutade', 'Pick up where you left off')}</span><h2>Skogens råd</h2>
+    <span style="color:#9aa3b8">${L('Version', 'Version')} ${s.k === 'tom' ? 1 : s.k === 'nagra' ? 2 : 7} · 2–4 ${L('spelare', 'players')}</span>
+    <div class="siffror" style="margin:12px 0"><div><b>${kort}</b><span>${L('kort', 'cards')}</span></div><div><b>${['tom', 'nagra', 'spelbar'].includes(s.k) ? 0 : 1}</b><span>${L('bord spelade', 'tables played')}</span></div><div><b>${['tom', 'nagra', 'spelbar'].includes(s.k) ? 0 : 3}</b><span>${L('enkätsvar', 'survey answers')}</span></div><div><b>0</b><span>${L('nya flaggor', 'new flags')}</span></div></div>
+    ${rad}</div></section></div></div>`
+}
+function lilleLada(antal) {
+  // En liten neutral låda i fotens rad, lika djup som leken; den växer kort för kort.
+  const d = rakna(antal)
+  const w = 14, h = 20, dd = Math.max(1.2, d.D / 90 * 20)
+  return `<svg class="mini" viewBox="0 0 30 30" aria-hidden="true"><polygon points="6,${8} ${6 + w},${8} ${6 + w + dd * .7},${8 - dd * .5} ${6 + dd * .7},${8 - dd * .5}" fill="#3c7a55"/><polygon points="${6 + w},8 ${6 + w + dd * .7},${8 - dd * .5} ${6 + w + dd * .7},${8 + h - dd * .5} ${6 + w},${8 + h}" fill="#1b4430"/><rect x="6" y="8" width="${w}" height="${h}" fill="#25583b"/></svg>`
+}
+function vaggResa(s, x) {
+  const flikar = [...FLIKAR]
+  if (x.flik) flikar.push(['box', 'Låda', 'Box'])
+  const d = rakna(s.n)
+  const kort = s.n === 0 ? `<div class="tomt"><b>${L('Inga kort än', 'No cards yet')}</b><span>${L('Skriv det första i Tabell, eller rita mallen.', 'Write the first in Table, or draw the template.')}</span></div>`
+    : Array.from({ length: Math.min(s.n, 11) }, (_, i) => kortSVG(150, ['#25583b', '#3c6e8f', '#8f6a2c', '#5b4a8f'][i % 4], ['Skogsvaktaren', 'Uggla', 'Rävens list', 'Månen'][i % 4])).join('')
+  const fot = x.fot === 'ingen' ? '' : x.fot === 'vaxer'
+    ? `<span class="ladfot">${lilleLada(s.n)} ${L('Lådan', 'The box')} ${tal(d.W)} × ${tal(d.H)} × ${tal(d.D)} mm</span>`
+    : `<span class="ladfot" data-knapp>${lilleLada(s.n)} ${L('Låda', 'Box')} ${tal(d.W)} × ${tal(d.H)} × ${tal(d.D)} mm ›</span>`
+  return `<div class="vagg byd-editor"><div class="ed-huvud"><span class="hem">‹ ${L('Mina spel', 'My games')}</span><strong>Skogens råd</strong><span class="spacer"></span><div class="ed-flikar" role="tablist">${flikar.map(([k, sv, eng], i) => `<button role="tab" aria-selected="${i === 0}" ${k === 'box' ? 'data-ny' : ''}>${L(sv, eng)}</button>`).join('')}</div><span class="spacer"></span><span class="who">N</span></div>
+    <div class="krona"><span class="sok">${L('Sök bland korten', 'Search the cards')}</span><span class="knapp">${L('Ogrupperad', 'Ungrouped')}</span><span class="spacer"></span><span class="knapp">${L('Fysisk kontroll', 'Physical check')} (0)</span></div>
+    <div class="korten">${kort}</div>
+    <div class="fot"><span>${s.n} ${L('kort', 'cards')}</span>${s.n ? `<span style="color:#9aa3b8">${L('lek', 'deck')} ${tal(s.n * KORT.t)} mm</span>` : ''}${fot}</div></div>`
+}
+function tryckpaket() {
+  const d = rakna(108)
+  return `<div class="tp"><h1>${L('Tryckpaketet', 'The print package')} · Skogens råd v7</h1><ol>
+    <li><b>1 · ${L('Kniven', 'The knife')}</b>${L('Kortet med utfall, snitt och skyddsmarginal.', 'The card with bleed, trim and safe zone.')}</li>
+    <li><b>2 · ${L('Leken', 'The deck')}</b>108 ${L('kort, tryckkontrollen utan anmärkning.', 'cards, the print check without remarks.')}</li>
+    <li data-lada><div style="width:70px;display:grid;place-items:center">${lada3d(d, .62, -6, -24, { tom: true })}</div><span><b>3 · ${L('Lådan', 'The box')}</b>${L(`Tuckbox ${tal(d.W)} × ${tal(d.H)} × ${tal(d.D)} mm, neutral: spelets namn och lekens färg.`, `Tuckbox ${tal(d.W)} × ${tal(d.H)} × ${tal(d.D)} mm, neutral: the game’s name and the deck’s colour.`)} <u>${L('Rita lådan ›', 'Draw the box ›')}</u><br><span style="color:#9aa3b8;font-size:12px">${L('Lådans tryckfiler kommer med partnern (steg 2).', 'The box’s print files come with the partner (step 2).')}</span></span></li>
+  </ol></div>`
+}
+function liten(etikett, w, h, html, s) {
+  return `<div class="liten-ram"><p class="etikett">${etikett}</p><div style="width:${w * s}px;height:${h * s}px"><div style="width:${w}px;height:${h}px;transform:scale(${s})">${html}</div></div></div>`
+}
+function resa() {
+  const tillg = Math.max(900, scen.clientWidth - 32)
+  const s = Math.min(.6, (tillg - 170 - 36) / (980 + 1280))
+  return `<div class="resa">${STEG.map((st0, i) => {
+    const x = vad(st0.k)
+    const [namn, text] = st0[en() ? 'en' : 'sv']
+    const hero = heroResa(st0, x.hero)
+    const hNamn = { idag: L('Mina spel · som i dag', 'My games · as today'), lada: L('Mina spel · lådan i heron', 'My games · the box in the hero') + (iv === '2' ? L(' (sedan Låda öppnats)', ' (since Box was opened)') : ''), stund: L('Mina spel · stunden, en gång', 'My games · the moment, once') }[x.hero]
+    const hoger = st0.k === 'tryck' ? liten(L('Tryckpaketet', 'Print package'), 1280, 300, tryckpaket(), s) : liten(`${L('Editorn · Kortvägg', 'Editor · Card wall')}${x.flik ? L(' · fliken Låda finns', ' · the Box tab is there') : ''}${x.fot !== 'ingen' ? L(' · lådan i foten', ' · the box in the foot') : ''}`, 1280, 300, vaggResa(st0, x), s)
+    const andrat = i === 0 ? '' : (() => { const f = vad(STEG[i - 1].k); const ny = []; if (x.hero !== f.hero) ny.push(L('heron', 'the hero')); if (x.flik !== f.flik) ny.push(L('fliken', 'the tab')); if (x.fot !== f.fot) ny.push(L('foten', 'the foot')); return ny.length ? `<em>${L('Nytt', 'New')}: ${ny.join(', ')}</em>` : '' })()
+    return `<div class="rad"><div class="steg"><i>${i + 1}</i><b>${namn}</b><span>${text}</span>${andrat}</div>${liten(hNamn, 980, 300, hero, s)}${hoger}</div>`
+  }).join('')}</div>`
+}
+
+// ═══ Ritningen ══════════════════════════════════════════════════════════════════════════════════
+const scen = document.getElementById('scen')
+const url = () => `?del=${del}${del === 'resa' ? `&v=${iv}` : `&lage=${lage}`}&lang=${lang}${n !== 108 ? `&lek=${n}` : ''}`
+function skarm(etikett, w, h, html, cls = 'byd-editor') {
+  const tillg = Math.max(320, scen.clientWidth - 32)
+  const hojd = Math.max(360, innerHeight - document.querySelector('.protorad').offsetHeight - 70)
+  const s = Math.min(1, tillg / w, hojd / h)
+  return `<div class="m-ram" style="width:${w * s}px;height:${h * s}px"><p class="etikett">${etikett} · ${w} × ${h}${s < 1 ? ` · ${L('skalad', 'scaled')} ${Math.round(s * 100)} %` : ''}</p><div class="m-skarm ${cls}" style="width:${w}px;height:${h}px;transform:scale(${s})">${html}</div></div>`
+}
+function render() {
+  document.getElementById('del').innerHTML = [['hybrid', 'Hybriden', 'The hybrid'], ['resa', 'Resan', 'The journey']].map(([k, sv, eng]) => `<button aria-pressed="${k === del}" data-del="${k}">${L(sv, eng)}</button>`).join('')
+  document.getElementById('vaxlare').innerHTML = ['1', '2', '3'].map((k) => `<button aria-pressed="${k === iv}" data-v="${k}">${k}</button>`).join('')
+  document.getElementById('vaxlare').hidden = del !== 'resa'
+  document.getElementById('lek').innerHTML = [[108, '108 kort', '108 cards'], [120, '120 kort', '120 cards']].map(([k, sv, eng]) => `<button aria-pressed="${k === n}" data-lek="${k}">${L(sv, eng)}</button>`).join('')
+  document.getElementById('lekgrupp').hidden = del !== 'hybrid'
+  document.getElementById('lang').innerHTML = [['sv', 'Svenska'], ['en', 'English']].map(([k, nn]) => `<button aria-pressed="${k === lang}" data-lang="${k}">${nn}</button>`).join('')
+  document.documentElement.lang = lang
+  document.getElementById('anteckning').innerHTML = del === 'hybrid'
+    ? L('<b>Hybriden · A redigerar, B visar upp.</b> Fliken «Låda» öppnar på nätet (A), med ytorna, lagren och måtten med ett lås per mått och luften. «Visa upp» viker ihop nätet till lådan på sin plats: varje yta glider in på sin sida, sidopanelerna dras undan, ljuset tänds, leken ställer sig bredvid, och lådan vrider sig lugnt och går att vrida. Det är den enda yta där lådan rör sig. Ett klick på en sida, «Redigera nätet» eller Escape viker ut den igen, med den sidan vald. Samma vy nås ur Mina spel. <span class="plus">+ inget byte av vy: nätet blir lådan och tillbaka, och designern ser vilken sida hon redigerar</span> <span class="minus">− vid prefers-reduced-motion står övergången still, och läget byts direkt</span>',
+      '<b>The hybrid · A edits, B shows off.</b> The «Box» tab opens on the net (A), with faces, layers and the sizes with a lock each and the clearance. «Show off» folds the net into the box in place: each face glides to its side, the side panels draw back, the light comes on, the deck stands beside, and the box turns slowly and can be turned. It is the only surface where the box moves. A click on a side, «Edit the net» or Escape unfolds it again, with that side chosen. The same view is reached from My games. <span class="plus">+ no change of view: the net becomes the box and back, and the designer sees which side she is editing</span> <span class="minus">− under prefers-reduced-motion the transition stands still and the mode switches at once</span>')
+    : `<b>${ivText(iv)[0]}.</b> ${ivText(iv)[1]}`
+  if (del === 'hybrid') scen.innerHTML = skarm(`<b>${L('Hybriden', 'The hybrid')}</b> · ${lage === 'bild' ? L('Visa upp, produktbilden', 'Show off, the product shot') : L('fliken Låda, nätet', 'the Box tab, the net')} · ${n} ${L('kort', 'cards')} · ${lang}`, 1280, 800, hybrid())
+  else scen.innerHTML = resa()
+  history.replaceState(null, '', url())
+}
+
+// ── Händelserna ─────────────────────────────────────────────────────────────────────────────────
+document.querySelector('.protorad').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return
+  if (b.dataset.del) del = b.dataset.del
+  if (b.dataset.v) iv = b.dataset.v
+  if (b.dataset.lek) n = Number(b.dataset.lek)
+  if (b.dataset.lang) lang = b.dataset.lang
+  render()
+})
+const lasa = (k) => { if (!Object.values(st.las).some(Boolean)) st.lasade = rakna(n); st.las[k] = !st.las[k]; if (!Object.values(st.las).some(Boolean)) st.lasade = null }
+let drag = null
+scen.addEventListener('click', (e) => {
+  if (drag?.flyttat) return
+  const t = e.target
+  const las = t.closest('[data-las]'); if (las) { lasa(las.dataset.las); render(); return }
+  const valj = t.closest('[data-valj]'); if (valj) { st.yta = valj.dataset.valj; render(); return }
+  const d = t.closest('[data-do]')?.dataset.do
+  if (d === 'nat') return bytLage('nat')
+  if (d === 'bild') return bytLage('bild')
+  if (d === 'folj') { st.las = { W: false, H: false, D: false }; st.lasade = null; render(); return }
+  const y = t.closest('.h-yta[data-yta], .h-nat [data-yta]')
+  if (y) { if (lage === 'bild') bytLage('nat', y.dataset.yta); else { st.yta = y.dataset.yta; render() } }
+})
+scen.addEventListener('change', (e) => {
+  const l = e.target.dataset.luft
+  if (l) { const x = parseFloat(e.target.value.replace(',', '.')); if (x >= 0 && x <= 5) { if (l === 'sida') LUFT = x; else DJUPLUFT = x } render() }
+})
+scen.addEventListener('pointerdown', (e) => {
+  if (lage !== 'bild' || !e.target.closest('.h-scen')) return
+  drag = { x: e.clientX, y: e.clientY, rx: hst.rx, ry: hst.ry, flyttat: false }; hst.held = true
+})
+addEventListener('pointermove', (e) => {
+  if (!drag) return
+  const dx = e.clientX - drag.x, dy = e.clientY - drag.y
+  if (Math.abs(dx) + Math.abs(dy) > 4) drag.flyttat = true
+  hst.ry = drag.ry + dx * .5; hst.rx = Math.max(-60, Math.min(20, drag.rx - dy * .4))
+  const rot = scen.querySelector('.h-rot'); if (rot) { rot.classList.add('haller'); rot.style.transform = `rotateX(${hst.rx}deg) rotateY(${hst.ry}deg)` }
+})
+addEventListener('pointerup', () => { if (!drag) return; const d = drag; setTimeout(() => { if (drag === d) drag = null }, 0); setTimeout(() => { hst.held = false }, 2500) })
+addEventListener('keydown', (e) => {
+  if (e.target.closest('input, textarea, select, [contenteditable]')) return
+  if (e.key === 'Escape' && del === 'hybrid' && lage === 'bild') bytLage('nat')
+  if (del === 'resa' && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) { const ks = ['1', '2', '3']; iv = ks[(ks.indexOf(iv) + (e.key === 'ArrowRight' ? 1 : 2)) % 3]; render() }
+})
+addEventListener('resize', () => render())
+render()
+requestAnimationFrame(ljusHybrid)
+</script>
+</body>
+</html>

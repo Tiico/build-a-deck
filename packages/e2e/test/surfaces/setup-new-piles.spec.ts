@@ -13,10 +13,11 @@ for (const width of [1024, 1280]) {
       const project = await makeProject(page.request, { name: 'Högarna', players: 4, cards: 4 })
       await page.goto(project.editorUrl)
       await page.locator('#byd-editor-tab-tables').click()
-      const add = page.getByRole('button', { name: '＋ Hög' })
-      await add.click()
-      await add.click()
-      await add.click()
+      // ＋ Hög sits in Spelyta's menu (#1403).
+      for (let i = 0; i < 3; i++) {
+        await page.getByRole('button', { name: 'Lägg till i Spelyta' }).click()
+        await page.getByRole('menuitem', { name: '＋ Hög' }).click()
+      }
       await expect(page.locator('.byd-setup-felt .byd-pile')).toHaveCount(5)
       const crossings = await page.evaluate(() => {
         // The felt names a pile when it is asked about (#581); lit all at once is the most any
