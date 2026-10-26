@@ -31,7 +31,7 @@ for (const locale of ['sv-SE', 'en-GB']) {
             return r.right > box.right + 0.5 || r.left < box.left - 0.5
           })
           .map((el) => el.getAttribute('aria-label') ?? el.textContent?.trim() ?? el.tagName)
-        const tools = [...side.querySelectorAll<HTMLElement>('.byd-setup-tools button')].map((b) => b.getBoundingClientRect())
+        const tools = [...side.querySelectorAll<HTMLElement>('.byd-setup-add')].map((b) => b.getBoundingClientRect())
         return { across: side.scrollWidth - side.clientWidth, cut, toolsBelow: tools.filter((r) => r.bottom > box.bottom + 0.5).length }
       })
       expect(measured.across, 'the column does not scroll sideways').toBeLessThanOrEqual(0)
@@ -42,12 +42,11 @@ for (const locale of ['sv-SE', 'en-GB']) {
 }
 
 // The four ways to add a zone stood last in the column, and at 1024 × 640 none of them showed
-// without scrolling it, nor did anything say it scrolled (#711). They stand under the heading of
-// the group they add to (beställarens beslut B): «＋ Yta» and «＋ Hög» under «På bordet», the two per
-// seat under «Vid platserna». Read where the column first opens, untouched, and at the point of
-// each button — what is drawn there must be the button itself. On the game the playtest found it
-// on, four seats and one counter: a game with more counters or more zones on the table pushes the
-// seat group's two further down, which is the price B was chosen at.
+// without scrolling it, nor did anything say it scrolled (#711). Since #1403 (beslut C) the list is
+// a tree and the ways to add are the ＋ on the rows of what can hold something: Spelyta's and
+// «Varje plats»'s stand at the head of the column, and each menu opens in the column's flow under
+// its row. Read where the column first opens, untouched: both ＋ and every line of their menus
+// must be drawn whole, and what is drawn at each point must be the control itself.
 async function openSaloon(page: Page) {
   await logIn(page.request)
   const project = await makeProject(page.request, { name: "Sal's Saloon", players: 4 })
@@ -55,43 +54,69 @@ async function openSaloon(page: Page) {
   await page.locator('#byd-editor-tab-tables, [data-stage="tables"]').first().click()
   await expect(page.locator('.byd-setup-side')).toBeVisible()
 }
-for (const locale of ['sv-SE', 'en-GB']) {
+const ROOTS = { 'sv-SE': ['Lägg till i Spelyta', 'Lägg till i Varje plats'], 'en-GB': ['Add to Spelyta', 'Add to Every seat'] } as const
+for (const locale of ['sv-SE', 'en-GB'] as const) {
   test.describe(`the Bord tab's left column at 1024 × 640 in ${locale}`, () => {
     test.use({ viewport: { width: 1024, height: 640 }, locale })
 
-    test('shows every way to add a zone without being scrolled (#711)', async ({ page }) => {
+    test('shows every way to add without being scrolled, menus included (#711)', async ({ page }) => {
       await openSaloon(page)
-      const seen = await page.evaluate(() => {
-        const side = document.querySelector('.byd-setup-side') as HTMLElement
-        const box = side.getBoundingClientRect()
-        const buttons = [...side.querySelectorAll<HTMLElement>('.byd-setup-tools button')]
-        return {
-          scrolled: side.scrollTop,
-          count: buttons.length,
-          hidden: buttons
-            .filter((b) => {
-              const r = b.getBoundingClientRect()
-              const inside = r.top >= box.top - 0.5 && r.bottom <= Math.min(box.bottom, innerHeight) + 0.5
-              return !inside || !b.contains(document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2))
-            })
-            .map((b) => b.getAttribute('aria-label') ?? b.textContent?.trim()),
-        }
-      })
-      expect(seen.scrolled).toBe(0)
-      expect(seen.count).toBe(4)
-      expect(seen.hidden).toEqual([])
+      for (const name of ROOTS[locale]) {
+        const seen = await page.evaluate((label) => {
+          const side = document.querySelector('.byd-setup-side') as HTMLElement
+          const box = side.getBoundingClientRect()
+          const whole = (el: HTMLElement) => {
+            const r = el.getBoundingClientRect()
+            const inside = r.top >= box.top - 0.5 && r.bottom <= Math.min(box.bottom, innerHeight) + 0.5
+            return inside && el.contains(document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2))
+          }
+          const plus = side.querySelector<HTMLElement>(`button[aria-label="${label}"]`)
+          return { scrolled: side.scrollTop, found: plus !== null, whole: plus ? whole(plus) : false }
+        }, name)
+        expect(seen, name).toEqual({ scrolled: 0, found: true, whole: true })
+        await page.getByRole('button', { name }).click()
+        const items = await page.evaluate((label) => {
+          const side = document.querySelector('.byd-setup-side') as HTMLElement
+          const box = side.getBoundingClientRect()
+          const menu = side.querySelector<HTMLElement>(`[role="menu"][aria-label="${label}"]`)
+          return {
+            scrolled: side.scrollTop,
+            hidden: [...(menu?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [])]
+              .filter((b) => {
+                const r = b.getBoundingClientRect()
+                const inside = r.top >= box.top - 0.5 && r.bottom <= Math.min(box.bottom, innerHeight) + 0.5
+                return !inside || !b.contains(document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2))
+              })
+              .map((b) => b.textContent?.trim()),
+            count: menu?.querySelectorAll('[role="menuitem"]').length ?? 0,
+          }
+        }, name)
+        expect(items.count, `${name}: a menu with lines`).toBeGreaterThanOrEqual(3)
+        expect(items.hidden, `${name}: every line drawn whole`).toEqual([])
+        expect(items.scrolled).toBe(0)
+        await page.keyboard.press('Escape')
+      }
     })
 
-    test('stands each way to add under the group it adds to (#711)', async ({ page }) => {
+    test('stands each menu under the row it adds to, before what the row holds (#711)', async ({ page }) => {
       await openBord(page)
-      const groups = await page.evaluate(() =>
-        [...document.querySelectorAll('.byd-setup-zones > section')].map((section) => ({
-          heading: section.querySelector('h2')?.textContent,
-          adds: [...section.querySelectorAll('.byd-setup-tools button')].length,
-          before: section.querySelector('.byd-setup-tools')?.compareDocumentPosition(section.querySelector('ul')!) === Node.DOCUMENT_POSITION_FOLLOWING,
-        })),
-      )
-      expect(groups.map((g) => [g.adds, g.before])).toEqual([[2, true], [2, true]])
+      for (const name of ROOTS[locale]) {
+        await page.getByRole('button', { name }).click()
+        const placed = await page.evaluate((label) => {
+          const plus = document.querySelector<HTMLElement>(`button[aria-label="${label}"]`)!
+          const li = plus.closest('li')!
+          const row = plus.closest('.byd-setup-row')!
+          const menu = li.querySelector<HTMLElement>(':scope > [role="menu"]')!
+          const list = li.querySelector('ul')!
+          return {
+            inRow: Math.abs(plus.getBoundingClientRect().top - row.getBoundingClientRect().top) < 1,
+            underRow: menu.getBoundingClientRect().top >= row.getBoundingClientRect().bottom - 0.5,
+            beforeList: menu.compareDocumentPosition(list) === Node.DOCUMENT_POSITION_FOLLOWING,
+          }
+        }, name)
+        expect(placed, name).toEqual({ inRow: true, underRow: true, beforeList: true })
+        await page.keyboard.press('Escape')
+      }
     })
   })
 }

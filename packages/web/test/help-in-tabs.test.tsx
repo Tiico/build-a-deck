@@ -15,6 +15,7 @@ import type { ProjectDoc } from '../src/editor/types.js'
 import type { Element } from '@byd/template'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
+import { addVia, openGame } from './bord-tab.js'
 
 let run: Running
 beforeEach(async () => {
@@ -108,12 +109,15 @@ describe('Bord: the list and the setup', () => {
     expect(screen.queryByText('Dra en zon på filten för att flytta den.')).toBeNull()
     absent(/En ny plats får en hand/)
     absent(/En tredje staplar/)
+    // The seats' help stands behind the game's strip (#1403), the counters' with the table's.
+    openGame()
     expect((await opened('platserna')).textContent).toMatch(/En plats som lämnar bordet tar sina zoner med sig/)
     fireEvent.keyDown(document.activeElement!, { key: 'Escape' })
-    expect((await opened('räknarna')).textContent).toMatch(/Med tre eller fler staplas de/)
+    expect((await opened('bordet')).textContent).toMatch(/Med tre eller fler staplas de/)
+    fireEvent.keyDown(document.activeElement!, { key: 'Escape' })
     // Kept: the status about chips with no zone is a consequence, and the sample deck has seats
     // without a counters zone once a counter is added.
-    fireEvent.click(screen.getByRole('button', { name: ADD_COUNTER }))
+    addVia('Varje plats', ADD_COUNTER)
     await screen.findByText(/Ingen plats har någon räknarzon/)
   })
 })

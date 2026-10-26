@@ -827,7 +827,7 @@
 .byd-setup-game > .byd-setup-caret { transition: transform 120ms; }
 .byd-setup-game[aria-expanded='true'] > .byd-setup-caret { transform: rotate(90deg); }
 .byd-setup-game-part { display: inline-flex; gap: var(--byd-s2); align-items: baseline; color: #c7cede; font-weight: 500; }
-.byd-setup-game-part i { font-style: normal; color: #6d7486; }
+.byd-setup-game-part i { font-style: normal; color: #9aa3b8; }
 .byd-setup-game-part[data-line='own'] { flex-basis: 100%; }
 .byd-setup-game-open { padding: 0 var(--byd-s3) var(--byd-s3); border: 1px solid var(--byd-secondary-line); border-radius: 12px; background: #171a23; }
 .byd-setup-game-open > .byd-help-row > .byd-setup-game { padding-inline: 0; border: 0; background: transparent; font-size: 13px; text-transform: uppercase; letter-spacing: 2px; color: var(--byd-editor-quiet); }
@@ -854,11 +854,9 @@
    the kind, how the count is counted and × on the first, «i [yta]» on the second, starting under the
    count and ending under ×. Left to wrap, «i» hung alone at the column's edge and × followed the
    area instead of closing the row. */
-.byd-setup-counter.byd-setup-die { display: grid; justify-self: stretch; grid-template-columns: auto auto minmax(0, 1fr) auto; grid-template-areas: 'count kind mode x' 'where where where where'; }
-.byd-setup-die > input { grid-area: count; }
-.byd-setup-die > select:first-of-type { grid-area: kind; }
-.byd-setup-die > :is(span, select):nth-child(3) { grid-area: mode; justify-self: start; max-width: 100%; }
-.byd-setup-die > button { grid-area: x; }
+/* A die's fields on one line under its row (#1139, #1403): count, kind, and how the count is read. */
+.byd-setup-die { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; min-width: 0; color: #9aa3b8; }
+.byd-setup-props .byd-setup-die > select { width: auto; min-width: 0; }
 .byd-setup-die-where { grid-area: where; display: flex; gap: 6px; align-items: center; min-width: 0; }
 .byd-setup-die-where select { flex: 1 1 auto; }
 /* Border-box (#480): the editor's 44 px floor is the whole field's height, and with the padding
