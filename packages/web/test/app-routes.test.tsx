@@ -39,9 +39,18 @@ describe('every main route names itself in the tab', () => {
     ['/new', 'Nytt spel · Deckster'],
     // The guide behind the crossroads' first door has an address of its own (L79).
     ['/new/guided', 'Nytt spel · Deckster'],
+    // A report of a picture once said the page did not exist (#1351).
+    ['/villkor/anmal', 'Anmäl en bild · Deckster'],
+    ['/survey', 'Enkäten · Deckster'],
   ])('titles %s', async (path, title) => {
     await open(path)
     await waitFor(() => expect(document.title).toBe(title))
+  })
+
+  it('titles the report page in English for an English reader (#1351)', async () => {
+    history.replaceState(null, '', '/villkor/anmal?lang=en')
+    render(<App Page={await loadPage()} />)
+    await waitFor(() => expect(document.title).toBe('Report a picture · Deckster'))
   })
 
   // What the room's own title looks like once it is up is proved against a real server in

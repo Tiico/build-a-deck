@@ -22,6 +22,8 @@ export const enStatus: Record<keyof typeof svStatus, string> = {
   'title.invite': 'Invitation',
   'title.profile': 'Profile',
   'title.terms': 'Terms and privacy',
+  'title.report': 'Report a picture',
+  'title.survey': 'The survey',
   'title.editor': 'Editor',
   'title.table': 'The table',
   'title.join': 'Join room {code}',

@@ -1,4 +1,4 @@
-import { SessionIntent, type Applied, type ComponentId, type ComponentSpec, type Outcome, type SeatId, type ZoneId } from '@byd/protocol'
+import { SessionIntent, type Applied, type ComponentId, type ComponentSpec, type Outcome, type SeatId, type ZoneId, type ZoneSpec } from '@byd/protocol'
 import type { CardQuery, SplitRow } from '@byd/protocol'
 import { reach } from './reach.js'
 import { restoredTable } from './restore.js'
@@ -13,7 +13,8 @@ import {
   zoneOf,
   type ComponentInstance,
   type TableState,
-  type Zone, bottomOf } from './state.js'
+  type Zone,
+  type ZoneDef, bottomOf } from './state.js'
 import type { TypeRegistry } from './typedef.js'
 import { clearOverrides } from './visibility.js'
 import { turnAfter } from './turn.js'
@@ -197,7 +198,7 @@ export function apply(prev: TableState, _registry: TypeRegistry, applied: Applie
       state.notes = state.notes.filter((n) => n.id !== it.note)
       break
     case 'version.change':
-      changeVersion(state, it.to, it.components, it.cards)
+      changeVersion(state, it.to, it.components, it.cards, it.zones)
       break
     case 'rewind.propose':
       state.rewind = { id: applied.batch, toSeq: it.toSeq, by: applied.by }
@@ -347,10 +348,21 @@ function createPile(state: TableState, id: ZoneId, parent: Zone, at: { x: number
 // The deck follows the project (C7): per cardRef, missing copies are added face down at the
 // bottom of the zone the spec names, surplus copies are removed — from that zone first, then
 // from wherever they lie — and everything else stays exactly where it is.
-function changeVersion(state: TableState, to: string, components: readonly ComponentSpec[], cards: Record<string, Record<string, string>> | undefined): void {
+function changeVersion(state: TableState, to: string, components: readonly ComponentSpec[], cards: Record<string, Record<string, string>> | undefined, zones: readonly ZoneSpec[] | undefined): void {
   // What the rows say now. A line written before this field existed carries none, and leaves the
   // index it found — which is what such a line meant, since no question could be asked then.
   if (cards !== undefined) state.setup = { ...state.setup, cards }
+  // What each zone is now: its name, who sees it and what it may be asked for (K14). A zone the
+  // table has takes the new definition and keeps its cards; one the table lacks is not laid out
+  // mid-game, and the piles stacked during play are nobody's definition. No field: as above.
+  if (zones !== undefined) {
+    const next = new Map(zones.map((z) => [z.id, zoneDefOf(z)]))
+    for (const zone of Object.values(state.zones)) {
+      const def = next.get(zone.id)
+      if (def && !zone.dynamic) state.zones[zone.id] = { ...def, order: zone.order, dynamic: false }
+    }
+    state.setup = { ...state.setup, zones: state.setup.zones.map((z) => next.get(z.id) ?? z) }
+  }
   const wanted = new Map<string, ComponentSpec[]>()
   for (const spec of components) wanted.set(spec.cardRef, [...(wanted.get(spec.cardRef) ?? []), spec])
   const have = new Map<string, ComponentInstance[]>()
@@ -393,6 +405,23 @@ function changeVersion(state: TableState, to: string, components: readonly Compo
   }
   state.version = to
   state.setup = { ...state.setup, components: [...components] }
+}
+
+// The line's zone as the engine keeps one: a field the line leaves out is absent, not undefined.
+function zoneDefOf(z: ZoneSpec): ZoneDef {
+  return {
+    id: z.id,
+    kind: z.kind,
+    name: z.name,
+    visibility: z.visibility,
+    geometry: z.geometry,
+    ...(z.owner !== undefined ? { owner: z.owner } : {}),
+    ...(z.returnTo !== undefined ? { returnTo: z.returnTo } : {}),
+    ...(z.shortcut !== undefined ? { shortcut: z.shortcut } : {}),
+    ...(z.beside !== undefined ? { beside: z.beside } : {}),
+    ...(z.actions !== undefined ? { actions: z.actions } : {}),
+    ...(z.bottom !== undefined ? { bottom: z.bottom } : {}),
+  }
 }
 
 // A dynamic pile with one component left is no pile: the card returns to the parent area

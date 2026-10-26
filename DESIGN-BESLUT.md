@@ -1178,6 +1178,11 @@ Följdkrav:
 Tillbakaspolning förbi ett versionsbyte måste återställa korten också.
 Enkäten måste kunna fråga om två versioner.
 
+Byggt 2026-10-25 (beställarens fynd):
+`version.change` bär uppställningens zoner bredvid komponenterna, så en hög som «Uppdatera» flyttar till en ny version heter, visar och erbjuder det den versionen säger — dess egna åtgärder (K14) med.
+En zon bordet har tar den nya definitionen och behåller sina kort; en zon bordet saknar läggs inte ut mitt i spelet, och en hög som staplats under spelet är ingens definition.
+En zon som byter slag under bordet avvisas, och en rad från före fältet lämnar zonerna som de var, så en gammal logg spelas upp som förut.
+
 ### C8. Observatörsrollen: full insyn, alltid synlig (fråga 37)
 
 Observatören ser allt — alla händer, alla dolda högar — och alla vid bordet ser att hon är där och vad rollen innebär.
@@ -4572,6 +4577,15 @@ Priset är erkänt: brickans text är filtskalad och ligger under 24 px på TV:n
 Grindarna: `packages/web/test/start-waits-for-textures.test.tsx` (spaltens rad, den släckta brickan, att den tänds när sista kortet landar, «Starta ändå» vid stillastående kö och distansvyns bricka) och `packages/e2e/test/tv-chrome-floor.spec.ts` (raden vid golvet i den byggda produkten, där sviten inte kör någon renderare).
 Sviter vars fråga är starten och inte renderingen öppnar TV:n med `facesReady`, som svarar att korten är klara.
 
+**Tillägg 2026-10-25 (#1344): platsernas skyltar står fritt från brickan.**
+Pillren under högarna trycker ned brickan i pixlar, mot platserna, och platsens skylt på TV:n (#683) står i pixlar ovanför platsens zoner.
+Vid 1024, 1280 och 1440 låg brickan därför över plats A:s skylt med två till fyra platser, och vid 1440 och 1920 över E:s med fem och sex.
+Brickans plats och form är orörda.
+Det som ändrats är att brickan och dess skugga är en sak till som skylten ska stå fri från när den söker sin plats, i #683:s egen ordning; när spelet startat och brickan gått till hörnet läggs skyltarna ut igen och står på sina egna platser.
+Från 1280 och uppåt hittar varje skylt en fri plats som hel skylt.
+Vid 1024 med två till fyra platser ryms den inte någonstans på filten som den är inpassad, och A står som sin bricka med platsens mark tills spelet startat, vilket är #750:s sista utväg och inte en ny form.
+Grind: `packages/e2e/test/surfaces/start-tile-clear-of-piles.spec.ts`, som mäter ritade pixlar mot varje skylt vid 2–8 platser, 1024–1920, sv och en, och i ett typsnitt lika brett som CI:s.
+
 ### K26. Läsbar korttext på skärm: ett golv per skärm, och en handling dit (beslutat 2026-09-28, #505, #506)
 
 E5 och E6 sätter golvet för text **i tryck**, K9 sätter kortets storlek som kontroll på filten och K18 räknar läsbarhet i kortsida på tre meter — men inget beslut sa vad **texten på kortet** blir när kortet ritas på en skärm.
@@ -4865,6 +4879,17 @@ Att byta yta i radens väljare tar bort punkten, eftersom en punkt i en yta inte
 
 **Nya typer väntar.**
 Meeple, kub och bricka visades i prototypen för att se att listan rymmer dem, men varje typ är ett eget registerbeslut som tärningen var (B1–B3), och de byggs inte här.
+
+### K32. Material hålls aldrig på handen (beslutat 2026-10-25, #1377)
+
+Beställaren: «Material ska inte gå att ha på handen.»
+En tärning som släpptes över en hands solfjäder hamnade i handen, men ingen skärm ritar en bit i en hand: telefonen ritar handen som en rad kort.
+Tärningen försvann alltså från filten och gick inte att ta ut igen.
+
+**Material är en typ som går att slå eller har en räknare** (`isMaterial` i `packages/engine`), och det läses ur typens deklarerade beteenden som varje annan vägran i motorn.
+Motorn vägrar lägga material i en hand, vilket verb det än kommer med: `move`, `draw`, `deal`, `split` och `version.change`.
+Filten lägger en bit som släpps över en hand på det handen ligger över, oftast filten (`pieceAt`), och tangentbordets «Flytta till» erbjuder ingen hand för en bit.
+Kort hålls som förut.
 
 ## L. Editorn (grillad 2026-09-06)
 
