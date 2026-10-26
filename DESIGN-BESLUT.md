@@ -7404,6 +7404,8 @@ Cellen med biblioteket öppet lyfts inte längre till en egen nivå: biblioteket
 Priset är känt och taget: fliken byter sida i höjdled när man går ned från raden mot huvudet, och den täcker slutet av värdet i raden under.
 Två alternativ prototypades och avvisades: fliken under fältets vänstra hörn med biblioteket hängande i den (B), som byter både höjd och sida och krockar med den fastnålade rälsen, och fliken under fältet i alla rader (C), som täcker raden man är på väg till i varje rad och ger upp skälet bakom #593.
 
+*Tillagt 2026-10-26 (#1370, beställarens beslut):* fliken står kvar där den står, men erbjuds bara i en kolumn där en symbol kan stå, aldrig i en kolumn där varje ifylld cell är ett tal; det är samma läsning som sorteringen och bredden gör (`columnKind`), så en kolumn med en enda `{mynt} 3` är text och har fliken i varje cell.
+
 ### L47. En yta lägger själv ut kortet den fått utan punkt: fjädrat, med det nyaste överst (prototypat och beslutat 2026-09-22, #449; ordningen utvidgad till dragvägen 2026-09-24, #461)
 
 Telefonen skickar ingen position.
