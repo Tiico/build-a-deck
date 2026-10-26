@@ -30,6 +30,8 @@ export const svStatus = {
   'title.invite': 'Inbjudan',
   'title.profile': 'Profil',
   'title.terms': 'Villkor och integritet',
+  'title.report': 'Anmäl en bild',
+  'title.survey': 'Enkäten',
   'title.editor': 'Editor',
   'title.table': 'Bordet',
   'title.join': 'Gå med i rum {code}',

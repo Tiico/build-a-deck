@@ -80,6 +80,7 @@ export const IMPERSONAL_FIELDS: Readonly<Record<string, Impersonal>> = {
   'version.change.to': 'id',
   'version.change.components': 'design',
   'version.change.cards': 'design',
+  'version.change.zones': 'design',
   'flag.component': 'id',
   'turn.give.seat': 'id',
   'note.edit.note': 'id',

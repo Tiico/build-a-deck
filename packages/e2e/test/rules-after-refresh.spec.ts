@@ -1,4 +1,4 @@
-import { logIn, makeProject, startTable, withQuery } from '../support/api.js'
+import { logIn, makeProject, makeProjectOf, startTable, withQuery } from '../support/api.js'
 import { gameDoc } from '../support/game.js'
 import { PHONE, TV } from '../support/devices.js'
 import { expect, test } from '../support/test.js'
@@ -40,4 +40,36 @@ test('a table updated to a version with rules hands out the book and names the v
   await expect(tv.page.locator('.byd-rules-panel').getByRole('heading', { name: 'Så spelar ni' })).toBeVisible()
   await expect(ada.page.getByRole('button', { name: 'Rules', exact: true })).toBeVisible()
   await expect(bo.page.locator('.byd-desk-head').getByRole('button', { name: 'Rules', exact: true })).toBeVisible()
+})
+
+// En högs egna åtgärder är versionens (K14), och «Uppdatera» flyttar bordet dit (C7). Beställaren
+// skrev om en åtgärd på leken, tryckte «Uppdatera bordet» och fick den gamla åtgärden vid bordet
+// tills det stängdes och öppnades igen: `version.change` bar korten men inte högarna, så bordet
+// höll startversionens åtgärder.
+test('a table updated to a version whose pile asks for something else offers the new action, without a reload', async ({ request, open }) => {
+  await logIn(request)
+  const withAction = (label: string, n: number) => {
+    const doc = gameDoc({ name: 'Skogens herrar', players: 2 })
+    const deal = { id: 'a1', label, steps: [{ v: 'deal' as const, each: { of: 'number' as const, n }, to: { at: 'hands' as const }, face: 'keep' as const }] }
+    return { ...doc, setup: { ...doc.setup, zones: doc.setup.zones.map((z) => (z.id === doc.setup.deckZone ? { ...z, actions: [deal] } : z)) } }
+  }
+  const before = withAction('Dela ut två', 2)
+  const project = await makeProjectOf(request, before)
+  const table = await startTable(request, project.id)
+  const tv = await open(TV, withQuery(table.tvUrl, 'lang=sv'))
+  const pile = tv.page.locator(`.byd-pile[data-zone="${before.setup.deckZone}"]`)
+  const action = tv.page.getByRole('button', { name: /^Dela ut/ })
+  await pile.locator('.byd-pile-top').click()
+  await expect(action).toHaveCount(1)
+  await expect(action).toHaveAccessibleName(/^Dela ut två/)
+  await tv.page.keyboard.press('Escape')
+
+  const put = await request.put(`/projects/${encodeURIComponent(project.id)}`, { data: { rev: 1, ...withAction('Dela ut tre', 3) } })
+  expect(put.status()).toBe(200)
+  expect((await request.post(`/sessions/${encodeURIComponent(table.session)}/refresh`)).status()).toBe(200)
+
+  await expect(tv.page.getByText('Spelet uppdaterades till version 2').first()).toBeVisible()
+  await pile.locator('.byd-pile-top').click()
+  await expect(action).toHaveCount(1)
+  await expect(action).toHaveAccessibleName(/^Dela ut tre/)
 })
