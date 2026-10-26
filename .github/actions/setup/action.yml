@@ -25,10 +25,15 @@ runs:
     # a newer libnss3) came at 57 kB/s from the runner's mirror and took up to eight minutes. They
     # are kept between runs, keyed to the runner image and the Playwright that asks for them. The
     # runner itself stays: the surfaces are measured against its fonts (ci-browser.test.ts).
+    #
+    # A mirror that stops answering is another matter (#1421): on 2026-10-26 `apt-get update` went
+    # quiet mid-fetch and the job sat four hours until someone cancelled it. apt is told to give up
+    # on a silent connection after 30 s, and the whole install below has its own clock.
     - if: inputs.browser == 'true'
       shell: bash
       run: |
         echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' | sudo tee /etc/apt/apt.conf.d/99byd-keep >/dev/null
+        printf 'Acquire::http::Timeout "30";\nAcquire::https::Timeout "30";\nAcquire::Retries "3";\n' | sudo tee /etc/apt/apt.conf.d/99byd-timeout >/dev/null
         sudo rm -f /etc/apt/apt.conf.d/docker-clean
         pw=$(node -p "require('./packages/render/node_modules/playwright/package.json').version")
         echo "BYD_APT_KEY=playwright-apt-$ImageOS-$ImageVersion-$pw" >> "$GITHUB_ENV"
@@ -37,11 +42,22 @@ runs:
       with:
         path: ~/.cache/byd-apt
         key: ${{ env.BYD_APT_KEY }}
+    # Twelve minutes a try, and two tries (#1421). With the cache warm this takes under a minute.
+    # Cold — a new runner image changes the key — it fetches 26 MB from the runner's mirror, which
+    # at its slowest ran 25 kB/s and took 17 minutes, still making progress. Every package that
+    # arrived in the first try stays in /var/cache/apt/archives, so the second picks up where the
+    # first stopped instead of starting over; and a mirror that hangs costs twelve minutes, not six
+    # hours. A composite step cannot say timeout-minutes, so the clock is coreutils' `timeout`.
     - if: inputs.browser == 'true'
       shell: bash
       working-directory: packages/render
       run: |
         mkdir -p ~/.cache/byd-apt
         sudo cp ~/.cache/byd-apt/*.deb /var/cache/apt/archives/ 2>/dev/null || true
-        pnpm exec playwright install --with-deps chromium
+        for attempt in 1 2; do
+          timeout --kill-after=30s 12m pnpm exec playwright install --with-deps chromium && break
+          status=$?
+          if [ "$attempt" = 2 ]; then exit "$status"; fi
+          echo "::warning::Chromium and its apt packages did not install (exit $status, 124 is the 12-minute clock); trying once more"
+        done
         cp /var/cache/apt/archives/*.deb ~/.cache/byd-apt/ 2>/dev/null || true
