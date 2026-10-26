@@ -1,0 +1,560 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp — bordet i editorn inför release</title>
+<!-- PROTOTYP, bordsbandet 2026-10-26. Kastas när en variant är vald.
+     Bandet under editorns huvud när ett bord kör: «Bordet kör version 7 — öppna bordet · rumskod
+     UF6H2W [Ny kod] · vid bordet: [Ada ×] …». Fråga: hur ser det ut som en färdig produkt och inte
+     som en platshållare, utan att bryta L60 (brickor med ×), L61 (en bricka) och L86 (en väg in)?
+     Huvudet och dagens band ritas med appens EGNA regler: appen.css är genererad ur packages/web/src
+     av matning/extract.mjs. Varje rad är en <iframe> i fönstrets bredd, så att appens @media gäller.
+     Markupen för «i dag» följer EditorPage.tsx rad för rad.
+     ?v=0|A|B|C&w=1024|1280|1440&font=mac|bred&lang=sv|en&platser=0|3|8&grund=gron|krom
+     Ingenting här importeras av appen. -->
+<link rel="stylesheet" href="proto.css">
+<style>
+  body { overflow: auto; }
+  .sida { min-height: 100vh; display: flex; flex-direction: column; }
+  .protorad .grupp { display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+  .protorad .grupp > span { color: #c8b98d; margin-right: 2px; }
+  .protorad button[aria-pressed='true'] { background: #ffd98a; color: #1f1b12; border-color: #ffd98a; font-weight: 700; }
+  .protorad .anteckning { min-height: 0; flex-basis: 100%; }
+  .protorad .anteckning p { margin: 0 0 4px; max-width: 1200px; }
+  .protorad .plus { color: #9be3b5; }
+  .protorad .minus { color: #ff9a8a; }
+  .scen { flex: 1; padding: var(--s4) var(--s4) 96px; display: grid; gap: var(--s5); align-content: start; }
+  .block > h2 { margin: 0 0 8px; color: #fff; font-size: 13px; font-weight: 700; }
+  .block > h2 small { color: var(--quiet-2); font-weight: 400; margin-left: 6px; }
+  .stapel { display: grid; grid-template-columns: 136px minmax(0, 1fr); column-gap: 8px; row-gap: 10px; align-items: start; }
+  .radnamn { color: #c8b98d; font-size: 11px; line-height: 1.35; font-variant-numeric: tabular-nums; }
+  .radnamn b { display: block; color: #ffe9b8; font-size: 12px; }
+  .radnamn .ok { color: #9be3b5; }
+  .radnamn .nej { color: #ff9a8a; font-weight: 700; }
+  .ram { position: relative; overflow: hidden; outline: 1px solid #3a3f4b; }
+  .ram iframe { display: block; border: 0; transform-origin: 0 0; background: #23262e; }
+  .flytande { position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%); z-index: 60; display: flex; align-items: center; gap: 4px; padding: 5px; border-radius: 999px; background: #ffd98a; color: #1f1b12; box-shadow: 0 10px 30px rgba(0,0,0,.6); font-weight: 700; }
+  .flytande button { min-width: 36px; min-height: 36px; border: 0; border-radius: 999px; background: #1f1b12; color: #ffd98a; font: inherit; cursor: pointer; }
+  .flytande .namn { padding: 0 12px; min-width: 300px; text-align: center; font-size: 12.5px; }
+</style>
+</head>
+<body>
+<div class="sida">
+  <div class="protorad">
+    <div class="fraga">
+      <p><b>Bordet i editorn inför release.</b> Hur ett bord som kör syns inne på spelets sida, i sex lägen: kör, laddar kort, frågan om en plats, ny kod sagd, kort som inte kunde laddas, och hopfällt. Huvudet och «i dag» ritas med appens egna regler (genererade ur <code>editor.css</code> och <code>buttons.css</code>).</p>
+      <p><b>D, E och F</b> är omdesigner: bordet som en «nu spelas»-docka längst ned, som ett flytande bordskort över arbetet, och som en levande Bord-flik utan band alls. <b>A, B och C</b> är den första rundans polering av dagens band och står kvar för jämförelse. Alla behåller L60 (plats = bricka med ×), L61 (pillret på 44 px) och L86 (en väg in).</p>
+    </div>
+    <span class="grupp" id="g-v"><span>Variant</span></span>
+    <span class="grupp" id="g-w"><span>Bredd</span></span>
+    <span class="grupp" id="g-font"><span>Typsnitt</span></span>
+    <span class="grupp" id="g-lang"><span>Språk</span></span>
+    <span class="grupp" id="g-platser"><span>Platser</span></span>
+    <span class="grupp" id="g-grund"><span>Grund</span></span>
+    <div class="anteckning" id="anteckning"></div>
+  </div>
+  <div class="scen">
+    <section class="block" id="fore"></section>
+    <section class="block" id="efter"></section>
+  </div>
+</div>
+<div class="flytande" role="toolbar" aria-label="Prototypens växlare">
+  <button type="button" id="bak" aria-label="Föregående variant">←</button>
+  <span class="namn" id="vnamn"></span>
+  <button type="button" id="fram" aria-label="Nästa variant">→</button>
+</div>
+<script>
+// ── Ord, ur packages/web/src/i18n (sv.editor.ts, en.editor.ts, sv.status.ts) ─────────────────────
+const ORD = {
+  sv: {
+    home: 'Mina spel', saved: 'Sparat', unsaved: 'Osparat', save: 'Spara', update: 'Uppdatera bordet', updateShort: 'Uppdatera', share: 'Dela',
+    here: (n) => `Dela: vilka som har spelet, ${n} online`, tabs: ['Kortvägg', 'Mall', 'Tabell', 'Speltema', 'Media', 'Regler', 'Bord'], tablist: 'Editorlägen',
+    more: (g) => `Mer för ${g}`, ways: 'Fler sätt att öppna bordet', undo: 'Inget att ångra', redo: 'Inget att göra om',
+    running: 'Bordet kör version 7', runs: 'Bordet kör', v: 'v7', open: 'öppna bordet', Open: 'Öppna bordet', openAria: 'Öppna bordet UF6H2W (öppnas i bordets egen flik)',
+    roomCode: 'rumskod', newCode: 'Ny kod', copy: 'Kopiera länk', end: 'Avsluta bordet', moreOf: 'Fler val för bordet UF6H2W',
+    at: 'vid bordet:', nobody: 'ingen sitter än', seated: (n) => `${n} vid bordet`, playing: (names) => `${names} spelar`,
+    kick: (n) => `Ta bort ${n}`, ask: 'Ta bort Bo från bordet?', askBody: 'Bos kort läggs tillbaka i leken och telefonen kopplas bort.', askRotate: 'Ta bort och byt kod', cancel: 'Avbryt',
+    rendering: 'laddar kort 12/77', lost: '3 kort kunde inte laddas. Bordet är kvar på sin gamla version.', retry: 'Försök igen',
+    said: 'Ny rumskod SAFYX3. UF6H2W gäller inte längre.', screen: 'Runt en skärm', toTab: 'Platserna i Bord', fold: 'Fäll ihop bordskortet', lostShort: '3 kort',
+    och: (a, b) => `${a} och ${b}`,
+  },
+  en: {
+    home: 'My games', saved: 'Saved', unsaved: 'Unsaved', save: 'Save', update: 'Update the table', updateShort: 'Update', share: 'Share',
+    here: (n) => `Share: who has the game, ${n} online`, tabs: ['Card wall', 'Template', 'Data', 'Theme', 'Media', 'Rules', 'Tables'], tablist: 'Editor modes',
+    more: (g) => `More for ${g}`, ways: 'More ways to open the table', undo: 'Nothing to undo', redo: 'Nothing to redo',
+    running: 'The table runs version 7', runs: 'The table runs', v: 'v7', open: 'open the table', Open: 'Open the table', openAria: 'Open the table UF6H2W (opens in the table’s own tab)',
+    roomCode: 'room code', newCode: 'New code', copy: 'Copy link', end: 'End the table', moreOf: 'More for the table UF6H2W',
+    at: 'at the table:', nobody: 'nobody seated yet', seated: (n) => `${n} at the table`, playing: (names) => `${names} playing`,
+    kick: (n) => `Remove ${n}`, ask: 'Remove Bo from the table?', askBody: 'Bo’s cards go back into the deck and the phone is disconnected.', askRotate: 'Remove and change the code', cancel: 'Cancel',
+    rendering: 'loading cards 12/77', lost: '3 cards could not be loaded. The table stays on its old version.', retry: 'Try again',
+    said: 'New room code SAFYX3. UF6H2W no longer works.', screen: 'Around one screen', toTab: 'Seats in Tables', fold: 'Fold the table card', lostShort: '3 cards',
+    och: (a, b) => `${a} and ${b}`,
+  },
+}
+const GAME = 'Skogens herrar'
+const FOLK = ['ada', 'bo', 'cia'].map((n) => `${n}@lekverkstan.se`)
+const PLATSER = ['Ada', 'Bo', 'Cia', 'Dan', 'Eva', 'Fia', 'Gus', 'Hedvig']
+const colourOf = (seed) => { let h = 0; for (const ch of seed) h = (h * 31 + ch.charCodeAt(0)) % 360; return `hsl(${h} 55% 55%)` }
+
+// ── Glyferna, ur glyphs.tsx (och två som prototypen ritar själv) ────────────────────────────────
+const svg = (name, inner, mirrored) => `<svg class="byd-glyph" viewBox="0 0 16 16" width="1em" height="1em" aria-hidden="true" focusable="false" data-glyph="${name}"${mirrored ? ' data-mirrored="true"' : ''}>${inner}</svg>`
+const line = (d) => `<path d="${d}" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>`
+const G = {
+  arrow: svg('arrow-left', line('M13 8H3M7 4 3 8l4 4')),
+  more: svg('more', [[3.5, 8], [8, 8], [12.5, 8]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="1.25" fill="currentColor"/>`).join('')),
+  check: svg('check', line('M3 8.5l3.25 3.25L13 5')),
+  hook: (m) => svg('hook', line('M6 3.25 2.75 6.5 6 9.75M2.75 6.5h6.75a3.25 3.25 0 0 1 0 6.5H7'), m),
+  chevron: svg('chevron-down', line('M4 6l4 4 4-4')),
+  close: svg('close', line('M4 4l8 8M12 4l-8 8')),
+  copy: svg('copy', line('M6.5 5.5h6a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-6a1 1 0 0 1-1-1v-6a1 1 0 0 1 1-1zM10.5 5.5v-2a1 1 0 0 0-1-1h-6a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2')),
+  // Ny i prototypen: «öppnas i bordets egen flik», ritat i samma hand som de andra.
+  out: svg('out', line('M9.5 3h3.5v3.5M13 3 7.5 8.5M11 9.5V12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h2.5')),
+  // Ny i prototypen: en skärm, för «Runt en skärm».
+  tv: svg('tv', line('M2.5 4h11a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zM5.5 14h5')),
+  warn: svg('warning', line('M8 2.75 2 13.25h12zM8 6.75v2.75M8 11.5v.01')),
+}
+
+// ── Varianterna ─────────────────────────────────────────────────────────────────────────────────
+const VARIANTER = {
+  0: {
+    namn: '0 — i dag',
+    kort: 'En mening med tankstreck och punkter, en länk i gemener och två knappar inuti meningen.',
+    text: '<p><b>I dag.</b> Bandet är en mening: «Bordet kör version 7 — öppna bordet · rumskod UF6H2W [Ny kod] · vid bordet: [Ada ×] [Bo ×]». Vägen in är en länk i gemener mitt i meningen, koden ett fetstilt ord, och «Ny kod» — något som trycks en gång i månaden — står som en kantad knapp bredvid det som läses högt till alla i rummet. Bandet säger allt lika högt, så ögat hittar ingenting först.</p>',
+  },
+  D: {
+    namn: 'D — nu spelas, en docka längst ned',
+    kort: 'Bandet lämnar huvudet. Bordet står som en «nu spelas»-rad längst ned i fönstret, med en miniatyr av filten.',
+    text: '<p><b>D, nu spelas.</b> Bordet är inte ett meddelande under huvudet utan det som pågår, och står där det som pågår brukar stå: en docka längst ned i fönstret, som en spelares «nu spelas». Från vänster: en miniatyr av filten med platserna som färgade prickar runt den, spelets namn med «Bordet kör v7 · Runt en skärm» under, koden i TV:ns bokstäver, platserna som brickor med ansikte, och till höger «Öppna bordet» i filtens bärnsten och ett ⋯. Laddningen är en tunn bärnstensfärgad linje längs dockans överkant som fylls. Huvudet och arbetet står orörda; frågan om en plats fälls upp ur dockan.</p>'
+      + '<p><span class="plus">+ Huvudet får tillbaka sin rad; dockan är ett rum för bordet med egen hierarki (bild → namn → kod → vilka → väg in), och den kan växa utan att något ovanför flyttar. Bärnstenen är filtens egen accent (K9).</span> <span class="minus">− Kostar samma 64 px som i dag, fast nedtill, på alla flikar; nedtill är också där fotens bekräftelser (#698) och telefonens stegremsa bor, så dockan måste samsas med dem. Miniatyren är en ny yta att rita.</span></p>',
+  },
+  E: {
+    namn: 'E — bordskortet, flytande över arbetet',
+    kort: 'Inget band. Ett kort nere till höger med filten i miniatyr, koden, platserna och vägen in; fälls ihop till en pillerrad.',
+    text: '<p><b>E, bordskortet.</b> Inget band och ingen docka: bordet är ett kort som ligger nere till höger över arbetet, som historiken och delningen ligger över det. Kortet visar filten i miniatyr med platsernas namn runt den, koden under i TV:ns storlek med «Kopiera länk», brickorna med × och «Öppna bordet». Det fälls ihop till ett piller «● UF6H2W · 3 vid bordet» i hörnet, och frågan om en plats ställs inne i kortet.</p>'
+      + '<p><span class="plus">+ Tar ingen höjd alls från arbetet; bordet får en bild i stället för en mening; koden och platserna står alltid samlade oavsett fönsterbredd.</span> <span class="minus">− Ligger över arbetet: kortväggens sista rad, tabellens högra kolumn och mallens högra verktyg hamnar under det tills det fälls ihop. Hopfällt syns inga platser. En tredje flytande panel i editorn, med sin egen plats att minnas.</span></p>',
+  },
+  F: {
+    namn: 'F — den levande fliken, inget band',
+    kort: 'Bandet försvinner. Bord-fliken lyser: «Bord ● UF6H2W». Allt annat står på fliken, som det redan gör.',
+    text: '<p><b>F, den levande fliken.</b> Bandet tas bort. Bord-fliken i huvudet bär bordet: en levande punkt och koden, «Bord ● UF6H2W», medan ett bord kör; «● 12/77» medan korten laddas, och ett varningstecken med «3 kort» när kort saknas. Platserna, sparka, «Ny kod», «Kopiera länk» och «Öppna bordet» står på Bord-fliken, där raden redan har dem (L86), och primärknappen «Uppdatera bordet» med sin meny står kvar i huvudet. Ny kod sägs i fotens bekräftelse (#698).</p>'
+      + '<p><span class="plus">+ Noll höjd och noll nya ytor: bordet syns på varje flik utan ett band, och det som bandet dubblerade (Bord-flikens rad) blir den enda platsen. Enklast att bygga: en flik som lyser och ett ord i foten.</span> <span class="minus">− Vägen in är två tryck bort (fliken, sedan «Öppna bordet»); sparka är tre. Fliken växer 70–80 px i ett huvud som redan är fullt under 1440 (#566): mätningen nedan säger vad namnet klipps till. Bordet blir lätt att glömma.</span></p>',
+  },
+  A: {
+    namn: 'A — raden får struktur',
+    kort: 'Samma rad och höjd; fyra grupper i stället för en mening, vägen in som en knapp längst till höger.',
+    text: '<p><b>A, raden får struktur.</b> Samma band, samma höjd. Fyra grupper från vänster: en levande punkt och «Bordet kör v7»; koden som en bricka i TV:ns bokstäver med «Kopiera länk» bredvid; platserna som i dag; och längst till höger «Öppna bordet» som en kantad knapp med flikens tecken, och ett ⋯ med «Ny kod» och «Avsluta bordet». Mellanrummen säger vad som hör ihop; punkterna och tankstrecket är borta.</p>'
+      + '<p><span class="plus">+ Minsta flytten: inget flyttar till en annan flik, bandet bryter som i dag (L60) och koden får den form Bord-fliken och TV:n redan ger den. Vägen in står på samma ställe oavsett vad bandet säger.</span> <span class="minus">− «Ny kod» går in i en meny; ett ⋯ till i editorn. Platserna säger inte längre «vid bordet:» i ord, bara i brickornas namn (skärmläsaren får listans namn).</span></p>',
+  },
+  B: {
+    namn: 'B — biljetten',
+    kort: 'Två rader: koden som en biljett till vänster, bordets fakta och platser bredvid, vägen in till höger.',
+    text: '<p><b>B, biljetten.</b> Bandet blir ett kort på två rader. Till vänster koden som en biljett: «RUMSKOD» i versaler och koden under i TV:ns bokstäver, det som läses högt. Bredvid på rad ett: punkten, «Bordet kör v7» och hur ni sitter («Runt en skärm», L86); på rad två platserna som brickor med ett ansikte i samma färg som huvudets, eller lägets mening (laddar, tappat). Längst till höger «Öppna bordet» och ⋯. Platserna har alltid sin egen rad, så bandet bryter aldrig mitt i.</p>'
+      + '<p><span class="plus">+ Koden är det största på bandet, som på TV:n; bandet har en hierarki (biljett → fakta → väg in) i stället för en mening; säger hur ni sitter, som ingen yta i editorn gör i dag.</span> <span class="minus">− Kostar 20 px mer höjd av arbetet så länge bordet kör, och på alla flikar. Ett ansikte på brickan är en ny form bredvid L61:s piller.</span></p>',
+  },
+  C: {
+    namn: 'C — smal statusrad',
+    kort: 'En rad på 36 px: punkt, kod, version, vilka som spelar, vägen in. Platsernas × och «Ny kod» bor i Bord-fliken.',
+    text: '<p><b>C, smal statusrad.</b> Bandet säger bara det som läses: en levande punkt, koden, «v7», «Ada, Bo och Cia spelar» och «Öppna bordet». Inga brickor, inga ×, ingen «Ny kod»: det sköts i Bord-flikens rad, dit «Platserna i Bord» leder. Det är L60:s variant C, «en större flytt som kan göras senare om bandet ändå stör». Frågan om en plats ställs i Bord-fliken och finns inte i bandet; raden «fråga» visar därför bara bandet.</p>'
+      + '<p><span class="plus">+ 24 px mer arbete än i dag, bandet bryter aldrig och ser likadant ut med noll som med åtta platser. Bandet är en rad om bordet, inte en verktygsrad.</span> <span class="minus">− Värdens sparka är två tryck bort (Bord-fliken, raden, ×), och Bord-flikens rad har ingen × i dag: det är ett bygge till. Namnen klipps vid åtta platser på 1024.</span></p>',
+  },
+}
+
+const q = new URLSearchParams(location.search)
+const pick = (k, ok, d) => (ok.includes(q.get(k)) ? q.get(k) : d)
+const st = {
+  v: pick('v', ['0', 'D', 'E', 'F', 'A', 'B', 'C'], 'D'),
+  w: Number(pick('w', ['1024', '1280', '1440'], '1440')),
+  font: pick('font', ['mac', 'bred'], 'mac'),
+  lang: pick('lang', ['sv', 'en'], 'sv'),
+  platser: Number(pick('platser', ['0', '3', '8'], '3')),
+  grund: pick('grund', ['gron', 'krom'], 'gron'),
+}
+const LAGEN = [['kor', 'kör'], ['laddar', 'laddar kort'], ['fraga', 'fråga om en plats'], ['nykod', 'ny kod sagd'], ['tappat', 'kort tappade'], ['hopfalld', 'hopfällt (bara E kan)']]
+const PALETT = ['#e05a4f', '#3c8ce7', '#3aa76d', '#d99a1f', '#8e6bd9', '#2bb5b5', '#d9699f', '#9bb63c']
+
+// ── Huvudet, som EditorPage.tsx ritar det (L63 B: de andra hänger på huvudets kant) ─────────────
+function face(who) { return `<i title="${who}" style="--who:${colourOf(who)}">${who.slice(0, 1).toUpperCase()}</i>` }
+function header(o, bordTab) {
+  const tabs = o.tabs.map((t, i) => `<button class="byd-choice" role="tab" type="button" aria-selected="${i === 0}">${i === 6 && bordTab ? bordTab : t}</button>`).join('')
+  const others = `<span class="byd-editor-here-others" aria-hidden="true">${FOLK.slice(1).map(face).join('')}</span>`
+  return '<header>'
+    + `<a class="byd-editor-home" href="#" aria-label="${o.home}"><span class="byd-editor-home-arrow" aria-hidden="true">${G.arrow}</span><span class="byd-editor-home-word">${o.home}</span></a>`
+    + `<h1 class="byd-editor-name"><strong>${GAME}</strong></h1>`
+    + `<span class="byd-editor-more"><button type="button" aria-label="${o.more(GAME)}" aria-expanded="false">${G.more}</button></span>`
+    + `<button type="button" class="byd-editor-rev" aria-expanded="false">v7</button>`
+    + `<span class="byd-editor-saved" role="status" data-unsaved="false" data-saved-word="${o.saved}" data-unsaved-word="${o.unsaved}"><span class="byd-editor-saved-word">${o.saved}</span><span class="byd-editor-saved-mark" aria-hidden="true">${G.check}</span></span>`
+    + `<span class="byd-editor-steps"><button type="button" aria-label="${o.undo}" aria-disabled="true">${G.hook(false)}</button><button type="button" aria-label="${o.redo}" aria-disabled="true">${G.hook(true)}</button></span>`
+    + `<nav role="tablist" aria-label="${o.tablist}">${tabs}</nav>`
+    + `<button type="button" class="byd-editor-here" data-here aria-label="${o.here(3)}" aria-expanded="false">${face(FOLK[0])}<span class="byd-editor-here-word" aria-hidden="true">${o.share}</span>${others}</button>`
+    + '<span class="byd-editor-spacer"></span>'
+    + `<button type="button" class="byd-secondary byd-editor-save" aria-disabled="true">${o.save}</button>`
+    + `<button type="button" class="byd-editor-primary byd-primary" data-table-kind="running" aria-label="${o.update}"><span class="byd-editor-primary-long">${o.update}</span><span class="byd-editor-primary-short" aria-hidden="true">${o.updateShort}</span></button>`
+    + `<span class="byd-editor-split"><button type="button" class="byd-editor-primary byd-primary byd-editor-caret" aria-label="${o.ways}" aria-expanded="false" data-drop>${G.chevron}</button></span>`
+    + '</header>'
+}
+
+// ── Bandet ──────────────────────────────────────────────────────────────────────────────────────
+const names = (n) => PLATSER.slice(0, n)
+function chips(o, n, withFace) {
+  return names(n).map((name) => `<li class="byd-chip" data-host-seat="${name.toLowerCase()}">${withFace ? `<i class="bb-face" style="--who:${colourOf(name.toLowerCase())}" aria-hidden="true">${name[0]}</i>` : ''}${name}<button type="button" aria-label="${o.kick(name)}" title="${o.kick(name)}" aria-expanded="false">${G.close}</button></li>`).join('')
+}
+function ask(o) {
+  return `<div class="byd-editor-table-ask" role="alertdialog" aria-label="${o.ask}"><p><b>${o.ask}</b> ${o.askBody}</p><button type="button" data-kind="danger">${o.kick('Bo')}</button><button type="button" data-kind="danger">${o.askRotate}</button><button type="button">${o.cancel}</button></div>`
+}
+const said = (o) => `<p class="byd-editor-table-said" role="status" data-code-said>${o.said}</p>`
+const lostAttr = (lage) => (lage === 'tappat' ? ' data-lost=""' : '')
+
+// 0: EditorPage.tsx rad för rad.
+function band0(o, lage, n) {
+  let mid = ''
+  if (lage === 'tappat') mid = ` — <span class="byd-editor-warning">${o.lost}</span> <button type="button">${o.retry}</button>`
+  else if (lage === 'laddar') mid = ` — <span class="byd-editor-rendering">${o.rendering}</span>`
+  else mid = ` — <a href="#">${o.open}</a>`
+  const seats = n === 0 ? '' : `<span class="byd-editor-seats-at">· <span id="at">${o.at}</span></span><ul class="byd-editor-seats" aria-labelledby="at">${chips(o, n, false)}</ul>`
+  return `<div class="byd-editor-table-link" role="status"${lostAttr(lage)}>${o.running}${mid}<span class="byd-editor-room"> · ${o.roomCode} <strong data-room-code>UF6H2W</strong> <button type="button" aria-expanded="false">${o.newCode}</button></span>${seats}${lage === 'fraga' && n > 0 ? ask(o) : ''}${lage === 'nykod' ? said(o) : ''}</div>`
+}
+
+const dot = '<i class="bb-dot" aria-hidden="true"></i>'
+const codeTile = (o, small) => `<span class="bb-code"><small>${o.roomCode}</small><strong data-room-code>UF6H2W</strong><button type="button" class="bb-icon" aria-label="${o.copy}" title="${o.copy}">${G.copy}</button></span>`
+const openBtn = (o, lage) => lage === 'laddar' || lage === 'tappat' ? '' : `<a class="bb-open" href="#" aria-label="${o.openAria}">${o.Open}${G.out}</a>`
+const moreBtn = (o) => `<button type="button" class="bb-more" aria-label="${o.moreOf}" aria-expanded="false">${G.more}</button>`
+function state(o, lage) {
+  if (lage === 'tappat') return `<span class="bb-state"><span class="byd-editor-warning">${o.lost}</span> <button type="button" class="bb-retry">${o.retry}</button></span>`
+  if (lage === 'laddar') return `<span class="bb-state"><span class="byd-editor-rendering">${o.rendering}</span></span>`
+  return ''
+}
+
+// A: samma rad, fyra grupper.
+function bandA(o, lage, n) {
+  const seats = `<span class="bb-seats">${n === 0 ? `<small>${o.nobody}</small>` : `<ul class="byd-editor-seats" aria-label="${o.at}">${chips(o, n, false)}</ul>`}</span>`
+  return `<div class="byd-editor-table-link bb bb-a" role="status"${lostAttr(lage)}>`
+    + `<span class="bb-live">${dot}<b>${o.runs}</b> <code>${o.v}</code></span>`
+    + codeTile(o)
+    + state(o, lage)
+    + seats
+    + `<span class="bb-end">${openBtn(o, lage)}${moreBtn(o)}</span>`
+    + (lage === 'fraga' && n > 0 ? ask(o) : '') + (lage === 'nykod' ? said(o) : '')
+    + '</div>'
+}
+
+// B: biljetten.
+function bandB(o, lage, n) {
+  const line2 = lage === 'tappat' || lage === 'laddar' ? state(o, lage) : `<span class="bb-seats">${n === 0 ? `<small>${o.nobody}</small>` : `<ul class="byd-editor-seats" aria-label="${o.at}">${chips(o, n, true)}</ul>`}</span>`
+  return `<div class="byd-editor-table-link bb bb-b" role="status"${lostAttr(lage)}>`
+    + `<span class="bb-ticket"><small>${o.roomCode}</small><strong data-room-code>UF6H2W</strong></span>`
+    + `<span class="bb-facts"><span class="bb-live">${dot}<b>${o.runs}</b> <code>${o.v}</code><span class="bb-sep"></span>${G.tv}<span class="bb-quiet">${o.screen}</span><button type="button" class="bb-icon" aria-label="${o.copy}" title="${o.copy}">${G.copy}</button></span>${line2}</span>`
+    + `<span class="bb-end">${openBtn(o, lage)}${moreBtn(o)}</span>`
+    + (lage === 'fraga' && n > 0 ? ask(o) : '') + (lage === 'nykod' ? said(o) : '')
+    + '</div>'
+}
+
+// C: smal statusrad; platserna bor i Bord-fliken.
+function bandC(o, lage, n) {
+  const who = n === 0 ? o.nobody : o.playing(n === 1 ? names(1)[0] : o.och(names(n).slice(0, -1).join(', '), names(n)[n - 1]))
+  const mid = lage === 'tappat' || lage === 'laddar' ? state(o, lage) : lage === 'nykod' ? `<span class="bb-who" data-code-said>${o.said}</span>` : `<span class="bb-quiet bb-who">${who}</span>`
+  return `<div class="byd-editor-table-link bb bb-c" role="status"${lostAttr(lage)}>`
+    + `${dot}<strong data-room-code>UF6H2W</strong><code>${o.v}</code>${mid}`
+    + `<span class="bb-end">${openBtn(o, lage)}<button type="button" class="bb-tab">${o.toTab}</button></span>`
+    + '</div>'
+}
+// Filten i miniatyr: två högar och platserna som färgade prickar runt kanten (D), eller med
+// namn (E). Ritad av prototypen; i appen är det Bord-flikens `.byd-tables-mini` (bordet i skala).
+const SEAT_AT = [[50, 6], [22, 6], [78, 6], [50, 94], [22, 94], [78, 94], [6, 50], [94, 50]]
+function felt(n, w, h, withNames) {
+  const seats = names(n).map((name, i) => `<b class="bb-seat" style="--seat:${PALETT[i]};left:${SEAT_AT[i][0]}%;top:${SEAT_AT[i][1]}%"${withNames ? '' : ` title="${name}"`}>${withNames ? name : name[0]}</b>`).join('')
+  return `<span class="bb-felt" style="width:${w}px;height:${h}px" aria-hidden="true"><i class="bb-pile"></i><i class="bb-pile bb-pile2"></i>${seats}</span>`
+}
+const bar = (lage) => (lage === 'laddar' ? '<i class="bb-bar" style="--done:15.6%" aria-hidden="true"></i>' : '')
+
+// D: dockan längst ned, «nu spelas».
+function bandD(o, lage, n) {
+  const seats = lage === 'tappat' || lage === 'laddar' ? state(o, lage) : `<span class="bb-seats">${n === 0 ? `<small>${o.nobody}</small>` : `<ul class="byd-editor-seats" aria-label="${o.at}">${chips(o, n, true)}</ul>`}</span>`
+  return `<div class="byd-editor-table-link bb bb-d" role="status"${lostAttr(lage)}>${bar(lage)}`
+    + felt(n, 72, 44, false)
+    + `<span class="bb-d-title"><b>${GAME}</b><span class="bb-quiet">${dot}${o.runs} <code>${o.v}</code> · ${o.screen}</span></span>`
+    + `<span class="bb-code bb-d-code"><small>${o.roomCode}</small><strong data-room-code>UF6H2W</strong><button type="button" class="bb-icon" aria-label="${o.copy}" title="${o.copy}">${G.copy}</button></span>`
+    + seats
+    + `<span class="bb-end">${lage === 'laddar' || lage === 'tappat' ? '' : `<a class="bb-open bb-open-accent" href="#" aria-label="${o.openAria}">${o.Open}${G.out}</a>`}${moreBtn(o)}</span>`
+    + (lage === 'fraga' && n > 0 ? ask(o) : '') + (lage === 'nykod' ? said(o) : '')
+    + '</div>'
+}
+
+// E: bordskortet, flytande nere till höger; hopfällt ett piller.
+function bandE(o, lage, n) {
+  if (lage === 'hopfalld') return `<button type="button" class="byd-editor-table-link bb bb-e bb-e-pill" aria-expanded="false">${dot}<strong data-room-code>UF6H2W</strong><span class="bb-quiet">· ${n === 0 ? o.nobody : o.seated(n)}</span>${G.chevron}</button>`
+  const mid = lage === 'tappat' ? `<div class="bb-e-state">${state(o, lage)}</div>` : lage === 'laddar' ? `<div class="bb-e-state"><span class="byd-editor-rendering">${o.rendering}</span></div>` : ''
+  return `<div class="byd-editor-table-link bb bb-e" role="status"${lostAttr(lage)}>`
+    + `<span class="bb-e-head">${dot}<b>${o.runs}</b> <code>${o.v}</code><span class="bb-quiet">· ${o.screen}</span><button type="button" class="bb-icon" aria-label="${o.fold}" aria-expanded="true">${G.chevron}</button></span>`
+    + `<span class="bb-e-felt">${felt(n, 268, 150, true)}${bar(lage)}</span>`
+    + mid
+    + `<span class="bb-code bb-e-code"><small>${o.roomCode}</small><strong data-room-code>UF6H2W</strong><button type="button" class="bb-icon" aria-label="${o.copy}" title="${o.copy}">${G.copy}</button></span>`
+    + (n === 0 ? `<small class="bb-quiet">${o.nobody}</small>` : `<ul class="byd-editor-seats" aria-label="${o.at}">${chips(o, n, false)}</ul>`)
+    + (lage === 'fraga' && n > 0 ? ask(o) : '') + (lage === 'nykod' ? said(o) : '')
+    + `<span class="bb-end bb-e-actions">${lage === 'laddar' || lage === 'tappat' ? '' : `<a class="bb-open" href="#" aria-label="${o.openAria}">${o.Open}${G.out}</a>`}${moreBtn(o)}</span>`
+    + '</div>'
+}
+
+// F: inget band; fliken lyser och foten säger ny kod.
+function tabF(o, lage, n) {
+  const live = lage === 'laddar' ? `${dot}<span class="bb-f-n">12/77</span>` : lage === 'tappat' ? `${G.warn}<span class="bb-f-n">${o.lostShort}</span>` : `${dot}<strong data-room-code>UF6H2W</strong>`
+  return `${o.tabs[6]}<span class="bb-f-live"${lage === 'tappat' ? ' data-lost' : ''}>${live}</span>`
+}
+const footF = (o, lage) => (lage === 'nykod' ? `<span class="byd-editor-confirm">${G.check}${o.said}</span>` : '')
+const BAND = { 0: band0, A: bandA, B: bandB, C: bandC, D: bandD, E: bandE }
+// Var bordet står: under huvudet, längst ned, över arbetet, eller ingenstans.
+const PLATS = { 0: 'top', A: 'top', B: 'top', C: 'top', D: 'bottom', E: 'float', F: 'none' }
+const ARBETE = { top: 40, bottom: 120, float: 620, none: 120 }
+
+// ── Prototypens egna regler, lagda efter appens. Inget av «0» ändras. ───────────────────────────
+const BAS = `
+  html, body { margin: 0; height: auto; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; background: #23262e; }
+  .byd-editor { height: auto; min-height: 0; }
+  .arbete { background: #1b1d23; color: #5d6577; font-size: 12px; padding: 10px 16px; background-image: repeating-linear-gradient(90deg, transparent 0 139px, #22252d 139px 140px); box-sizing: border-box; }
+`
+const BB = `
+  /* Gemensamt för A, B och C. Tokens: bandets gröna (i dag) eller Bord-flikens krom med den levande
+     gröna kanten (--byd-tables-live-ink, #8fd6a6). */
+  .bb { --bb-ink: #e3f3e8; --bb-quiet: #a9d8b8; --bb-strong: #fff; --bb-live: #7dd3a0; --bb-tile: #16201a; --bb-line: #5f7f69; --bb-hover: #2a3a2c; }
+  .bb[data-grund='krom'] { --byd-editor-table-bg: #1b1e27; --bb-ink: #e6ecfa; --bb-quiet: #a9b3c9; --bb-live: #8fd6a6; --bb-tile: #11141b; --bb-line: #3a4050; --bb-hover: #242938; box-shadow: inset 3px 0 0 var(--bb-live); color: var(--bb-ink); --byd-chip-line: #3a4050; --byd-chip-ink: #e6ecfa; --byd-chip-mark: #a9b3c9; --byd-chip-hover: #242938; }
+  .bb[data-lost] { --bb-ink: var(--byd-editor-lost-ink); --bb-quiet: var(--byd-editor-lost-quiet); --bb-live: #f4b9c7; --bb-tile: #2a1a22; --bb-line: var(--byd-editor-lost-button-line); --bb-hover: var(--byd-editor-lost-button-bg); box-shadow: none; }
+  .bb[data-lost] .bb-dot::after { animation: none; }
+  .bb .bb-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--bb-live); position: relative; flex: none; }
+  .bb .bb-dot::after { content: ''; position: absolute; inset: -4px; border-radius: 50%; border: 2px solid var(--bb-live); opacity: 0; animation: bb-puls 2.4s ease-out infinite; }
+  @keyframes bb-puls { 0% { transform: scale(.5); opacity: .8 } 70% { transform: scale(1.15); opacity: 0 } 100% { opacity: 0 } }
+  @media (prefers-reduced-motion: reduce) { .bb .bb-dot::after { animation: none; } }
+  .bb .bb-live { display: inline-flex; align-items: center; gap: var(--byd-s2); color: var(--bb-ink); white-space: nowrap; }
+  .bb .bb-live b { color: var(--bb-strong); font-weight: 700; }
+  .bb code { font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--bb-quiet); }
+  .bb .bb-quiet { color: var(--bb-quiet); }
+  .bb .bb-sep { width: 1px; height: 14px; background: var(--bb-line); margin: 0 var(--byd-s1); }
+  .bb .bb-code { display: inline-flex; align-items: center; gap: var(--byd-s2); white-space: nowrap; }
+  .bb .bb-code small, .bb .bb-ticket small, .bb .bb-seats > small { font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--bb-quiet); font-weight: 600; }
+  .bb [data-room-code] { font-family: ui-monospace, Menlo, monospace; font-weight: 700; letter-spacing: 3px; color: var(--bb-strong); background: var(--bb-tile); padding: 3px 6px 3px 9px; border-radius: 6px; font-size: 14px; line-height: 20px; }
+  .byd-editor-table-link.bb button.bb-icon { display: inline-grid; place-items: center; width: var(--byd-tap); height: var(--byd-tap); border: 0; border-radius: 8px; padding: 0; background: transparent; color: var(--bb-quiet); font-size: 16px; cursor: pointer; margin: calc((28px - var(--byd-tap)) / 2) calc((20px - var(--byd-tap)) / 2); }
+  .byd-editor-table-link.bb button.bb-icon:hover { background: var(--bb-hover); color: var(--bb-strong); }
+  .bb .bb-seats { display: inline-flex; align-items: center; gap: var(--byd-s2); min-width: 0; }
+  .bb .bb-seats > small { white-space: nowrap; }
+  .bb .bb-state { display: inline-flex; align-items: center; gap: var(--byd-s2); min-width: 0; }
+  .bb .bb-end { display: inline-flex; align-items: center; gap: var(--byd-s1); margin-left: auto; }
+  .bb .bb-open, .bb .bb-more, .bb .bb-retry, .bb .bb-tab { display: inline-flex; align-items: center; justify-content: center; gap: var(--byd-s2); min-height: var(--byd-tap); padding: 0 var(--byd-s3); border: 1px solid var(--bb-line); border-radius: 8px; background: transparent; color: var(--bb-ink); font: inherit; font-weight: 700; text-decoration: none; white-space: nowrap; cursor: pointer; }
+  .bb .bb-open { color: var(--bb-strong); border-color: var(--bb-quiet); }
+  .bb .bb-open .byd-glyph { font-size: 14px; color: var(--bb-quiet); }
+  .bb .bb-open:hover { background: var(--bb-hover); }
+  .bb .bb-more { width: var(--byd-tap); padding: 0; font-size: 16px; }
+  .bb .bb-more:hover, .bb .bb-tab:hover { background: var(--bb-hover); }
+  .bb .bb-retry { min-height: 36px; font-weight: 600; }
+  .bb[data-lost] .bb-retry { background: var(--byd-editor-lost-button-bg); color: var(--byd-editor-lost-ink); }
+  .bb .byd-editor-table-ask, .bb .byd-editor-table-said { color: var(--bb-ink); }
+  .bb .byd-editor-table-ask > p > b { color: var(--bb-strong); }
+  .bb .byd-editor-table-ask button { border-color: var(--bb-line); color: var(--bb-ink); }
+  .bb .bb-face { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--who); color: #10131a; font: 800 10px system-ui; font-style: normal; margin-left: -4px; }
+
+  /* A: samma rad, och den bryter som i dag (L60): platserna går under koden som en grupp när de
+     inte ryms bredvid, och vägen in följer med till den radens högra ände. Grupperna står 24 px
+     isär, det som hör ihop 8. */
+  .bb-a { gap: var(--byd-s2) var(--byd-s5); padding: var(--byd-s2) var(--byd-s4); }
+
+  /* B: biljetten till vänster, fakta på två rader, vägen in till höger. */
+  .bb-b { gap: var(--byd-s2) var(--byd-s4); padding: var(--byd-s2) var(--byd-s4); align-items: center; }
+  .bb-b .bb-ticket { display: inline-grid; gap: 2px; justify-items: start; padding-right: var(--byd-s4); border-right: 1px solid var(--bb-line); align-self: stretch; align-content: center; }
+  .bb-b .bb-ticket [data-room-code] { font-size: 20px; line-height: 26px; letter-spacing: 5px; padding: 3px 7px 3px 12px; }
+  .bb-b .bb-facts { display: grid; gap: var(--byd-s1); min-width: 0; flex: 1 1 320px; }
+  .bb-b .bb-facts .bb-live .byd-glyph { color: var(--bb-quiet); font-size: 14px; }
+  .byd-editor-table-link.bb-b .bb-facts button.bb-icon { margin: calc((20px - var(--byd-tap)) / 2) 0; }
+  .bb-b .bb-seats .byd-chip { padding-left: 10px; }
+  .bb-b .byd-editor-table-ask, .bb-b .byd-editor-table-said { flex-basis: 100%; }
+
+  /* C: en rad på 36 px, utan brickor. Vägen in och länken till Bord är ord med en träffyta på
+     44 px som hänger 4 px över radens kanter (som hjälpens «?»), inte kantade knappar. */
+  .bb-c { gap: var(--byd-s3); padding: 0 var(--byd-s4); min-height: 36px; flex-wrap: nowrap; }
+  .bb-c [data-room-code] { font-size: 13px; line-height: 18px; letter-spacing: 2px; padding: 2px 4px 2px 6px; }
+  .bb-c .bb-who { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--bb-quiet); }
+  .bb-c .bb-who[data-code-said] { color: var(--bb-ink); }
+  .bb-c a.bb-open, .byd-editor-table-link.bb-c button.bb-tab { min-height: var(--byd-tap); margin: -4px 0; padding: 0 var(--byd-s2); border: 0; border-radius: 6px; font-size: 12px; background: transparent; }
+  .bb-c a.bb-open { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--bb-quiet); }
+  .byd-editor-table-link.bb-c button.bb-tab { font-weight: 600; color: var(--bb-quiet); }
+  .byd-editor-table-link.bb-c button.bb-tab:hover { color: var(--bb-ink); background: var(--bb-hover); }
+  .bb-c .bb-end { gap: var(--byd-s2); }
+  .byd-editor-table-link.bb-c button.bb-retry { min-height: 28px; margin: 0; }
+`
+const BB2 = `
+  .arbete { position: relative; }
+  .arbete .fot { position: absolute; left: 16px; bottom: 8px; }
+  .arbete .byd-editor-confirm { display: inline-flex; align-items: center; }
+
+  /* Filten i miniatyr. */
+  .bb-felt { position: relative; display: inline-block; flex: none; border-radius: 8px; background: radial-gradient(ellipse at 50% 40%, #2e6b46, #1f4a30 70%, #173a26); box-shadow: inset 0 0 0 1px #0d0f14, 0 1px 0 rgba(255,255,255,.06); }
+  .bb-felt .bb-pile { position: absolute; left: 36%; top: 32%; width: 13%; height: 36%; border-radius: 2px; background: #1a1e2a; box-shadow: 1px 1px 0 #3b4358; }
+  .bb-felt .bb-pile2 { left: 52%; background: #f4f1ea; box-shadow: 1px 1px 0 #c9c3b5; }
+  .bb-felt .bb-seat { position: absolute; transform: translate(-50%, -50%); display: grid; place-items: center; min-width: 12px; height: 12px; padding: 0 3px; border-radius: 999px; background: var(--seat); color: #0d0f14; font: 800 8px/1 system-ui; white-space: nowrap; }
+  .bb-e .bb-felt .bb-seat { min-width: 18px; height: 18px; padding: 0 7px; font-size: 10px; }
+  .bb-bar { position: absolute; left: 0; right: 0; top: 0; height: 3px; background: linear-gradient(90deg, #ffd98a var(--done, 0%), #3a3222 0); }
+
+  /* D: dockan. Panelens mörka grund, en linje upptill, filtens bärnsten för vägen in. */
+  .bb-d { position: relative; --byd-editor-table-bg: #171a23; --bb-ink: #e6ecfa; --bb-quiet: #9aa3b8; --bb-strong: #fff; --bb-live: #8fd6a6; --bb-tile: #0f1218; --bb-line: #3b4358; --bb-hover: #242938; --byd-chip-line: #3b4358; --byd-chip-ink: #e6ecfa; --byd-chip-mark: #9aa3b8; --byd-chip-hover: #242938; border-bottom: 0; border-top: 1px solid #2f333d; gap: var(--byd-s2) var(--byd-s4); padding: var(--byd-s2) var(--byd-s4); min-height: 64px; box-shadow: none; }
+  .bb-d[data-grund='krom'] { box-shadow: none; }
+  .bb-d[data-lost] { --byd-editor-table-bg: var(--byd-editor-lost-bg); }
+  .bb-d .bb-d-title { display: inline-grid; gap: 2px; min-width: 0; }
+  .bb-d .bb-d-title > b { color: var(--bb-strong); font-size: 14px; white-space: nowrap; }
+  .bb-d .bb-d-title > span { display: inline-flex; align-items: center; gap: var(--byd-s2); white-space: nowrap; font-size: 12px; }
+  .bb-d .bb-d-code { margin-left: var(--byd-s2); }
+  .bb-d .bb-seats .byd-chip { padding-left: 10px; }
+  .bb-d .bb-open-accent { background: #f0b64a; border-color: #f0b64a; color: #1c1c1c; }
+  .bb-d .bb-open-accent .byd-glyph { color: #1c1c1c; }
+  .bb-d .bb-open-accent:hover { background: #ffd98a; border-color: #ffd98a; }
+  .bb-d .byd-editor-table-ask, .bb-d .byd-editor-table-said { order: -1; padding-bottom: var(--byd-s1); border-bottom: 1px solid #2f333d; }
+
+  /* E: bordskortet, nere till höger över arbetet; samma panel som historiken och delningen. */
+  .bb-e { position: absolute; right: 16px; bottom: 16px; z-index: 20; width: 300px; display: grid; gap: var(--byd-s3); padding: var(--byd-s3) var(--byd-s4) var(--byd-s4); border-radius: 14px; border: 1px solid #3b4358; box-shadow: 0 18px 40px rgba(0,0,0,.5); --byd-editor-table-bg: #171a23; --bb-ink: #e6ecfa; --bb-quiet: #9aa3b8; --bb-strong: #fff; --bb-live: #8fd6a6; --bb-tile: #0f1218; --bb-line: #3b4358; --bb-hover: #242938; --byd-chip-line: #3b4358; --byd-chip-ink: #e6ecfa; --byd-chip-mark: #9aa3b8; --byd-chip-hover: #242938; }
+  .bb-e[data-grund='krom'] { box-shadow: 0 18px 40px rgba(0,0,0,.5); }
+  .bb-e[data-lost] { --byd-editor-table-bg: var(--byd-editor-lost-bg); border-color: #7a3243; }
+  .bb-e .bb-e-head { display: flex; align-items: center; gap: var(--byd-s2); color: var(--bb-ink); }
+  .bb-e .bb-e-head > b { color: var(--bb-strong); }
+  .bb-e .bb-e-head > button { margin-left: auto; }
+  .bb-e .bb-e-felt { position: relative; display: block; }
+  .bb-e .bb-e-felt .bb-bar { top: auto; bottom: 0; border-radius: 0 0 8px 8px; }
+  .bb-e .bb-e-code [data-room-code] { font-size: 18px; line-height: 24px; letter-spacing: 4px; }
+  .bb-e .bb-e-state { display: grid; gap: var(--byd-s2); }
+  .bb-e .byd-editor-seats { gap: var(--byd-s1) var(--byd-s2); }
+  .bb-e .byd-editor-table-ask { flex-basis: auto; display: grid; padding-top: 0; }
+  .bb-e .bb-e-actions { margin-left: 0; display: flex; }
+  .bb-e .bb-e-actions .bb-open { flex: 1; }
+  .byd-editor-table-link.bb-e-pill { position: absolute; right: 16px; bottom: 16px; width: auto; display: inline-flex; align-items: center; gap: var(--byd-s2); min-height: var(--byd-tap); padding: 0 var(--byd-s3) 0 var(--byd-s4); border-radius: 999px; font: inherit; font-weight: 600; color: var(--bb-ink); cursor: pointer; }
+  .byd-editor-table-link.bb-e-pill .byd-glyph { transform: rotate(180deg); color: var(--bb-quiet); }
+
+  /* F: fliken lyser. */
+  [role='tab']:has(.bb-f-live) { white-space: nowrap; }
+  .bb-f-live { display: inline-flex; align-items: center; gap: 6px; margin-left: 8px; color: #8fd6a6; font-weight: 600; }
+  .bb-f-live .bb-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #8fd6a6; position: relative; }
+  .bb-f-live .bb-dot::after { content: ''; position: absolute; inset: -4px; border-radius: 50%; border: 2px solid #8fd6a6; opacity: 0; animation: bb-puls 2.4s ease-out infinite; }
+  .bb-f-live [data-room-code] { font-family: ui-monospace, Menlo, monospace; letter-spacing: 2px; font-size: 12px; color: #fff; }
+  .bb-f-live .bb-f-n { font-family: ui-monospace, Menlo, monospace; font-variant-numeric: tabular-nums; }
+  .bb-f-live[data-lost] { color: #ffd98a; }
+  .bb-f-live .byd-glyph { font-size: 14px; }
+  @media (max-width: 1279px) { .bb-f-live > :not(.bb-dot):not(.byd-glyph) { display: none; } .bb-f-live { margin-left: 6px; } }
+`
+const BRED = `.byd-editor, .byd-editor * { font-family: Verdana, 'DejaVu Sans', sans-serif !important; }`
+
+function srcdoc(v, lage) {
+  const o = ORD[st.lang]
+  const grund = v === '0' ? 'gron' : st.grund
+  const where = PLATS[v]
+  const band = where === 'none' ? '' : BAND[v](o, lage === 'hopfalld' && v !== 'E' ? 'kor' : lage, st.platser).replace('class="byd-editor-table-link bb', `data-grund="${grund}" class="byd-editor-table-link bb`)
+  const foot = v === 'F' ? footF(o, lage) : ''
+  const arbete = `<div class="arbete" style="height:${ARBETE[where]}px">${o.tabs[0]}${where === 'float' ? band : ''}<span class="fot">${foot}</span></div>`
+  return `<!doctype html><html lang="${st.lang}"><head><meta charset="utf-8"><link rel="stylesheet" href="appen.css"><style>${BAS}${BB}${BB2}${st.font === 'bred' ? BRED : ''}</style></head><body><div class="byd-editor" data-page="editor" data-mode="wall" data-room="desk" data-v="${v}">${header(o, v === 'F' ? tabF(o, lage, st.platser) : null)}${where === 'top' ? band : ''}${arbete}${where === 'bottom' ? band : ''}</div></body></html>`
+}
+
+// ── Mätningen ───────────────────────────────────────────────────────────────────────────────────
+let loads = 0
+function load(frame, html) {
+  return new Promise((res) => {
+    frame.onload = async () => { await frame.contentDocument.fonts.ready; requestAnimationFrame(() => requestAnimationFrame(() => res(frame.contentDocument))) }
+    frame.srcdoc = html + `<!-- ${++loads} -->`
+  })
+}
+function measure(doc) {
+  const nm = doc.querySelector('.byd-editor-name')
+  const h = doc.querySelector('header')
+  const name = [nm.clientWidth, nm.scrollWidth]
+  const headOver = Math.max(0, h.scrollWidth - h.clientWidth)
+  const total = doc.querySelector('.byd-editor').getBoundingClientRect().height
+  const live = doc.querySelector('.bb-f-live')
+  let tabCut = false
+  if (live) { const nav = live.closest('[role=tablist]').getBoundingClientRect(); const r = live.getBoundingClientRect(); tabCut = r.right > nav.right + 0.5 || r.width === 0 }
+  const band = doc.querySelector('.byd-editor-table-link')
+  if (!band) return { height: 0, rows: 0, over: 0, total: Math.ceil(total), name, headOver, none: true, tabCut }
+  const b = band.getBoundingClientRect()
+  // Raderna i bandet: hur många olika överkanter de direkta barnen står på (frågan och «sagt» räknas
+  // som egna rader, som de är).
+  // Två saker står på samma rad när deras mittlinjer ligger inom 12 px.
+  const mids = []
+  const seen = (el) => { const r = el.getBoundingClientRect(); if (r.height === 0) return; const m = r.top + r.height / 2; if (!mids.some((x) => Math.abs(x - m) < 12)) mids.push(m) }
+  for (const el of band.children) seen(el)
+  for (const el of band.querySelectorAll('.byd-editor-seats > li')) seen(el)
+  const over = Math.max(0, band.scrollWidth - band.clientWidth)
+  return { height: Math.round(b.height), width: Math.round(b.width), rows: Math.max(1, mids.length), over: Math.round(over), total: Math.ceil(total), name, headOver, float: getComputedStyle(band).position === 'absolute' }
+}
+
+// ── Ritningen ───────────────────────────────────────────────────────────────────────────────────
+let gen = 0
+const FORE = {}
+async function block(el, v, title, sub) {
+  const my = gen
+  const avail = el.clientWidth - 144
+  const s = Math.min(1, avail / st.w)
+  el.innerHTML = `<h2>${title} <small>${sub}</small></h2><div class="stapel">${LAGEN.map(([k, label]) => `<div class="radnamn" data-k="${k}"><b>${label}</b><span></span></div><div class="ram" style="width:${st.w * s}px;height:${200 * s}px"><iframe style="width:${st.w}px;height:200px;transform:scale(${s})" title="Bandet"></iframe></div>`).join('')}</div>`
+  const frames = [...el.querySelectorAll('iframe')]
+  for (let i = 0; i < LAGEN.length; i++) {
+    const doc = await load(frames[i], srcdoc(v, LAGEN[i][0]))
+    if (my !== gen) return
+    const m = measure(doc)
+    if (v === '0') FORE[LAGEN[i][0]] = m
+    const ram = frames[i].parentElement
+    frames[i].style.height = m.total + 'px'
+    ram.style.height = m.total * s + 'px'
+    const span = el.querySelector(`.radnamn[data-k="${LAGEN[i][0]}"] span`)
+    const bits = m.none ? ['<span class="ok">inget band</span>'] : m.float ? [`kortet ${m.width} × ${m.height} px`, `<span class="ok">0 px ur arbetet</span>`] : [`bandet ${m.height} px`, m.rows === 1 ? '<span class="ok">1 rad</span>' : `${m.rows} rader`]
+    if (m.over > 0) bits.push(`<span class="nej">rinner ut ${m.over} px</span>`)
+    const fore = FORE[LAGEN[i][0]]
+    if (fore && m.name[0] < fore.name[0] - 0.5) bits.push(`<span class="nej">namnet klipps ${m.name[0]}/${m.name[1]} px (i dag ${fore.name[0]})</span>`)
+    else if (v === 'F') bits.push(m.name[0] < m.name[1] ? `namnet som i dag, ${m.name[0]}/${m.name[1]} px` : '<span class="ok">namnet helt</span>')
+    if (m.headOver > 0) bits.push(`<span class="nej">huvudet ${m.headOver} px för brett</span>`)
+    if (m.tabCut) bits.push('<span class="nej">fliken klipps</span>')
+    else if (v === 'F') bits.push(st.w < 1280 ? 'fliken: bara punkten' : '<span class="ok">fliken hel</span>')
+    span.innerHTML = bits.join('<br>')
+  }
+}
+
+function knappar() {
+  const grp = (id, key, list) => {
+    const g = document.getElementById(id)
+    g.querySelectorAll('button').forEach((b) => b.remove())
+    for (const [val, label] of list) {
+      const b = document.createElement('button')
+      b.type = 'button'
+      b.textContent = label
+      b.setAttribute('aria-pressed', String(String(st[key]) === String(val)))
+      b.onclick = () => { st[key] = typeof st[key] === 'number' ? Number(val) : val; rita() }
+      g.append(b)
+    }
+  }
+  grp('g-v', 'v', [['0', '0 · i dag'], ['D', 'D · dockan'], ['E', 'E · bordskortet'], ['F', 'F · fliken'], ['A', 'A · struktur'], ['B', 'B · biljetten'], ['C', 'C · smal rad']])
+  grp('g-w', 'w', [[1024, '1024'], [1280, '1280'], [1440, '1440']])
+  grp('g-font', 'font', [['mac', 'Macens'], ['bred', 'Verdana (CI)']])
+  grp('g-lang', 'lang', [['sv', 'sv'], ['en', 'en']])
+  grp('g-platser', 'platser', [[0, '0'], [3, '3'], [8, '8']])
+  grp('g-grund', 'grund', [['gron', 'grön (som i dag)'], ['krom', 'krom med grön kant']])
+}
+
+async function rita() {
+  gen++
+  knappar()
+  const V = VARIANTER[st.v]
+  document.getElementById('anteckning').innerHTML = V.text
+  const ks = Object.keys(VARIANTER)
+  document.getElementById('vnamn').textContent = `${V.namn}  (${ks.indexOf(st.v) + 1}/${ks.length})`
+  history.replaceState(null, '', `?v=${st.v}&w=${st.w}&font=${st.font}&lang=${st.lang}&platser=${st.platser}&grund=${st.grund}`)
+  const fn = st.font === 'bred' ? 'Verdana, CI:s bredd' : 'Macens system-ui'
+  const my = gen
+  delete document.body.dataset.klar
+  await block(document.getElementById('fore'), '0', `Före — i dag · ${st.w} px`, `${fn} · ${st.platser} platser`)
+  if (my !== gen) return
+  await block(document.getElementById('efter'), st.v, `Efter — ${V.namn} · ${st.w} px`, `${fn} · ${st.platser} platser · ${st.grund === 'krom' ? 'krom med grön kant' : 'grön grund'} · ${V.kort}`)
+  if (my === gen) document.body.dataset.klar = 'allt'
+}
+function byt(d) { const ks = Object.keys(VARIANTER); st.v = ks[(ks.indexOf(st.v) + d + ks.length) % ks.length]; rita() }
+document.getElementById('bak').onclick = () => byt(-1)
+document.getElementById('fram').onclick = () => byt(1)
+document.addEventListener('keydown', (e) => {
+  if (e.target.closest && e.target.closest('input, textarea, [contenteditable]')) return
+  if (e.key === 'ArrowLeft') byt(-1)
+  if (e.key === 'ArrowRight') byt(1)
+})
+let t
+window.addEventListener('resize', () => { clearTimeout(t); t = setTimeout(rita, 150) })
+rita()
+</script>
+</body>
+</html>

@@ -88,6 +88,19 @@ for (const backend of backends) {
       expect(Object.fromEntries(listed.map((t) => [t.id, t.seating]))).toEqual({ [computer.id]: 'computer', [screen.id]: 'screen' })
     })
 
+    // «Pågår nu» på Mina spel (#1411) säger när ett orört bord startades, så listan bär det med
+    // sig: varje bord vet när det startades, också ett som ingen rört.
+    it('säger när bordet startades, för startsidans «startat i dag»', async () => {
+      const id = await project()
+      const before = Date.now()
+      const made = await table(id, { seating: 'screen' })
+      const listed = (await (await owner('GET', `/projects/${id}/sessions`)).json()) as { id: string; startedAt?: string }[]
+      const at = listed.find((t) => t.id === made.id)?.startedAt
+      expect(at).toMatch(/^\d{4}-\d{2}-\d{2}T/)
+      expect(Date.parse(at!)).toBeGreaterThanOrEqual(before - 1000)
+      expect(Date.parse(at!)).toBeLessThanOrEqual(Date.now() + 1000)
+    })
+
     it('minns svaret när servern startar om', async () => {
       const id = await project()
       const made = await table(id, { seating: 'computer' })

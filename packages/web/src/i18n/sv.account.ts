@@ -100,6 +100,13 @@ export const svAccount = {
   'home.running.game': 'Öppna spelet',
   'home.running.game.aria': 'Öppna {name} i editorn',
   'home.running.open.aria': 'Öppna bordet {code} i {name} (öppnas i bordets egen flik)',
+  // Grupperat per spel (#1411, beslut B): spelets kort, och varje bord en rad som är vägen dit.
+  'home.running.live': 'Pågår',
+  'home.running.still': 'Aldrig spelat',
+  'home.running.moved': 'senaste drag {when}',
+  'home.running.started': 'startat {when}',
+  'home.running.seating.screen': 'Runt en skärm',
+  'home.running.seating.computer': 'Var och en vid sin dator',
   'home.untouched.title': 'Startade, aldrig spelade',
   'home.menu.open': 'Öppna bordet {code}',
   'home.menu.start.new': 'Starta nytt bord',

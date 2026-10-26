@@ -419,13 +419,13 @@ export class PostgresLogStore implements LogStore {
   }
 
   async sessionsOf(project: string): Promise<SessionSummary[]> {
-    const rows = await this.sql<{ id: string; last_at: Date | null }[]>`
-      select s.id, last.at as last_at from sessions s
+    const rows = await this.sql<{ id: string; created_at: Date; last_at: Date | null }[]>`
+      select s.id, s.created_at, last.at as last_at from sessions s
       left join lateral (select at from events e where e.session_id = s.id and e.intent->>'v' = any(${PHYSICAL_VERBS as string[]}) order by seq desc limit 1) last on true
       where s.project = ${project}
       order by s.created_at desc, s.id desc
     `
-    return rows.map((r) => ({ id: r.id, lastAt: r.last_at ? new Date(r.last_at).toISOString() : null }))
+    return rows.map((r) => ({ id: r.id, startedAt: new Date(r.created_at).toISOString(), lastAt: r.last_at ? new Date(r.last_at).toISOString() : null }))
   }
 
   async staleSessions(olderThan: Date): Promise<string[]> {
