@@ -4619,6 +4619,7 @@ Det som ändrats är att brickan och dess skugga är en sak till som skylten ska
 Från 1280 och uppåt hittar varje skylt en fri plats som hel skylt.
 Vid 1024 med två till fyra platser ryms den inte någonstans på filten som den är inpassad, och A står som sin bricka med platsens mark tills spelet startat, vilket är #750:s sista utväg och inte en ny form.
 Grind: `packages/e2e/test/surfaces/start-tile-clear-of-piles.spec.ts`, som mäter ritade pixlar mot varje skylt vid 2–8 platser, 1024–1920, sv och en, och i ett typsnitt lika brett som CI:s.
+Tillägg 2026-10-26 (#1389, beställarens beslut A): skylten viker på samma sätt för ett kort som ligger löst på filten, och går hem igen när kortet tas bort; kortet ligger kvar och kameran rör sig inte (grind: `packages/e2e/test/free-card-near-seat.spec.ts`).
 
 ### K26. Läsbar korttext på skärm: ett golv per skärm, och en handling dit (beslutat 2026-09-28, #505, #506)
 
@@ -7530,16 +7531,18 @@ Halvvägs och inte tätt intill ytorna, eftersom TV:ns skylt för platsen står 
 Bandet ligger inom det kameran redan ramar, eftersom platsernas ytor och högarna är det som är i spel (C5), så kameran behöver inte rama om.
 Nästa kort läggs ett handsteg (26 mm) åt sidan, växelvis till höger och vänster om det första, så att fjädern står kvar mitt för platsen.
 Ett steg är inte ledigt om ett kort redan ligger där, om kortet skulle täcka en bricka (#1202), eller om det skulle ligga på en hög eller på orden under den.
-Orden hänger i pixlar, så deras ruta är mätt där de tar mest filt: på den minsta TV:n, 1280 × 720 med tre platser, når «Draghög» 37 mm under kortet och är 90 mm bred.
+Orden hänger i pixlar, så deras ruta är mätt där de tar mest filt: på den minsta TV:n, 1280 × 720 med sju och åtta platser och i ett typsnitt lika brett som CI:s, når orden knappt 80 mm under kortet och 120 mm åt var sida (#1389; den första mätningen, 37 × 90 mm vid tre platser, lade kortet på «Kasthög» vid fem).
+Ett steg där orden står glider mot platsen, en millimeter i taget och aldrig närmare ytorna än mellanrummet, innan nästa steg åt sidan provas.
 Ordningen är orörd, och det nyaste kortet ligger överst.
 Ingenting som redan ligger flyttas (K2).
 Bordets egen skärm har ingen plats, och dess kort till golvet läggs som förut.
 Telefonens och tangentbordets väg ger samma kuvert, och båda frågar `laidIn`.
 
-Uttryckligen inte löst: vid fem platser är bandet mellan högarnas ord och platsens skylt smalare än ett kort (47 px mot 66 px vid 1920 × 1080), så ingen plats i millimeter är fri vid varje skärm.
-Vad som ger plats där är en egen fråga till beställaren (#1389).
+Vid fem platser är bandet mellan högarnas ord och platsens skylt smalare än ett kort (47 px mot 66 px vid 1920 × 1080), så ingen plats i millimeter är fri vid varje skärm.
+Beställarens beslut 2026-10-26 (#1389, A): skylten viker för ett löst kort, som den viker för startbrickan (K25, #1344), och går hem när kortet tas bort; kortet ligger kvar och kameran rör sig inte.
+Skyltar kan därför byta plats medan man spelar, och där ingen hel skylt får plats blir den sin bricka med platsens mark (#750).
 
-Grindarna är `card-lands-in-area.test.ts`, som mäter platsen vid 2–`MAX_PLAYERS` platser från varje plats, och `packages/e2e/test/free-card-near-seat.spec.ts`, som spelar kortet från telefonen och mäter på ägarens TV att kameran står still och att ingen skylt eller hög står på kortet.
+Grindarna är `card-lands-in-area.test.ts`, som mäter platsen vid 2–`MAX_PLAYERS` platser från varje plats, med och utan räknare, och `packages/e2e/test/free-card-near-seat.spec.ts`, som spelar kortet från telefonen och mäter på ägarens TV att kameran står still och att ingen skylt eller hög står på kortet, och som låter varje plats lägga ett kort vid 2–8 platser, 1280, 1440 och 1920, sv och en och i CI:s bredare typsnitt, och läser på ritade pixlar att ingen skylt och inget av högarnas ord står på något av dem.
 
 ### L48. Ytan framför en plats är publik, och översikten frågar synlighet där arket frågar ägarskap (prototypat och beslutat 2026-09-22, #414; fliken delad från raden 2026-09-24, #465)
 

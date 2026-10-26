@@ -555,9 +555,10 @@ describe('ett kort i en yta med en bricka i (#1202)', () => {
 // `project`.
 describe('ett kort som läggs fritt från telefonen (#1368)', () => {
   const seatsOf = (players: number) => openingSetup({ players, counters: ONE_COUNTER }).seats
-  // Bordet med `cards` kort på platsens hand och platsen tagen.
-  const seated = (players: number, seat: string, cards: number) => {
-    const base = felt(players, 0)
+  // Bordet med `cards` kort på platsens hand och platsen tagen. Utan räknare ligger platsernas ytor
+  // annorlunda, och det var så #1389 såg kortet på «Kasthög» vid fem platser.
+  const seated = (players: number, seat: string, cards: number, counters: Recipe['counters'] = ONE_COUNTER) => {
+    const base = felt(players, 0, counters)
     const table = tableOf({ ...base, components: Array.from({ length: cards }, (_, i) => ({ type: CARD(), cardRef: `kort-${i + 1}`, zone: `hand:${seat}`, face: 'back' as const })) })
     table.run(null, { v: 'seat.claim', seat, name: 'Nina' })
     return table
@@ -575,19 +576,20 @@ describe('ett kort som läggs fritt från telefonen (#1368)', () => {
   const mid = (r: Rect) => ({ x: r.x + r.w / 2, y: r.y + r.h / 2 })
   const far = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.hypot(a.x - b.x, a.y - b.y)
   const overlapping = (a: Rect, b: Rect) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h
-  const cases = SEATS.flatMap((players) => seatsOf(players).map((seat) => [players, seat] as const))
+  const cases = SEATS.flatMap((players) => seatsOf(players).flatMap((seat) => [[players, seat, 'en räknare'] as const, [players, seat, 'inga räknare'] as const]))
 
-  it.each(cases)('vid %i platser landar kortet från %s framför platsen, mot mitten, utan att kameran ramar om', (players, seat) => {
-    const { before, after, box } = playOne(seated(players, seat, 1), seat)
+  it.each(cases)('vid %i platser landar kortet från %s framför platsen, mot mitten, utan att kameran ramar om (%s)', (players, seat, recipe) => {
+    const { before, after, box } = playOne(seated(players, seat, 1, recipe === 'en räknare' ? ONE_COUNTER : []), seat)
     const floor = zoneOf(after, after.floor).geometry
     const centre = mid(floor)
     const own = zoneOf(after, `mine:${seat}`).geometry
     // På filten, och på ingen zon: varken platsens egen yta, en hand, en hög eller orden under den,
-    // som på den minsta TV:n tar 90 × 37 mm under kortet.
+    // som på den minsta TV:n, med sju och åtta platser och i ett typsnitt lika brett som CI:s, tar
+    // 240 × 80 mm under kortet (#1389).
     expect(inside(box, floor)).toBe(true)
     const zones = after.zones
       .filter((z) => z.id !== after.floor)
-      .flatMap((z) => (z.kind === 'pile' ? [{ x: z.geometry.x - CARD_MM.w / 2, y: z.geometry.y - CARD_MM.h / 2, ...CARD_MM }, { x: z.geometry.x - 45, y: z.geometry.y + CARD_MM.h / 2, w: 90, h: 37 }] : [z.geometry]))
+      .flatMap((z) => (z.kind === 'pile' ? [{ x: z.geometry.x - CARD_MM.w / 2, y: z.geometry.y - CARD_MM.h / 2, ...CARD_MM }, { x: z.geometry.x - 120, y: z.geometry.y + CARD_MM.h / 2, w: 240, h: 80 }] : [z.geometry]))
     expect(zones.filter((z) => overlapping(box, z))).toEqual([])
     // Framför den egna platsen: mitt för platsens egna ytor, mellan dem och filtens mitt…
     const zonesOfSeat = after.zones.filter((z) => z.owner === seat && z.kind === 'area').map((z) => z.geometry)

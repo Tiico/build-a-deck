@@ -117,12 +117,17 @@ export function laidIn(view: Snapshot, zone: string, nth = 0, piece = false): La
 //
 // Ett steg som skulle lägga kortet på en hög eller på orden under den är inte heller ledigt. Orden
 // hänger i pixlar och inte i millimeter, så rutan är mätt där de tar mest filt: på den minsta TV:n,
-// 1280 × 720 med tre platser, når «Draghög» 37 mm under kortet och är 90 mm bred.
+// 1280 × 720 med sju och åtta platser, där filten är som minst per millimeter, och i ett typsnitt
+// lika brett som CI:s, når orden knappt 80 mm under kortet och 120 mm åt var sida (#1389; mätt
+// till 37 × 90 mm vid tre platser, och där låg kortet på «Kasthög» vid fem). Ett steg där orden
+// står glider i stället mot platsen, en millimeter i taget och aldrig närmare ytorna än
+// mellanrummet: platsens skylt viker för ett löst kort (#1389, beslut A), så bandet närmast
+// platsen är kortets.
 //
 // Bara en läsare med en plats har ett «framför sig». Bordets egen skärm har ingen plats, och dess
 // kort läggs som förut; `null` säger det.
 const BEFORE_GAP_MM = 10
-const PILE_WORDS_MM = { w: 90, below: 37 }
+const PILE_WORDS_MM = { w: 240, below: 80 }
 
 function beforeSeat(view: Snapshot, floor: ZoneView, nth: number): { x: number; y: number } | null {
   const seat = view.seat
@@ -136,27 +141,39 @@ function beforeSeat(view: Snapshot, floor: ZoneView, nth: number): { x: number; 
   const mid = { x: box.x + box.w / 2, y: box.y + box.h / 2 }
   const edge = view.seats.find((s) => s.id === seat)?.edge ?? edgeToward(mid, centre)
   // The card's corner at the first step, in the table's millimetres: its middle halfway from the
-  // zones' inner edge to the felt's middle line, and never nearer the zones than the gap.
-  const first = (() => {
+  // zones' inner edge to the felt's middle line, and never nearer the zones than the gap. `near`
+  // is the same corner as near the zones as the gap lets it lie.
+  const [first, near] = (() => {
     switch (edge) {
       case 'N': {
         const inner = box.y + box.h
-        return { x: mid.x - CARD_MM.w / 2, y: Math.max((inner + centre.y) / 2 - CARD_MM.h / 2, inner + BEFORE_GAP_MM) }
+        const x = mid.x - CARD_MM.w / 2
+        return [{ x, y: Math.max((inner + centre.y) / 2 - CARD_MM.h / 2, inner + BEFORE_GAP_MM) }, { x, y: inner + BEFORE_GAP_MM }]
       }
-      case 'E':
-        return { x: Math.min((box.x + centre.x) / 2 - CARD_MM.w / 2, box.x - BEFORE_GAP_MM - CARD_MM.w), y: mid.y - CARD_MM.h / 2 }
+      case 'E': {
+        const y = mid.y - CARD_MM.h / 2
+        return [{ x: Math.min((box.x + centre.x) / 2 - CARD_MM.w / 2, box.x - BEFORE_GAP_MM - CARD_MM.w), y }, { x: box.x - BEFORE_GAP_MM - CARD_MM.w, y }]
+      }
       case 'W': {
         const inner = box.x + box.w
-        return { x: Math.max((inner + centre.x) / 2 - CARD_MM.w / 2, inner + BEFORE_GAP_MM), y: mid.y - CARD_MM.h / 2 }
+        const y = mid.y - CARD_MM.h / 2
+        return [{ x: Math.max((inner + centre.x) / 2 - CARD_MM.w / 2, inner + BEFORE_GAP_MM), y }, { x: inner + BEFORE_GAP_MM, y }]
       }
-      default:
-        return { x: mid.x - CARD_MM.w / 2, y: Math.min((box.y + centre.y) / 2 - CARD_MM.h / 2, box.y - BEFORE_GAP_MM - CARD_MM.h) }
+      default: {
+        const x = mid.x - CARD_MM.w / 2
+        return [{ x, y: Math.min((box.y + centre.y) / 2 - CARD_MM.h / 2, box.y - BEFORE_GAP_MM - CARD_MM.h) }, { x, y: box.y - BEFORE_GAP_MM - CARD_MM.h }]
+      }
     }
   })()
   const across = edge === 'E' || edge === 'W' ? { x: 0, y: 1 } : { x: 1, y: 0 }
-  const at = (k: number): Rect => {
+  // How far from halfway toward the zones a step may slide when the piles' words lie in the way:
+  // in whole millimetres, and never past the gap (#1389). The seat's plate gives way to a card
+  // lying there (`placePlates`), so the band nearer the seat is the card's to take.
+  const reach = Math.round(Math.hypot(near.x - first.x, near.y - first.y))
+  const toward = reach > 0 ? { x: (near.x - first.x) / reach, y: (near.y - first.y) / reach } : { x: 0, y: 0 }
+  const at = (k: number, d = 0): Rect => {
     const s = (k % 2 === 1 ? 1 : -1) * Math.ceil(k / 2) * HAND_STEP_MM
-    return { x: mm(first.x + s * across.x - g.x), y: mm(first.y + s * across.y - g.y), ...CARD_MM }
+    return { x: mm(first.x + s * across.x + d * toward.x - g.x), y: mm(first.y + s * across.y + d * toward.y - g.y), ...CARD_MM }
   }
   const here = view.components.filter((c) => c.zone === floor.id)
   const taken = here.filter((c) => !isPiece(c)).map((c) => ({ x: c.x, y: c.y }))
@@ -169,8 +186,17 @@ function beforeSeat(view: Snapshot, floor: ZoneView, nth: number): { x: number; 
       { x: z.geometry.x - PILE_WORDS_MM.w / 2 - g.x, y: z.geometry.y + CARD_MM.h / 2 - g.y, w: PILE_WORDS_MM.w, h: PILE_WORDS_MM.below },
     ])
   const clear = (r: Rect) => [...pieces, ...piles].every((p) => !overlaps(r, p))
-  const free = (r: Rect) => taken.every((p) => Math.abs(p.x - r.x) >= HAND_STEP_MM / 2 || Math.abs(p.y - r.y) >= HAND_STEP_MM / 2)
-  const steps = Array.from({ length: FAN_MAX }, (_, k) => at(k))
+  // A step is taken where a card already lies within half a step across, and anywhere along the
+  // way in that it would cover it: a step slid toward the seat is the same step.
+  const depth = across.x === 1 ? CARD_MM.h : CARD_MM.w
+  const free = (r: Rect) =>
+    taken.every((p) => {
+      const side = across.x === 1 ? Math.abs(p.x - r.x) : Math.abs(p.y - r.y)
+      const deep = across.x === 1 ? Math.abs(p.y - r.y) : Math.abs(p.x - r.x)
+      return side >= HAND_STEP_MM / 2 || deep >= depth
+    })
+  // Each step halfway first, then slid toward the seat a millimetre at a time.
+  const steps = Array.from({ length: FAN_MAX }, (_, k) => Array.from({ length: reach + 1 }, (_, d) => at(k, d))).flat()
   let chosen = at(0)
   for (let k = 0; k <= nth; k++) {
     const open = steps.filter(free)
