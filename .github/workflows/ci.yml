@@ -23,9 +23,19 @@ jobs:
   # in a row on a public repository whose runners cost nothing. `check` at the bottom is still the
   # one answer a pull request gets. Playwright's own image was tried and measured with other fonts
   # than the runner's (ci-browser.test.ts), so every job stays on the runner.
+  #
+  # Every job has a timeout-minutes (#1421, held by ci-timeouts.test.ts). Without one GitHub gives a
+  # job six hours, and on 2026-10-26 `unit` spent four of them waiting on an apt mirror that had
+  # stopped answering. The limits are about twice what the job took in the 20 green pull request
+  # runs before #1421 (median / slowest, in minutes). A job that installs Chromium is counted
+  # twice over: its own work doubled, plus the 2 × 12 minutes the install may take when its apt
+  # cache is cold (.github/actions/setup), so a cold cache on a slow mirror is not a red run.
+  #
+  # static 1.7 / 1.9 → 5.
   static:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
@@ -35,9 +45,11 @@ jobs:
         run: pnpm --filter @byd/engine exec vitest run test/corpus.test.ts
 
   # Every suite but the two large ones, in the order `pnpm test` runs them.
+  # unit 3.8 / 19.6 with a cold apt cache; the suite itself at most 3.2 → 2 × 5 + 24 ≈ 35.
   unit:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    timeout-minutes: 35
     services: &postgres
       postgres:
         image: postgres:17-alpine
@@ -60,9 +72,11 @@ jobs:
           browser: true
       - run: pnpm -r --workspace-concurrency=1 --filter '!@byd/web' --filter '!@byd/e2e' test
 
+  # web 5.3 / 22.7 per shard with a cold apt cache; a shard itself at most 4.7 → 2 × 6 + 24 ≈ 35.
   web:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    timeout-minutes: 35
     strategy:
       fail-fast: false
       matrix:
@@ -76,9 +90,11 @@ jobs:
           browser: true
       - run: pnpm --filter @byd/web exec vitest run --shard=${{ matrix.shard }}/3
 
+  # e2e 7.6 / 23.6 per shard with a cold apt cache; the slowest shard itself 9.4 → 2 × 11 + 24 ≈ 45.
   e2e:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
@@ -102,10 +118,12 @@ jobs:
           retention-days: 14
 
   # The one answer: red if any part of the check is, and skipped with them on a tag.
+  # check takes seconds; its clock starts only once the jobs it needs are done → 5.
   check:
     if: always() && github.event_name == 'pull_request'
     needs: [static, unit, web, e2e]
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') || contains(needs.*.result, 'skipped')
         run: |
@@ -121,7 +139,10 @@ jobs:
     # `vite.config.ts` imports the run's own reporter from `test-support/` (#111) and the build
     # context carried only `packages/`. Nothing ran the build until a release was cut, so the
     # first thing that noticed was the release itself. A green pull request now means an image.
+    #
+    # images 2.0 / 3.4 per image with the layer cache; a tag or a cold cache rebuilds more → 10.
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     strategy:
       matrix:
         include:

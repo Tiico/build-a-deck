@@ -100,7 +100,8 @@ export type LogStore = {
 
 // A table as a list can show it before anyone opens it: which session, and the moment of its
 // latest line — null while nothing has happened yet.
-export type SessionSummary = { id: string; lastAt: string | null }
+// When the table was started, and when it last moved (a physical verb), or never (#1376).
+export type SessionSummary = { id: string; startedAt: string; lastAt: string | null }
 
 // An admission given and never opened, whose wait is over: what `sweepGuests` takes.
 function neverOpened(g: GuestRecord, now: string, pendingMs: number): boolean {
@@ -209,7 +210,7 @@ export class MemoryLogStore implements LogStore {
     const out: SessionSummary[] = []
     for (const [id, record] of this.sessions) {
       if (record.project !== project) continue
-      out.push({ id, lastAt: this.logs.get(id)?.findLast((l) => PHYSICAL_VERBS.includes(l.intent.v))?.at ?? null })
+      out.push({ id, startedAt: new Date(this.createdAt.get(id) ?? 0).toISOString(), lastAt: this.logs.get(id)?.findLast((l) => PHYSICAL_VERBS.includes(l.intent.v))?.at ?? null })
     }
     // Insertion order is the order they were started; the newest table is the one being played.
     return out.reverse()

@@ -26,7 +26,7 @@ import { useSay } from '../status/StatusLive.js'
 import { noticeFor } from '../status/notice.js'
 import { usePageTitle } from '../status/DocumentTitle.js'
 import { useLang, useT, type Lang, type T } from '../i18n/index.js'
-import { CheckGlyph, ChevronGlyph, CloseGlyph, ExitGlyph, FlagGlyph, ImportGlyph, MoreGlyph, PeopleGlyph, PencilGlyph, PersonGlyph } from '../glyphs.js'
+import { CheckGlyph, ChevronGlyph, CloseGlyph, ExitGlyph, FlagGlyph, ImportGlyph, MoreGlyph, PeopleGlyph, PencilGlyph, PersonGlyph, SeatingGlyph } from '../glyphs.js'
 import './account.css'
 import { AboutLine } from './AboutLine.js'
 import { PasskeyOffer } from './PasskeyOffer.js'
@@ -770,42 +770,60 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
             </section>
           )}
         </div>
-        {/* «Pågår nu» (#724, beslut C): every table that is running, by its game and its room code,
-            with the way to its screen as the game's own — in the column of what is happening
-            (#1204), and first of everything on a phone. A table started and never played is not
-            running (#1376): it stands in a band of its own under the name the Bord tab files it
-            by, in the same form. */}
+        {/* «Pågår nu» (#724, beslut C): every table that is running, in the column of what is
+            happening (#1204), and first of everything on a phone. A table started and never played
+            is not running (#1376): it stands under its own heading, in the same form. Grouped by
+            game (#1411, beslut B): one card per game, its name and the way to its editor (#1217) on
+            the card's head, and each table a row that is itself the way to the table (L80), leading
+            with how its people sit (L77), then what it is up to and when, its version, and its code
+            on the plate the TV writes it on. */}
         {[
           { id: 'byd-home-running', title: t('home.running.title'), tables: runningList.filter((table) => table.lastAt !== null) },
           { id: 'byd-home-untouched', title: t('home.untouched.title'), tables: runningList.filter((table) => table.lastAt === null) },
         ].map(({ id, title, tables }) => tables.length > 0 && (
           <section key={id} className="byd-home-running" aria-labelledby={id}>
             <h2 id={id} className="byd-home-h2">{title}</h2>
-            {tables.map((table) => (
-              <div key={table.id} className="byd-home-running-row" data-running={table.id}>
-                <b>{table.name}</b>
-                <strong>{table.code}</strong>
-                {/* The way to the game the table runs (#1217): «Pågår nu» led only to the table. The
-                    two ways share a line where both fit on it whole, and stand one under the other
-                    where they do not (#1282). */}
-                <span className="byd-home-running-ways">
-                  <a
-                    className="byd-home-running-game"
-                    href={`/editor?${suffix(new URLSearchParams({ project: table.project }))}`}
-                    aria-label={t('home.running.game.aria', { name: table.name })}
-                    onClick={(e) => {
-                      e.preventDefault()
-                      onNavigate(`/editor?${suffix(new URLSearchParams({ project: table.project }))}`)
-                    }}
-                  >
-                    {t('home.running.game')}
-                  </a>
-                  <a {...tableWay(table, server, lang)} aria-label={t('home.running.open.aria', { code: table.code, name: table.name })}>
-                    {t('home.running.open')}
-                  </a>
-                </span>
-              </div>
-            ))}
+            {[...tables.reduce((games, table) => games.set(table.project, [...(games.get(table.project) ?? []), table]), new Map<string, typeof tables>())].map(([project, own]) => {
+              const name = own[0]?.name ?? ''
+              const editor = `/editor?${suffix(new URLSearchParams({ project }))}`
+              return (
+                <div key={project} className="byd-home-running-game" data-running-game={project}>
+                  <div className="byd-home-running-head">
+                    <b>{name}</b>
+                    <a
+                      className="byd-home-running-editor"
+                      href={editor}
+                      aria-label={t('home.running.game.aria', { name })}
+                      onClick={(e) => {
+                        e.preventDefault()
+                        onNavigate(editor)
+                      }}
+                    >
+                      {t('home.running.game')}
+                      <ChevronGlyph to="right" />
+                    </a>
+                  </div>
+                  {own.map((table) => {
+                    // A table from before the question (#1286) opens at its screen, so that is how it sits.
+                    const seating = table.seating ?? 'screen'
+                    return (
+                      <a key={table.id} className="byd-home-running-row" data-running={table.id} data-seating={seating} data-live={table.lastAt !== null || undefined} {...tableWay(table, server, lang)} aria-label={t('home.running.open.aria', { code: table.code, name })}>
+                        <span className="byd-home-running-sits">
+                          <SeatingGlyph seating={seating} />
+                          <span className="byd-offscreen">{t(seating === 'computer' ? 'home.running.seating.computer' : 'home.running.seating.screen')}</span>
+                        </span>
+                        <span className="byd-home-running-text">
+                          <b>{t(table.lastAt === null ? 'home.running.still' : 'home.running.live')}</b>
+                          <small>{table.lastAt === null ? t('home.running.started', { when: when(t, lang, table.startedAt) }) : t('home.running.moved', { when: when(t, lang, table.lastAt) })} · {versionWord(table.version, t, 'short')}</small>
+                        </span>
+                        <strong>{table.code}</strong>
+                        <ChevronGlyph to="right" />
+                      </a>
+                    )
+                  })}
+                </div>
+              )
+            })}
           </section>
         ))}
         {/* «Väntar på dig» (#1225, #1204 beslut B): what is left for the account to deal with, each a

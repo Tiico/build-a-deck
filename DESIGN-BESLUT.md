@@ -5071,7 +5071,7 @@ Typvalet som togs bort då bytte bara namnförslaget; det som infördes 2026-10-
 En bildcell är en referens till en innehållsadresserad asset; vid import löses URL eller filnamn upp mot uppladdade filer.
 Varje rad har en systemkolumn `antal` med standard 1.
 Setup skapar så många instanser med samma `cardRef`; tryckmanifestet summerar.
-I tabellen står `antal` direkt efter `id`, två Tab-tryck från radens bock (#695, se tillägget 2026-10-20 nedan; sedan #1408 rullar den med raden, se L90); i CSV:n och i dokumentets ordning står den fortfarande sist.
+I tabellen står `antal` direkt efter `id`, två Tab-tryck från radens bock (#695, se tillägget 2026-10-20 nedan; sedan #1408 rullar den med raden, se L91); i CSV:n och i dokumentets ordning står den fortfarande sist.
 
 *Tillagt 2026-09-27 (#479, beställarens beslut efter prototyp 13 och 15):*
 En import som skulle ta bort kort frågar först och säger hur många som finns och hur många filen har; en import som bara lägger till eller ändrar landar direkt.
@@ -5158,7 +5158,7 @@ En rubrik bär sitt ord och sättet den sorterar på, och ingenting mer — vilk
 Hänglaset flyttar med: i en panel finns plats för skälet i ord, vilket en rubrik aldrig hade, och `antal` får tillbaka de nitton pixlar det tog.
 Huvudets tabbordning är ett stopp per kolumn och en dörr, där den förr hade en kontroll som tar bort en kolumn mellan varje par av namn.
 Kolumnlistan i dörren rullar och blanketten under den står stilla: en lek med tjugo kolumner hängde annars dörren utanför fönstrets nederkant, och det som föll av var vägen att göra den tjugoförsta.
-Varken `id` eller `antal` kan bäras, är en plats att lägga en kolumn på, eller har en kant att dra i: id är en maskinnyckel och `antal` står bredvid den, först i raden (L55, #695; sedan #1408 kan båda låsas till listen som varje annan kolumn, L90).
+Varken `id` eller `antal` kan bäras, är en plats att lägga en kolumn på, eller har en kant att dra i: id är en maskinnyckel och `antal` står bredvid den, först i raden (L55, #695; sedan #1408 kan båda låsas till listen som varje annan kolumn, L91).
 Pilen utan Alt är läsarens egen och rörs inte, och en rubrik som kan bäras har inte slutat vara en som kan tryckas för att sortera.
 En flytt sägs i den enda kanal allt på en skärm talar i (#7): ett drag är sitt eget svar för ögat, men en kolumn som flyttat sig under fokus utan att något sagts är en kolumn läsaren har tappat.
 
@@ -5193,7 +5193,7 @@ I en lek på 308 kort med elva fält stod dessutom sju kolumner till utanför vi
   En cell som tas in i bild — av fokus eller av `scrollIntoView` — tas in i det rum som går att läsa och inte till lådans kant: listens mätta bredd till vänster och ×:ets tryckbredd till höger.
   Med listen bredare och Linux-text började kolumnen efter body utanför lådan, och togs den in stod dess slut under ×.
   *Ändrat 2026-10-21 (#1067):* rummet är en `scroll-margin` på det som rullar och inte lådans `scroll-padding`.
-  *Ändrat 2026-10-26 (L90, #1408, beställarens val A):* `antal` står inte längre på listen utan först i raden efter `id`, och rullar med den; i bild vid rullning 0 vid 1024 och 1280, och foten säger var den är när den rullat bort. Listen är det designern låst, titeln från start. `fitColumns` säger var varje fastnålad kolumn börjar i `--byd-data-at-<n>`, per plats i raden och inte per namn.
+  *Ändrat 2026-10-26 (L91, #1408, beställarens val A):* `antal` står inte längre på listen utan först i raden efter `id`, och rullar med den; i bild vid rullning 0 vid 1024 och 1280, och foten säger var den är när den rullat bort. Listen är det designern låst, titeln från start. `fitColumns` säger var varje fastnålad kolumn börjar i `--byd-data-at-<n>`, per plats i raden och inte per namn.
   Som lådans gällde det också det fastnålade, som står i lådans kant och alltså aldrig i rummet, och Chromium centrerar ett fokuserat element som inte står helt i rummet.
   Handtaget «Kolumner» rullade därför lådan (bredd − list) / 2 åt sidan när det fick fokus, 432 px vid 1280, och bocken i en rad drog en rullad låda tillbaka till början, utan att någon av dem själv flyttade sig.
   Det fastnålade har ingen marginal och står alltid i bild; `packages/e2e/test/surfaces/table-sticky-focus.spec.ts` är grinden.
@@ -7916,7 +7916,7 @@ Jämförelsens tinter ligger nu som ett lager över cellens grund i stället fö
 Som grund gjorde de de fastnålade cellerna genomskinliga, så att ett värde som skrollats in under dem syntes igenom.
 `data-table-hover.test.tsx` mäter listen, kanten och bläcket på målade bildpunkter, på alla fem grunderna.
 *Ändrat 2026-10-20 (#695, beställarens val D + A):* listen är tre kolumner — bocken, `id` och `antal` — och kanten står på `antal`, listens sista.
-*Ändrat 2026-10-26 (L90, #1408, beställarens val A):* listen är bocken och det designern låst, titeln från start; `id` och `antal` rullar med raden tills de låses. Kanten står på listens sista kolumn, vilken den än är, och arket nålar fast på märket `data-pinned` som tabellen sätter, inte på kolumnens namn.
+*Ändrat 2026-10-26 (L91, #1408, beställarens val A):* listen är bocken och det designern låst, titeln från start; `id` och `antal` rullar med raden tills de låses. Kanten står på listens sista kolumn, vilken den än är, och arket nålar fast på märket `data-pinned` som tabellen sätter, inte på kolumnens namn.
 `antal` stod sist och syntes inte vid någon bredd (L4); på listen läses den i listens bläck, som `id`.
 
 **Kolumndörrens handtag blir × medan dörren står** (variant A av tre: ＋ blir ×, en stängknapp i dörren och klick utanför stänger).
@@ -8279,6 +8279,7 @@ Menyn öppnar på sitt första val, länk eller knapp.
 Startsidan frågar `GET /projects/:id/sessions` för varje spel som har bord och vars roll får starta bord; bara ett bord med en giltig kod räknas som pågående.
 `account-page.test.tsx` visar bandet efter en omladdning, länkens adress och menyns ordning; `home-layout.test.tsx` mäter bandets länk till 44 px vid 320, 390 och 1280.
 Prototypen: `docs/ux-audits/2026-10-05-pagaende-bord/prototyper/724/`.
+Tillägg 2026-10-26 (#1411): bandets form är L90:s, ett kort per spel med en rad per bord; sektionen, dess rubriker och vägen som ägare står kvar.
 
 ### L65. Bord-flikens rad heter rumskoden och uppdateras där den står (prototypat och beslutat 2026-10-05, #706)
 
@@ -9106,7 +9107,38 @@ Per-plats-material visas en gång under familjen, aldrig en gång per plats.
 Meeple, kub och bricka kommer som rader i ＋-menyn när deras typer finns (B1–B3), inte förr: en spärrad rad för något som inte finns är ett löfte i gränssnittet.
 `setup-column.test.tsx` pinnar remsan, rötterna, menyerna och materialets plats i trädet.
 
-### L90. Designern låser vilken kolumn som står still i Tabell, och titeln är låst från start (prototypat och beslutat 2026-10-26, #1408)
+### L90. «Pågår nu» är ett kort per spel, och varje bord en rad som säger hur man sitter (prototypat och beslutat 2026-10-26, #1411)
+
+Beställaren: «Banderollen för öppna bord ser lite placeholder-aktig ut, nu när vi börjar närma oss release tycker jag vi kan polera den.»
+L64:s band var en platt grön ruta med spelets namn, koden i naken monotyp och två lika tunga knappar: ingen bild, inga fakta om bordet fast listan redan bar version, senaste drag och hur man sitter (L77), och ingen väg som stod redo (L13).
+
+Tre former prövades i [`docs/ux-audits/2026-10-26-pagar-nu-bandet/prototyper/index.html`](docs/ux-audits/2026-10-26-pagar-nu-bandet/prototyper/index.html) vid 1280, 1024 och 390, ovanpå den byggda appen.
+A var ett fönster mot filten: en bild av bordets form med kodplattan i hörnet, spelets namn som väg till editorn och en fylld «Öppna bordet».
+B var ett kort per spel: spelets namn och «Öppna spelet» på en rubrikrad, och varje bord en slank rad som i sig är vägen till bordet.
+C var beskedet: koden stor och mitt i, läget i versaler och en mening om spelet.
+Agenten rekommenderade A; beställaren valde **B, med en ikon för hur man sitter**.
+
+- **Ett kort per spel**, i «Väntar på dig»:s form: spelets namn och den tysta vägen «Öppna spelet ›» på kortets huvud, och varje bord en rad under det.
+  Två bord på ett spel säger spelets namn en gång.
+  «Pågår nu» och «Startade, aldrig spelade» (#1376) ritar samma kort under var sin rubrik.
+- **Raden är vägen till bordet** (L80: ägarens vy i bordets egen flik), ett helt mål om minst 44 px, med fokusringen inuti kortet som klipper den.
+- **Raden leder med hur man sitter** (L77) som en glyf på egen grund: en skärm på fot för «Runt en skärm», två fönster för «Var och en vid sin dator», ritade i handens 16-rutnät (`SeatingGlyph`).
+  Orden står för skärmläsaren.
+  Ett bord från före frågan sitter runt en skärm, eftersom det är där det öppnas.
+  Grunden är bordets gröna medan det pågår och blågrå för ett bord som aldrig spelats.
+- **Sedan läget med en prick**, «Pågår» eller «Aldrig spelat», och under det när bordet senast rörde sig eller startades, i samma ord som sidan redan säger dagar med, och versionen i sin korta form.
+  Koden står på TV:ns platta (`byd-tv-join strong`) i kolumnens storlek, och en pil avslutar raden.
+
+Motivering:
+Kolumnen är 300 px vid 1024 och ska rymma flera bord utan att ta sidan; B kostar omkring 60 px per bord där A kostade 200.
+Formen finns redan på sidan, i «Väntar på dig», så kolumnens två kort läses som ett.
+Ikonen säger det en designer vill veta innan hon öppnar bordet: om det är TV:n eller hennes egen plats som öppnas.
+
+Följdkrav:
+`GET /projects/:id/sessions` säger `startedAt`, så ett orört bord kan säga när det startades; `SessionSummary` bär det ur båda affärerna.
+`account-page.test.tsx` visar grupperingen, ikonen per `seating` och raden som väg; `home-layout.test.tsx` mäter raden och «Öppna spelet» vid 320, 390, 1024, 1280 och 1440; `glyph-hand.test.ts` håller glyferna.
+
+### L91. Designern låser vilken kolumn som står still i Tabell, och titeln är låst från start (prototypat och beslutat 2026-10-26, #1408)
 
 Beställaren: id och antal tar för mycket plats till vänster i tabellen, och ingen av dem är det man tittar på hela tiden — det är fritexten man utgår ifrån.
 Listen (L55) var bocken, `id` och `antal` (#145, #695): 302 px i provleken, 315 i den täta, vid varje fönsterbredd, och det som stod still när man skrev långt ut i body var `sals-saloon-guld · 2` medan titeln rullat bort.

@@ -2591,14 +2591,14 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     // it, and a table that has ended has none to show.
     const admits = canStartTables(gate.role)
     const now = clock(opts).getTime()
-    const tables: { id: string; version: string; ended: boolean; lastAt: string | null; code?: string; seating?: Seating }[] = []
+    const tables: { id: string; version: string; ended: boolean; startedAt: string; lastAt: string | null; code?: string; seating?: Seating }[] = []
     for (const summary of summaries) {
       const actor = await opts.host.get(summary.id)
       if (!actor) continue
       // How it was started to be sat at (#1286) says which view «Öppna bordet» opens.
       const session = await opts.store.loadSession(summary.id)
       const code = admits && !actor.ended && session?.code !== undefined && session.codeExpiresAt !== undefined && Date.parse(session.codeExpiresAt) > now ? session.code : undefined
-      tables.push({ id: summary.id, version: actor.version, ended: actor.ended, lastAt: summary.lastAt, ...(code ? { code } : {}), ...(session?.seating ? { seating: session.seating } : {}) })
+      tables.push({ id: summary.id, version: actor.version, ended: actor.ended, startedAt: summary.startedAt, lastAt: summary.lastAt, ...(code ? { code } : {}), ...(session?.seating ? { seating: session.seating } : {}) })
     }
     json(res, 200, tables)
     return true

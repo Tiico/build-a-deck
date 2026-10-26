@@ -253,22 +253,48 @@ input.byd-code-field { font: 700 22px/1 ui-monospace, Menlo, monospace; letter-s
    else (UX-KONTROLLER: träffytor); the dots stay the same size, the button around them grows. */
 .byd-home-more { position: absolute; right: 4px; top: 4px; display: inline-grid; place-items: center; min-width: 44px; min-height: 44px; border: 0; border-radius: 8px; padding: 0 8px; background: transparent; color: #9aa3b8; font-size: 16px; cursor: pointer; }
 .byd-home-more:hover, .byd-home-more[aria-expanded='true'] { background: #262a35; color: #fff; }
-/* «Pågår nu» (#724): one band per running table — the game, the room's code in the code's own type,
-   and the way to its screen — on the green the table's code has always stood on. */
-.byd-home-running { display: grid; gap: 8px; }
+/* «Pågår nu» (#724), grouped by game (#1411, beslut B): one card per game in «Väntar på dig»'s
+   form — the game's name and the way to its editor on the card's head, and each table a row that
+   is the way to the table: how its people sit on its own ground, what it is up to with a dot,
+   when and on which version, the code on the plate the TV writes it on, and a chevron. */
+/* One track of the column's width, never of the card's content, so a card can never push the
+   column past the page (#1411: it did at 320 on CI's fonts). */
+.byd-home-running { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
 .byd-home-running > h2 { margin: 0; }
-.byd-home-running-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: 10px 12px; padding: 14px 16px; border-radius: 16px; background: #1b2a22; color: #d8ffe8; }
-.byd-home-running-row b { font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.byd-home-running-row strong { justify-self: end; font: 700 22px ui-monospace, Menlo, monospace; letter-spacing: 4px; color: #fff; }
-/* The two ways under the name and the code (#1282): side by side and of one width where both fit
-   whole, and one under the other, each the band's width, where they do not — at 1024 the side
-   column is 300 px, and «Öppna bordet» broke over two lines in half of it. */
-.byd-home-running-ways { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 10px 12px; }
-.byd-home-running-ways > a { flex: 1 1 0; min-width: max-content; white-space: nowrap; }
-.byd-home-running-row a { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 12px; border-radius: 10px; background: #7dd3a0; color: #0f1117; font-weight: 700; text-decoration: none; text-align: center; }
-/* The way to the game is the row's second action (#1217): outlined, as L13 has every second one. */
-.byd-home-running-row a.byd-home-running-game { background: transparent; box-shadow: inset 0 0 0 1px #7dd3a088; color: #d8ffe8; }
-.byd-home-running-row a.byd-home-running-game:hover { box-shadow: inset 0 0 0 1px #7dd3a0; }
+.byd-home-running-game { display: grid; min-width: 0; border-radius: 16px; background: var(--byd-account-card-bg); border: 1px solid #262a35; overflow: hidden; }
+.byd-home-running-head { display: flex; align-items: center; gap: 10px; min-width: 0; min-height: 48px; padding: 4px 8px 4px 16px; border-bottom: 1px solid #262a35; }
+.byd-home-running-head > b { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; color: #fff; }
+/* The way to the game is quiet (#1217): the card is the game's, and the rows are what it is for. */
+.byd-home-running-editor { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 10px; border-radius: 8px; color: #7dd3a0; font-size: 13px; font-weight: 700; text-decoration: none; white-space: nowrap; }
+.byd-home-running-editor:hover { background: var(--byd-account-card-bg-hover); }
+/* The rows are whole targets, so the focus ring is drawn inside the card that clips them. A row is
+   a grid item of the card, and as one its minimum is its own min-content, in which a 1fr track is
+   as wide as its words: on CI's fonts that was 300 px in a 278 px card (#1411). min-width: 0 lets
+   the card's track size it, and the words' track takes what is left. */
+.byd-home-running-row { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto auto; align-items: center; gap: 12px; min-width: 0; min-height: 60px; padding: 8px 10px 8px 16px; border-top: 1px solid #262a35; color: #fff; text-decoration: none; }
+.byd-home-running-row:first-of-type { border-top: 0; }
+.byd-home-running-row:hover { background: var(--byd-account-card-bg-hover); }
+.byd-home-running-row:focus-visible { outline-offset: -4px; }
+/* How the people sit (L77): the table's green while it runs, and blue-grey for one never played. */
+.byd-home-running-sits { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 10px; background: #1f2433; color: #b9c3dc; }
+.byd-home-running-sits > .byd-glyph { width: 18px; height: 18px; }
+.byd-home-running-row[data-live] .byd-home-running-sits { background: #1b2a22; color: #7dd3a0; }
+.byd-home-running-text { display: grid; gap: 1px; min-width: 0; }
+.byd-home-running-text > b { display: flex; align-items: center; gap: 6px; font-size: 14px; line-height: 1.3; }
+.byd-home-running-text > b::before { content: ''; flex: none; width: 7px; height: 7px; border-radius: 50%; background: #7d8597; }
+.byd-home-running-row[data-live] .byd-home-running-text > b::before { background: #7dd3a0; box-shadow: 0 0 0 3px #7dd3a033; }
+.byd-home-running-text > small { color: #9aa3b8; font-size: 12px; line-height: 1.3; }
+/* The code on the TV's plate (byd-tv-join strong), at the column's size; never cut. */
+.byd-home-running-row > strong { font: 700 15px/1 ui-monospace, Menlo, monospace; letter-spacing: 3.5px; padding: 7px 7px 7px 11px; border-radius: 8px; background: #1a1e29; color: #fff; box-shadow: 0 0 0 1px #2c3242; white-space: nowrap; }
+.byd-home-running-row > .byd-glyph { color: #9aa3b8; font-size: 18px; }
+/* In the 300 px column (1024) the row has 68 px for its words beside the plate and the chevron, and
+   «Aldrig spelat» broke in two: the plate is set smaller and the chevron goes, which the hover and
+   the row's own shape say anyway; the phone's column is the page's width and keeps both. */
+@media (max-width: 1200px) and (min-width: 861px) {
+  .byd-home-running-row { gap: 10px; padding-right: 12px; }
+  .byd-home-running-row > strong { font-size: 13px; letter-spacing: 2.5px; padding: 6px 5px 6px 8px; }
+  .byd-home-running-row > .byd-glyph { display: none; }
+}
 /* «Väntar på dig» (#1225, #1204 beslut B): one card of rows, each its icon on its own ground, what it
    is, where it comes from and an arrow — yellow for flags as the flag chip is, green for a survey as
    the survey's button is, and blue-grey for a version someone else saved. The rows are whole

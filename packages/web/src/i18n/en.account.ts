@@ -80,6 +80,13 @@ export const enAccount = {
   'home.running.game': 'Open the game',
   'home.running.game.aria': 'Open {name} in the editor',
   'home.running.open.aria': 'Open the table {code} in {name} (opens in the table’s own tab)',
+  // Grouped by game (#1411, decision B): the game's card, and each table a row that is the way to it.
+  'home.running.live': 'Running',
+  'home.running.still': 'Never played',
+  'home.running.moved': 'last move {when}',
+  'home.running.started': 'started {when}',
+  'home.running.seating.screen': 'Around one screen',
+  'home.running.seating.computer': 'Each at their own computer',
   'home.untouched.title': 'Started, never played',
   'home.menu.open': 'Open the table {code}',
   'home.menu.start.new': 'Start a new table',
