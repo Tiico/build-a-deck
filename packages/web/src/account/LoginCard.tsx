@@ -4,12 +4,11 @@ import { requestLink } from './session.js'
 import { arrival } from './api.js'
 import { firstVisitSeen, markFirstVisitSeen, markPitchSeen, pitchSeen } from './pitch.js'
 import { Help } from '../editor/HelpDrawer.js'
-import { LanguagePicker, useLang, useT, type Key, type T } from '../i18n/index.js'
+import { LanguagePicker, readerLocale, useLang, useT, type Key, type T } from '../i18n/index.js'
 import { AboutLine } from './AboutLine.js'
 import { Address } from './Address.js'
 import { marked } from './marked.js'
-import { KeyGlyph } from '../glyphs.js'
-import { clockWord } from '../editor/when.js'
+import { CheckGlyph, KeyGlyph } from '../glyphs.js'
 import { letGoOfSuggestion, loginWithPasskey, useKeychain } from './passkey.js'
 
 // Logging in (G1, prototype A): one field, one button, one line about what logging in is for.
@@ -160,9 +159,9 @@ export function LoginCard({ http, next, onNavigate = (url) => location.assign(ur
           {receipt.again && (
             <p className="byd-login-sent-again">
               <span className="byd-login-tick" aria-hidden="true">
-                ✓
+                <CheckGlyph />
               </span>
-              <span>{t('login.sent.again.done', { time: clockWord(receipt.again, lang) })}</span>
+              <span>{t('login.sent.again.done', { time: new Date(receipt.again).toLocaleTimeString(readerLocale(lang), { hour: '2-digit', minute: '2-digit' }) })}</span>
             </p>
           )}
           {receipt.said && (
