@@ -3090,9 +3090,10 @@ button.byd-picture-tile[aria-expanded='true'] { box-shadow: 0 0 0 2px #9cc6ff; }
   top: 100%;
   right: 0;
   z-index: 6;
-  /* Wide enough for a row to hold the name, the prose switch and the × side by side (#615): at
-     260 px the name was left 68 px between them. */
-  width: 340px;
+  /* Wide enough for a row to hold the name, the prose switch, the lock and the × side by side
+     (#615, #1408): at 260 px the name was left 68 px between them, and at 340 the lock pushed the
+     × 15 px out through the door's own edge. One target and one gap wider for the lock. */
+  width: 392px;
   padding: 8px 12px 12px;
   border: 1px solid #3b4358;
   border-radius: 10px;

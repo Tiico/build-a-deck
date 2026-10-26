@@ -117,7 +117,9 @@ for (const [width, height] of STORLEKAR) {
         const steg = await tabbaTill(page, 'huvudet byd-data-remove', 'Shift+Tab', 5)
         expect(steg.map((s) => s.var)).toEqual(['raden antal', 'raden title', 'raden byd-data-check', 'huvudet byd-data-remove'])
         expect(steg.map((s) => s.x)).toEqual([0, 0, 0, 0])
-        // Och tillbaka: framåt igen till bocken, titeln och antal, utan att något rör sig.
+        // Och tillbaka: framåt igen till bocken, titeln, titelcellens ikonflik (#33) och antal,
+        // utan att något rör sig.
+        await page.keyboard.press('Tab')
         await page.keyboard.press('Tab')
         await page.keyboard.press('Tab')
         await page.keyboard.press('Tab')
@@ -156,7 +158,8 @@ for (const [width, height] of STORLEKAR) {
         // Men en cell utanför bild tas fortfarande in, och i det rum som går att läsa: antal står
         // utanför till vänster sedan den rullar med raden (#1408), och tas in till höger om listen.
         await tabbaTill(page, 'raden title', 'Tab', 2)
-        const typ = (await tabbaTill(page, 'raden antal', 'Tab', 1)).at(-1)!
+        // Över titelcellens ikonflik (#33), som står i samma cell.
+        const typ = (await tabbaTill(page, 'raden antal', 'Tab', 2)).at(-1)!
         expect(typ.x).toBeLessThan(sist)
         expect(typ.vänster).toBeGreaterThanOrEqual(0)
         expect(typ.höger).toBeGreaterThanOrEqual(0)
