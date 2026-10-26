@@ -821,6 +821,16 @@
 .byd-setup-side { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-content: start; overflow: auto; padding-right: 4px; }
 .byd-setup h2 { margin: 0 0 4px; font-size: 13px; text-transform: uppercase; letter-spacing: 2px; color: var(--byd-editor-quiet); }
 .byd-setup-recipe { display: grid; gap: 18px; min-width: 0; }
+/* Spelet (#1403, beslut C): one strip that says players, turns and the deck's pile in a breath, and opens into their fields. */
+.byd-setup-game { display: flex; flex-wrap: wrap; align-items: center; gap: var(--byd-s1) var(--byd-s2); width: 100%; min-height: var(--byd-tap); padding: var(--byd-s2) var(--byd-s3); border: 1px solid var(--byd-secondary-line); border-radius: 12px; background: #171a23; color: #e6ecfa; font: inherit; font-weight: 600; text-align: left; cursor: pointer; }
+.byd-setup-game:hover { background: #1b1d23; }
+.byd-setup-game > .byd-setup-caret { transition: transform 120ms; }
+.byd-setup-game[aria-expanded='true'] > .byd-setup-caret { transform: rotate(90deg); }
+.byd-setup-game-part { display: inline-flex; gap: var(--byd-s2); align-items: baseline; color: #c7cede; font-weight: 500; }
+.byd-setup-game-part i { font-style: normal; color: #6d7486; }
+.byd-setup-game-open { padding: 0 var(--byd-s3) var(--byd-s3); border: 1px solid var(--byd-secondary-line); border-radius: 12px; background: #171a23; }
+.byd-setup-game-open > .byd-help-row > .byd-setup-game { padding-inline: 0; border: 0; background: transparent; font-size: 13px; text-transform: uppercase; letter-spacing: 2px; color: var(--byd-editor-quiet); }
+.byd-setup-game-open label { display: grid; gap: var(--byd-s1); margin: 0; }
 .byd-setup-recipe label { display: flex; gap: 8px; align-items: center; margin: 4px 0; color: #e6ecfa; }
 /* The seat count is the shared stepper (#620, `stepper.css`): one row, where eight buttons wrapped. */
 .byd-setup-tools button, .byd-setup-counters > button, .byd-setup-adds > button, .byd-setup-props button { border: 1px solid #2f333d; border-radius: 8px; padding: 8px 12px; background: #1b1d23; color: #fff; font-weight: 700; cursor: pointer; }

@@ -9,12 +9,12 @@ import { TableRenderer, type FeltFit, type TableHandle } from '../table/TableRen
 import { previewOf } from '../setup/preview.js'
 import { MIN_MM, NUDGE_MM, onTableOf, sizedBy } from './zone-geometry.js'
 import { useNumberDraft } from './number-draft.js'
-import { Stepper } from '../Stepper.js'
 import { MAX_PLAYERS, counterId, layMaterial, newAreaSpot, newPileSpot, pasteSpot, placeLine, titleOfRow, type Counter, type Die, type Geometry, type MaterialLine, type Setup, type Zone } from '@byd/server/doc'
 import type { ProjectClient } from './ProjectClient.js'
 import type { ZonePatch } from '@byd/server/doc'
 import { useT, type Key, type T } from '../i18n/index.js'
 import { Help } from './HelpDrawer.js'
+import { GamePanel } from './GamePanel.js'
 import { recipeWords } from './fields.js'
 import { useGesture } from './gesture.js'
 import { CardPreview } from './CardPreview.js'
@@ -273,6 +273,7 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside, lead }: Se
       }}
     >
       <div className="byd-setup-side">
+        <GamePanel client={client} setup={setup} />
         <SeatsPanel client={client} setup={setup} />
         <ZoneList
           setup={setup}
@@ -283,7 +284,6 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside, lead }: Se
           onOpen={(role) => setOpened((now) => (now.includes(role) ? now.filter((r) => r !== role) : [...now, role]))}
           onRemove={remove}
           onPatch={(id, patch, gesture) => client.patchZone(id, patch, gesture)}
-          onDeck={(id) => client.setDeck(id)}
           onHold={setHeld}
           adds={{
             table: (
@@ -305,7 +305,6 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside, lead }: Se
             ),
           }}
         />
-        <TurnsPanel client={client} setup={setup} />
       </div>
       <div className="byd-setup-canvas">
         {lead}
@@ -463,22 +462,6 @@ function SeatsPanel({ client, setup }: { client: ProjectClient; setup: Setup }) 
   }
   return (
     <aside className="byd-setup-recipe">
-      <section>
-        <div className="byd-help-row">
-          <h2 id="byd-setup-players">{t('setup.players')}</h2>
-          <Help topic={t('setup.seats.help.topic')}>
-            <p>{t('setup.seats.help')}</p>
-          </Help>
-        </div>
-        <div className="byd-setup-players" role="group" aria-labelledby="byd-setup-players">
-          {/* Every seat count the table can actually hold. It stopped at six while `MAX_PLAYERS`
-              was eight, so the two counts a designer most needed to look at — the ones where an
-              edge first carries two seats (K18) — were the two nobody could reach. Since #620 it
-              is the guided start's stepper and not eight buttons: one row of three targets where
-              eight wrapped onto two, and the section 124 px tall became one about 80. */}
-          <Stepper value={recipe.players} min={1} max={MAX_PLAYERS} onChange={(players) => turn({ players })} label={t('players.count', { min: 1, max: MAX_PLAYERS })} fewer={t('players.fewer')} more={t('players.more')} readOnly={!client.mayEdit} />
-        </div>
-      </section>
       <section>
         <div className="byd-setup-counters">
           {/* A seat's counters change shape at the third one (C4, K18, #89): one or two lie side by
@@ -684,30 +667,6 @@ function DieRow({ die, n, places, gone, reading, fresh, onFocused, onChange, onR
   )
 }
 
-// Whether the game goes in turns (K30): one of three, each a version and a step back. It is the
-// game's and not the zones', so it stands last in the column, under the lists, where it costs the
-// ways to add a zone none of the height they are read at (#711).
-function TurnsPanel({ client, setup }: { client: ProjectClient; setup: Setup }) {
-  const t = useT()
-  return (
-    <section className="byd-setup-turns-panel">
-      <div className="byd-help-row">
-        <h2 id="byd-setup-turns">{t('setup.turns')}</h2>
-        <Help topic={t('setup.turns.help.topic')}>
-          <p>{t('setup.turns.help')}</p>
-        </Help>
-      </div>
-      <div className="byd-setup-turns" role="group" aria-labelledby="byd-setup-turns">
-        {([null, 'clockwise', 'counterclockwise'] as const).map((turns) => (
-          <button key={turns ?? 'none'} type="button" className="byd-choice" aria-pressed={(setup.turns ?? null) === turns} disabled={!client.mayEdit} onClick={() => (setup.turns ?? null) !== turns && client.setTurns(turns)}>
-            {t(turns === null ? 'setup.turns.none' : `setup.turns.${turns}`)}
-          </button>
-        ))}
-      </div>
-    </section>
-  )
-}
-
 // A new counter: the first is the score, the rest are lives — under a name no counter has yet, the
 // way new piles get one (#480). Two «Liv» were two «LIV» on the phone and the TV (#713).
 function newCounter(counters: readonly Counter[], t: T): Counter {
@@ -799,7 +758,6 @@ function ZoneList({
   onOpen,
   onRemove,
   onPatch,
-  onDeck,
   onHold,
   adds,
 }: {
@@ -811,7 +769,6 @@ function ZoneList({
   onOpen(role: string): void
   onRemove(zone: Zone): void
   onPatch(id: string, patch: ZonePatch, gesture?: string): void
-  onDeck(id: string): void
   onHold(id: string | null): void
   adds: { table: ReactNode; seats: ReactNode }
 }) {
@@ -820,7 +777,7 @@ function ZoneList({
     [t('setup.group.table'), setup.zones.filter((z) => z.owner === undefined).map((zone) => ({ kind: 'zone', zone })), adds.table],
     [t('setup.group.seats'), rowsOf(setup.zones.filter((z) => z.owner !== undefined)), adds.seats],
   ]
-  const row = (zone: Zone) => <ZoneRow key={zone.id} zone={zone} setup={setup} rows={deck} selected={selected} onSelect={onSelect} onRemove={onRemove} onPatch={onPatch} onDeck={onDeck} onHold={onHold} />
+  const row = (zone: Zone) => <ZoneRow key={zone.id} zone={zone} setup={setup} rows={deck} selected={selected} onSelect={onSelect} onRemove={onRemove} onPatch={onPatch} onHold={onHold} />
   return (
     <div className="byd-setup-zones" data-zone-list>
       {groups.map(([title, rows, add]) => (
@@ -899,7 +856,6 @@ function ZoneRow({
   onSelect,
   onRemove,
   onPatch,
-  onDeck,
   onHold,
 }: {
   zone: Zone
@@ -909,7 +865,6 @@ function ZoneRow({
   onSelect(id: string | null): void
   onRemove(zone: Zone): void
   onPatch(id: string, patch: ZonePatch, gesture?: string): void
-  onDeck(id: string): void
   onHold(id: string | null): void
 }) {
   const t = useT()
@@ -946,10 +901,10 @@ function ZoneRow({
         (reading ? (
           // A reader reads the zone's properties and writes none of them (#489).
           <fieldset className="byd-reading-set" disabled>
-            <ZoneProps zone={zone} setup={setup} rows={rows} why={why} onPatch={(patch, gesture) => onPatch(zone.id, patch, gesture)} onDeck={() => onDeck(zone.id)} onHold={onHold} />
+            <ZoneProps zone={zone} setup={setup} rows={rows} why={why} onPatch={(patch, gesture) => onPatch(zone.id, patch, gesture)} onHold={onHold} />
           </fieldset>
         ) : (
-          <ZoneProps zone={zone} setup={setup} rows={rows} why={why} onPatch={(patch, gesture) => onPatch(zone.id, patch, gesture)} onDeck={() => onDeck(zone.id)} onHold={onHold} />
+          <ZoneProps zone={zone} setup={setup} rows={rows} why={why} onPatch={(patch, gesture) => onPatch(zone.id, patch, gesture)} onHold={onHold} />
         ))}
     </li>
   )
@@ -1343,7 +1298,7 @@ function place(client: ProjectClient, setup: Setup, t: T, line: MaterialLine, ce
 // What a zone is, opened inside its row. Everything about it is the designer's — its name, its
 // verb on the phone, whose it is and who sees into it — because the table is theirs; a hand is the
 // exception, and the seat that owns it is the reason.
-function ZoneProps({ zone, setup, rows, why, onPatch, onDeck, onHold }: { zone: Zone; setup: Setup; rows: ProjectDoc['rows']; why: string | null; onPatch(patch: ZonePatch, gesture?: string): void; onDeck(): void; onHold(id: string | null): void }) {
+function ZoneProps({ zone, setup, rows, why, onPatch, onHold }: { zone: Zone; setup: Setup; rows: ProjectDoc['rows']; why: string | null; onPatch(patch: ZonePatch, gesture?: string): void; onHold(id: string | null): void }) {
   const t = useT()
   // The two fields that are written into a letter at a time. What is chosen rather than typed —
   // where a pile is entered, whose the zone is, who may see it — is written once and is its own
@@ -1445,16 +1400,9 @@ function ZoneProps({ zone, setup, rows, why, onPatch, onDeck, onHold }: { zone: 
               </select>
             </label>
           )}
-          {/* The deck is a role a pile carries (B5, K10): a designer may call any pile the deck,
-              and the cards are dealt from wherever the role is. Moving it is also the only way to
-              be rid of the pile it lies in. */}
-          {setup.deckZone === zone.id ? (
-            <p className="byd-setup-hint">{t('setup.deck.here')}</p>
-          ) : (
-            <button type="button" onClick={onDeck}>
-              {t('setup.deck.move', { name: zone.name })}
-            </button>
-          )}
+          {/* The deck is a role a pile carries (B5, K10), chosen under Spelet (#1403); the pile
+              that carries it says so here, and why it cannot go. */}
+          {setup.deckZone === zone.id && <p className="byd-setup-hint">{t('setup.deck.here')}</p>}
         </>
       )}
       {!hand && (
