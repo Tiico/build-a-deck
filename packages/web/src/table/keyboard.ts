@@ -56,6 +56,15 @@ export const zoneName = (view: Snapshot, id: string, t: T): string => {
   if (!z) return id
   return z.kind === 'pile' && z.dynamic ? t('zone.pile.within', { area: z.name }) : z.name
 }
+// The floor as a place to put something (#1367, beställarens beslut 2026-10-25): called what the
+// setup calls it, «Spelyta» at the wizard's table, as the log and the television already said. The
+// sheet, the computer's own surface and the address panel said the tool's «Bordet», so one floor had
+// two names a sentence apart. Only a floor the setup has given no name takes the tool's word. It
+// follows the language boundary: the document's word stays put.
+export const floorName = (view: Snapshot, t: T): string => {
+  const name = view.zones.find((z) => z.id === view.floor)?.name.trim()
+  return name ? name : t('play.table')
+}
 export const pileTitle = (z: ZoneView, t: T): string => (z.dynamic ? t('zone.pile.title', { area: z.name }) : z.name)
 const pileTitleOf = (view: Snapshot, id: string, t: T): string => {
   const z = view.zones.find((x) => x.id === id)
@@ -127,12 +136,25 @@ export function thingsOn(view: Snapshot, t: T = swedish): Thing[] {
     .map((e) => e.thing)
 }
 
+// Whether a name has a word that begins with `kind`, in any case: «Räknare A» says «räknare», and
+// «Counters A» says «counter». Words are read as letters and digits in any script, since `\b` in a
+// pattern knows only ASCII and Swedish is not.
+const saysKind = (name: string, kind: string): boolean => {
+  const k = kind.toLocaleLowerCase()
+  return (name.toLocaleLowerCase().match(/[\p{L}\p{N}]+/gu) ?? []).some((word) => word.startsWith(k))
+}
+
 // The sentence a reader hears when focus lands on a thing.
 export function labelOf(view: Snapshot, thing: Thing, t: T = swedish): string {
   if (thing.kind === 'die') return t('kbd.die', { kind: thing.name, n: thing.value, zone: zoneName(view, thing.zone, t) })
   if (thing.kind === 'counter') {
     const said = { zone: zoneName(view, thing.zone, t), n: thing.value }
-    return thing.name === '' ? t('kbd.counter.unnamed', said) : t('kbd.counter', { name: thing.name, ...said })
+    if (thing.name === '') return t('kbd.counter.unnamed', said)
+    // The kind is said once (#1375): a seat's counters stand in a zone the recipe calls «Räknare A»,
+    // and «Poäng, räknare i Räknare A» said it twice. Where the zone's name already says what the
+    // chip is, the kind word is left out; anywhere else it is said, so a chip is always called a
+    // counter and never a card.
+    return t(saysKind(said.zone, t('kbd.counter.kind')) ? 'kbd.counter.kindInZone' : 'kbd.counter', { name: thing.name, ...said })
   }
   if (thing.kind === 'card') {
     const c = view.components.find((x) => x.id === thing.id)
@@ -253,7 +275,7 @@ export function verbsFor(view: Snapshot, thing: Thing, t: T = swedish): Act[] {
 
 // ================================================================================================
 // The address itself: the places that have a name at all. Zones by their names, the piles, the
-// hands, the floor as "Bordet", and every loose card as "På <kort>", which is `stack` (K1).
+// hands, the floor by its own name (#1367), and every loose card as "På <kort>", which is `stack` (K1).
 
 export type Place = {
   key: string
@@ -298,7 +320,7 @@ export function placesFor(view: Snapshot, moving: ReadonlySet<string>, sourceZon
       }
     })
   const floor = view.zones.find((z) => z.id === view.floor)
-  const onFloor: Place[] = floor ? [{ key: `z:${floor.id}`, label: t('kbd.place.floor'), hint: t('kbd.place.floor.hint'), zone: floor.id, kind: 'area' }] : []
+  const onFloor: Place[] = floor ? [{ key: `z:${floor.id}`, label: floorName(view, t), hint: t('kbd.place.floor.hint'), zone: floor.id, kind: 'area' }] : []
   const areas = new Set(view.zones.filter((z) => z.kind === 'area').map((z) => z.id))
   // A counter is not something a card stacks on (K1 is about cards).
   const cards: Place[] = view.components

@@ -63,8 +63,19 @@ describe('the places a card can be addressed to (K16, C4)', () => {
   it('still names the piles, the hands that are sat at, and the floor', () => {
     // A card leaving a hand: every place it can go, its own zone excepted.
     const fromHand = placesFor(table('A'), new Set(['h1']), 'hand:A').map((p) => p.label)
-    expect(fromHand).toEqual(expect.arrayContaining(['Draghög', 'Bos hand', 'Framför A', 'Bordet', 'På Torn']))
+    expect(fromHand).toEqual(expect.arrayContaining(['Draghög', 'Bos hand', 'Framför A', 'Spelyta', 'På Torn']))
     expect(fromHand).not.toContain('Min hand')
+  })
+
+  // The floor is called what the setup calls it (#1367, beställarens beslut 2026-10-25): the log,
+  // the television and the sheet said «Spelyta» and this panel «Bordet». Only a floor the setup has
+  // not named takes the tool's word.
+  it('names the floor by the setup’s word, and by the tool’s only when the setup gave it none', () => {
+    const floorRow = (v: Snapshot) => placesFor(v, new Set(['h1']), 'hand:A').find((p) => p.zone === v.floor)?.label
+    expect(floorRow(table('A'))).toBe('Spelyta')
+    const nameless = table('A')
+    const unnamed = { ...nameless, zones: nameless.zones.map((z) => (z.id === nameless.floor ? { ...z, name: ' ' } : z)) }
+    expect(floorRow(unnamed)).toBe('Bordet')
   })
 })
 
@@ -86,13 +97,13 @@ describe('what a row of "Flytta till" sends a counter (C4, #73)', () => {
 
   it('is asked of rows a chip is really offered, so neither rule below is unreachable', () => {
     expect(isLoose(chip)).toBe(true)
-    expect(rows.map((p) => p.label)).toEqual(expect.arrayContaining(['Bordet', 'På Torn']))
+    expect(rows.map((p) => p.label)).toEqual(expect.arrayContaining(['Spelyta', 'På Torn']))
   })
 
   it('sends it into a public area by `move` alone, where a card is turned face up as well', () => {
-    expect(sent(chip, 'Bordet', [chip.id])).toEqual(['move'])
+    expect(sent(chip, 'Spelyta', [chip.id])).toEqual(['move'])
     // The same row for a card, so that what is missing above is the counter and not the row.
-    expect(sent(card, 'Bordet', [card.id])).toEqual(['move', 'flip'])
+    expect(sent(card, 'Spelyta', [card.id])).toEqual(['move', 'flip'])
   })
 
   it('sends it into a card’s zone rather than onto the card, which a card is stacked onto', () => {

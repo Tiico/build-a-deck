@@ -343,7 +343,7 @@ describe('PlayerPage', () => {
     expect(screen.getByText('2 kort valda')).toBeTruthy()
 
     fireEvent.click(within(document.querySelector('[data-hand-bar]') as HTMLElement).getByRole('button', { name: 'Spela…' }))
-    fireEvent.click(within(await screen.findByRole('dialog', { name: 'Spela till' })).getByRole('button', { name: /Bordet/ }))
+    fireEvent.click(within(await screen.findByRole('dialog', { name: 'Spela till' })).getByRole('button', { name: /lägg fritt/ }))
 
     await waitFor(() => expect(document.querySelectorAll('[data-hand-card]')).toHaveLength(1))
     const log = await run.store.read(id)

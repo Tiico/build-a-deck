@@ -518,7 +518,7 @@ async function tableViews(): Promise<Record<string, string>> {
   const { container, unmount } = render(<TablePage />)
   try {
     const out: Record<string, string> = {}
-    const chip = await screen.findByRole('button', { name: /^Liv, räknare i Räknare A/ })
+    const chip = await screen.findByRole('button', { name: /^Liv i Räknare A/ })
     // The hand's door: a click that never became a drag opens the ring (K14).
     fireEvent.pointerDown(chip, { clientX: 640, clientY: 400, pointerId: 1, isPrimary: true, button: 0 })
     fireEvent.pointerUp(chip, { clientX: 640, clientY: 400, pointerId: 1, isPrimary: true, button: 0 })
@@ -782,7 +782,7 @@ async function feltView(mode: 'table' | 'tv', width = 1280): Promise<Record<stri
   history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=${mode}&server=${encodeURIComponent(run.url)}`)
   const { container, unmount } = render(<TablePage />)
   try {
-    const chip = await screen.findByRole('button', { name: /^Liv, räknare i Räknare A/ })
+    const chip = await screen.findByRole('button', { name: /^Liv i Räknare A/ })
     fireEvent.pointerDown(chip, { clientX: 640, clientY: 420, pointerId: 1, isPrimary: true, button: 0 })
     fireEvent.pointerUp(chip, { clientX: 640, clientY: 420, pointerId: 1, isPrimary: true, button: 0 })
     await screen.findByRole('button', { name: 'Ange värde…' })

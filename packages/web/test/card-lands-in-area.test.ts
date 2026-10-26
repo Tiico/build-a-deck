@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { CARD_STANDARD_63x88, DICE, TOKEN_COUNTER, type SetupDef } from '@byd/engine'
 import { MAX_PLAYERS, openingSetup, type Recipe } from '@byd/server/doc'
 import type { Snapshot } from '@byd/protocol'
-import type { Rect } from '../src/table/camera.js'
+import { activeBounds, type Rect } from '../src/table/camera.js'
 import { CARD_MM, DIE_MM, TOKEN_MM, absoluteOf, dropIntents, type Drag } from '../src/table/drop.js'
 import { FAN_MAX, HAND_STEP_MM } from '../src/table/hand.js'
 import { playIntents } from '../src/player/play.js'
@@ -542,5 +542,96 @@ describe('ett kort i en yta med en bricka i (#1202)', () => {
     expect(g.w).toBeGreaterThanOrEqual(g.h)
     expect(first.x).toBe(Math.round((CARD_MM.w - DIE_MM) / 2))
     expect(second.x).toBe(Math.round(2 * HAND_STEP_MM + (CARD_MM.w - DIE_MM) / 2))
+  })
+})
+
+// Ett kort som läggs fritt från telefonen, alltså till golvet (#1368, beställarens beslut
+// 2026-10-25; L47 reviderad). Golvet är en yta (`kind: 'area'`), så fjädern lades från golvets eget
+// hörn: kortet låg vid filtens vänsterkant, långt från platserna och högarna, och TV:ns kamera
+// ramade om för att ta med det. Beslutet är att kortet landar framför spelarens plats, mot filtens
+// mitt, och att kameran inte ska behöva rama om för det.
+//
+// Mätt vid varje platsantal och från varje plats, med telefonens egen väg och kortets ruta läst ur
+// `project`.
+describe('ett kort som läggs fritt från telefonen (#1368)', () => {
+  const seatsOf = (players: number) => openingSetup({ players, counters: ONE_COUNTER }).seats
+  // Bordet med `cards` kort på platsens hand och platsen tagen.
+  const seated = (players: number, seat: string, cards: number) => {
+    const base = felt(players, 0)
+    const table = tableOf({ ...base, components: Array.from({ length: cards }, (_, i) => ({ type: CARD(), cardRef: `kort-${i + 1}`, zone: `hand:${seat}`, face: 'back' as const })) })
+    table.run(null, { v: 'seat.claim', seat, name: 'Nina' })
+    return table
+  }
+  const playOne = (table: ReturnType<typeof seated>, seat: string) => {
+    const view = table.view(seat)
+    const card = view.components.find((c) => c.zone === `hand:${seat}`)
+    if (!card) throw new Error('inget kort kvar på handen')
+    table.run(seat, ...playIntents(view, [card], view.floor))
+    const after = table.view(seat)
+    const laid = after.components.find((c) => c.id === card.id)
+    if (!laid || laid.zone !== after.floor) throw new Error('kortet hamnade inte på golvet')
+    return { before: view, after, box: { ...absoluteOf(after, laid), ...CARD_MM } }
+  }
+  const mid = (r: Rect) => ({ x: r.x + r.w / 2, y: r.y + r.h / 2 })
+  const far = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.hypot(a.x - b.x, a.y - b.y)
+  const overlapping = (a: Rect, b: Rect) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h
+  const cases = SEATS.flatMap((players) => seatsOf(players).map((seat) => [players, seat] as const))
+
+  it.each(cases)('vid %i platser landar kortet från %s framför platsen, mot mitten, utan att kameran ramar om', (players, seat) => {
+    const { before, after, box } = playOne(seated(players, seat, 1), seat)
+    const floor = zoneOf(after, after.floor).geometry
+    const centre = mid(floor)
+    const own = zoneOf(after, `mine:${seat}`).geometry
+    // På filten, och på ingen zon: varken platsens egen yta, en hand, en hög eller orden under den,
+    // som på den minsta TV:n tar 90 × 37 mm under kortet.
+    expect(inside(box, floor)).toBe(true)
+    const zones = after.zones
+      .filter((z) => z.id !== after.floor)
+      .flatMap((z) => (z.kind === 'pile' ? [{ x: z.geometry.x - CARD_MM.w / 2, y: z.geometry.y - CARD_MM.h / 2, ...CARD_MM }, { x: z.geometry.x - 45, y: z.geometry.y + CARD_MM.h / 2, w: 90, h: 37 }] : [z.geometry]))
+    expect(zones.filter((z) => overlapping(box, z))).toEqual([])
+    // Framför den egna platsen: mitt för platsens egna ytor, mellan dem och filtens mitt…
+    const zonesOfSeat = after.zones.filter((z) => z.owner === seat && z.kind === 'area').map((z) => z.geometry)
+    const lane = { x0: Math.min(...zonesOfSeat.map((z) => z.x)), x1: Math.max(...zonesOfSeat.map((z) => z.x + z.w)), y0: Math.min(...zonesOfSeat.map((z) => z.y)), y1: Math.max(...zonesOfSeat.map((z) => z.y + z.h)) }
+    const edge = after.seats.find((s) => s.id === seat)?.edge
+    const c = mid(box)
+    if (edge === 'N' || edge === 'S') {
+      expect(c.x).toBeGreaterThanOrEqual(lane.x0)
+      expect(c.x).toBeLessThanOrEqual(lane.x1)
+      expect(edge === 'S' ? box.y + box.h <= lane.y0 && c.y > centre.y : box.y >= lane.y1 && c.y < centre.y).toBe(true)
+    } else {
+      expect(c.y).toBeGreaterThanOrEqual(lane.y0)
+      expect(c.y).toBeLessThanOrEqual(lane.y1)
+      expect(edge === 'E' ? box.x + box.w <= lane.x0 && c.x > centre.x : box.x >= lane.x1 && c.x < centre.x).toBe(true)
+    }
+    // …och närmare mitten än platsens egen yta är.
+    expect(far(mid(box), centre)).toBeLessThan(far(mid(own), centre))
+    // Inom det kameran redan ramar (C5): det som är i spel före kortet håller kortet.
+    const play = activeBounds(before)
+    if (!play) throw new Error('inget i spel')
+    expect(inside(box, play)).toBe(true)
+  })
+
+  it('lägger nästa kort bredvid det förra, inte på samma millimeter, och överst', () => {
+    const table = seated(4, 'A', 3)
+    const one = playOne(table, 'A')
+    const two = playOne(table, 'A')
+    const three = playOne(table, 'A')
+    expect(far(mid(one.box), mid(two.box))).toBeGreaterThanOrEqual(HAND_STEP_MM)
+    expect(far(mid(three.box), mid(two.box))).toBeGreaterThanOrEqual(HAND_STEP_MM)
+    expect(far(mid(three.box), mid(one.box))).toBeGreaterThanOrEqual(HAND_STEP_MM)
+    // Det nyaste ligger överst: målat sist.
+    const last = three.after.components.filter((c) => c.zone === three.after.floor).at(-1)
+    expect(last && { ...absoluteOf(three.after, last), ...CARD_MM }).toEqual(three.box)
+  })
+
+  it('säger samma sak från tangentbordet som från telefonen', () => {
+    const table = seated(4, 'A', 1)
+    const view = table.view('A')
+    const card = view.components.find((c) => c.zone === 'hand:A')
+    if (!card) throw new Error('inget kort på handen')
+    const thing: Thing = { key: `card:${card.id}`, kind: 'card', id: card.id, name: 'kort-1', zone: card.zone }
+    const place = placesFor(view, new Set([card.id]), card.zone).find((p) => p.zone === view.floor)
+    if (!place) throw new Error('golvet går inte att adressera')
+    expect(intentsForPlace(view, place, thing, [card.id])).toEqual(playIntents(view, [card], view.floor))
   })
 })

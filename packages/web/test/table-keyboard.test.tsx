@@ -303,7 +303,7 @@ describe('the panel a counter opens (C4, #73, #67)', () => {
       </StatusLive>,
     )
     const user = userEvent.setup()
-    const chip = await screen.findByRole('button', { name: /^Liv, räknare i Räknare A/ })
+    const chip = await screen.findByRole('button', { name: /^Liv i Räknare A/ })
     chip.focus()
     await user.keyboard('{Enter}')
     const panel = within(await screen.findByRole('dialog'))
@@ -321,7 +321,7 @@ describe('the panel a counter opens (C4, #73, #67)', () => {
     expect(panel.getByRole('button', { name: /^Ange värde…/ })).toBeTruthy()
 
     await user.click(panel.getByRole('button', { name: /^\+1/ }))
-    const stepped = await screen.findByRole('button', { name: /^Liv, räknare i Räknare A, värde 21/ })
+    const stepped = await screen.findByRole('button', { name: /^Liv i Räknare A, värde 21/ })
     // And the focus comes back to the chip, as it does after a card's verb.
     await waitFor(() => expect(document.activeElement).toBe(stepped))
   })
@@ -334,7 +334,7 @@ describe('the panel a counter opens (C4, #73, #67)', () => {
     await waitFor(() => expect(sheet.contains(document.activeElement)).toBe(true))
     await user.click(within(sheet).getByRole('button', { name: '7' }))
     await user.click(within(sheet).getByRole('button', { name: 'Klar' }))
-    const set = await screen.findByRole('button', { name: /^Liv, räknare i Räknare A, värde 7/ })
+    const set = await screen.findByRole('button', { name: /^Liv i Räknare A, värde 7/ })
     expect(screen.queryByRole('dialog')).toBeNull()
     await waitFor(() => expect(document.activeElement).toBe(set))
   })
