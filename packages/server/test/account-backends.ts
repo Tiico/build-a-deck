@@ -108,7 +108,8 @@ export const as = (run: Running, cookie: string | null) => (method: string, path
 // A designer's whole account, in every store there is (#1280): Nicklas, with a name, a passkey, an
 // AI key, a tier and the terms; Stjärnhandel, a game of hers with a table playing that Bo sits at;
 // Skogens råd, a game of hers shared with Kim; Vargtimmen, Sara's game, which she edits and saved a
-// version of; and a table of Sara's she sat at, flagged, noted and answered at, and claimed.
+// version of; Månskugga, Sara's game that she edited and Sara took away (#1334); and a table of
+// Sara's she sat at, flagged, noted and answered at, and claimed.
 export const NICKLAS = 'Nicklas Raderas'
 export const HER_FLAG = 'Nicklas flagga om draken'
 export const HER_NOTE = 'Nicklas anteckning om poängen'
@@ -150,6 +151,12 @@ export async function aWorld(db: AccountBackend, tag: string) {
   }
   await invite(nicklas, ids.forest, kim)
   await invite(sara, ids.wolf, nicklas)
+  // Månskugga, a game of Sara's that Nicklas edited and that Sara took away (#1334): the band on
+  // Nicklas's Mina spel.
+  const moon = `moon-${tag}-${i}`
+  expect((await sara.call('POST', '/projects', { id: moon, ...game('Månskugga') })).status).toBe(201)
+  await invite(sara, moon, nicklas)
+  expect((await sara.call('DELETE', `/projects/${moon}`)).status).toBe(200)
   // A version of Sara's game saved by Nicklas.
   expect((await nicklas.call('PUT', `/projects/${ids.wolf}`, { rev: 1, ...game('Vargtimmen'), rows: [{ id: 'dragon', fields: { title: 'Drake', antal: 5 } }] })).status).toBe(200)
 
@@ -169,9 +176,16 @@ export async function aWorld(db: AccountBackend, tag: string) {
   const saras = await table(sara, ids.wolf)
   const token = await run.admit(saras.id, 'A', NICKLAS)
   const phone = await WireClient.connect(run.base, saras.id, 'A', undefined, { token })
-  for (const it of [{ v: 'seat.claim', seat: 'A', name: NICKLAS }, { v: 'flag', note: HER_FLAG }, { v: 'note.add', text: HER_NOTE }, { v: 'session.end' }] as const) expect((await phone.send('A', it)).t).toBe('ack')
+  // She draws a card to her hand and flags it, and flags one she laid face down on the table (#1350).
+  expect((await phone.send('A', { v: 'seat.claim', seat: 'A', name: NICKLAS })).t).toBe('ack')
+  expect((await phone.send('A', { v: 'draw', from: 'draw', to: 'hand:A', count: 1 })).t).toBe('ack')
+  expect((await phone.send('A', { v: 'draw', from: 'draw', to: 'table', count: 1, face: 'back' })).t).toBe('ack')
+  await phone.waitFor(() => phone.view?.components.some((c) => c.zone === 'table') === true)
+  const inHand = phone.view!.components.find((c) => c.zone === 'hand:A')!.id
+  const faceDown = phone.view!.components.find((c) => c.zone === 'table')!.id
+  for (const it of [{ v: 'flag', note: HER_FLAG, component: inHand }, { v: 'flag', component: faceDown }, { v: 'note.add', text: HER_NOTE }, { v: 'session.end' }] as const) expect((await phone.send('A', it)).t).toBe('ack')
   await phone.close()
   expect((await as(run, null)('POST', `/sessions/${saras.id}/survey`, { token, seat: 'A', answers: { fun: 4, clarity: 3, balance: 2, change: HER_CHANGE } })).status).toBe(201)
   expect((await nicklas.call('POST', '/guests/claim', { token })).status).toBe(200)
-  return { id, nicklas, kim, sara, ids, star, saras }
+  return { id, nicklas, kim, sara, ids, star, saras, flagged: { inHand, faceDown } }
 }

@@ -638,6 +638,22 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
       res.end(zip)
       return
     }
+    // The games gone from her Mina spel (#1334): each a band there until she closes it, and closing
+    // it is the notice gone.
+    if (url.pathname === '/me/gone' || url.pathname.startsWith('/me/gone/')) {
+      if (!opts.auth) return json(res, 404, { error: 'accounts are off' })
+      const account = await accountOf(opts.auth, req)
+      if (!account) return json(res, 401, { error: 'log in first' })
+      if (req.method === 'GET' && url.pathname === '/me/gone') return json(res, 200, opts.projects ? await opts.projects.goneFor(account.id) : [])
+      const one = /^\/me\/gone\/([^/]+)$/.exec(url.pathname)
+      if (req.method === 'DELETE' && one) {
+        if (!(await opts.projects?.dismissGone(account.id, decodeURIComponent(one[1] ?? '')))) return json(res, 404, { error: 'no such notice' })
+        res.writeHead(204)
+        res.end()
+        return
+      }
+      return json(res, 405, { error: 'method not allowed' })
+    }
     // What «Radera kontot…» asks about (#1280, variant A): each game that goes with the account, who
     // else loses it and whether a table at it is playing, the games it leaves, and how many tables
     // it claimed. The question names every game, so it is asked of the server and not guessed.
@@ -2764,7 +2780,7 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     return true
   }
   // "Uppdatera bordet" on a running table (C7, L5): the project's current rev becomes a
-  // version.change line, and the actor gets the new textures.
+  // version.change line, with the piles as that rev defines them, and the actor gets the new textures.
   const refresh = /^\/sessions\/([^/]+)\/refresh$/.exec(url.pathname)
   if (refresh && req.method === 'POST') {
     const sessionId = decodeURIComponent(refresh[1] ?? '')
@@ -2798,7 +2814,7 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     // names, which is never read.
     await opts.store.addDeck(sessionId, version, deck)
     await actor.refreshDeck(deck, setup)
-    const decision = await actor.submit({ id: randomUUID(), seat: null, intents: [{ v: 'version.change', to: version, components: setup.components, ...(setup.cards ? { cards: setup.cards } : {}) }] })
+    const decision = await actor.submit({ id: randomUUID(), seat: null, intents: [{ v: 'version.change', to: version, components: setup.components, zones: setup.zones, ...(setup.cards ? { cards: setup.cards } : {}) }] })
     if (!decision.ok) json(res, 409, { error: decision.reason })
     else json(res, 200, { version, seqs: decision.applied.map((l) => l.seq) })
     return true

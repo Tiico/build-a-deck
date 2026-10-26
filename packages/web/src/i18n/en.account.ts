@@ -83,6 +83,11 @@ export const enAccount = {
   'home.remove.keep': 'Cancel',
   'home.remove.confirm': 'Delete',
   'home.removed': '{name} has been removed.',
+  // A game she worked on that went (#1334): the band's bold lead, then why. Never who the owner was.
+  'home.gone.title': '{name} has been removed.',
+  'home.gone.removed': 'The owner removed the game.',
+  'home.gone.account': 'The owner deleted their account.',
+  'home.gone.close': 'Close the notice about {name}',
   'home.menu.more': 'More for {name}',
   'home.menu.label': 'Choices for {name}',
   'home.menu.start': 'Start a table',

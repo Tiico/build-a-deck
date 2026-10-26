@@ -202,6 +202,22 @@ export async function myPlayed(http: string): Promise<Played[]> {
   return (await res.json()) as Played[]
 }
 
+// A game gone from her Mina spel (#1334): its owner took it away, or deleted her account with it.
+// Never who the owner was.
+export type GoneGame = { id: string; name: string; why: 'removed' | 'account'; at: string }
+export async function myGone(http: string): Promise<GoneGame[]> {
+  const res = await fetch(`${http}/me/gone`, withCredentials())
+  if (res.status === 401) throw new Unauthorized()
+  if (!res.ok) throw new Error(`could not list gone games: ${res.status}`)
+  return (await res.json()) as GoneGame[]
+}
+// Its band closed: the notice goes on the server, so it never stands again.
+export async function dismissGone(http: string, id: string): Promise<void> {
+  const res = await fetch(`${http}/me/gone/${encodeURIComponent(id)}`, withCredentials({ method: 'DELETE' }))
+  if (res.status === 401) throw new Unauthorized()
+  if (!res.ok && res.status !== 404) throw new Error(`could not close the notice: ${res.status}`)
+}
+
 // «Tillbaka till bordet» (#690): a fresh token for the account's own seat at a running table, or
 // null when there is none to go back to — the seat was left or kicked, or the table has ended.
 export async function returnToTable(http: string, session: string): Promise<{ token: string; kind: 'seat' | 'observer'; seat: string | null; name: string } | null> {

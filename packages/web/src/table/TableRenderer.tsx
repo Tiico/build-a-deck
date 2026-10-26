@@ -543,8 +543,12 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   const platesAt = useRef<Record<string, PlateAt>>({})
   const [, redrawNames] = useState(0)
   const [namesResized, setNamesResized] = useState(0)
+  // The start tile, while it lies on the felt (K25): the plates stand clear of it (#1344), so they are
+  // laid out again when it leaves, and go back to their own places.
+  const start = onAct ? startOf(view) : null
+  const tileOnFelt = start !== null && !view.played && startTile
   const namesKey = measured
-    ? JSON.stringify([namesResized, mode, rotate, Math.round(fit * 1e4), forTheRoom, [...(lit ?? [])].sort(), view.zones.map((z) => [z.id, z.kind, z.name, z.geometry.x, z.geometry.y, z.geometry.w, z.geometry.h]), view.seats.map((s) => s.name)])
+    ? JSON.stringify([namesResized, mode, rotate, Math.round(fit * 1e4), forTheRoom, [...(lit ?? [])].sort(), view.zones.map((z) => [z.id, z.kind, z.name, z.geometry.x, z.geometry.y, z.geometry.w, z.geometry.h]), view.seats.map((s) => s.name), tileOnFelt])
     : null
   const liveScale = (fixedScale ?? placed?.scale ?? fitted ?? 1) * zoomed
   const deciding = namesKey !== null && namesAt.current !== namesKey && liveScale !== fit
@@ -690,7 +694,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   //
   // En filt där ingen hög bär en startåtgärd ritar ingen bricka alls — samma regel som K14 ger
   // ringen: en ring utan verb öppnas inte, och ett kommando utan något att göra är samma fel.
-  const start = onAct ? startOf(view) : null
+  // (`start` räknas ut ovanför, där skyltarna läggs ut: de står fritt från brickan, #1344.)
   // Where the start tile's top edge stands, in the felt's pixels (K25, #721).
   const startTop = (): number => {
     const middle = floor.geometry.y + floor.geometry.h / 2
@@ -1742,7 +1746,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
           {/* On the felt until something has happened at the table (K25); after that the tile would
               lie over the cards played where it stood, so it leaves for the corner (beslut
               2026-09-27, #482 fynd 3 C). */}
-          {start && !view.played && startTile && (
+          {tileOnFelt && (
             <StartButton
               view={view}
               startWait={startWait}

@@ -370,3 +370,17 @@ create table if not exists asset_blocks (
   report      text,
   purged      boolean not null default false
 );
+
+-- A game gone from a member's Mina spel (#1334, G6): its owner took it away (`removed`) or deleted
+-- her account (`account`). Written in the transaction that takes the game, one row per member, and
+-- gone when the member closes the band on Mina spel, or with her own account. It says the game's
+-- name, why and when, and never who the owner was: no owner, and no game id that the ledger could
+-- lead back to her by.
+create table if not exists gone_games (
+  id          text primary key,
+  account_id  bigint not null references accounts(id) on delete cascade,
+  name        text not null,
+  why         text not null check (why in ('removed', 'account')),
+  at          timestamptz not null
+);
+create index if not exists gone_games_account on gone_games (account_id);

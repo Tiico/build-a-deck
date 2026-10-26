@@ -1,5 +1,9 @@
 import { z } from 'zod'
 import { strToU8, zipSync } from 'fflate'
+import { canSeeFace, initialState, replay, type TypeRegistry } from '@byd/engine'
+import type { Applied } from '@byd/protocol'
+import { titleOfFields } from './names.js'
+import type { SessionInfo } from './store.js'
 import type { Account, AuthStore, Lang } from './auth.js'
 import type { ServerOptions } from './server.js'
 import type { InviteRecord } from './projects.js'
@@ -23,6 +27,8 @@ export const PERSONAL_DATA_FORMAT_VERSION = 1
 
 const When = z.string()
 const Role = z.enum(['owner', 'editor', 'tester', 'viewer'])
+const FlaggedCard = z.union([z.object({ name: z.string() }), z.object({ name: z.null(), why: z.enum(['face-down', 'untitled', 'unknown']) })])
+type FlaggedCard = z.infer<typeof FlaggedCard>
 const Invite = z.object({ game: z.string().nullable(), email: z.string(), role: Role, sentAt: When, expiresAt: When, acceptedAt: When.nullable() })
 export const PersonalData = z.object({
   format: z.literal(PERSONAL_DATA_FORMAT),
@@ -64,11 +70,17 @@ export const PersonalData = z.object({
       name: z.string(),
       at: When,
       ended: z.boolean(),
-      flags: z.array(z.object({ at: When, note: z.string().optional(), component: z.string().optional() })),
+      // A flag about a card (#1142) names it as the table had it (#1350), beside the id it had
+      // there. A card that lay face down for her is not named, since its name is what was hidden
+      // (B6); nor one the table no longer knows. Either is said, and never left a bare id.
+      flags: z.array(z.object({ at: When, note: z.string().optional(), component: z.string().optional(), card: FlaggedCard.optional() })),
       notes: z.array(z.object({ at: When, text: z.string() })),
       survey: z.object({ at: When, answers: z.record(z.string(), z.unknown()) }).nullable(),
     }),
   ),
+  // The games gone from its Mina spel whose band it has not closed (#1334): each by its name, why it
+  // went and when, and never who owned it.
+  goneGames: z.array(z.object({ name: z.string(), why: z.enum(['removed', 'account']), at: When })),
   // What the account bears (A2): the tables started from its games or by it, and its renderings.
   borne: z.object({ tables: z.number().int(), renders: z.number().int() }),
 })
@@ -91,21 +103,88 @@ export function packPersonalData(data: PersonalData, lang: Lang): Uint8Array {
   })
 }
 
+// What she reads first (#1350, art. 15): a line for every part of uppgifter.json and a word for
+// every field in it, in her language. The keys are the format's and stay as they are; a test reads
+// them out of the schema, so a part added without a line here is red.
 export function personalReadme(lang: Lang, data: PersonalData): string {
   const day = new Date(data.exportedAt).toLocaleDateString(lang === 'en' ? 'en-GB' : 'sv-SE', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })
   if (lang === 'en') {
     return `# Your data in Deckster
 
-The file uppgifter.json holds everything Deckster kept about your account on ${day}, in the format schema.json describes.
+The file \`uppgifter.json\` holds everything Deckster kept about your account on ${day}, in the format \`schema.json\` describes.
+Nothing in it is about another account.
+A game's own cards and rules are not here: you download a game as an export under ⋯ in My games.
+Times are in UTC, written like \`2026-10-25T14:03:00.000Z\`, and \`null\` means there is nothing to say.
 
-- account: your address and your name.
+## What each part is
+
+- \`format\`: what the file is, always \`${PERSONAL_DATA_FORMAT}\`.
+- \`formatVersion\`: which version of the format the file follows.
+- \`exportedAt\`: when the extract was made.
+- \`release\`: which release of Deckster made it.
+- \`account\`: the account itself.
+  \`id\` is its id in Deckster, \`email\` the address you log in with, \`name\` the name the others see you by, and \`createdAt\` when it was made.
+  \`plan\` is the account's tier: \`plan\` its name, \`since\` since when, and \`source\` who set it.
+  \`terms\` is every version of the terms you accepted (\`version\`) and when (\`acceptedAt\`).
+- \`passkeys\`: your passkeys, without the key itself.
+  \`device\` is the device it was made on, \`aaguid\` which kind of passkey it is, \`transports\` how the browser reaches it, \`createdAt\` when it was made and \`lastUsedAt\` when it was last used.
+- \`logins\`: the browsers logged in to your account, with \`expiresAt\`, when each login lapses.
+- \`loginLinks\`: the login links sent to your address, with \`expiresAt\`, when each stops working, and \`usedAt\`, when it was used.
+- \`aiKey\`: your own AI key, without the key itself.
+  \`provider\` is whose key it is, \`last4\` its last four characters, \`model\` the model you chose and \`verifiedAt\` when it was last tried.
+- \`games\`: the games you own or are a member of.
+  \`id\` and \`name\` are the game's, \`role\` is yours in it (\`owner\`, \`editor\`, \`tester\` or \`viewer\`), \`versionsSaved\` the versions you saved, each by number (\`rev\`) and when (\`at\`), and \`edits\` how many changes you made.
+- \`invitesSent\`: the invitations you sent.
+  \`game\` is the game's name, \`email\` the address you invited, \`role\` the role offered, \`sentAt\` when, \`expiresAt\` when it lapses and \`acceptedAt\` when it was accepted.
+- \`invitesReceived\`: the invitations sent to your address, with the same fields: \`game\`, \`email\`, \`role\`, \`sentAt\`, \`expiresAt\` and \`acceptedAt\`. Who sent them is not said.
+- \`tables\`: the tables you sat at or watched and then claimed to your account.
+  \`session\` is the table's id, \`game\` the game's name, \`version\` the version it was played in, \`kind\` whether you had a seat (\`seat\`) or watched (\`observer\`), \`seat\` which seat, \`name\` the name you went by there, \`at\` when you came in and \`ended\` whether the table has ended.
+  \`flags\` are the moments you flagged: \`at\` when, \`note\` what you wrote, \`component\` the card's id at the table and \`card\` which card it was.
+  \`card\` has the card's \`name\`; when it is \`null\`, \`why\` says why: \`face-down\` when the card lay face down for you, so its name stayed hidden, \`untitled\` when the card has no name in the game, and \`unknown\` when the table no longer knows the card.
+  \`notes\` are the lines you wrote on the table's notepad: \`at\` when and \`text\` what.
+  \`survey\` is your survey after the game: \`at\` when you answered and \`answers\` what, from 1 to 5 for \`fun\`, \`clarity\` and \`balance\`, and in your own words for \`change\`.
+  The moves themselves belong to the table and its game's owner, and are not here.
+- \`goneGames\`: the games gone from your My games whose notice you have not closed: \`name\` the game's name, \`why\` why it went (\`removed\` when its owner removed it, \`account\` when its owner deleted their account) and \`at\` when. Who owned it is not said.
+- \`borne\`: what your account bears: \`tables\`, how many tables were started from your games or by you, and \`renders\`, how many card pictures were rendered for you.
 `
   }
   return `# Dina uppgifter i Deckster
 
-Filen uppgifter.json innehåller allt Deckster hade sparat om ditt konto den ${day}, i det format som schema.json beskriver.
+Filen \`uppgifter.json\` innehåller allt Deckster hade sparat om ditt konto den ${day}, i det format som \`schema.json\` beskriver.
+Ingenting i den handlar om ett annat konto.
+Ett spels egna kort och regler finns inte här: ett spel laddar du ner som export under ⋯ i Mina spel.
+Tider står i UTC, skrivna som \`2026-10-25T14:03:00.000Z\`, och \`null\` betyder att det inte finns något att säga.
 
-- account: din adress och ditt namn.
+## Vad varje del är
+
+- \`format\`: vad filen är, alltid \`${PERSONAL_DATA_FORMAT}\`.
+- \`formatVersion\`: vilken version av formatet filen följer.
+- \`exportedAt\`: när utdraget gjordes.
+- \`release\`: vilken version av Deckster som gjorde det.
+- \`account\`: själva kontot.
+  \`id\` är dess id i Deckster, \`email\` adressen du loggar in med, \`name\` namnet de andra ser dig under och \`createdAt\` när det skapades.
+  \`plan\` är kontots nivå: \`plan\` vad den heter, \`since\` sedan när och \`source\` vem som satte den.
+  \`terms\` är varje version av villkoren du har godkänt (\`version\`) och när (\`acceptedAt\`).
+- \`passkeys\`: dina passkeys, utan själva nyckeln.
+  \`device\` är enheten den skapades på, \`aaguid\` vilken sorts passkey det är, \`transports\` hur webbläsaren når den, \`createdAt\` när den skapades och \`lastUsedAt\` när den senast användes.
+- \`logins\`: webbläsarna som är inloggade på ditt konto, med \`expiresAt\`, när varje inloggning går ut.
+- \`loginLinks\`: inloggningslänkarna som skickats till din adress, med \`expiresAt\`, när varje slutar gälla, och \`usedAt\`, när den användes.
+- \`aiKey\`: din egen AI-nyckel, utan själva nyckeln.
+  \`provider\` är vems nyckel det är, \`last4\` dess fyra sista tecken, \`model\` modellen du valde och \`verifiedAt\` när den senast prövades.
+- \`games\`: spelen du äger eller är med i.
+  \`id\` och \`name\` är spelets, \`role\` din roll i det (\`owner\` ägare, \`editor\` redigerare, \`tester\` testare eller \`viewer\` läsare), \`versionsSaved\` versionerna du sparade, var och en med nummer (\`rev\`) och när (\`at\`), och \`edits\` hur många ändringar du gjorde.
+- \`invitesSent\`: inbjudningarna du har skickat.
+  \`game\` är spelets namn, \`email\` adressen du bjöd in, \`role\` rollen du erbjöd, \`sentAt\` när, \`expiresAt\` när den går ut och \`acceptedAt\` när den togs emot.
+- \`invitesReceived\`: inbjudningarna som skickats till din adress, med samma fält: \`game\`, \`email\`, \`role\`, \`sentAt\`, \`expiresAt\` och \`acceptedAt\`. Vem som skickade dem står inte med.
+- \`tables\`: borden du satt vid eller tittade på och sedan knöt till ditt konto.
+  \`session\` är bordets id, \`game\` spelets namn, \`version\` versionen det spelades i, \`kind\` om du hade en plats (\`seat\`) eller tittade på (\`observer\`), \`seat\` vilken plats, \`name\` namnet du hade där, \`at\` när du kom in och \`ended\` om bordet är avslutat.
+  \`flags\` är stunderna du flaggade: \`at\` när, \`note\` vad du skrev, \`component\` kortets id vid bordet och \`card\` vilket kort det var.
+  \`card\` har kortets namn i \`name\`; när det är \`null\` säger \`why\` varför: \`face-down\` när kortet låg med baksidan upp för dig, så att namnet förblev dolt, \`untitled\` när kortet inte har något namn i spelet och \`unknown\` när bordet inte längre känner kortet.
+  \`notes\` är raderna du skrev i bordets anteckningar: \`at\` när och \`text\` vad.
+  \`survey\` är din enkät efter spelet: \`at\` när du svarade och \`answers\` vad, från 1 till 5 för \`fun\` (roligt), \`clarity\` (tydligt) och \`balance\` (jämnt), och med egna ord för \`change\` (vad du skulle ändra).
+  Själva dragen hör till bordet och spelets ägare och står inte här.
+- \`goneGames\`: spelen som försvunnit ur dina Mina spel och vars besked du inte har stängt: \`name\` spelets namn, \`why\` varför det försvann (\`removed\` när ägaren tog bort det, \`account\` när ägaren raderade sitt konto) och \`at\` när. Vem som ägde det står inte med.
+- \`borne\`: vad ditt konto står för: \`tables\`, hur många bord som startats från dina spel eller av dig, och \`renders\`, hur många kortbilder som renderats åt dig.
 `
 }
 
@@ -138,7 +217,11 @@ export async function personalDataOf(opts: ServerOptions, auth: AuthStore, accou
     // that list (`ownLines`).
     const guests = await opts.store.guestsAt(g.sessionId)
     const lines = ownLines(log, guests, guests.find((o) => o.tokenHash === g.tokenHash) ?? g)
-    const flags = lines.flatMap((l) => (l.intent.v === 'flag' ? [{ at: l.at, ...(l.intent.note !== undefined ? { note: l.intent.note } : {}), ...(l.intent.component !== undefined ? { component: l.intent.component } : {}) }] : []))
+    const flags = lines.flatMap((l) =>
+      l.intent.v === 'flag'
+        ? [{ at: l.at, ...(l.intent.note !== undefined ? { note: l.intent.note } : {}), ...(l.intent.component !== undefined ? { component: l.intent.component, card: flaggedCard(session, log, l, l.intent.component, opts.registry) } : {}) }]
+        : [],
+    )
     const notes = lines.flatMap((l) => (l.intent.v === 'note.add' || l.intent.v === 'note.edit' ? [{ at: l.at, text: l.intent.text }] : []))
     const answer = opts.surveys ? (await opts.surveys.list(g.sessionId)).find((s) => answeredBy(s, g)) : undefined
     tables.push({
@@ -176,7 +259,29 @@ export async function personalDataOf(opts: ServerOptions, auth: AuthStore, accou
     invitesSent: await Promise.all(invites.sent.map(told)),
     invitesReceived: await Promise.all(invites.received.map(told)),
     tables,
+    goneGames: projects ? (await projects.goneFor(account.id)).map((g) => ({ name: g.name, why: g.why, at: g.at })) : [],
     borne: { tables: (await opts.store.tablesOf(account.id, new Date(0))).started, renders: opts.renders ? await opts.renders.rendersBy(account.id, 0) : 0 },
+  }
+}
+
+// The card a flag is about, as the table had it just before the flag (#1350): the log is replayed
+// from the table's start, as the designer's reading of the same flag does (`playtest.ts`). The name
+// is the row's title in the deck the table was playing, which the table keeps for itself, so a card
+// since taken out of the game is still named; a counter or a die is named by what it is. Only a
+// card she could see the face of is named: the name of one lying face down for her is what the
+// table kept from her (B6), and an extract is no way round that.
+function flaggedCard(session: SessionInfo, log: readonly Applied[], flag: Applied, id: string, registry: TypeRegistry): FlaggedCard {
+  try {
+    const state = replay(initialState(session.version, session.setup, registry), registry, log.filter((l) => l.seq < flag.seq))
+    const component = state.components[id]
+    if (!component) return { name: null, why: 'unknown' }
+    const observer = flag.by === null && flag.intent.v === 'flag' && flag.intent.observer !== undefined
+    if (!canSeeFace(state, registry, component, flag.by, observer)) return { name: null, why: 'face-down' }
+    const fields = state.setup.cards?.[component.cardRef]
+    const name = fields ? titleOfFields(fields) : component.cardRef
+    return name ? { name } : { name: null, why: 'untitled' }
+  } catch {
+    return { name: null, why: 'unknown' }
   }
 }
 
