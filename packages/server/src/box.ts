@@ -1,4 +1,5 @@
-import { BOX_TYPES, CARD_STANDARD_63x88, TUCKBOX, TypeRegistry, boxFit, type BoxCard, type BoxFit, type BoxTypeDef } from '@byd/engine'
+import { BOX_TYPES, CARD_STANDARD_63x88, TUCKBOX, TypeRegistry, boxFaceSize, boxFit, type BoxCard, type BoxFace, type BoxFit, type BoxTypeDef } from '@byd/engine'
+import type { Element, FaceTemplate } from '@byd/template'
 import type { ProjectBox, ProjectDoc } from './projects.js'
 import { copiesOf } from './setup.js'
 
@@ -19,4 +20,64 @@ export function boxOf(doc: Pick<ProjectDoc, 'rows' | 'box'>): GameBox {
   const card = CARD_STANDARD_63x88.physical
   const fit = boxFit({ type, card, cards: doc.rows.reduce((n, row) => n + copiesOf(row.fields), 0), clearance: box?.clearance, locked: box?.locked })
   return { ...fit, type, card }
+}
+
+// En yta på lådan som den ritas (#1413): designerns mall när hon har ritat den, och annars den neutrala
+// ytan (#1406, beslut 5), lekens färg och spelets namn och inget mer. Den neutrala ytan är en mall som
+// alla andra och ritas av samma renderare (E2); den skrivs aldrig i dokumentet förrän designern rör
+// ytan, och då blir den hennes. Den bär inga av verktygets ord, bara spelets namn, så den är densamma
+// på varje språk (A4). Heron, länkbilden och «Visa upp» (#1414, #1416, #1417) frågar här.
+export type BoxFaceDrawing = { drawn: boolean; template: FaceTemplate }
+
+export function boxFaceOf(doc: Pick<ProjectDoc, 'rows' | 'box' | 'name' | 'template'>, face: BoxFace): BoxFaceDrawing {
+  const own = doc.box?.faces?.[face]
+  if (own) return { drawn: true, template: own }
+  return { drawn: false, template: { base: neutralFace(face, boxFaceSize(face, boxOf(doc).size), doc.name, deckColour(doc)), variants: {} } }
+}
+
+// Lekens färg: det kortets baksida, och annars framsidan, målas i över hela kortet. En lek som inte
+// målar något har en mörk kartong, så att namnet står ljust på den som på en ritad låda.
+const BOARD = '#2b3a4a'
+function deckColour(doc: Pick<ProjectDoc, 'template'>): string {
+  const card = CARD_STANDARD_63x88.physical
+  for (const side of ['back', 'front']) {
+    const ground = doc.template.faces[side]?.base.find((el) => el.kind === 'shape' && typeof el.fill === 'string' && el.x <= 0 && el.y <= 0 && el.w >= card.widthMm && el.h >= card.heightMm)
+    if (ground?.kind === 'shape' && typeof ground.fill === 'string') return ground.fill
+  }
+  return BOARD
+}
+// Namnet i ljust på en mörk färg och i mörkt på en ljus, efter färgens relativa luminans.
+function inkOn(colour: string): string {
+  const hex = /^#([0-9a-f]{6})$/i.exec(colour)?.[1]
+  if (!hex) return '#f3ecdc'
+  const [r, g, b] = [0, 2, 4].map((i) => {
+    const c = parseInt(hex.slice(i, i + 2), 16) / 255
+    return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
+  }) as [number, number, number]
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.35 ? '#1b1d23' : '#f3ecdc'
+}
+const PT_PER_MM = 72 / 25.4
+function neutralFace(face: BoxFace, { widthMm: w, heightMm: h }: { widthMm: number; heightMm: number }, name: string, fill: string): Element[] {
+  const ink = inkOn(fill)
+  const ground: Element = { kind: 'shape', id: 'farg', x: 0, y: 0, w, h, shape: 'rect', fill }
+  // Namnet bärs av framsidan, locket och sidorna, där en låda i en hylla läses; baksidan och botten
+  // är bara färg.
+  if (face === 'back' || face === 'bottom') return [ground]
+  const air = 3
+  const sizeMm = face === 'front' ? w * 0.11 : Math.min(5, (face === 'lid' ? h : w) * 0.16)
+  const boxH = face === 'front' ? Math.min(h - 2 * air, sizeMm * 3) : face === 'lid' ? h - 2 * air : Math.min(h - 2 * air, sizeMm * 4)
+  const text: Element = {
+    kind: 'text',
+    id: 'namn',
+    x: air,
+    y: Math.round(((h - boxH) / 2) * 10) / 10,
+    w: Math.round((w - 2 * air) * 10) / 10,
+    h: Math.round(boxH * 10) / 10,
+    bind: { literal: name },
+    font: { family: 'sans-serif', sizePt: Math.round(sizeMm * PT_PER_MM), weight: 700, align: 'center' },
+    color: ink,
+    fit: 'shrink',
+    valign: 'middle',
+  }
+  return [ground, text]
 }

@@ -1,9 +1,9 @@
 import { lazy, Suspense, useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { fieldLabel, nextCardRef } from './fields.js'
 import { DeckWall, type WallView } from './DeckWall.js'
-import { EditorTabs, MODES, panelId, tabId, type Mode } from './EditorTabs.js'
+import { EditorTabs, modesFor, panelId, tabId, type Mode } from './EditorTabs.js'
 import { Footed, SaidProvider } from './said.js'
-import { EditorStages, isCanvasStage, modeOf, STAGES, type Stage } from './EditorStages.js'
+import { EditorStages, isCanvasStage, modeOf, stagesFor, type Stage } from './EditorStages.js'
 import { PHONE_READING, SCREENS, minPtIn } from '../legibility.js'
 import { noFilter } from './filtering.js'
 import { useHeaderStands, useRoom } from '../room.js'
@@ -11,6 +11,8 @@ import { useDoor } from '../doors.js'
 import type { CatalogIcon } from './icon-catalog.js'
 import type { OwnIcon } from './IconCatalog.js'
 import { TemplateCanvas } from './TemplateCanvas.js'
+import { BoxTab } from './BoxTab.js'
+import type { BoxFace } from '@byd/engine'
 import { DataTable } from './DataTable.js'
 import { AiPanel, useAiKey } from './AiPanel.js'
 import { proposalView, rulesView, showsDeck, showsRules, showsTemplate, translated, type ProposalView, type ShownProposal } from './proposals.js'
@@ -122,7 +124,12 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   // How much room there is (L10), and where the designer is standing. One state answers both:
   // the desk shows a mode, a smaller screen shows the stage that mode is made of.
   const room = useRoom()
-  const stages = room === 'desk' ? null : STAGES[room]
+  // Whether «Starta bord» can be used (L5): the header's button stands exactly when this is true. The
+  // box's tab comes at the same moment and not before (#1406, beslut 2 och 3, #1413), so the two are
+  // asked the one question.
+  const startable = client?.mayStartTables === true
+  const modes = modesFor(startable)
+  const stages = room === 'desk' ? null : stagesFor(room, startable)
   // Below the desk «Spara» and «Uppdatera bordet» stand in the header while the header stands, as
   // they do at the desk, and the strip is the stages' own (#567, beslut B): at 820 px the two had
   // hidden Media, Regler and Bord behind them. In a low window the header scrolls away (#550), so
@@ -146,7 +153,8 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   const [codeSaid, setCodeSaid] = useState<string | null>(null)
   // A room that does not offer the stage that was open — a phone has no canvas — puts the
   // designer on the deck wall rather than on a panel that is not there.
-  const here: Stage = stages && !stages.some(([s]) => s === stage) ? 'wall' : stage
+  // So does a box whose tab has gone, which is a role that may no longer start tables.
+  const here: Stage = (stages ? !stages.some(([s]) => s === stage) : !modes.some(([m]) => m === stage) && !isCanvasStage(stage)) ? 'wall' : stage
   const mode: Mode = modeOf(here)
   // Which of the template's four panels the canvas draws: all four on the desk, one at a time
   // below it.
@@ -163,6 +171,10 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   const [ghosts, setGhosts] = useState<ShownProposal | null>(null)
   const ghostWall = useRef<{ doc: ProjectDoc; shown: ShownProposal; view: ProposalView } | null>(null)
   const [element, setElement] = useState<string | null>(null)
+  // Which face of the box the Låda tab edits, and which of its layers is chosen (#1413). Its own,
+  // so going between Mall and Låda leaves each where the designer left it.
+  const [boxFace, setBoxFace] = useState<BoxFace>('front')
+  const [boxElement, setBoxElement] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   // What could not happen, and what just did. Two states, because they are two different pieces
   // of news and one slot could only ever hold the later of them (#35).
@@ -243,7 +255,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   const links = statusLinks({ server: params.get('server') })
   // The tab says which game is open, and what is wrong with it while something is (#12).
   // Which tab is open is part of where the designer is (#477), so the browser's tab says it too.
-  const part = MODES.find(([m]) => m === mode)?.[1]
+  const part = modes.find(([m]) => m === mode)?.[1]
   usePageTitle({ state: projectId ? (fault === 'unauthorized' ? null : fault === 'loggedOut' ? 'forbidden' : fault ?? (client ? null : slow ? 'slow' : 'loading')) : 'missing', game: client?.doc.name ?? null, part: part ? t(part) : null })
   // What the header has standing over the work: the history (B4), which opens from the revision
   // where the version is already named, or who has the game (D3), which opens from the faces. One
@@ -754,6 +766,28 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         onReset={(id) => group && client.resetElement(face, id, group)}
       />
     ),
+    // Lådan (#1413): the net, with the face chosen edited by Mall's own canvas.
+    box: () => (
+      <BoxTab
+        doc={doc}
+        edit={client}
+        reading={!client.mayEdit}
+        assetBase={http}
+        motifs={deckMotifs}
+        face={boxFace}
+        onSelectFace={setBoxFace}
+        element={boxElement}
+        onSelectElement={setBoxElement}
+        onOpenFonts={() => {
+          revealThemeSection('fonts')
+          setStage('theme')
+        }}
+        {...(client.mayEdit ? { onCatalogFont: (family: CatalogFamily) => client.useCatalogFont(family, t) } : {})}
+        {...(client.mayEdit ? { onCatalogIcon: async (icon: CatalogIcon, gesture: string) => iconSettled(await client.chooseIcon(icon, t, gesture)) } : {})}
+        {...(client.mayEdit ? { onOwnIcon: async (own: OwnIcon, gesture: string) => iconSettled(await client.chooseOwnIcon(own.svg, own.name, own.credit, t, gesture)) } : {})}
+        onAddPicture={(file) => client.addPicture(file, t)}
+      />
+    ),
     table: () => (
       <DataTable
         doc={doc}
@@ -907,7 +941,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         {client.mayEdit && <StepButtons client={client} onConfirm={confirmation.confirm} />}
         {/* The modes are the header's on a desk; below one they are the stage strip at the
             bottom of the screen, and mounting both would put two of every tab in the document. */}
-        {room === 'desk' && <EditorTabs mode={mode} onSelect={(m) => setStage(m === 'template' ? 'canvas' : m)} />}
+        {room === 'desk' && <EditorTabs modes={modes} mode={mode} onSelect={(m) => setStage(m === 'template' ? 'canvas' : m)} />}
         {/* The people in the header are the door to who has the game at all (D3): who is here
             now and who may be here is one question. The door is the designer's own face and «Dela»
             whoever is here, and the others hang from the header's edge, so nothing in the row
@@ -1147,7 +1181,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
       <WithheldPictures.Provider value={withheld}>
       <Arriving.Provider value={empty}>
       <main>
-        {(stages ?? MODES).map(([key]) => (
+        {(stages ?? modes).map(([key]) => (
           // One panel per tab, so every tab's `aria-controls` names a panel that exists; only the
           // open one carries content, so switching mode still mounts a single canvas.
           <div key={key} id={panelId(key)} role="tabpanel" aria-labelledby={tabId(key)} {...(!client.mayEdit ? { 'aria-describedby': 'byd-editor-reading' } : {})} tabIndex={0} hidden={(stages ? here : mode) !== key}>

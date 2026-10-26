@@ -73,6 +73,10 @@ export const BoxTypeDef = z.object({
     // does not read it.
     thicknessMm: z.number().positive(),
     material: z.string().min(1),
+    // The flaps the net adds around the six faces (#1413): the glue flap along the left side, the
+    // tuck flaps on the lid and the bottom, and the dust flaps on the sides as a part of the depth.
+    // They are folded in and never printed, so they are the net's and not a face's.
+    flaps: z.object({ glueMm: z.number().positive(), tuckMm: z.number().positive(), dust: z.number().positive().max(1) }),
   }),
   faces: z.array(BoxFace).min(1),
   contentFace: BoxFace,
@@ -210,7 +214,7 @@ export const TUCKBOX: BoxTypeDef = {
   kind: 'box',
   id: 'box.tuck',
   version: 1,
-  physical: { shape: 'tuckbox', thicknessMm: 0.4, material: 'folding-carton-350gsm' },
+  physical: { shape: 'tuckbox', thicknessMm: 0.4, material: 'folding-carton-350gsm', flaps: { glueMm: 12, tuckMm: 20, dust: 0.8 } },
   faces: ['front', 'back', 'left', 'right', 'lid', 'bottom'],
   contentFace: 'front',
   holds: { clearanceMm: { around: 1, depth: 2 }, stepMm: 0.5 },

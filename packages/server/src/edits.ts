@@ -1,7 +1,7 @@
 import type { AssetCrop as Crop, CardQuery, FaceId, ZoneAction, ZoneBeside } from '@byd/protocol'
 import { RuleBlock, isSymbolName, type Element, type FaceTemplate, type Variant } from '@byd/template'
 import { showsWholePicture } from '@byd/protocol'
-import { BOX_SIDES, type BoxClearance, type BoxSide } from '@byd/engine'
+import { BOX_SIDES, BoxFace, type BoxClearance, type BoxSide } from '@byd/engine'
 import { AssetCrop, PictureName, ProjectBox, ProjectDice } from './projects.js'
 import type { Cell, Picture, ProjectDie, ProjectCredit, ProjectDoc, ProjectFont, ProjectRow, ProjectTheme, RuleDoc } from './projects.js'
 import { DEFAULT_BOX_TYPE } from './box.js'
@@ -71,6 +71,10 @@ export function checkedName(name: string): string {
 
 export type Clearable = 'name' | 'locked' | 'shadow' | 'pattern' | 'points' | 'fill'
 
+// Whose face a template edit writes (#1413): the card's, which is what an edit without it means, or
+// the box's.
+export type FaceOwner = 'box'
+
 // Vad en kolumn är (#1085): en rad text, prosa med stycken och listor, eller en bild.
 export type ColumnKind = 'text' | 'prose' | 'image'
 
@@ -124,22 +128,28 @@ export type EditIntent =
   // arrives at the actor as a patch that says nothing at all. The list is closed to the two
   // properties whose absence is their meaning (L15) — every other property of an element either
   // has a value or does not exist for that kind.
-  | { v: 'patchElement'; face: string; id: string; patch: Partial<Element>; clear?: Clearable[]; group?: string | null }
+  //
+  // `on: 'box'` names a face of the game's box rather than of the card (#1413, L91): the six faces of
+  // the box are drawn with the card's template system (E2), so they are edited by the card's own
+  // verbs, and the log says which surface each one wrote. A face of the box has no groups, since
+  // there is one box and not one per kind of card. Without `on` the face is the card's, as it has
+  // always been, so every line written before the box replays as it was written.
+  | { v: 'patchElement'; on?: FaceOwner; face: string; id: string; patch: Partial<Element>; clear?: Clearable[]; group?: string | null }
   // `icon` is the canvas's other door (#33), and it is the field door's twin: the designer asked
   // for an icon on the card, and an icon on the card is two things at once — a symbol the game did
   // not have, and an element that shows it. She did one thing, so it is one edit. Sent separately
   // they would be two versions and two steps back (B4), and between the two presses the card would
   // carry an element pointing at a name the icon set does not answer to.
-  | { v: 'addElement'; face: string; element: Element; group?: string | null; icon?: { name: string; url: string; credit?: ProjectCredit } }
-  | { v: 'removeElement'; face: string; id: string; group?: string | null }
-  | { v: 'moveElement'; face: string; id: string; to: number }
+  | { v: 'addElement'; on?: FaceOwner; face: string; element: Element; group?: string | null; icon?: { name: string; url: string; credit?: ProjectCredit } }
+  | { v: 'removeElement'; on?: FaceOwner; face: string; id: string; group?: string | null }
+  | { v: 'moveElement'; on?: FaceOwner; face: string; id: string; to: number }
   // A whole face at once (L17). Choosing one of the ready-made backs is one thing the designer
   // did, so it is one edit — the same reason `replaceRows` exists rather than a removal and an
   // addition per card. Sent as a removal and an addition per layer it would be a dozen versions
   // and a dozen steps back (B4), with a half-built back standing at every one of them.
   // `variants` is a whole face with its groups (#1005): a proposed template brings its own, and the
   // groups of the face it replaces go with it. Without them the groups stand, as they always have.
-  | { v: 'replaceFace'; face: string; base: Element[]; variants?: FaceTemplate['variants'] }
+  | { v: 'replaceFace'; on?: FaceOwner; face: string; base: Element[]; variants?: FaceTemplate['variants'] }
   | { v: 'resetElement'; face: string; id: string; group: string }
   | { v: 'setGroupColumn'; column: string | null }
   // The table (B5, K2)
@@ -491,14 +501,14 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
     // change reaches every card; with one it becomes that group's override of the same id (#13),
     // and the base stays exactly as it was.
     case 'patchElement': {
-      const face = faceOf(doc, intent.face)
+      const face = faceOf(doc, intent.face, intent.on, intent.group)
       if (!intent.group) {
         // A lookup that can fail, not a mapping: written as a map over the base, an id the face
         // does not have handed back the document it was given, and the edit still became a version
         // and a step back — the designer saw nothing happen and had spent a Ctrl+Z on it (#41, B4).
         const from = face.base.find((e) => e.id === intent.id)
         if (!from) throw new Error(`face ${intent.face} has no element ${intent.id}`)
-        return writeFace(doc, intent.face, { ...face, base: replaceById(face.base, patched(from, intent.patch, intent.clear)) })
+        return writeFace(doc, intent.face, { ...face, base: replaceById(face.base, patched(from, intent.patch, intent.clear)) }, intent.on)
       }
       const from = inGroup(face, intent.id, intent.group)
       if (!from) throw new Error(`face ${intent.face} has no element ${intent.id}`)
@@ -515,9 +525,9 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
         const { icon, ...rest } = intent
         return applyEdit(applyEdit(doc, { v: 'setIcon', ...icon }), rest)
       }
-      const face = faceOf(doc, intent.face)
+      const face = faceOf(doc, intent.face, intent.on, intent.group)
       if (face.base.some((e) => e.id === intent.element.id)) throw new Error(`face ${intent.face} already has an element ${intent.element.id}`)
-      if (!intent.group) return writeFace(doc, intent.face, { ...face, base: [...face.base, intent.element] })
+      if (!intent.group) return writeFace(doc, intent.face, { ...face, base: [...face.base, intent.element] }, intent.on)
       // An element added with a group open belongs to that group alone: the base never learns of it.
       if ((face.variants[intent.group]?.override ?? []).some((e) => e.id === intent.element.id)) throw new Error(`face ${intent.face} already has an element ${intent.element.id}`)
       return writeVariant(doc, intent.face, face, intent.group, (v) => ({ ...v, override: [...(v.override ?? []), intent.element] }))
@@ -525,8 +535,8 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
     // Without a group the element leaves the face for every card; with one it leaves for that
     // group's cards only — as a removal against the base, or, when the group added it, by going.
     case 'removeElement': {
-      const face = faceOf(doc, intent.face)
-      if (!intent.group) return writeFace(doc, intent.face, { ...face, base: face.base.filter((e) => e.id !== intent.id) })
+      const face = faceOf(doc, intent.face, intent.on, intent.group)
+      if (!intent.group) return writeFace(doc, intent.face, { ...face, base: face.base.filter((e) => e.id !== intent.id) }, intent.on)
       const inBase = face.base.some((e) => e.id === intent.id)
       return writeVariant(doc, intent.face, face, intent.group, (v) => ({
         ...v,
@@ -539,17 +549,18 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
     case 'replaceFace': {
       // A face the template does not have yet is made rather than refused: an empty back is
       // exactly the back a gallery is for.
-      const face = doc.template.faces[intent.face] ?? { base: [], variants: {} }
-      return writeFace(doc, intent.face, { ...face, base: intent.base, ...(intent.variants ? { variants: intent.variants } : {}) })
+      if (intent.on === 'box' && intent.variants && Object.keys(intent.variants).length > 0) throw new Error(groupless(intent.face))
+      const face = intent.on === 'box' ? faceOf(doc, intent.face, intent.on) : (doc.template.faces[intent.face] ?? { base: [], variants: {} })
+      return writeFace(doc, intent.face, { ...face, base: intent.base, ...(intent.variants ? { variants: intent.variants } : {}) }, intent.on)
     }
     case 'moveElement': {
-      const face = faceOf(doc, intent.face)
+      const face = faceOf(doc, intent.face, intent.on)
       const from = face.base.findIndex((e) => e.id === intent.id)
       if (from < 0) throw new Error(`face ${intent.face} has no element ${intent.id}`)
       const list = [...face.base]
       const moved = list.splice(from, 1)
       list.splice(Math.max(0, Math.min(list.length, intent.to)), 0, ...moved)
-      return writeFace(doc, intent.face, { ...face, base: list })
+      return writeFace(doc, intent.face, { ...face, base: list }, intent.on)
     }
     // Stops a group from overriding an id: the layer goes back to being the base's (#13).
     case 'resetElement': {
@@ -901,13 +912,23 @@ function textFamilies(template: ProjectDoc['template']): Set<string> {
   return out
 }
 
-function faceOf(doc: ProjectDoc, face: string): FaceTemplate {
+function faceOf(doc: ProjectDoc, face: string, on?: FaceOwner, group?: string | null): FaceTemplate {
+  if (on === 'box') {
+    // A face of the box that has not been drawn is an empty one to draw on, as an empty back is.
+    if (!BoxFace.safeParse(face).success) throw new Error(`a box has no face ${face}`)
+    if (group) throw new Error(groupless(face))
+    return doc.box?.faces?.[face as BoxFace] ?? { base: [], variants: {} }
+  }
+  if (on !== undefined) throw new Error(`a face belongs to the card or the box, not to ${String(on)}`)
   const found = doc.template.faces[face]
   if (!found) throw new Error(`template has no face ${face}`)
   return found
 }
-// The one way a face of the template is written: every canvas edit leaves as one edit.
-function writeFace(doc: ProjectDoc, face: string, next: FaceTemplate): ProjectDoc {
+const groupless = (face: string) => `the box's ${face} has no group: there is one box, not one per kind of card`
+// The one way a face of the template is written: every canvas edit leaves as one edit. A face of
+// the box is written into the box (#1413), beside its locks and its air.
+function writeFace(doc: ProjectDoc, face: string, next: FaceTemplate, on?: FaceOwner): ProjectDoc {
+  if (on === 'box') return boxed(doc, (box) => ({ ...box, faces: { ...box.faces, [face]: next } }))
   return { ...doc, template: { ...doc.template, faces: { ...doc.template.faces, [face]: next } } }
 }
 function writeVariant(doc: ProjectDoc, faceId: string, face: FaceTemplate, group: string, change: (variant: Variant) => Variant): ProjectDoc {

@@ -7,7 +7,7 @@ import type { Room } from '../room.js'
 // Below the desk the editor is a flat list of named stages, one at a time (L10, prototype C).
 // The four panels of the template mode become four stages beside the three modes, so there is one
 // tablist and never a tablist inside a tablist.
-export type Stage = 'wall' | 'tools' | 'layers' | 'canvas' | 'props' | 'table' | 'theme' | 'media' | 'rules' | 'tables'
+export type Stage = 'wall' | 'tools' | 'layers' | 'canvas' | 'props' | 'box' | 'table' | 'theme' | 'media' | 'rules' | 'tables'
 
 // The stages of the template mode — the ones that are not offered at all on a phone.
 export type CanvasStage = 'tools' | 'layers' | 'canvas' | 'props'
@@ -40,6 +40,15 @@ export const STAGES: Record<Exclude<Room, 'desk'>, readonly (readonly [Stage, Ke
     ['rules', 'editor.tab.rules'],
     ['tables', 'editor.tab.tables'],
   ],
+}
+
+// The stages with the box among them (#1413): on a tablet after the template's four, once the deck is
+// playable (`modesFor`). A phone lays nothing out in millimetres, the box's faces included (L10).
+export function stagesFor(room: Exclude<Room, 'desk'>, playable: boolean): readonly (readonly [Stage, Key])[] {
+  const stages = STAGES[room]
+  if (!playable || room === 'phone') return stages
+  const at = stages.findIndex(([s]) => s === 'props') + 1
+  return [...stages.slice(0, at), ['box', 'editor.tab.box'], ...stages.slice(at)]
 }
 
 // Which mode a stage belongs to: the four template stages are the template mode seen closely,

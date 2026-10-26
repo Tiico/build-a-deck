@@ -4887,3 +4887,84 @@ label.byd-ai-rules { cursor: pointer; }
 /* An ended table's one line in the Bord view (A:s rad): what came of it, and the way to it. */
 .byd-tables-results { justify-self: start; min-height: var(--byd-tap); padding: 0; border: 0; background: transparent; color: var(--byd-tables-ink); font: inherit; font-size: 12px; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 .byd-tables-results:hover { color: #fff; }
+
+/* Fliken «Låda» (#1413, L91, #1406 runda 2, nätet). Malls duk med lådans yta i kortets ställe: samma
+   fyra kolumner, och nätet i mitten där kortet stod. Kolumnerna bär lådans eget huvud, ytorna till
+   vänster och måtten till höger, så lagrens kolumn har en rad mer än i Mall. */
+.byd-canvas[data-surface='box'] .byd-canvas-layers { grid-template-rows: auto auto minmax(0, 1fr) auto; }
+.byd-box-faces { padding-bottom: var(--byd-s2); margin-bottom: var(--byd-s2); border-bottom: 1px solid #2f333d; }
+.byd-box-faces ul { list-style: none; margin: 0; padding: 0; display: grid; }
+.byd-box-faces button, .byd-box-flaps {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--byd-s2);
+  width: 100%;
+  min-height: var(--byd-tap);
+  padding: 0 var(--byd-s2);
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #dce3f2;
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+.byd-box-faces button:hover { background: #232838; }
+.byd-box-faces button[aria-pressed='true'] { background: #2f3a55; color: #fff; }
+.byd-box-face-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.byd-box-faces small { color: var(--byd-editor-source-ink); font-size: 11px; font-variant-numeric: tabular-nums; }
+.byd-box-thumb { display: grid; place-items: center; width: 28px; height: 28px; overflow: hidden; }
+/* The flaps are folded in and never printed (#1406): a row that says so, and no button. */
+.byd-box-flaps { min-height: 32px; color: var(--byd-editor-source-ink); cursor: default; }
+.byd-box-flaps .byd-box-thumb::before { content: ''; width: 14px; height: 14px; border: 1px solid #5b6275; border-radius: 2px; }
+/* The net on the room's chequerboard, fitted whole into it (`useFitted`). */
+.byd-box-stage { min-height: 0; background: repeating-conic-gradient(#20232b 0 25%, #1b1d23 0 50%) 0 0 / 24px 24px; }
+.byd-box-net { position: relative; flex: none; }
+.byd-box-lines { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
+/* Flaps in board grey, the cut drawn whole and the folds dashed, as a tuckbox's net is drawn
+   (#1406). The lines are a pixel at every scale. */
+.byd-box-flap { fill: #d9d4c7; stroke: #222; stroke-width: 1px; vector-effect: non-scaling-stroke; }
+.byd-box-flap-glue { fill: url(#byd-box-glue); }
+.byd-box-glue-ground { fill: #d9d4c7; }
+.byd-box-glue { stroke: #7a7f8c; stroke-width: 0.8; }
+.byd-box-cut { fill: none; stroke: #222; stroke-width: 1px; vector-effect: non-scaling-stroke; }
+.byd-box-fold { stroke: #222; stroke-width: 1px; stroke-dasharray: 4 3; vector-effect: non-scaling-stroke; }
+.byd-box-panel { position: absolute; cursor: pointer; }
+.byd-box-panel [data-card] { background: var(--byd-editor-blank-paper); }
+/* The face being edited, ringed in the editor's mark and over its neighbours, so its handles are. */
+.byd-box-panel[data-chosen] { z-index: 1; cursor: default; outline: 2px solid var(--byd-editor-primary-mark); outline-offset: 1px; }
+/* The lid stands upside down on the sheet, as it is printed (#1406). */
+.byd-box-panel[data-turned] > .byd-preview { transform: rotate(180deg); }
+/* The foot under the net (#698, beslut B): which face is edited, and the box's measure. */
+.byd-box-foot { display: flex; align-items: center; gap: var(--byd-s2); min-height: var(--byd-tap); padding: var(--byd-s1) var(--byd-s3); border-top: 1px solid #2f333d; background: var(--byd-editor-card-row-bg); }
+.byd-box-foot .byd-editor-confirm { flex: 1 1 auto; }
+.byd-box-foot .byd-foot-quiet { flex: 1 1 auto; min-width: 0; }
+.byd-box-foot-line { display: flex; align-items: baseline; gap: var(--byd-s3); margin: 0; color: #9aa3b8; font-size: 12px; white-space: nowrap; }
+.byd-box-foot-size { margin-left: auto; overflow: hidden; text-overflow: ellipsis; color: #c3cbdd; font-variant-numeric: tabular-nums; }
+.byd-box-foot-size b { color: #fff; }
+/* The measures over the properties (#1406, beslut 4): a lock each, the formula, and the air. */
+.byd-box-measures > section { padding-bottom: var(--byd-s3); margin-bottom: var(--byd-s3); border-bottom: 1px solid #2f333d; }
+.byd-box-sides { margin: 0; display: grid; }
+.byd-box-side { display: grid; grid-template-columns: 56px minmax(0, 1fr) var(--byd-tap); align-items: center; min-height: var(--byd-tap); }
+.byd-box-side dt { color: #c3cbdd; font-size: 13px; }
+.byd-box-side dd { display: grid; min-width: 0; margin: 0; }
+.byd-box-side b { color: #fff; font-size: 15px; font-variant-numeric: tabular-nums; }
+.byd-box-side small { color: var(--byd-editor-source-ink); font-size: 11px; }
+.byd-box-side[data-locked] small { color: var(--byd-editor-locked-ink); }
+.byd-box-lock button { display: grid; place-items: center; width: var(--byd-tap); height: var(--byd-tap); padding: 0; border: 0; border-radius: 6px; background: transparent; color: var(--byd-editor-unlocked-ink); cursor: pointer; }
+.byd-box-lock button:hover { background: #232838; color: #dce3f2; }
+.byd-box-lock button[aria-pressed='true'] { color: var(--byd-editor-locked-ink); }
+.byd-box-lock button:disabled { cursor: default; }
+.byd-box-lock svg { width: 16px; height: 16px; }
+.byd-box-formula { margin: var(--byd-s2) 0; padding: var(--byd-s2) var(--byd-s3); border: 1px solid #2f333d; border-radius: 8px; background: #15171c; color: #dce3f2; font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; font-variant-numeric: tabular-nums; }
+.byd-box-over { display: grid; gap: var(--byd-s2); padding: var(--byd-s2) var(--byd-s3); border: 1px solid #8a6a2a; border-radius: 8px; background: #2a2417; color: #f3e2b8; font-size: 12px; line-height: 1.45; }
+.byd-box-over p { margin: 0; }
+.byd-box-over b { color: #ffd98a; }
+.byd-box-over button { justify-self: start; }
+.byd-box-air { display: grid; grid-template-columns: 1fr 1fr; gap: var(--byd-s2); }
+.byd-box-air-f { display: grid; gap: var(--byd-s1); font-size: 11px; color: #9aa3b8; }
+/* A face of the box says what it says in the panel, as fixed words (#1413). */
+.byd-props label.byd-props-words { grid-template-columns: minmax(0, 1fr); align-items: stretch; }
+.byd-props-words textarea { min-height: var(--byd-tap); resize: vertical; background: #0f1115; border: 1px solid var(--byd-secondary-line); color: #fff; border-radius: 6px; padding: var(--byd-s1) var(--byd-s2); font: inherit; font-size: 13px; box-sizing: border-box; width: 100%; }

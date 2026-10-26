@@ -2,10 +2,10 @@ import { createContext, Fragment, useCallback, useContext, useEffect, useId, use
 import { cardsWhere, conditionWords, holds, layerTitle } from './conditions.js'
 import { CardRow } from './CardRow.js'
 import { useNumberDraft } from './number-draft.js'
-import { CARD_STANDARD_63x88 } from '@byd/engine'
+import { CARD_STANDARD_63x88, type ComponentTypeDef } from '@byd/engine'
 import type { Element, FaceTemplate, ProjectDoc, Row } from './types.js'
 import { CardPreview } from './CardPreview.js'
-import { arrowMove, iconElement, fitScale, gridStep, HANDLES, round, iconSized, movedTo, newElement, PX_PER_MM, resizedTo, snapped, STAGE_SCALE, TOOLS, ZOOM_NOTCH, ZOOM_STEP, zoomPercent, zoomTo, type Box, type ElementKind, type Grab, type Guides, type Handle, keptOnCard } from './canvas.js'
+import { arrowMove, iconElement, fitScale, gridStep, HANDLES, round, iconSized, movedTo, newElement, PX_PER_MM, resizedTo, snapped, STAGE_SCALE, TOOLS, ZOOM_NOTCH, ZOOM_STEP, zoomPercent, zoomTo, type Box, type CardSize, type ElementKind, type Grab, type Guides, type Handle, keptOnCard } from './canvas.js'
 import { StepPill } from './StepPill.js'
 import { useGesture, type Gesture } from './gesture.js'
 import { scrubbed, SCRUB_PX } from './scrub.js'
@@ -119,13 +119,40 @@ export type TemplateCanvasProps = {
   // A role that may not change the game (#489, beslut C efter prototyp 35): every layer is read
   // and chosen as before, and none is taken hold of, moved, renamed, locked or removed.
   reading?: boolean
+  // Another surface than a card's face (#1413): a face of the game's box. See `Surface`.
+  surface?: Surface | undefined
 }
+
+// A face of something else than the card, edited with the card's own layers, tools and properties
+// (#1413, L91): the face of the game's box. The canvas keeps everything it is and changes four
+// things. The face is drawn at its own measure (`type`, through the one renderer, E2), and the hand
+// works in that measure. The stage is the surface's own, which places the editable face among the
+// others: the net puts it where it stands on the sheet, upside down for the lid (`turned`). The
+// strip over the card has nothing to say, since a box has no groups and its faces are chosen beside
+// the layers. And the two columns carry the surface's own head: which face, and the box's measures.
+// A box face shows no column of the deck, so its texts are written in the panel as fixed words.
+export type Surface = {
+  type: ComponentTypeDef
+  turned: boolean
+  // The line under the layers' heading: what the face is, where the card says how many cards.
+  affects: string
+  layersHead: ReactNode
+  propsHead: ReactNode
+  // The stage, given the face being edited at a scale the stage chooses, with the hand on it.
+  stage(face: (scale: number) => ReactNode): ReactNode
+}
+
+// The measure the hand works in, the card's unless a surface says otherwise (#1413), and whether the
+// face is drawn upside down, which turns what the hand and the arrows mean.
+const SurfaceSize = createContext<CardSize>(CARD_STANDARD_63x88.physical)
+const Turned = createContext(false)
 
 // Template mode (A): layers on the left, the card large in the middle with the selected element
 // outlined, and its properties on the right. Every change goes through `onPatch` and lands on
 // every card of the deck — there are no per-card exceptions (L3).
-export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onSelectFace, onReplaceFace, row, onPickRow, selectedElement, onSelectElement, onPatch, onCallOff, onRemove, onAdd, onReorder, onLock, onRename, group, onSelectGroup, onGroupColumn, onAddField, onReset, onOpenFonts, onCatalogFont, onCatalogIcon, onOwnIcon, onAddPicture, reading = false }: TemplateCanvasProps) {
+export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onSelectFace, onReplaceFace, row, onPickRow, selectedElement, onSelectElement, onPatch, onCallOff, onRemove, onAdd, onReorder, onLock, onRename, group, onSelectGroup, onGroupColumn, onAddField, onReset, onOpenFonts, onCatalogFont, onCatalogIcon, onOwnIcon, onAddPicture, reading = false, surface }: TemplateCanvasProps) {
   const t = useT()
+  const size = surface?.type.physical ?? CARD_STANDARD_63x88.physical
   const faceTemplate = doc.template.faces[face]
   const column = groupColumn(doc)
   const groups = groupsOf(doc)
@@ -348,7 +375,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
     const pictures = imageFieldsOf(doc)
     const drawn = drawnImageFieldsOf(doc)
     const field = kind === 'image' ? (pictures.find((f) => !drawn.includes(f)) ?? pictures[0]) : kind === 'icons' ? iconFieldsOf(doc)[0] : fields[0]
-    const element = newElement(kind, { taken: idsOnFace(faceTemplate), field, card: CARD_STANDARD_63x88.physical })
+    const element = newElement(kind, { taken: idsOnFace(faceTemplate), field, card: size })
     onAdd(element)
     onSelectElement(element.id)
     // A picture that reads no column is a fixed picture with none chosen yet, so the game's
@@ -358,7 +385,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
   // The icon tool (#33, #1093): an icon layer with no icon yet, selected, and the libraries' sheet
   // open under the card for every card it is drawn on — choosing is the next thing to do with it.
   const placeIcon = () => {
-    const element = iconElement('', { taken: idsOnFace(faceTemplate), card: CARD_STANDARD_63x88.physical })
+    const element = iconElement('', { taken: idsOnFace(faceTemplate), card: size })
     onAdd(element)
     onSelectElement(element.id)
     setIconFor({ kind: 'fixed' })
@@ -368,14 +395,16 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
   // twice and nothing a tab does not point at is left in the tab order.
   const shows = (which: CanvasStage) => stage === null || stage === which
   return (
-    <div className="byd-canvas" {...(sheet && stage === null ? { 'data-catalog': 'open' } : {})} {...(stage ? { 'data-stage': stage } : folded ? { 'data-folded': 'props' } : {})}>
+    <SurfaceSize.Provider value={size}>
+    <Turned.Provider value={surface?.turned ?? false}>
+    <div className="byd-canvas" {...(surface ? { 'data-surface': 'box' } : {})} {...(sheet && stage === null ? { 'data-catalog': 'open' } : {})} {...(stage ? { 'data-stage': stage } : folded && !surface ? { 'data-folded': 'props' } : {})}>
       {/* The crown over the whole desk and not over the card alone (#129): which column makes the
           groups, which group is open, whether the properties are folded away, and which face is
           being edited. It spans the four columns because that is the only place its four controls
           fit on one line at 1024 — and one line is the point, since every row the crown takes is a
           row the card never gets back. Below the desk it belongs to the canvas stage, which is the
           only stage any of it is about. */}
-      {shows('canvas') && (
+      {shows('canvas') && !surface && (
         <div className="byd-canvas-strip">
           <label className="byd-canvas-group-column">
             {t('canvas.groupBy')}
@@ -397,6 +426,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
       {shows('layers') && (
       // Two columns stand beside the canvas, so each says which it is (#762).
       <aside className="byd-canvas-layers" aria-label={t('editor.stage.layers')}>
+        {surface?.layersHead}
         {/* The column is a frame and not a scroller (#129): a crown that says which face is being
             listed and how many cards the panel is about, the list itself, and a foot with the line
             about dragging. All three used to scroll together — at 1024 the list ran 690 px past the
@@ -404,7 +434,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
             reading the end of had nothing left on it saying what she was reading. */}
         <div className="byd-canvas-crown">
           <h2 id="layers-heading">{t('canvas.layers', { face: faceName(face, t).toLowerCase() })}</h2>
-          <p className="byd-canvas-affects">{affectsLabel(doc, column, group, t)}</p>
+          <p className="byd-canvas-affects">{surface ? surface.affects : affectsLabel(doc, column, group, t)}</p>
         </div>
         <div className="byd-canvas-scroll">
           <LayerList
@@ -440,7 +470,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
               it has some, because open above them it took 506 px of the column and hid every one.
               Not inside a group — a group's back is an override of the base's (#14), and laying a
               whole face down there would quietly make every layer of it the group's own. */}
-          {face === 'back' && !group && (
+          {face === 'back' && !group && !surface && (
             <BackGallery
               // Whether the back has layers decides how the gallery stands, each time that changes;
               // between those moments it stands as the designer left it.
@@ -490,6 +520,24 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
             away with the card is a control that is gone exactly when the card is big enough to
             need it. It stands beside the stage and never on it, which is what keeps it off the
             card at every zoom (#146, L19). */}
+        {surface ? surface.stage((scale) => (
+          <CardPreview
+            id="canvas"
+            type={surface.type}
+            face={tabFace}
+            row={rowData}
+            icons={icons}
+            fonts={fonts}
+            scale={scale}
+            assetBase={assetBase}
+            motifs={motifs}
+            palette={doc.palette}
+            selectedElement={selectedElement}
+            onSelectElement={onSelectElement}
+            onMeasured={onMeasured}
+            overlay={<><DragLayer grid={grid ? gridStep(scale) : null} scale={scale} row={rowData} conditions={conditionFrames(shown, rowData, t)} onSelectCondition={onSelectElement} boxes={shown.filter(isBox)} selected={selectedElement} onSelect={onSelectElement} onPatch={patch} onCallOff={onCallOff} onRefused={setRefused} refused={refusedLayer ? <LockedNote layer={refusedLayer} onPutAway={putAway} /> : null} refusedId={refusedLayer?.id ?? null} point={pointAt} onPoint={setPointAt} reading={reading} /><OversetMarks found={oversetOf(tabFace, rowData, cut)} scale={scale} zoomed /></>}
+          />
+        )) : (
         <div className="byd-canvas-room">
         {/* A named region inside the page's one main, not a second main (#556). */}
         <section
@@ -524,9 +572,10 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
         </section>
           <ZoomBand zoom={zoom} />
         </div>
+        )}
         {/* Which card the template is drawn on, under it (#478, variant B): among the cards of
             the open group, or the whole deck. */}
-        {onPickRow && doc.rows.length > 0 && (
+        {onPickRow && doc.rows.length > 0 && !surface && (
           <CardRow
             cards={shownCards}
             current={shownCard}
@@ -579,6 +628,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
       <Reading.Provider value={reading}>
       <SectionsOpen.Provider value={sections}>
       <aside className="byd-canvas-props" id={PROPS_COLUMN} aria-label={t('canvas.props')}>
+        {surface?.propsHead}
         {/* The layer's one name (#699), as the designer wrote it and not set in capitals the way the
             word «Egenskaper» before it is: an id in capitals was a third name for the same layer. */}
         <h2>
@@ -627,6 +677,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
             point={pointAt}
             chooseNow={choosingFor === el.id}
             onChoosing={() => setChoosingFor(null)}
+            words={surface !== undefined}
           />
         )}
         {layer && group && overridden.has(layer.element.id) && (
@@ -649,6 +700,8 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
       </Reading.Provider>
       )}
     </div>
+    </Turned.Provider>
+    </SurfaceSize.Provider>
   )
 }
 
@@ -823,12 +876,15 @@ const ARMS: readonly Arm[] = ['in', 'out']
 // leaves the box keeps moving the element it grabbed.
 // How far a press on a locked layer travels before it is a pull and not a hand settling (#1181).
 const PULL_SLOP = 3
+// The arrows on a face drawn upside down (#1413).
+const UPSIDE_DOWN: Record<string, string> = { ArrowLeft: 'ArrowRight', ArrowRight: 'ArrowLeft', ArrowUp: 'ArrowDown', ArrowDown: 'ArrowUp' }
 
 // The note's place on the card: centred on the layer, under it when the layer stands in the
 // card's upper half and over it in the lower, so it opens across the card and not past its edge.
 function LockedAt({ box, children }: { box: BoxElement | undefined; children: ReactNode }) {
+  const size = useContext(SurfaceSize)
   if (!box) return null
-  const above = box.y + box.h / 2 > CARD_STANDARD_63x88.physical.heightMm / 2
+  const above = box.y + box.h / 2 > size.heightMm / 2
   return (
     <div className="byd-canvas-locked-at" {...(above ? { 'data-above': '' } : {})} style={{ left: `${box.x + box.w / 2}mm`, top: `${above ? box.y : box.y + box.h}mm` }}>
       {children}
@@ -857,6 +913,11 @@ function LockedNote({ layer, onPutAway }: { layer: Element; onPutAway(unlock: bo
 function DragLayer({ boxes, row, scale, conditions, onSelectCondition, grid, selected, onSelect, onPatch, onCallOff, onRefused, refused, refusedId, point, onPoint, reading = false }: { boxes: BoxElement[]; row: Row; scale: number; conditions: ConditionFrame[]; onSelectCondition(id: string): void; grid: number | null; selected: string | null; onSelect(id: string): void; onPatch: TemplateCanvasProps['onPatch']; onCallOff: TemplateCanvasProps['onCallOff']; onRefused(id: string): void; refused: ReactNode; refusedId: string | null; point: number | null; onPoint(at: number | null): void; reading?: boolean }) {
   const t = useT()
   const say = useSay()
+  const size = useContext(SurfaceSize)
+  // A face drawn upside down (#1413, the lid on the net): the hand moving right moves the face's own
+  // x down, and the same for every other direction, so a millimetre per pixel is counted backwards.
+  const turned = useContext(Turned)
+  const way = turned ? -1 : 1
   const layer = useRef<HTMLDivElement | null>(null)
   // What each layer that draws nothing on this card says about it (#802), and the id its tag is
   // known by, so the layer can be described by the tag it wears.
@@ -913,8 +974,9 @@ function DragLayer({ boxes, row, scale, conditions, onSelectCondition, grid, sel
 
   // Where the pointer is, in the element box's own millimetres, which is the list's own frame.
   const mmIn = (event: ReactPointerEvent<HTMLElement> | { clientX: number; clientY: number }, box: BoxElement, rect: DOMRect): Point => {
-    const mmPerPx = CARD_STANDARD_63x88.physical.widthMm / rect.width
-    return { x: (event.clientX - rect.left) * mmPerPx - box.x, y: (event.clientY - rect.top) * mmPerPx - box.y }
+    const mmPerPx = size.widthMm / rect.width
+    const from = turned ? { x: rect.right - event.clientX, y: rect.bottom - event.clientY } : { x: event.clientX - rect.left, y: event.clientY - rect.top }
+    return { x: from.x * mmPerPx - box.x, y: from.y * mmPerPx - box.y }
   }
 
   // A grab that is about the outline and not about the element: a point taken hold of, a mid-dot
@@ -931,7 +993,7 @@ function DragLayer({ boxes, row, scale, conditions, onSelectCondition, grid, sel
     // mid-dot is a click and a drag at once, and nothing about which of the two it is may be
     // decided before then. A point and a handle are taken hold of and not clicked, so they move
     // as soon as the pointer does.
-    shaping.current = { id: box.id, box, from: ownPointsOf(box), at: { x: event.clientX, y: event.clientY }, mmPerPx: CARD_STANDARD_63x88.physical.widthMm / rect.width, gesture: shapes.begin(), arm: what.arm ?? null, wait: what.point === null, ...what }
+    shaping.current = { id: box.id, box, from: ownPointsOf(box), at: { x: event.clientX, y: event.clientY }, mmPerPx: (way * size.widthMm) / rect.width, gesture: shapes.begin(), arm: what.arm ?? null, wait: what.point === null, ...what }
     setHolding(true)
     event.currentTarget.setPointerCapture?.(event.pointerId)
   }
@@ -1028,7 +1090,7 @@ function DragLayer({ boxes, row, scale, conditions, onSelectCondition, grid, sel
       if (edge) return takeHold(event, box, { point: null, edge: edge.edge, base: midpoints(points)[edge.edge] ?? edge.at })
     }
     const stage = stageOf(layer.current)
-    grab.current = { id: box.id, box, handle, gesture: grabs.begin(), moved: false, at: { x: event.clientX, y: event.clientY }, mmPerPx: CARD_STANDARD_63x88.physical.widthMm / rect.width, scroll: { x: stage?.scrollLeft ?? 0, y: stage?.scrollTop ?? 0 } }
+    grab.current = { id: box.id, box, handle, gesture: grabs.begin(), moved: false, at: { x: event.clientX, y: event.clientY }, mmPerPx: (way * size.widthMm) / rect.width, scroll: { x: stage?.scrollLeft ?? 0, y: stage?.scrollTop ?? 0 } }
     setHolding(true)
     event.currentTarget.setPointerCapture?.(event.pointerId)
   }
@@ -1059,11 +1121,11 @@ function DragLayer({ boxes, row, scale, conditions, onSelectCondition, grid, sel
       return onPatch(held.id, resizedTo(held, to, held.handle), held.gesture)
     }
     const others = boxes.filter((b) => b.id !== held.id)
-    const placed = snapped(held.box, movedTo(held, to), others, CARD_STANDARD_63x88.physical)
+    const placed = snapped(held.box, movedTo(held, to), others, size)
     // The element's middle stays on the card (#478): past that the hand goes on and the element
     // stays, and says why.
-    const onCard = keptOnCard(held.box, placed.at, CARD_STANDARD_63x88.physical)
-    setKept(onCard.held ? { id: held.id, toward: onCard.at.x + held.box.w / 2 < CARD_STANDARD_63x88.physical.widthMm / 2 ? 'right' : 'left' } : null)
+    const onCard = keptOnCard(held.box, placed.at, size)
+    setKept(onCard.held ? { id: held.id, toward: onCard.at.x + held.box.w / 2 < size.widthMm / 2 ? 'right' : 'left' } : null)
     setGuides(placed.guides)
     // A click is a grab that went nowhere: it selects, and leaves the template alone.
     if (onCard.at.x === held.box.x && onCard.at.y === held.box.y && !held.moved) return
@@ -1164,11 +1226,12 @@ function DragLayer({ boxes, row, scale, conditions, onSelectCondition, grid, sel
     // and five with shift. Every nudge of one holding carries its token, so the whole of it is
     // one step back and Escape can give the element back to where the holding began.
     if (moving?.id !== box.id) return
-    const arrowed = arrowMove(box, event.key, event.shiftKey)
+    // Upside down the arrows still mean what the eye sees (#1413).
+    const arrowed = arrowMove(box, turned ? (UPSIDE_DOWN[event.key] ?? event.key) : event.key, event.shiftKey)
     if (!arrowed) return
     event.preventDefault()
     // The arrows are held to the card as the hand is (#478).
-    const onCard = keptOnCard(box, { x: 'x' in arrowed ? arrowed.x : box.x, y: 'y' in arrowed ? arrowed.y : box.y }, CARD_STANDARD_63x88.physical).at
+    const onCard = keptOnCard(box, { x: 'x' in arrowed ? arrowed.x : box.x, y: 'y' in arrowed ? arrowed.y : box.y }, size).at
     const nudged = 'x' in arrowed ? { x: onCard.x } : { y: onCard.y }
     onPatch(box.id, nudged, moving.gesture)
     // Where it now lies, said out loud. Half a millimetre is exactly the distance a screen cannot
@@ -1609,10 +1672,21 @@ function previewRow(doc: ProjectDoc, column: string | null, group: string | null
 // the whole switch is a single tab stop.
 export const FACE_NAMES: Record<string, Key> = { front: 'canvas.face.front', back: 'canvas.face.back' }
 
+// The six faces of the game's box (#1413), as the canvas names the face it edits: `box.` and the
+// document's own key, so that a face of the box is never taken for the card's side of the same name.
+export const BOX_FACE_NAMES: Record<string, Key> = {
+  'box.front': 'box.face.front',
+  'box.back': 'box.face.back',
+  'box.left': 'box.face.left',
+  'box.right': 'box.face.right',
+  'box.lid': 'box.face.lid',
+  'box.bottom': 'box.face.bottom',
+}
+
 // A face by the name the reader's language gives it; a face the template invented keeps its own
 // id, which is the designer's word and not the tool's.
 export function faceName(face: string, t: T): string {
-  const key = FACE_NAMES[face]
+  const key = FACE_NAMES[face] ?? BOX_FACE_NAMES[face]
   return key ? t(key) : face
 }
 
@@ -1986,7 +2060,7 @@ const hollowStyle = (box: BoxElement): CSSProperties =>
 // the pointer reports it (L14): the token is made at `pointerdown` and every step of the pull
 // wears it. What the pointer has travelled but not yet spent is kept on the hold, so a step that
 // took three reports of one pixel still arrives.
-function Scrub({
+export function Scrub({
   name,
   icon,
   unit,
@@ -2170,6 +2244,7 @@ function Properties({
   point,
   chooseNow = false,
   onChoosing,
+  words = false,
 }: {
   el: Element
   face: string
@@ -2197,6 +2272,9 @@ function Properties({
   // and the word back that they have.
   chooseNow?: boolean
   onChoosing?(): void
+  // Whether a text's words are written here rather than read from a column (#1413): a face of the
+  // box shows no card's column, so what it says is written on it, as fixed words.
+  words?: boolean
 }) {
   const t = useT()
   // A picture of the template's own (#320): whether the window over the game's pictures is open
@@ -2265,6 +2343,7 @@ function Properties({
   // it is set in, what colour it is and which column it draws stay open — locking a layer is not
   // freezing its design.
   const measure = useMeasure()
+  const size = useContext(SurfaceSize)
   const num = (label: Key, key: 'x' | 'y' | 'w' | 'h') =>
     key in el ? (
       <Scrub
@@ -2277,8 +2356,8 @@ function Properties({
         // and the heading it held vanished. Where it stands has no floor; how big it is does.
         {...(key === 'w' || key === 'h' ? { min: 0.5 } : {})}
         // A typed place is held to the card as a dragged one is (#478): the middle stays on it.
-        {...(key === 'x' && 'w' in el ? { min: -el.w / 2, max: CARD_STANDARD_63x88.physical.widthMm - el.w / 2 } : {})}
-        {...(key === 'y' && 'h' in el ? { min: -el.h / 2, max: CARD_STANDARD_63x88.physical.heightMm - el.h / 2 } : {})}
+        {...(key === 'x' && 'w' in el ? { min: -el.w / 2, max: size.widthMm - el.w / 2 } : {})}
+        {...(key === 'y' && 'h' in el ? { min: -el.h / 2, max: size.heightMm - el.h / 2 } : {})}
         value={(el as Record<string, unknown>)[key] as number}
         readOnly={el.locked === true}
         {...(el.locked ? { describedBy: LOCKED_NOTE } : {})}
@@ -2289,7 +2368,18 @@ function Properties({
   // Every element that shows data says which column it shows — a picture and a row of icons as much
   // as a text box, or one added from the tool rail could never be bound. A text layer says it on a
   // line of its own under the heading (#736), the others inside Innehåll.
-  const fieldPicker = 'bind' in el && !isFixed && (
+  const fieldPicker = words && el.kind === 'text' ? (
+    <label className="byd-props-field byd-props-bind byd-props-words">
+      {t('canvas.props.words')}
+      <textarea
+        rows={2}
+        value={'literal' in el.bind ? el.bind.literal : ''}
+        readOnly={reading}
+        onFocus={typing.visit.onFocus}
+        onChange={(event) => onPatch({ bind: { literal: event.target.value } }, typing.token())}
+      />
+    </label>
+  ) : 'bind' in el && !isFixed && (
     <label className={bindsAbove ? 'byd-props-field byd-props-bind' : 'byd-props-field'}>
       {t(bindsAbove ? 'canvas.props.shows' : 'canvas.props.field')}
       <select
@@ -2365,7 +2455,9 @@ function Properties({
               opens the question; the window over the game's pictures is what answers it, and closing
               the window unanswered leaves the element on its column. Going back is going back to the
               column it was drawn from. */}
-          {el.kind === 'image' && (
+          {/* A face of the box has no column to draw a picture from (#1413), so its picture is
+              always one it carries itself. */}
+          {el.kind === 'image' && !words && (
             <div className="byd-props-source" role="radiogroup" aria-label={t('canvas.props.source')}>
               <label>
                 <input type="radio" name={`${el.id}-source`} checked={!isFixed} onChange={toColumn} />
