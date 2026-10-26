@@ -343,7 +343,7 @@ describe('the panel a counter opens (C4, #73, #67)', () => {
     const { user, panel } = await openOnLiv()
     // Where it may go is a question the panel can still answer, and the answer must land.
     expect(panel.getByRole('heading', { name: 'Flytta till' })).toBeTruthy()
-    await user.click(panel.getByRole('button', { name: /^Bordet/ }))
+    await user.click(panel.getByRole('button', { name: /^Spelyta/ }))
     const moved = await screen.findByRole('button', { name: /^Liv, räknare i Spelyta/ })
     // And the focus goes with it, as it does for a card: a keyboard that loses the thing it just
     // moved has to start the walk down the felt again.

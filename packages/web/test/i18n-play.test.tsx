@@ -65,7 +65,7 @@ describe('the play surfaces in the reader\'s own language (A4)', () => {
     expect(buttons).toEqual([
       expect.stringMatching(/^Kasta3 cards · on top of Kasthög$/),
       expect.stringMatching(/^Lägg underst3 cards · at the bottom of Draghög$/),
-      expect.stringMatching(/^The table.*anywhere$/),
+      expect.stringMatching(/^Spelyta.*anywhere$/),
     ])
   })
 

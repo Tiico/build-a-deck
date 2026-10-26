@@ -253,7 +253,7 @@ describe('the setup editor (B5, C4): the phone’s sheet as a preview', () => {
     expect(within(sheet).getAllByText('Framför mig')).toHaveLength(1)
     expect(within(sheet).queryByText(/Räknare [ABC]/)).toBeNull()
     expect(within(sheet).getByText('Kasta')).toBeTruthy()
-    expect(within(sheet).getByText('Bordet')).toBeTruthy()
+    expect(within(sheet).getByText('Spelyta')).toBeTruthy()
   })
 })
 
