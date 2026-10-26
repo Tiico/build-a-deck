@@ -3,7 +3,73 @@
 Lådan som komponenttyp (B1, B2) med sex designbara ytor, måtten räknade ur leken, och lådans framsida som spelets omslag digitalt.
 Steg 2, med stansform, CMYK och lådan i tryckpaketet, väntar på partnern (F1, F2) och ingår inte.
 
-## Riktningen från beställaren
+## Runda 2: hybriden och den stegvisa introduktionen
+
+Beställarens beslut efter runda 1 står i #1406.
+- B presenterar och A redigerar.
+- Omslaget syns i heron i Mina spel, i båda länkarnas bild och i «Visa upp», men inte på TV:n eller landningssidan.
+- Måtten har ett lås per mått, och luften går att ändra.
+- Steg 1 har bara tuckbox.
+- En låda som inte är ritad är neutral, med spelets namn och lekens färg.
+
+Två styrningar kom medan runda 2 byggdes:
+- «Fördela stegen»: den som just har börjat på sin lek bryr sig inte om lådan, men att den går att styra är en säljpunkt och en wow-faktor.
+- «C är snyggast på Mina spel-sidan. Den animerade ska bara visas på den egna sidan.»
+
+Därför är heron i Mina spel C:s stilla form: lådan står bakom lekens första kort, utan rotation och utan ljus.
+Produktbilden med ljus och glans, som rör sig och går att vrida, finns bara i «Visa upp».
+Länkarnas bild är en stillbild, som förut.
+
+Prototypen är `prototyper/runda2.html`.
+Den delar lådans ritning med runda 1 genom `lada.js` och `lada.css`, som är utbrutna ur `index.html` med två ändringar: luften går att ändra, och den neutrala lådan bär namn och färg.
+`index.html` står kvar som runda 1:s underlag.
+
+### Hybriden: A redigerar, B visar upp
+
+`runda2.html?del=hybrid` (bilder `R2-hybrid-*`).
+Fliken «Låda» öppnar på nätet (A) med ytorna, lagren, måtten med ett lås per mått och luften.
+«Visa upp» viker ihop nätet till lådan på sin plats.
+Varje yta glider in på sin sida, sidopanelerna dras undan, ljuset tänds, leken ställer sig bredvid, och lådan vrider sig lugnt och går att vrida.
+Ett klick på en sida, «Redigera nätet» eller Escape viker ut den igen, med den sidan vald.
+Det är samma tolv plan hela vägen, så designern ser vilken sida hon redigerar, och vyn byts aldrig.
+Samma «Visa upp» nås ur Mina spel.
+
+Produktbilden ritas i full storlek, 3,8 px per mm, och arket är samma ritning förminskad till 0,6.
+En CSS 3D-yta som förstoras blir suddig, eftersom den rastreras i sin egen storlek.
+Vid `prefers-reduced-motion` byts läget direkt, och lådan står still.
+
+### Introduktionen: tre varianter
+
+`runda2.html?del=resa&v=1|2|3` (bilder `R2-resa-1..3`).
+Varje variant visas som en remsa över fem steg: tom lek, några kort, en spelbar lek, efter första speltestet och före tryck.
+Mina spel i C:s form är den bärande ytan, och bredvid står editorns kortvägg eller tryckpaketet.
+
+- **1 · Lådan står i heron.** När leken går att spela ställer sig den neutrala lådan bakom första kortet i heron, med raden «Lådan följer leken. Rita den ›», och editorn får fliken «Låda». Den syns för alla som kommer så långt, men den dyker upp utan att designern gjort något.
+- **2 · Lådan växer i editorn** (rekommenderas). Från första kortet står en liten neutral låda längst ut i kortväggens fot, med sina mått, och den blir tjockare för varje kort. När leken går att spela blir raden en knapp, «Låda ›», och fliken kommer. Heron visar lådan först när designern har öppnat den.
+- **3 · En stund efter första speltestet.** Ingenting om lådan förrän första bordet är avslutat. Då står en stund i herons ställe, en gång, med den stilla lådan, «Så här kan Skogens råd se ut i en låda», «Rita lådan», «Visa upp ›» och «Inte nu». Det är ingen ruta över sidan och ingen rörelse.
+
+I alla tre visar tryckpaketet lådan som del 3, neutral om den inte är ritad, med «Rita lådan ›».
+
+### Rekommendation: hybriden som den är, och introduktion 2
+
+Introduktion 2 är den enda som aldrig står i vägen och ändå alltid säger sanningen.
+Lådan är där från första kortet men tar en rad i en fot designern redan läser.
+Wow-faktorn är själva växandet, för lådan blir tjockare för varje kort hon skriver, och det är just det som skiljer Deckster från ett ritprogram.
+Designern väljer själv när lådan ska bli något mer, och först då flyttar den in i heron.
+
+Variant 1 byter herons bild en dag utan att designern gjort något.
+Variant 3 ger starkast intryck men når bara den som speltestar, och en engångsstund behöver ett tillstånd som minns att den visats.
+Stunden kan läggas ovanpå 2 senare, om beställaren vill ha den (beslut R2-3).
+
+### Beslut i runda 2
+
+1. **Introduktionen:** 1, 2 eller 3. Rekommendationen är 2.
+2. **När är en lek spelbar?** Prototypen låter fliken komma när ett bord går att starta. Ett antal kort vore enklare men säger mindre.
+3. **Stunden efter första speltestet:** ska den läggas ovanpå 2?
+4. **Länkens bild före ritad låda:** ska rumskodens och inbjudans bild visa den neutrala lådan från första kortet, eller följa heron?
+5. **Hybridens övergång:** godkänns vikningen mellan nät och låda, ungefär 0,9 s, som den enda rörelsen utanför «Visa upp»?
+
+## Runda 1: riktningen från beställaren
 
 Den kom medan prototypen byggdes, 2026-10-26, och den styr rekommendationen:
 
