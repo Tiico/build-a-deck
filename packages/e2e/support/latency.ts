@@ -1,4 +1,5 @@
 import { connect, createServer, type Socket } from 'node:net'
+import { free } from './ports.js'
 
 /** The stack reached over a line with a slow way down, the way a phone reaches the box. */
 export type SlowLine = {
@@ -29,11 +30,11 @@ export type SlowLine = {
  * the delay on its own.
  */
 export async function slowLine(target: string): Promise<SlowLine> {
-  const { hostname, port } = new URL(target)
+  const { hostname, port: to } = new URL(target)
   let ms = 0
   const sockets = new Set<Socket>()
   const relay = createServer((client) => {
-    const server = connect(Number(port), hostname)
+    const server = connect(Number(to), hostname)
     sockets.add(client).add(server)
     client.pipe(server)
     // In order, each piece `ms` after the one before it: a slow line, never a reordering one.
@@ -71,11 +72,19 @@ export async function slowLine(target: string): Promise<SlowLine> {
     client.on('error', gone).on('close', gone)
     server.on('error', gone).on('close', () => later(gone))
   })
-  await new Promise<void>((resolve) => relay.listen(0, '127.0.0.1', resolve))
-  const address = relay.address()
-  if (address === null || typeof address === 'string') throw new Error('the relay has no port')
+  // A port out of this package's block, never the kernel's (`ports.ts`, `test/stack.spec.ts`).
+  let port = await free()
+  for (let attempt = 0; ; attempt++) {
+    const bound = await new Promise<boolean>((resolve) => {
+      relay.once('error', () => resolve(false))
+      relay.listen(port, '127.0.0.1', () => resolve(true))
+    })
+    if (bound) break
+    if (attempt === 7) throw new Error('the slow line could not find a free port in eight tries')
+    port = await free(port + 1)
+  }
   return {
-    origin: `http://127.0.0.1:${address.port}`,
+    origin: `http://127.0.0.1:${port}`,
     delay: (next) => {
       ms = next
     },
@@ -91,7 +100,7 @@ export async function slowLine(target: string): Promise<SlowLine> {
 // come. A server's frames are not masked (RFC 6455 §5.1).
 function frameSize(bytes: Buffer): number | null {
   if (bytes.length < 2) return null
-  const length = bytes[1]! & 0x7f
+  const length = (bytes[1] ?? 0) & 0x7f
   if (length < 126) return 2 + length
   if (length === 126) return bytes.length < 4 ? null : 4 + bytes.readUInt16BE(2)
   return bytes.length < 10 ? null : 10 + Number(bytes.readBigUInt64BE(2))
