@@ -22,6 +22,7 @@ import {
 import type { RenderStore } from '@byd/render/queue'
 import { queueFaces, type Deck } from './faces.js'
 import { withoutBlocked } from './reports.js'
+import { ADMISSION_ERASED, ADMISSION_REVOKED, isMasked } from './erase.js'
 import type { LogStore } from './store.js'
 
 export const TEXTURE_DPI = 150
@@ -33,8 +34,10 @@ export const SNAPSHOT_ACTIVITY = 50
 // Nothing in memory is authoritative: an actor is rebuilt from its log on load.
 
 // `observer` (C8) names a watcher: seatless, sees everything, may only flag. `lobby` (DRIFT §9)
-// is the join page: sees the seats, may do nothing.
-export type Subscriber = { seat: SeatId | null; id: string; observer?: string; lobby?: true; host?: true; send(message: ServerMessage): void; close?(): void }
+// is the join page: sees the seats, may do nothing. `admission` is the guest's (DRIFT §9), by the
+// moment it was given, for a seat or a watch bought with a token; the table's own screen and the
+// owner's own seat have none.
+export type Subscriber = { seat: SeatId | null; id: string; observer?: string; lobby?: true; host?: true; admission?: { issuedAt: string }; send(message: ServerMessage): void; close?(): void }
 
 export class TableActor {
   private queue: Promise<unknown> = Promise.resolve()
@@ -243,8 +246,9 @@ export class TableActor {
     }
   }
 
-  submit(env: Envelope): Promise<Decision> {
-    const run = this.queue.then(() => this.handle(env))
+  // `from` is the connection the envelope came in on, when it came in on one.
+  submit(env: Envelope, from?: Subscriber): Promise<Decision> {
+    const run = this.queue.then(() => this.handle(env, from))
     // Keep the queue alive past failures; the caller sees them through `run`.
     this.queue = run.catch(() => undefined)
     return run
@@ -314,8 +318,10 @@ export class TableActor {
     for (const sub of this.subscribers.keys()) sub.send({ t: 'bye', reason })
   }
 
-  private async handle(env: Envelope): Promise<Decision> {
+  private async handle(env: Envelope, from?: Subscriber): Promise<Decision> {
     this.lastActivity = Date.now()
+    const barred = from ? await this.barred(from, env) : null
+    if (barred) return { ok: false, reason: barred }
     const decision = decide(this.state, this.registry, env, this.deps)
     if (!decision.ok) return decision
 
@@ -343,6 +349,23 @@ export class TableActor {
       if (line.intent.v === 'seat.release') await this.emptied(line.intent.seat, line.by === null ? 'kicked' : 'left', line.by === line.intent.seat ? answer : undefined)
     }
     return decision
+  }
+
+  // Whether the connection an envelope came in on may still write (#1348, G6, L87). Asked as part of
+  // deciding, in the queue, so it is asked after every line before it: a seat the line before emptied
+  // has taken its connections off the table, and a claim sent behind the release finds nobody. A
+  // guest's admission is asked of the store and not of memory, since it is revoked and erased there,
+  // by this process or by the operator's script in another (DRIFT §10). Revoked, it writes nothing;
+  // erased, it may only give up its own seat, which says nothing of her and is how she leaves.
+  private async barred(from: Subscriber, env: Envelope): Promise<string | null> {
+    if (!this.subscribers.has(from)) return ADMISSION_REVOKED
+    const given = from.admission
+    if (!given) return null
+    const kind = from.seat === null ? 'observer' : 'seat'
+    const mine = (await this.store.guestsAt(this.id)).find((g) => g.kind === kind && g.seat === from.seat && Date.parse(g.issuedAt) === Date.parse(given.issuedAt))
+    if (!mine || mine.revokedAt !== undefined) return ADMISSION_REVOKED
+    if (isMasked(mine.name) && !env.intents.every((it) => it.v === 'seat.release' && it.seat === from.seat)) return ADMISSION_ERASED
+    return null
   }
 }
 

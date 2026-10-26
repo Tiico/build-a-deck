@@ -60,6 +60,11 @@ export type ErasureStore = {
   listen(fn: (sessions: string[]) => void): Promise<() => Promise<void>>
 }
 
+// What the table answers an envelope from an admission that is over (#1348): revoked, by a release
+// or a kick, it may do nothing; erased, it may only give up its own seat, which says nothing of her.
+export const ADMISSION_REVOKED = 'the admission was revoked'
+export const ADMISSION_ERASED = 'the admission was erased'
+
 export const entry = (erasure: Erasure, reason: ErasureReason, at: Date = new Date()): LedgerEntry => ({ ...erasure, id: randomUUID(), at: at.toISOString(), reason })
 
 // What one table holds of the people at it, as an erasure reads it.
@@ -71,6 +76,8 @@ export type Changes = { seqs: number[]; guests: number[]; drop: number[]; mask: 
 
 const sameGuest = (g: GuestRecord, seat: string | null, issuedAt: string): boolean => g.seat === seat && Date.parse(g.issuedAt) === Date.parse(issuedAt)
 const masked = (name: string): boolean => name.startsWith(REDACTED)
+// Whether an admission's name is the placeholder an erasure left in its place.
+export const isMasked = masked
 // A survey answered under the admission: who answered is the admission's name (#1021).
 const answeredBy = (s: SurveyRecord, g: GuestRecord): boolean => (g.kind === 'observer' ? s.observer === true && s.who === g.name : s.observer !== true && s.seat === g.seat && s.who === g.name)
 
