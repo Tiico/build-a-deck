@@ -1622,6 +1622,7 @@ export const enEditor = {
   'tables.update.of': 'Update table {table} to version {rev}',
   'tables.update.busy': 'Updating…',
   'tables.update.failed': 'The table could not be updated. Try again in a moment.',
+  'tables.end.failed': 'The table could not be ended. Try again in a moment.',
   'tables.ended': 'ended',
   'tables.connecting': 'connecting…',
   'tables.nobody': 'nobody seated yet',

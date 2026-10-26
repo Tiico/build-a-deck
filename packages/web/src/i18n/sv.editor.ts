@@ -1794,6 +1794,7 @@ export const svEditor = {
   'tables.update.of': 'Uppdatera bordet {table} till version {rev}',
   'tables.update.busy': 'Uppdaterar…',
   'tables.update.failed': 'Bordet kunde inte uppdateras. Försök igen om en stund.',
+  'tables.end.failed': 'Bordet kunde inte avslutas. Försök igen om en stund.',
   'tables.ended': 'avslutat',
   'tables.connecting': 'ansluter…',
   'tables.nobody': 'ingen sitter än',

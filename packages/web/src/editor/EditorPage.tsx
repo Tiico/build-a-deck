@@ -277,10 +277,11 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   // A table picked up after a reload (`running`) has no key in the page; the account is the
   // authority for it instead.
   const [table, setTable] = useState<{ id: string; version: string; code: string; hostKey?: string; seating?: Seating; kind: 'new' | 'refreshed' | 'running' | 'already'; saved?: boolean } | null>(null)
-  // The band's own line to the table (#1422): the seats, whether it has ended (#705), and the end
-  // itself go through it, as the Bord row's do — the owner's connection, not a lobby's. A hook, so
-  // it stands here with the state and never after the page's early returns.
-  const live = useTableClient(table ? { url: (params.get('server') ?? location.origin).replace(/^http/, 'ws'), sessionId: table.id, seat: null, owner: true } : null)
+  // The band's own line to the table (#1422): the seats and whether it has ended (#705) come over
+  // it, through a lobby, which only looks (DRIFT §9) and costs the table nothing; the end itself
+  // goes over HTTP as the kick does. A hook, so it stands here with the state and never after the
+  // page's early returns.
+  const live = useTableClient(table ? { url: (params.get('server') ?? location.origin).replace(/^http/, 'ws'), sessionId: table.id, seat: null, lobby: true } : null)
   const tableEndedRef = useRef<() => void>(() => undefined)
   const liveEnded = live.view?.ended === true
   useEffect(() => {
@@ -1124,8 +1125,9 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
                 confirm={t('tables.end.yes')}
                 onConfirm={() => {
                   setAskingEnd(false)
-                  // The table's own end, through the line the band already has open to it (C9).
-                  void live.client?.send({ v: 'session.end' }).then(() => tableEnded())
+                  // The host's third control (DRIFT §9), beside the code and the kick: the table ends as
+                  // it ends itself (C9), and the band goes once it has.
+                  void client.endTable(table.id, table.hostKey).then(() => tableEnded(), () => say(t('tables.end.failed')))
                 }}
                 onCancel={() => {
                   setAskingEnd(false)

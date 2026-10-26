@@ -9165,5 +9165,5 @@ Måtten i den byggda appen: 75 px med platser vid bordet (61 förut), med 4 px l
 Priset är de 14 pixlarna på varje flik så länge bordet kör, och det är det priset formen valdes med.
 
 Följdkrav:
-Bandets egen anslutning till bordet är ägarens (`owner`), som radens, så att avslutet går samma väg som radens (C9) och platserna och slutet läses på en lina.
+Bandet tittar på bordet genom en lobby som förut, som bara ser platserna och slutet och kostar bordet ingenting (DRIFT §9); avslutet går över HTTP som koden och sparken, `POST /sessions/:id/end` med värdnyckeln eller ägarens inloggning, och bordet avslutas som det avslutar sig självt (C9).
 `editor-seat-chips.spec.ts` mäter att platserna står under första raden vid 1024 och 1280, att ×-et är helt och att fokus faller till ⋯ när sista platsen går; `editor-page.test.tsx` visar hur ni sitter, vägen in med radens namn, kopian, «Ny kod» och slutet ur ⋯.

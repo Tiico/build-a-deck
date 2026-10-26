@@ -130,6 +130,11 @@ test.describe('the × of a seat, as painted (#849)', () => {
       const others = await chip.evaluate((me) => {
         const strip = me.closest('.byd-editor-table-link')!
         const rects = [...strip.querySelectorAll('*')].filter((el) => !el.contains(me) && !me.contains(el)).map((el) => el.getBoundingClientRect())
+        // The strip's own bottom line is the strip's edge and not the ×'s: since #1422 the chips
+        // stand 4 px above it, inside the pad this reads.
+        const edge = strip.getBoundingClientRect()
+        const line = parseFloat(getComputedStyle(strip).borderBottomWidth)
+        rects.push(new DOMRect(edge.left, edge.bottom - line, edge.width, line))
         for (const node of [...strip.querySelectorAll('*')].flatMap((el) => [...el.childNodes])) {
           if (node.nodeType !== Node.TEXT_NODE || me.contains(node)) continue
           const range = document.createRange()
