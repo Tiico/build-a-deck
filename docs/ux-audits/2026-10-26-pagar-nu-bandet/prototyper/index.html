@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp — «Pågår nu»-bandet på Mina spel</title>
+<link rel="stylesheet" href="proto.css">
+<!-- PROTOTYP 2026-10-26. Kastas när en variant är vald.
+     Frågan: hur bandet för ett bord som pågår (L64, «Pågår nu» och «Startade, aldrig spelade» på
+     Mina spel) ser färdigt ut inför release. Bilderna i bilder/ är den byggda appen (main 0744f9d0)
+     vid 1280 × 860, 1024 × 800 och 390 (hela sidan), inloggad med två spel och tre bord. Varianten
+     ritas som DOM över kolumnen; det som står under kolumnen är urklipp ur samma bild.
+     ?v=idag|A|B|C&w=1280|1024|390 -->
+<style>
+  html, body { height: auto; overflow: auto; }
+  body { background: #0b0d12; }
+  .scen { padding: 16px; display: grid; justify-content: start; }
+  .scen > .sida { transform-origin: top left; }
+  /* The page as a picture, and the column drawn over it in DOM at the same place. */
+  .sida { position: relative; overflow: visible; margin-bottom: 40px; background: #0f1117; font-family: system-ui, sans-serif; color: #e6e6e6; }
+  .sida > img { display: block; }
+  .kolumn { position: absolute; background: #0f1117; display: grid; gap: 24px; align-content: start; padding-bottom: 24px; }
+  .sida[data-w='1280'] { width: 1280px; height: 860px; }
+  .sida[data-w='1280'] > img { width: 1280px; }
+  .sida[data-w='1280'] .kolumn { left: 900px; top: 118px; width: 360px; min-height: 742px; }
+  .sida[data-w='1024'] { width: 1024px; height: 800px; }
+  .sida[data-w='1024'] > img { width: 1024px; }
+  .sida[data-w='1024'] .kolumn { left: 704px; top: 118px; width: 300px; min-height: 682px; }
+  /* The phone: the bar as a picture, the column as DOM, then the rest of the page as a picture. */
+  .sida[data-w='390'] { width: 390px; height: auto; }
+  .sida[data-w='390'] > img { display: none; }
+  .telefonhuvud { width: 390px; height: 108px; background: url(bilder/idag-telefon.png) 0 0 / 390px auto no-repeat; }
+  .telefonrest { width: 390px; height: 700px; background: url(bilder/idag-telefon.png) 0 -492px / 390px auto no-repeat; }
+  .sida[data-w='390'] .kolumn { position: static; padding: 0 20px; width: 390px; box-sizing: border-box; }
+  /* The code row under the column, as the page draws it (byd-home-door). */
+  .kodrad { display: grid; gap: 8px; }
+  .kodrad > b { color: #fff; font-size: 14px; }
+  .kodrad > div { display: flex; gap: 8px; }
+  .kodrad input { flex: 1 1 0; min-width: 0; box-sizing: border-box; height: 52px; padding: 0 16px; border-radius: 12px; border: 1px solid #3b414e; background: #14161c; color: #fff; font-size: 16px; }
+  .kodrad button { min-height: 52px; padding: 0 18px; border-radius: 12px; border: 1px solid #6f7a90; background: transparent; color: #fff; font: inherit; font-size: 16px; font-weight: 700; }
+  .sida[data-w='390'] .kodrad { display: none; }
+  .sida[data-w='390'] .kolumn { gap: 18px; }
+
+  /* ── Appens egna former, ur account.css (bara det bandet behöver) ───────────────────────────── */
+  .byd-home-h2 { margin: 0; font-size: 13px; text-transform: uppercase; letter-spacing: 2px; color: #7d8597; }
+  .sektion { display: grid; gap: 8px; }
+  .sektion > h2 { margin: 0; }
+  .fylld, .kantad { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 12px; border-radius: 10px; font-weight: 700; text-decoration: none; text-align: center; white-space: nowrap; cursor: pointer; }
+  .fylld { background: #7dd3a0; color: #0f1117; }
+  .kantad { background: transparent; box-shadow: inset 0 0 0 1px #7dd3a088; color: #d8ffe8; }
+  .kantad:hover { box-shadow: inset 0 0 0 1px #7dd3a0; }
+  .kod { font-family: ui-monospace, Menlo, monospace; font-weight: 700; letter-spacing: 4px; color: #fff; }
+  /* The plate the TV writes the code on (byd-tv-join strong), at the column's size. */
+  .platta { display: inline-block; font: 700 18px/1 ui-monospace, Menlo, monospace; letter-spacing: 5px; padding: 8px 10px 8px 14px; border-radius: 8px; background: #1a1e29; color: #fff; box-shadow: 0 0 0 1px #2c3242; }
+  .prick { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #7dd3a0; box-shadow: 0 0 0 3px #7dd3a033; }
+  .prick[data-still] { background: #7d8597; box-shadow: none; }
+  .tyst { color: #9aa3b8; }
+
+  /* ── Idag ──────────────────────────────────────────────────────────────────────────────────── */
+  .v-idag .band { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: 10px 12px; padding: 14px 16px; border-radius: 16px; background: #1b2a22; color: #d8ffe8; }
+  .v-idag .band b { font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .v-idag .band .kod { justify-self: end; font-size: 22px; }
+  .v-idag .vagar { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 10px 12px; }
+  .v-idag .vagar > a { flex: 1 1 0; min-width: max-content; }
+
+  /* ── A · Fönstret mot filten ───────────────────────────────────────────────────────────────── */
+  .v-A .band { display: grid; border-radius: 16px; overflow: hidden; background: #171a23; border: 1px solid #262a35; }
+  .v-A .filt { position: relative; height: 104px; background: radial-gradient(ellipse at 50% 40%, #2e6b46, #1f4a30 70%, #173a26); }
+  .v-A .band[data-still] .filt { filter: saturate(0.35) brightness(0.75); }
+  /* Two piles and the seats' zones, drawn as the recipe lays them (two piles in the middle, a hand
+     along each edge): a picture of the table's shape, not the table. */
+  .v-A .hog { position: absolute; top: 34px; width: 26px; height: 36px; border-radius: 3px; background: #3b2a1e; box-shadow: 0 1px 0 #2a1d14, 0 2px 0 #1f150e; }
+  .v-A .hog.dra { left: calc(50% - 36px); background: repeating-linear-gradient(45deg, #3a4d7a, #3a4d7a 3px, #2f4068 3px, #2f4068 6px); }
+  .v-A .hog.slang { left: calc(50% + 10px); background: #f1e9d8; box-shadow: 0 1px 0 #cfc6b4; }
+  .v-A .zon { position: absolute; border: 1px dashed #f3e9d630; border-radius: 4px; }
+  .v-A .zon.n { left: 36%; right: 36%; top: 6px; height: 20px; }
+  .v-A .zon.s { left: 36%; right: 36%; bottom: 6px; height: 20px; }
+  .v-A .zon.v { left: 8px; top: 30%; bottom: 30%; width: 20px; }
+  .v-A .zon.o { right: 8px; top: 30%; bottom: 30%; width: 20px; }
+  .v-A .filt .platta { position: absolute; right: 10px; bottom: 10px; box-shadow: 0 6px 18px rgb(0 0 0 / .5), 0 0 0 1px #0d0f14; }
+  .v-A .lage { position: absolute; left: 10px; top: 10px; display: inline-flex; align-items: center; gap: 7px; padding: 3px 9px 3px 7px; border-radius: 999px; background: #0f1117cc; color: #d8ffe8; font-size: 12px; font-weight: 600; backdrop-filter: blur(4px); }
+  .v-A .band[data-still] .lage { color: #9aa3b8; }
+  .v-A .text { display: grid; gap: 2px; padding: 12px 14px 0; }
+  .v-A .spel { display: inline-flex; align-items: center; gap: 6px; justify-self: start; min-height: 32px; color: #fff; font-size: 15px; font-weight: 700; text-decoration: none; }
+  .v-A .spel .pil { color: #7dd3a0; font-size: 14px; }
+  .v-A .spel:hover { text-decoration: underline; text-underline-offset: 3px; }
+  .v-A .fakta { margin: 0; color: #9aa3b8; font-size: 12.5px; line-height: 1.4; }
+  .v-A .fylld { margin: 10px 14px 14px; }
+
+  /* ── B · Grupperat per spel ────────────────────────────────────────────────────────────────── */
+  .v-B .grupp { display: grid; border-radius: 16px; background: #171a23; border: 1px solid #262a35; overflow: hidden; }
+  .v-B .spelrad { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 4px 8px 4px 16px; border-bottom: 1px solid #262a35; }
+  .v-B .spelrad b { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; color: #fff; }
+  .v-B .spelrad a { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 10px; border-radius: 8px; color: #7dd3a0; font-size: 13px; font-weight: 700; text-decoration: none; white-space: nowrap; }
+  .v-B .spelrad a:hover { background: #1d212b; }
+  .v-B .bord { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto auto; align-items: center; gap: 12px; min-height: 60px; padding: 8px 10px 8px 16px; color: #fff; text-decoration: none; border-top: 1px solid #262a35; }
+  .v-B .bord:first-of-type { border-top: 0; }
+  .v-B .bord:hover { background: #1d212b; }
+  .v-B .bord .platta { font-size: 15px; letter-spacing: 3.5px; padding: 7px 7px 7px 11px; }
+  .v-B .bord .fakta { display: grid; gap: 1px; min-width: 0; }
+  .v-B .bord .fakta b { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .v-B .bord .fakta small { color: #9aa3b8; font-size: 12px; line-height: 1.3; }
+  .v-B .bord .pil { color: #9aa3b8; width: 24px; text-align: center; font-size: 18px; }
+  .v-B .bord[data-still] .fakta b { color: #cfd5e3; }
+  .v-B .sits { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 10px; background: #1b2a22; color: #7dd3a0; }
+  .v-B .sits svg { width: 18px; height: 18px; }
+  .v-B .bord[data-still] .sits { background: #1f2433; color: #b9c3dc; }
+  .v-B .fakta b .prick { width: 7px; height: 7px; margin-right: 6px; vertical-align: 1px; }
+
+  /* ── C · Beskedet ─────────────────────────────────────────────────────────────────────────── */
+  .v-C .band { display: grid; gap: 10px; justify-items: center; text-align: center; padding: 16px 16px 14px; border-radius: 16px; background: #1b2a22; color: #d8ffe8; border: 1px solid #2a4034; }
+  .v-C .band[data-still] { background: #171a23; border-color: #262a35; color: #cfd5e3; }
+  .v-C .lage { display: inline-flex; align-items: center; gap: 7px; font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: #9fd9b8; }
+  .v-C .band[data-still] .lage { color: #7d8597; }
+  .v-C .platta { font-size: 24px; letter-spacing: 7px; padding: 10px 10px 10px 17px; }
+  .v-C .mening { margin: 0; font-size: 14px; line-height: 1.45; }
+  .v-C .mening b { color: #fff; }
+  .v-C .band[data-still] .mening b { color: #fff; }
+  .v-C .fylld { width: 100%; box-sizing: border-box; margin-top: 2px; }
+  .v-C .spel { display: inline-flex; align-items: center; min-height: 36px; color: #9fd9b8; font-size: 13px; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+  .v-C .band[data-still] .spel { color: #9aa3b8; }
+
+  /* Marks what is new or borrowed, for the reader of the prototype only. */
+  .ny { outline: 1px dashed #ffd98a; outline-offset: 3px; }
+</style>
+</head>
+<body>
+<div class="protorad">
+  <div class="fraga">
+    <p><b>PROTOTYP · «Pågår nu»-bandet på Mina spel (L64).</b> I dag: en platt grön ruta, spelets namn, koden i monotyp och två lika tunga knappar. Vad ser färdigt ut inför release?</p>
+    <p>Bilderna är den byggda appen; kolumnen till höger (hela sidan på telefonen) är variantens DOM. ← → byter variant.</p>
+  </div>
+  <div class="vaxlare" id="varianter" role="group" aria-label="Variant"></div>
+  <div class="vaxlare" id="bredder" role="group" aria-label="Bredd"></div>
+  <p class="anteckning" id="anteckning"></p>
+</div>
+<div class="scen" id="scen"></div>
+<script>
+const V = {
+  idag: ['Idag', '<b>Idag.</b> Namn, kod och två knappar i en grön ruta. <span class="minus">− Koden hänger fri, ingen bild, inga fakta om bordet, och två lika stora knappar gör att ingen väg är den som står redo.</span>'],
+  A: ['A · Fönstret mot filten', '<b>A — ett fönster mot filten</b> (rekommenderas). Kortet öppnar med en bild av bordets form — filten, högarna, platserna — med kodplattan som TV:n skriver den och ett läge i hörnet. Spelets namn är vägen till editorn, under det bordets fakta, och <b>en</b> väg står redo: «Öppna bordet». <span class="plus">+ Samma bildspråk som hjältekortet och Bord-fliken; koden får den platta gästerna redan läser den på; ett orört bord ser orört ut.</span> <span class="minus">− Högst av de tre (≈ 200 px per bord). Bilden är bordets form ur receptet, inte dess live-läge.</span>'],
+  B: ['B · Grupperat per spel', '<b>B — borden under sitt spel</b> (valt 2026-10-26, med ikonen). Ett kort per spel: spelets namn och «Öppna spelet» på en rubrikrad, och varje bord en slank rad som i sig är vägen till bordet — hur man sitter som ikon på egen grund (skärm på fot, eller två fönster), läge med prick, fakta, kod på plattan, pil. Samma form som «Väntar på dig». <span class="plus">+ Tätast (≈ 60 px per bord); två bord på ett spel säger spelets namn en gång; raden är knappen.</span> <span class="minus">− Ingen bild; ett spel med ett bord kostar ändå en rubrikrad; «Startade, aldrig spelade» blir samma kort med annat läge.</span>'],
+  C: ['C · Beskedet', '<b>C — bandet säger det som en mening</b>, i samma gröna som kvittona («Bordet är igång. Rumskoden är …»). Läget överst, koden stor och mitt i, en mening om spelet och bordet, «Öppna bordet» över hela bredden och «Öppna spelet» som en tyst länk under. <span class="plus">+ Koden blir det man ser från andra sidan rummet; inget nytt bildspråk att bygga.</span> <span class="minus">− Centrerat och ganska högt (≈ 190 px); två bord ger två nästan likadana band; ett orört bord i grått blir en grå ruta med en stor kod.</span>'],
+}
+const W = ['1280', '1024', '390']
+const q = new URLSearchParams(location.search)
+let v = V[q.get('v')] ? q.get('v') : 'A'
+let w = W.includes(q.get('w')) ? q.get('w') : '1280'
+
+// The three tables the pictures were taken with, and the facts a band can say about them today:
+// the version it runs, when it last moved (or never), and how the people at it sit (L77).
+const BORD = [
+  { spel: "Sal's Saloon", kod: 'S4HXJB', rev: 'rev-1', sedan: 'senaste drag för 4 min sedan', kort: '4 min sedan', sits: 'runt en skärm', pagar: true },
+  { spel: "Juice 'em up", kod: 'GN7RGY', rev: 'rev-1', sedan: 'startat för 20 min sedan', kort: 'startat 20 min sedan', sits: 'varsin dator', pagar: false },
+  { spel: "Juice 'em up", kod: 'BGKDMT', rev: 'rev-1', sedan: 'startat i går', kort: 'startat i går', sits: 'runt en skärm', pagar: false },
+]
+// Two glyphs on the app's 16 grid (glyphs.tsx: one 1.6 px round stroke): a screen on its stand
+// for «Runt en skärm», and two windows for «Var och en vid sin dator».
+const GLYF = {
+  screen: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 2.75h10a1 1 0 0 1 1 1v6.5a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1v-6.5a1 1 0 0 1 1-1zM8 11.25v2.5M5.25 13.75h5.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  computer: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 5.75h7.5a1 1 0 0 1 1 1v5.5a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1v-5.5a1 1 0 0 1 1-1zM5.5 5.75V3.75a1 1 0 0 1 1-1H14a1 1 0 0 1 1 1v5.5a1 1 0 0 1-1 1h-3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+}
+const SITS = { 'runt en skärm': 'screen', 'varsin dator': 'computer' }
+const SITS_ORD = { screen: 'Runt en skärm', computer: 'Var och en vid sin dator' }
+const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/'/g, '&#39;')
+const sektioner = () => [
+  ['Pågår nu', BORD.filter((b) => b.pagar)],
+  ['Startade, aldrig spelade', BORD.filter((b) => !b.pagar)],
+]
+
+const R = {
+  idag: (b) => `<div class="band"><b>${esc(b.spel)}</b><span class="kod">${b.kod}</span><span class="vagar"><a class="kantad" href="#">Öppna spelet</a><a class="fylld" href="#">Öppna bordet</a></span></div>`,
+  A: (b) => `<div class="band" ${b.pagar ? '' : 'data-still'}>
+    <div class="filt" aria-hidden="true"><span class="zon n"></span><span class="zon s"></span><span class="zon v"></span><span class="zon o"></span><span class="hog dra"></span><span class="hog slang"></span>
+      <span class="lage"><span class="prick" ${b.pagar ? '' : 'data-still'}></span>${b.pagar ? 'Pågår' : 'Aldrig spelat'}</span>
+      <span class="platta">${b.kod}</span></div>
+    <div class="text"><a class="spel" href="#">${esc(b.spel)} <span class="pil">›</span></a><p class="fakta">${b.rev} · ${b.sedan} · ${b.sits}</p></div>
+    <a class="fylld" href="#">Öppna bordet</a></div>`,
+  C: (b) => `<div class="band" ${b.pagar ? '' : 'data-still'}>
+    <span class="lage"><span class="prick" ${b.pagar ? '' : 'data-still'}></span>${b.pagar ? 'Pågår · 4 min sedan' : 'Startat · aldrig spelat'}</span>
+    <span class="platta">${b.kod}</span>
+    <p class="mening"><b>${esc(b.spel)}</b> på ${b.rev}, ${b.sits}.</p>
+    <a class="fylld" href="#">Öppna bordet</a>
+    <a class="spel" href="#">Öppna spelet</a></div>`,
+}
+// B groups the tables of a section by their game.
+function ritaB(bord) {
+  const perSpel = new Map()
+  for (const b of bord) perSpel.set(b.spel, [...(perSpel.get(b.spel) ?? []), b])
+  return [...perSpel].map(([spel, rader]) => `<div class="grupp">
+    <div class="spelrad"><b>${esc(spel)}</b><a href="#">Öppna spelet <span aria-hidden="true">›</span></a></div>
+    ${rader.map((b) => `<a class="bord" href="#" ${b.pagar ? '' : 'data-still'}><span class="sits" title="${SITS_ORD[SITS[b.sits]]}">${GLYF[SITS[b.sits]]}<span class="offscreen">${SITS_ORD[SITS[b.sits]]}</span></span><span class="fakta"><b><span class="prick" ${b.pagar ? '' : 'data-still'}></span>${b.pagar ? 'Pågår' : 'Aldrig spelat'}</b><small>${b.kort} · ${b.rev}</small></span><span class="platta">${b.kod}</span><span class="pil" aria-hidden="true">›</span></a>`).join('')}
+  </div>`).join('')
+}
+
+function rita() {
+  document.getElementById('anteckning').innerHTML = V[v][1]
+  for (const [id, keys, cur] of [['varianter', Object.keys(V), v], ['bredder', W, w]]) {
+    document.getElementById(id).innerHTML = keys.map((k) => `<button type="button" data-k="${k}" aria-pressed="${k === cur}">${id === 'varianter' ? V[k][0] : k}</button>`).join('')
+  }
+  const kolumn = sektioner().map(([rubrik, bord]) => bord.length === 0 ? '' : `<section class="sektion v-${v}"><h2 class="byd-home-h2">${rubrik}</h2>${v === 'B' ? ritaB(bord) : bord.map(R[v]).join('')}</section>`).join('')
+  const bild = { 1280: 'idag-dator', 1024: 'idag-laptop', 390: 'idag-telefon' }[w]
+  document.getElementById('scen').innerHTML = v === 'idag' && w !== '390'
+    ? `<div class="sida" data-w="${w}"><img src="bilder/${bild}.png" alt="Mina spel i dag vid ${w}"></div>`
+    : `<div class="sida" data-w="${w}"><img src="bilder/${bild}.png" alt="">${w === '390' ? '<div class="telefonhuvud"></div>' : ''}<div class="kolumn">${kolumn}<div class="kodrad"><b>Har du en rumskod?</b><div><input aria-label="Rumskod"><button type="button">Gå med</button></div></div></div>${w === '390' ? '<div class="telefonrest"></div>' : ''}</div>`
+  history.replaceState(null, '', `?v=${v}&w=${w}`)
+  passa()
+}
+// The stage shrinks to the window, so a narrow pane still shows the whole width.
+function passa() {
+  const sida = document.querySelector('.sida'); if (!sida) return
+  sida.style.transform = ''
+  const k = Math.min(1, (innerWidth - 32) / sida.offsetWidth)
+  sida.style.transform = `scale(${k})`
+  sida.style.marginBottom = `${40 - sida.offsetHeight * (1 - k)}px`
+}
+addEventListener('resize', passa)
+document.getElementById('varianter').addEventListener('click', (e) => { const k = e.target.closest('button')?.dataset.k; if (k) { v = k; rita() } })
+document.getElementById('bredder').addEventListener('click', (e) => { const k = e.target.closest('button')?.dataset.k; if (k) { w = k; rita() } })
+const steg = (d) => { const k = Object.keys(V); v = k[(k.indexOf(v) + d + k.length) % k.length]; rita() }
+addEventListener('keydown', (e) => { if (e.key === 'ArrowLeft') steg(-1); if (e.key === 'ArrowRight') steg(1) })
+rita()
+</script>
+</body>
+</html>

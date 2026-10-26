@@ -541,6 +541,51 @@ describe('a game on the home page (G1)', () => {
     expect(within(never).getByRole('link', { name: new RegExp(`Öppna bordet ${untouched.code}`) })).toBeTruthy()
   })
 
+  // Grupperat per spel (#1411, beslut B): a game's tables stand under its name, each a row that is
+  // itself the way to the table, leading with how its people sit (L77) as a glyph the screen
+  // reader has words for, then what the table is up to, when, on which version, and by its code.
+  it('groups the tables under their game, says how each sits, and makes the row the way to the table (#1411)', async () => {
+    await home()
+    const start = async (seating: 'screen' | 'computer') => {
+      const made = (await (await fetch(`${run.http}/projects/${run.projectId}/sessions`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ seating }) })).json()) as { id: string; code: string; hostKey: string }
+      registerRoom(made.id, made)
+      return made
+    }
+    const played = await start('screen')
+    const seat = TableClient.connect(await asSeat(run, played.id, 'A', 'Ada'))
+    await seat.ready()
+    await seat.send({ v: 'seat.claim', seat: 'A', name: 'Ada' })
+    await seat.send({ v: 'draw', from: 'draw', to: 'table', count: 1 })
+    seat.close()
+    const tv = await start('screen')
+    const desks = await start('computer')
+    cleanup()
+    render(<HomePage />)
+    await screen.findByText('Skogens herrar')
+    const never = await screen.findByRole('region', { name: 'Startade, aldrig spelade' })
+    // One card for the game: its name once, and the way to the editor once, for two tables.
+    expect(within(never).getAllByText('Skogens herrar')).toHaveLength(1)
+    expect(within(never).getAllByRole('link', { name: 'Öppna Skogens herrar i editorn' })).toHaveLength(1)
+    const tvRow = within(never).getByRole('link', { name: new RegExp(`Öppna bordet ${tv.code}`) })
+    const deskRow = within(never).getByRole('link', { name: new RegExp(`Öppna bordet ${desks.code}`) })
+    expect(tvRow.getAttribute('data-seating')).toBe('screen')
+    expect(deskRow.getAttribute('data-seating')).toBe('computer')
+    expect(tvRow.querySelector('[data-glyph="screen"]')).not.toBeNull()
+    expect(deskRow.querySelector('[data-glyph="computer"]')).not.toBeNull()
+    expect(tvRow.textContent).toContain('Runt en skärm')
+    expect(deskRow.textContent).toContain('Var och en vid sin dator')
+    expect(tvRow.textContent).toContain('Aldrig spelat')
+    expect(tvRow.textContent).toContain('startat i dag')
+    expect(tvRow.textContent).toContain('v1')
+    expect(tvRow.textContent).toContain(tv.code)
+    // The one being played says so, and when it last moved.
+    const now = await screen.findByRole('region', { name: 'Pågår nu' })
+    const liveRow = within(now).getByRole('link', { name: new RegExp(`Öppna bordet ${played.code}`) })
+    expect(liveRow.textContent).toContain('Pågår')
+    expect(liveRow.textContent).toContain('senaste drag i dag')
+    expect(liveRow.querySelector('[data-glyph="screen"]')).not.toBeNull()
+  })
+
   it('says on the game’s row that its only table was started and never played, not that it runs', async () => {
     await home()
     const made = (await (await fetch(`${run.http}/projects/${run.projectId}/sessions`, { method: 'POST' })).json()) as { id: string; code: string }
