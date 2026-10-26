@@ -1,5 +1,5 @@
 import { PERSONAL_FIELDS, REDACTED, type Activity, type PersonalHolds, type Snapshot } from '@byd/protocol'
-import type { Playtest } from '@byd/server/doc'
+import type { Playtest, PlaytestCard } from '@byd/server/doc'
 import type { Key, T } from './i18n/index.js'
 
 // A masked personal field said in the reader's language (#1281, G6). An erasure (#1279) leaves
@@ -60,17 +60,19 @@ export function sayLine(line: Activity, words: MaskedWords): Activity {
 }
 
 // What the designer reads of her playtests (#1010) with its masked names said: the people at each
-// table, who answered and who flagged. A masked comment is said where the flag is drawn, since
-// there it is the comment's absence that is read and not a quotation.
+// table, who answered, who flagged, and whose hand a flagged card lay in (#1349). A masked comment
+// is said where the flag is drawn, since there it is the comment's absence that is read and not a
+// quotation (`PlaytestResults`, `LiftedCard`).
 export function sayPlaytest(read: Playtest, words: MaskedWords): Playtest {
   const name = (who: string) => maskedWord(who, 'seat-name', words)
+  const card = (c: PlaytestCard): PlaytestCard => (c.place.owner === null ? c : { ...c, place: { ...c.place, owner: name(c.place.owner) } })
   return {
     ...read,
     tables: read.tables.map((x) => ({
       ...x,
       people: x.people.map((p) => ({ ...p, name: name(p.name) })),
       answers: x.answers.map((a) => ({ ...a, who: name(a.who) })),
-      flags: x.flags.map((f) => ({ ...f, who: f.who === null ? null : name(f.who) })),
+      flags: x.flags.map((f) => ({ ...f, who: f.who === null ? null : name(f.who), ...(f.card ? { card: card(f.card) } : {}) })),
     })),
   }
 }
