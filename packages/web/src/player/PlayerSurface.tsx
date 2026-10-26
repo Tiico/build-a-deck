@@ -325,15 +325,17 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
           <section {...panel('more')}>
             {/* The one help pattern (L32), on a narrower screen (#305), as a line with its question
                 mark. It stands here and not in the head (#1147): from the head the box hung over
-                the hand's first row of cards, and here it covers nothing a thumb plays with. */}
-            <p className="byd-help-row">
+                the hand's first row of cards, and here it covers nothing a thumb plays with. A
+                `<div>` like every other help row: the box it opens is a `<div>` of paragraphs,
+                which a `<p>` may not hold (#1401). */}
+            <div className="byd-help-row">
               <span>{t('player.more.help')}</span>
               <Help topic={t('play.help.hand.topic')}>
                 <p>{t('play.help.hand.pick')}</p>
                 <p>{t('play.help.hand.play')}</p>
                 <p>{t('play.help.hand.hidden')}</p>
               </Help>
-            </p>
+            </div>
             {/* The rules this table plays by (B7). The living number (#226) reads this seat's own
                 view. Out of the way when the table asks something of everyone (#483). */}
             {playing && <RuleDrawer http={faces} sessionId={sessionId} placement="phone" live={view} />}
