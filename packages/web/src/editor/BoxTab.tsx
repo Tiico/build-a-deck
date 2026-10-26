@@ -317,7 +317,7 @@ function NetStage({ doc, net, fit, drawings, face, assetBase, motifs, editing, o
   return (
     <section ref={room} className="byd-canvas-stage byd-box-stage" aria-label={t('box.net')} tabIndex={0} onClick={onDeselect} style={{ ['--byd-canvas-scale' as string]: String(scale) }}>
       <div className="byd-box-net" style={{ width: `${net.width * px}px`, height: `${net.height * px}px` }}>
-        <NetLines net={net} px={px} />
+        <NetLines net={net} px={px} part="flaps" />
         {net.panels.map((p) => (
           <div
             key={p.face}
@@ -339,6 +339,7 @@ function NetStage({ doc, net, fit, drawings, face, assetBase, motifs, editing, o
             )}
           </div>
         ))}
+        <NetLines net={net} px={px} part="lines" />
       </div>
     </section>
   )
@@ -372,14 +373,17 @@ function useFitted(room: RefObject<HTMLElement | null>, net: BoxNet): number {
 // The net's own lines, in its own millimetres (#1406 variant A): the flaps, the cut round the sheet
 // and the folds dashed. None of it is a face, so none of it is the renderer's: it is folded in and
 // never printed.
-function NetLines({ net, px }: { net: BoxNet; px: number }) {
+// The flaps lie under the faces, and the cut and the folds over them, where the eye finds the edges.
+function NetLines({ net, px, part }: { net: BoxNet; px: number; part: 'flaps' | 'lines' }) {
   const row = net.panels.filter((p) => !p.turned && (p.face === 'left' || p.face === 'right' || p.face === 'front' || p.face === 'back'))
   const left = Math.min(...row.map((p) => p.x))
   const right = Math.max(...row.map((p) => p.x + p.width))
   const top = row[0]?.y ?? 0
   const height = row[0]?.height ?? 0
   return (
-    <svg className="byd-box-lines" viewBox={`0 0 ${net.width} ${net.height}`} width={net.width * px} height={net.height * px} aria-hidden="true">
+    <svg className="byd-box-lines" data-part={part} viewBox={`0 0 ${net.width} ${net.height}`} width={net.width * px} height={net.height * px} aria-hidden="true">
+      {part === 'flaps' && (
+      <>
       <defs>
         <pattern id="byd-box-glue" width="3" height="3" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
           <rect className="byd-box-glue-ground" width="3" height="3" />
@@ -389,10 +393,16 @@ function NetLines({ net, px }: { net: BoxNet; px: number }) {
       {net.flaps.map((flap, i) => (
         <Flap key={i} flap={flap} />
       ))}
-      <rect className="byd-box-cut" x={left} y={top} width={right - left} height={height} />
-      {net.folds.map(([x1, y1, x2, y2], i) => (
-        <line key={i} className="byd-box-fold" x1={x1} y1={y1} x2={x2} y2={y2} />
-      ))}
+      </>
+      )}
+      {part === 'lines' && (
+        <>
+          <rect className="byd-box-cut" x={left} y={top} width={right - left} height={height} />
+          {net.folds.map(([x1, y1, x2, y2], i) => (
+            <line key={i} className="byd-box-fold" x1={x1} y1={y1} x2={x2} y2={y2} />
+          ))}
+        </>
+      )}
     </svg>
   )
 }

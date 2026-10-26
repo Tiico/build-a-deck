@@ -59,7 +59,7 @@ function inkOn(colour: string): string {
 const PT_PER_MM = 72 / 25.4
 function neutralFace(face: BoxFace, { widthMm: w, heightMm: h }: { widthMm: number; heightMm: number }, name: string, fill: string): Element[] {
   const ink = inkOn(fill)
-  const ground: Element = { kind: 'shape', id: 'farg', x: 0, y: 0, w, h, shape: 'rect', fill }
+  const ground: Element = { kind: 'shape', id: 'ground', x: 0, y: 0, w, h, shape: 'rect', fill }
   // Namnet bärs av framsidan, locket och sidorna, där en låda i en hylla läses; baksidan och botten
   // är bara färg.
   if (face === 'back' || face === 'bottom') return [ground]
@@ -68,7 +68,7 @@ function neutralFace(face: BoxFace, { widthMm: w, heightMm: h }: { widthMm: numb
   const boxH = face === 'front' ? Math.min(h - 2 * air, sizeMm * 3) : face === 'lid' ? h - 2 * air : Math.min(h - 2 * air, sizeMm * 4)
   const text: Element = {
     kind: 'text',
-    id: 'namn',
+    id: 'title',
     x: air,
     y: Math.round(((h - boxH) / 2) * 10) / 10,
     w: Math.round((w - 2 * air) * 10) / 10,

@@ -4895,6 +4895,7 @@ label.byd-ai-rules { cursor: pointer; }
 .byd-box-faces { padding-bottom: var(--byd-s2); margin-bottom: var(--byd-s2); border-bottom: 1px solid #2f333d; }
 .byd-box-faces ul { list-style: none; margin: 0; padding: 0; display: grid; }
 .byd-box-faces button, .byd-box-flaps {
+  box-sizing: border-box;
   display: grid;
   grid-template-columns: 28px minmax(0, 1fr) auto;
   align-items: center;
@@ -4923,14 +4924,15 @@ label.byd-ai-rules { cursor: pointer; }
 .byd-box-stage { min-height: 0; background: repeating-conic-gradient(#20232b 0 25%, #1b1d23 0 50%) 0 0 / 24px 24px; }
 .byd-box-net { position: relative; flex: none; }
 .byd-box-lines { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
-/* Flaps in board grey, the cut drawn whole and the folds dashed, as a tuckbox's net is drawn
+/* Flaps in board grey, the cut drawn whole and the folds dashed in a grey that reads on a dark face
+   and a light one alike, as a tuckbox's net is drawn
    (#1406). The lines are a pixel at every scale. */
 .byd-box-flap { fill: #d9d4c7; stroke: #222; stroke-width: 1px; vector-effect: non-scaling-stroke; }
 .byd-box-flap-glue { fill: url(#byd-box-glue); }
 .byd-box-glue-ground { fill: #d9d4c7; }
 .byd-box-glue { stroke: #7a7f8c; stroke-width: 0.8; }
 .byd-box-cut { fill: none; stroke: #222; stroke-width: 1px; vector-effect: non-scaling-stroke; }
-.byd-box-fold { stroke: #222; stroke-width: 1px; stroke-dasharray: 4 3; vector-effect: non-scaling-stroke; }
+.byd-box-fold { stroke: #8a91a2; stroke-width: 1px; stroke-dasharray: 4 3; vector-effect: non-scaling-stroke; }
 .byd-box-panel { position: absolute; cursor: pointer; }
 .byd-box-panel [data-card] { background: var(--byd-editor-blank-paper); }
 /* The face being edited, ringed in the editor's mark and over its neighbours, so its handles are. */
@@ -4941,7 +4943,7 @@ label.byd-ai-rules { cursor: pointer; }
 .byd-box-foot { display: flex; align-items: center; gap: var(--byd-s2); min-height: var(--byd-tap); padding: var(--byd-s1) var(--byd-s3); border-top: 1px solid #2f333d; background: var(--byd-editor-card-row-bg); }
 .byd-box-foot .byd-editor-confirm { flex: 1 1 auto; }
 .byd-box-foot .byd-foot-quiet { flex: 1 1 auto; min-width: 0; }
-.byd-box-foot-line { display: flex; align-items: baseline; gap: var(--byd-s3); margin: 0; color: #9aa3b8; font-size: 12px; white-space: nowrap; }
+.byd-box-foot-line { display: flex; width: 100%; align-items: baseline; gap: var(--byd-s3); margin: 0; color: #9aa3b8; font-size: 12px; white-space: nowrap; }
 .byd-box-foot-size { margin-left: auto; overflow: hidden; text-overflow: ellipsis; color: #c3cbdd; font-variant-numeric: tabular-nums; }
 .byd-box-foot-size b { color: #fff; }
 /* The measures over the properties (#1406, beslut 4): a lock each, the formula, and the air. */

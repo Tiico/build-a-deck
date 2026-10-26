@@ -122,7 +122,7 @@ describe('nätet (#1413)', () => {
   it('visar en låda som inte är ritad neutral, med spelets namn och lekens färg', async () => {
     await open()
     await openBox()
-    expect(layerIds()).toEqual(['namn', 'farg'])
+    expect(layerIds()).toEqual(['title', 'ground'])
     expect(panel('front').innerHTML).toContain('#2f4068')
     expect(panel('front').textContent).toContain('Skogens herrar')
   })
@@ -132,14 +132,14 @@ describe('en yta redigeras med kortets lager och egenskaper (#1413)', () => {
   it('skriver texten på ytan, och den neutrala ytan blir designerns i samma steg', async () => {
     await open()
     await openBox()
-    fireEvent.click(layerPick('namn'))
+    fireEvent.click(layerPick('title'))
     const words = screen.getByRole('textbox', { name: 'Text' })
     fireEvent.focus(words)
     fireEvent.change(words, { target: { value: 'Skogens herrar: Andra upplagan' } })
     await waitFor(() => expect(panel('front').textContent).toContain('Andra upplagan'))
     await save()
     const box = (await stored()).box
-    expect(box?.faces?.front?.base.map((e) => e.id)).toEqual(['farg', 'namn'])
+    expect(box?.faces?.front?.base.map((e) => e.id)).toEqual(['ground', 'title'])
     expect(box?.faces?.front?.base[1]).toMatchObject({ bind: { literal: 'Skogens herrar: Andra upplagan' } })
     // Korten rördes inte.
     expect((await stored()).template).toEqual(deck().template)
@@ -152,7 +152,7 @@ describe('en yta redigeras med kortets lager och egenskaper (#1413)', () => {
     fireEvent.click(screen.getByRole('button', { name: /^Form/ }))
     await save()
     const lid = (await stored()).box?.faces?.lid?.base ?? []
-    const added = lid.find((e) => e.kind === 'shape' && e.id !== 'farg')
+    const added = lid.find((e) => e.kind === 'shape' && e.id !== 'ground')
     expect(added).toBeDefined()
     const { widthMm, heightMm } = boxFaceSize('lid', boxOf(deck()).size)
     if (!added || !('w' in added)) throw new Error('no shape')
@@ -163,7 +163,7 @@ describe('en yta redigeras med kortets lager och egenskaper (#1413)', () => {
   it('tar tillbaka en ändring av ytan med ett steg, och lådan är neutral igen', async () => {
     await open()
     await openBox()
-    fireEvent.click(layerPick('namn'))
+    fireEvent.click(layerPick('title'))
     const words = screen.getByRole('textbox', { name: 'Text' })
     fireEvent.focus(words)
     fireEvent.change(words, { target: { value: 'Ny titel' } })
