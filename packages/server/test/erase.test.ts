@@ -4,7 +4,7 @@ import { REDACTED, type Applied, type Intent } from '@byd/protocol'
 import { initialState, redactLine, replay } from '@byd/engine'
 import { MemoryAuthStore, MemoryLogStore, MemoryProjectStore, MemorySurveyStore, PostgresLogStore, hash, type AuthStore, type LogStore, type SurveyStore } from '../src/index.js'
 import type { ProjectStore } from '../src/projects.js'
-import { changesAt, entry, parseLedger, retentionCutoff, sweepErasures, type ErasureStore } from '../src/erase.js'
+import { ADMISSION_ERASED as ERASED, ADMISSION_REVOKED as REVOKED, changesAt, entry, parseLedger, retentionCutoff, sweepErasures, type ErasureStore } from '../src/erase.js'
 import { runErase, type EraseStores } from '../src/erase-cli.js'
 import type { GuestRecord } from '../src/store.js'
 import { WireClient } from './client.js'
@@ -241,7 +241,8 @@ for (const backend of backends) {
       await t.bo.waitFor((m) => m.t === 'patch' && t.bo.view?.seats.find((s) => s.id === 'A')?.name === REDACTED, 4000)
       expect(t.bo.view).toEqual(masked(view, [NAME, NOTE, COMMENT]))
       await t.ok(t.bo, 'B', { v: 'draw', from: 'draw', to: 'hand:B', count: 1 })
-      await t.ok(t.ada, 'A', { v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
+      // Her own admission is erased, and what it would write now is refused (#1348).
+      expect(await t.ada.send('A', { v: 'draw', from: 'draw', to: 'hand:A', count: 1 })).toMatchObject({ t: 'reject', reason: ERASED })
       // A connection opened now is told the masked log.
       const fresh = await run.connectTable(t.table.id, t.table.hostKey)
       await fresh.close()
@@ -368,9 +369,8 @@ for (const backend of backends) {
       const said = await res.text()
       expect(JSON.parse(said)).toEqual({ ok: true })
       await t.bo.waitFor(() => t.bo.view?.seats.find((s) => s.id === 'A')?.name === REDACTED, 4000)
-      // Her own connection is patched too, and still holds the seat.
+      // Her own connection is patched too, and the seat stays taken until she gives it up.
       await t.ada.waitFor(() => t.ada.view?.seats.find((s) => s.id === 'A')?.name === REDACTED, 4000)
-      await t.ok(t.ada, 'A', { v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
       // A connection opened now is told nothing of her: not her name, not her words.
       const fresh = await run.connectTable(t.table.id, t.table.hostKey)
       await fresh.close()
@@ -410,6 +410,68 @@ for (const backend of backends) {
       expect(kicked.status).toBe(200)
       expect((await eraseMe(t.table.id, t.tokens.ada)).status).toBe(200)
       expect(containsAny(await db.raw(t.table.id), [NAME, NOTE, COMMENT])).toEqual([])
+      for (const c of [t.ada, t.bo, t.cilla]) await c.close()
+    })
+
+    // An admission that is over writes nothing more (#1348). A phone that was reloaded at the table
+    // had never claimed the seat itself, and when the release freed it, it claimed it again under
+    // her name, after the erasure, on a connection let in before it. So the table asks each guest
+    // envelope whether the admission it came in on is still hers: revoked, it may do nothing, and
+    // erased, it may only give up its seat, which says nothing of her.
+    it('lets a claim sent behind the release of an erased seat write nothing, so her name never comes back (#1348)', async () => {
+      const t = await played()
+      await t.bo.synced(t.bo.view!.seq)
+      expect((await eraseMe(t.table.id, t.tokens.ada)).status).toBe(200)
+      await t.ada.waitFor(() => t.ada.view?.seats.find((s) => s.id === 'A')?.name === REDACTED, 4000)
+      await t.bo.waitFor(() => t.bo.view?.seats.find((s) => s.id === 'A')?.name === REDACTED, 4000)
+      const seen = t.bo.frames.length
+
+      // The release and, straight behind it on the same socket before any answer, the claim a
+      // reloaded phone sent when the release's patch said the seat was free.
+      const release = t.ada.waitFor((m) => m.t === 'ack' && m.id === 'gone-1')
+      t.ada.sendRaw(JSON.stringify({ t: 'envelope', envelope: { id: 'gone-1', seat: 'A', intents: [{ v: 'seat.release', seat: 'A' }] } }))
+      t.ada.sendRaw(JSON.stringify({ t: 'envelope', envelope: { id: 'gone-2', seat: 'A', intents: [{ v: 'seat.claim', seat: 'A', name: NAME }] } }))
+      await release
+      await t.ada.closed()
+      // A line after both, so the claim has been decided by the time anything is read.
+      await t.ok(t.bo, 'B', { v: 'draw', from: 'draw', to: 'hand:B', count: 1 })
+
+      expect(t.bo.view!.seats.find((s) => s.id === 'A')?.name).toBeNull()
+      expect(containsAny(t.bo.frames.slice(seen).join('\n'), [NAME])).toEqual([])
+      const fresh = await run.connectTable(t.table.id, t.table.hostKey)
+      await fresh.close()
+      expect(containsAny(fresh.frames.join('\n'), [NAME])).toEqual([])
+      expect(containsAny(await db.raw(t.table.id), [NAME, NOTE, COMMENT])).toEqual([])
+      for (const c of [t.bo, t.cilla]) await c.close()
+    })
+
+    it('refuses every intent from an erased admission but giving up its own seat, and from a revoked one everything (#1348)', async () => {
+      const t = await played()
+      expect((await eraseMe(t.table.id, t.tokens.ada)).status).toBe(200)
+      expect((await eraseMe(t.table.id, t.tokens.cilla)).status).toBe(200)
+      await t.ada.waitFor(() => t.ada.view?.seats.find((s) => s.id === 'A')?.name === REDACTED, 4000)
+      const words: Intent[] = [
+        { v: 'note.add', text: 'Adelinas nya rad' },
+        { v: 'flag', note: 'Adelinas nya kommentar' },
+        { v: 'draw', from: 'draw', to: 'hand:A', count: 1 },
+      ]
+      for (const it of words) expect(await t.ada.send('A', it)).toMatchObject({ t: 'reject', reason: ERASED })
+      // Her seat's way out is not her other seat's: an envelope that gives up anything else is refused whole.
+      expect(await t.ada.send('A', { v: 'seat.release', seat: 'A' }, { v: 'note.add', text: 'och en rad' })).toMatchObject({ t: 'reject', reason: ERASED })
+      // The watcher erased herself too, and flags nothing more.
+      expect(await t.cilla.send(null, { v: 'flag', note: 'Cillas nya iakttagelse' })).toMatchObject({ t: 'reject', reason: ERASED })
+      // Bosse is nobody's erasure, and plays on.
+      await t.ok(t.bo, 'B', { v: 'note.add', text: 'Bosses nya rad' })
+      // Revoked in the store behind the table's back, as a kick revokes before it empties the seat:
+      // the table asks the store, not its memory, and Bosse's connection writes nothing more.
+      await db.store.revokeGuests(t.table.id, 'B', new Date().toISOString())
+      expect(await t.bo.send('B', { v: 'note.add', text: 'Bosses sista rad' })).toMatchObject({ t: 'reject', reason: REVOKED })
+      expect(await t.bo.send('B', { v: 'seat.release', seat: 'B' })).toMatchObject({ t: 'reject', reason: REVOKED })
+      // Her own way out still goes through, and writes nothing of her.
+      expect(await t.ada.send('A', { v: 'seat.release', seat: 'A' })).toMatchObject({ t: 'ack' })
+      const raw = await db.raw(t.table.id)
+      expect(containsAny(raw, [NAME, NOTE, COMMENT, 'Adelinas nya', 'och en rad', CILLA, 'Cillas nya', 'Bosses sista rad'])).toEqual([])
+      expect(containsAny(raw, ['Bosses nya rad'])).toEqual(['Bosses nya rad'])
       for (const c of [t.ada, t.bo, t.cilla]) await c.close()
     })
 

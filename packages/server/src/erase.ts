@@ -60,6 +60,11 @@ export type ErasureStore = {
   listen(fn: (sessions: string[]) => void): Promise<() => Promise<void>>
 }
 
+// What the table answers an envelope from an admission that is over (#1348): revoked, by a release
+// or a kick, it may do nothing; erased, it may only give up its own seat, which says nothing of her.
+export const ADMISSION_REVOKED = 'the admission was revoked'
+export const ADMISSION_ERASED = 'the admission was erased'
+
 export const entry = (erasure: Erasure, reason: ErasureReason, at: Date = new Date()): LedgerEntry => ({ ...erasure, id: randomUUID(), at: at.toISOString(), reason })
 
 // What one table holds of the people at it, as an erasure reads it.

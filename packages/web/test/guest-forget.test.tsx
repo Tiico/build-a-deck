@@ -17,6 +17,7 @@ beforeEach(async () => {
 })
 afterEach(async () => {
   vi.unstubAllGlobals()
+  vi.restoreAllMocks()
   sessionStorage.clear()
   await run.stop()
 })
@@ -103,6 +104,57 @@ describe('leaving and removing my name (#1281)', () => {
     expect(await screen.findByText('Det gick inte att ta bort namnet. Försök igen.')).toBeTruthy()
     expect((await run.store.read(id)).map((l) => l.intent.v)).toEqual(['seat.claim'])
     expect(await raw(id)).toContain(NAME)
+  })
+})
+
+// A phone that was reloaded at the table (#1348): the page opens onto the seat she already holds,
+// and has never claimed it itself. When her way out freed the seat, it sat her straight back down
+// under her name, after the erasure. Whichever way out she takes, the page asks for no seat again.
+describe('leaving from a phone that was reloaded at the table (#1348)', () => {
+  async function reloaded(sessionId: string, props: PlayerPageProps) {
+    const token = await admit(run, sessionId, 'A', NAME)
+    // The page before the reload sat her down.
+    const before = TableClient.connect({ url: run.url, sessionId, seat: 'A', token })
+    await before.ready()
+    await before.send({ v: 'seat.claim', seat: 'A', name: NAME })
+    before.close()
+    const sent = vi.spyOn(TableClient.prototype, 'send')
+    history.replaceState(null, '', `/play?session=${sessionId}&seat=A&code=${roomOf(sessionId).code}&server=${encodeURIComponent(run.url)}#token=${token}`)
+    render(<PlayerPage {...props} />)
+    await screen.findByText(NAME)
+    tab(/^Mer/)
+    fireEvent.click(screen.getByRole('button', { name: 'Lämna… eller avsluta bordet' }))
+    return { claims: () => sent.mock.calls.filter((intents) => intents.some((it) => it.v === 'seat.claim')) }
+  }
+
+  it('leaves and removes her name, and does not sit down again under it', async () => {
+    const id = await createSession(run)
+    const page = await reloaded(id, { onLeave: () => undefined })
+    fireEvent.click(screen.getByRole('button', { name: 'Lämna och ta bort mitt namn…' }))
+    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Ja, lämna och ta bort' }))
+    expect(await screen.findByRole('heading', { name: 'Du har lämnat bordet, och ditt namn är borttaget.' })).toBeTruthy()
+    // A line after hers, so anything the page sent on the way out has been decided.
+    const tv = TableClient.connect(await asTable(run, id))
+    await tv.ready()
+    await tv.send({ v: 'flag', note: 'efter' })
+    tv.close()
+    expect(page.claims()).toEqual([])
+    expect(await raw(id)).not.toContain(NAME)
+    expect((await run.store.read(id)).map((l) => l.intent.v)).toEqual(['seat.claim', 'seat.release', 'flag'])
+  })
+
+  it('leaves and keeps her name, and does not sit down again either (#31)', async () => {
+    const id = await createSession(run)
+    const went: string[] = []
+    const page = await reloaded(id, { onLeave: (url) => went.push(url) })
+    fireEvent.click(screen.getByRole('button', { name: 'Lämna bordet' }))
+    await waitFor(() => expect(went).toHaveLength(1))
+    const tv = TableClient.connect(await asTable(run, id))
+    await tv.ready()
+    await tv.send({ v: 'flag', note: 'efter' })
+    tv.close()
+    expect(page.claims()).toEqual([])
+    expect((await run.store.read(id)).map((l) => l.intent.v)).toEqual(['seat.claim', 'seat.release', 'flag'])
   })
 })
 
