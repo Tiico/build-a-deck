@@ -7,6 +7,7 @@ import { EditorPage } from '../src/editor/EditorPage.js'
 import { StatusLive } from '../src/status/StatusLive.js'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
+import { addVia } from './bord-tab.js'
 
 // Materialets plats (#1292, beställarens beslut A): varje tärning och räknare har ett handtag i
 // filten, och det flyttas dit biten ska ligga. Med tangentbordet flyttar pilarna den 10 mm, och
@@ -48,7 +49,7 @@ const laid = async (kind: 'die' | 'counter', zone: string) => {
 describe('materialet i filten (#1292)', () => {
   it('flyttar en tärning med pilarna och sparar punkten i ytan', async () => {
     await openBord()
-    fireEvent.click(screen.getByRole('button', { name: '＋ Tärning' }))
+    addVia('Spelyta', '＋ Tärning')
     const handle = await screen.findByRole('button', { name: 'Tärning 1, d6 i Spelyta' })
     const before = await laid('die', 'table')
 
@@ -62,8 +63,8 @@ describe('materialet i filten (#1292)', () => {
 
   it('flyttar en räknare i sin räknaryta och säger var den hamnade', async () => {
     await openBord()
-    fireEvent.click(screen.getByRole('button', { name: '＋ Räknarzon per plats' }))
-    fireEvent.click(screen.getByRole('button', { name: '＋ Räknare' }))
+    addVia('Varje plats', '＋ Räknarzon per plats')
+    addVia('Varje plats', '＋ Räknare')
     const [handle] = await screen.findAllByRole('button', { name: /^Räknare .* i Räknare A$/ })
     const before = await laid('counter', 'counters:A')
 

@@ -1,31 +1,31 @@
-import { createContext, useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent as RKeyboardEvent, type PointerEvent as RPointerEvent, type ReactNode } from 'react'
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent as RKeyboardEvent, type PointerEvent as RPointerEvent, type ReactNode } from 'react'
 import { useSay } from '../status/StatusLive.js'
 import type { ProjectDoc } from '@byd/server'
 import type { Motif } from '@byd/template'
-import type { ZoneBeside } from '@byd/protocol'
 import { targetsOf } from '../player/PlaySheet.js'
 import { stepAside } from './grips.js'
 import { TableRenderer, type FeltFit, type TableHandle } from '../table/TableRenderer.js'
 import { previewOf } from '../setup/preview.js'
 import { MIN_MM, NUDGE_MM, onTableOf, sizedBy } from './zone-geometry.js'
 import { useNumberDraft } from './number-draft.js'
-import { Stepper } from '../Stepper.js'
-import { MAX_PLAYERS, counterId, layMaterial, newAreaSpot, newPileSpot, pasteSpot, placeLine, titleOfRow, type Counter, type Die, type Geometry, type MaterialLine, type Setup, type Zone } from '@byd/server/doc'
+import { layMaterial, newAreaSpot, newPileSpot, pasteSpot, placeLine, type Counter, type Die, type Geometry, type MaterialLine, type Setup, type Zone } from '@byd/server/doc'
 import type { ProjectClient } from './ProjectClient.js'
-import type { ZonePatch } from '@byd/server/doc'
-import { useT, type Key, type T } from '../i18n/index.js'
+import { useT, type T } from '../i18n/index.js'
 import { Help } from './HelpDrawer.js'
+import { GamePanel } from './GamePanel.js'
+import { TableTree } from './TableTree.js'
+import { Reading, familyRole, fixed, movedTo, newCounter } from './setup-rows.js'
+import type { MaterialKey } from './MaterialRow.js'
 import { recipeWords } from './fields.js'
 import { useGesture } from './gesture.js'
 import { CardPreview } from './CardPreview.js'
 import { ZoneActions } from './ZoneActions.js'
-import { nameOf, templateOf } from './zone-name.js'
 import { landingOf } from './landing.js'
 import { CARD_MM } from '../table/drop.js'
 import { previewIcons } from './assets.js'
 import { previewFonts } from './fonts.js'
 import { FootSaid } from './said.js'
-import { ChevronGlyph, CloseGlyph } from '../glyphs.js'
+import { ChevronGlyph } from '../glyphs.js'
 
 // The setup editor (B5, K2). The table is the designer's: the recipe laid the first one out and
 // then let go, so what stands here stands here because they left it standing. The list on the left
@@ -153,6 +153,19 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside, lead }: Se
     setSaid(null)
     if (selected === zone.id) setSelected(null)
   }
+  const turnCounters = (counters: Counter[], gesture?: string) => client.setRecipe({ ...client.recipe, counters }, recipeWords(t), gesture)
+  // The counters are the only knobs written into a letter at a time; the rest are turned once and
+  // are a step back each (L14).
+  const counterTyping = useGesture('counter-field')
+  // Which piece of material stands open in its row, and which one takes the focus next render: a
+  // die or a counter just added from a ＋ opens with its fields and the key that added it is
+  // followed by the row it made rather than by nothing.
+  const [openMaterial, setOpenMaterial] = useState<MaterialKey | null>(null)
+  const [focusMaterial, setFocusMaterial] = useState<MaterialKey | null>(null)
+  const born = (key: MaterialKey) => {
+    setOpenMaterial(key)
+    setFocusMaterial(key)
+  }
   const keys = useRef({ selected, setup, client, remove, t })
   keys.current = { selected, setup, client, remove, t }
   // En ny zon föds på ledig filt (#440 för ytan, #443 för högen). Uppställningen äger regeln och
@@ -273,8 +286,8 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside, lead }: Se
       }}
     >
       <div className="byd-setup-side">
-        <SeatsPanel client={client} setup={setup} />
-        <ZoneList
+        <GamePanel client={client} setup={setup} />
+        <TableTree
           setup={setup}
           rows={doc.rows}
           selected={selected}
@@ -283,29 +296,28 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside, lead }: Se
           onOpen={(role) => setOpened((now) => (now.includes(role) ? now.filter((r) => r !== role) : [...now, role]))}
           onRemove={remove}
           onPatch={(id, patch, gesture) => client.patchZone(id, patch, gesture)}
-          onDeck={(id) => client.setDeck(id)}
           onHold={setHeld}
-          adds={{
-            table: (
-              <>
-                <button type="button" onClick={() => add('area')}>{t('setup.addArea')}</button>
-                <button type="button" onClick={() => add('pile')}>{t('setup.addPile')}</button>
-              </>
-            ),
-            seats: (
-              <>
-                {/* The heading says «per seat»; the name read out says it whole. */}
-                <button type="button" aria-label={t('setup.addSeatArea')} onClick={() => addSeat('mine')}>
-                  {t('setup.addSeatArea.short')}
-                </button>
-                <button type="button" aria-label={t('setup.addSeatCounters')} onClick={() => addSeat('counters')}>
-                  {t('setup.addSeatCounters.short')}
-                </button>
-              </>
-            ),
+          onAdd={(what) => {
+            if (what.kind === 'area' || what.kind === 'pile') add(what.kind)
+            else if (what.kind === 'seat') addSeat(what.role)
+            else if (what.kind === 'die') {
+              const dice = setup.dice ?? []
+              client.setDice([...dice, movedTo({ faces: 6, count: 1, zone: '' }, what.place)])
+              born(`die:${dice.length}`)
+            } else if (what.kind === 'counter') {
+              const counters = client.recipe.counters
+              turnCounters([...counters, newCounter(counters, t, what.role)])
+              born(`counter:${counters.length}`)
+            }
           }}
+          openMaterial={openMaterial}
+          onOpenMaterial={setOpenMaterial}
+          focusMaterial={focusMaterial}
+          onFocused={() => setFocusMaterial(null)}
+          onDice={(dice) => client.setDice(dice)}
+          onCounters={turnCounters}
+          typing={counterTyping}
         />
-        <TurnsPanel client={client} setup={setup} />
       </div>
       <div className="byd-setup-canvas">
         {lead}
@@ -420,538 +432,6 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside, lead }: Se
       )}
     </div>
     </Reading.Provider>
-  )
-}
-
-// Why a zone cannot be taken away, in the words that say what to do instead — or nothing at all,
-// which means it can go. One rule, read by the list, by the felt's Delete and by the actor, so the
-// three never disagree about what the table cannot be without.
-function fixed(setup: Setup, zone: Zone, t: T): string | null {
-  if (zone.id === setup.floor) return t('setup.fixed.floor')
-  if (zone.kind === 'hand') return t('setup.fixed.hand')
-  if (zone.id === setup.deckZone) return t('setup.fixed.deck')
-  return null
-}
-
-// Whether the table is read rather than written (#489): what a zone is stays there to read, and
-// nothing in it takes a keystroke.
-const Reading = createContext(false)
-
-// The knob the recipe still owns: who sits at the table, and what each seat keeps count of.
-function SeatsPanel({ client, setup }: { client: ProjectClient; setup: Setup }) {
-  const t = useT()
-  const recipe = client.recipe
-  // The counters are the only knobs written into a letter at a time; the rest are turned once and
-  // are a step back each, as they always were (L14).
-  const typing = useGesture('counter-field')
-  const turn = (patch: Partial<typeof recipe>, gesture?: string) => client.setRecipe({ ...recipe, ...patch }, recipeWords(t), gesture)
-  // A counter is named in the rules by its id (#708), so the id is written down before the name
-  // changes: one made before counters had ids is known by its name, and would otherwise lose every
-  // rule that names it at the first letter typed.
-  const setCounter = (i: number, patch: Partial<Counter>) => turn({ counters: recipe.counters.map((c, j) => (j === i ? { ...c, id: counterId(c), ...patch } : c)) }, typing.token())
-  // Counters lie in the seats' counters zones (C4). A game whose seats have none draws no chips,
-  // however long the list is, so the panel says so where the list is rather than leaving the
-  // designer to wonder why the table looks the same.
-  const homeless = recipe.counters.some((c) => c.role === undefined) && !setup.seats.some((s) => setup.zones.some((z) => z.id === `counters:${s}`))
-  const dice = setup.dice ?? []
-  // A die just added takes the focus in its own row, so that the key that added it is followed by
-  // the row it made rather than by nothing: the first «＋ Tärning» leaves the page with the first die.
-  const [fresh, setFresh] = useState<number | null>(null)
-  const addDie = () => {
-    client.setDice(withNewDie(setup, dice))
-    setFresh(dice.length)
-  }
-  return (
-    <aside className="byd-setup-recipe">
-      <section>
-        <div className="byd-help-row">
-          <h2 id="byd-setup-players">{t('setup.players')}</h2>
-          <Help topic={t('setup.seats.help.topic')}>
-            <p>{t('setup.seats.help')}</p>
-          </Help>
-        </div>
-        <div className="byd-setup-players" role="group" aria-labelledby="byd-setup-players">
-          {/* Every seat count the table can actually hold. It stopped at six while `MAX_PLAYERS`
-              was eight, so the two counts a designer most needed to look at — the ones where an
-              edge first carries two seats (K18) — were the two nobody could reach. Since #620 it
-              is the guided start's stepper and not eight buttons: one row of three targets where
-              eight wrapped onto two, and the section 124 px tall became one about 80. */}
-          <Stepper value={recipe.players} min={1} max={MAX_PLAYERS} onChange={(players) => turn({ players })} label={t('players.count', { min: 1, max: MAX_PLAYERS })} fewer={t('players.fewer')} more={t('players.more')} readOnly={!client.mayEdit} />
-        </div>
-      </section>
-      <section>
-        <div className="byd-setup-counters">
-          {/* A seat's counters change shape at the third one (C4, K18, #89): one or two lie side by
-              side along the seat's own rim, where a finger can reach each of them and the table can
-              read both at three metres; a third stacks them into one pile, because three targets of
-              44 px want more room along the rim than a seat has to give without taking it from its
-              neighbour. The designer cannot see that coming from the number, so it is said here,
-              where the number is chosen — behind the question mark, since it is an explanation
-              and not a cost (L32). */}
-          <div className="byd-help-row">
-            <h2>{t('setup.counters')}</h2>
-            <Help topic={t('setup.counters.help.topic')}>
-              <p>{t('setup.counters.help')}</p>
-            </Help>
-          </div>
-          {recipe.counters.map((c, i) => (
-            <div key={i} className="byd-setup-counter">
-              <input aria-label={t('setup.counter.name', { n: i + 1 })} value={c.name} readOnly={!client.mayEdit} {...typing.visit} onChange={(e) => setCounter(i, { name: e.target.value })} />
-              <span>{t('setup.counter.from')}</span>
-              <input aria-label={t('setup.counter.start', { n: i + 1 })} type="number" value={c.start} readOnly={!client.mayEdit} {...typing.visit} onChange={(e) => setCounter(i, { start: Math.trunc(Number(e.target.value) || 0) })} />
-              <button type="button" aria-label={t('setup.counter.remove', { n: i + 1 })} onClick={() => turn({ counters: recipe.counters.filter((_, j) => j !== i) })}>
-                <CloseGlyph />
-              </button>
-            </div>
-          ))}
-          {/* A game without dice has «＋ Tärning» beside «＋ Räknare» and no heading of its own (#1139):
-              at 1024 × 640 the column has no 100 px to spare for an empty group before the ways
-              to add a zone fall below its fold (#711). The heading comes with the first die. */}
-          <div className="byd-setup-adds">
-            <button type="button" onClick={() => turn({ counters: [...recipe.counters, newCounter(recipe.counters, t)] })}>
-              {t('setup.counter.add')}
-            </button>
-            {dice.length === 0 && (
-              <button type="button" onClick={addDie}>
-                {t('setup.die.add')}
-              </button>
-            )}
-          </div>
-          {homeless && <p className="byd-setup-note" role="status">{t('setup.counters.homeless')}</p>}
-        </div>
-      </section>
-      {dice.length > 0 && <DicePanel client={client} setup={setup} dice={dice} fresh={fresh} onAdd={addDie} onFocused={() => setFresh(null)} />}
-    </aside>
-  )
-}
-
-// The kinds a die can be (K28): the registry's six, by their sides.
-const DIE_FACES = [4, 6, 8, 10, 12, 20] as const satisfies readonly Die['faces'][]
-// Where a die can lie (#1139), as the zone picker's values: `zone:<id>` for an area every seat
-// shares, `role:<role>` for an area each seat has. Hands and piles are no place for a die.
-type DiePlace = { value: string; name: string }
-function diePlaces(setup: Setup): { table: DiePlace[]; seats: DiePlace[] } {
-  const table = setup.zones.filter((z) => z.kind === 'area' && z.owner === undefined).map((z) => ({ value: `zone:${z.id}`, name: z.name }))
-  const seats = rowsOf(setup.zones).flatMap((row) => (row.kind === 'family' && row.family.first.kind === 'area' ? [{ value: `role:${row.family.role}`, name: row.family.name }] : []))
-  return { table, seats }
-}
-const placeOf = (die: Die): string => (die.role !== undefined ? `role:${die.role}` : `zone:${die.zone ?? ''}`)
-// A die moved to another place keeps what its count meant: «per spelare» in a seat's area is
-// «per spelare» on the table too, and a seat's area has no other meaning to carry back. The point
-// it was dragged to was a point in the old zone (#1292), so the new one lays it where it finds room.
-function movedTo(die: Die, value: string): Die {
-  const { zone: _zone, role: _role, at: _at, perSeat, ...rest } = die
-  if (value.startsWith('role:')) return { ...rest, role: value.slice('role:'.length) }
-  const seated = die.role !== undefined || perSeat === true
-  return { ...rest, zone: value.slice('zone:'.length), ...(seated ? { perSeat: true } : {}) }
-}
-
-// The list with one more die: a d6 where the one above it lies, or on the felt when it is the first
-// or the one above lies nowhere any more.
-function withNewDie(setup: Setup, dice: readonly Die[]): Die[] {
-  const places = diePlaces(setup)
-  const known = new Set([...places.table, ...places.seats].map((p) => p.value))
-  const above = dice.at(-1)
-  const floor = places.table.find((p) => p.value === `zone:${setup.floor}`) ?? places.table[0]
-  const at = above && known.has(placeOf(above)) ? placeOf(above) : floor?.value
-  return at ? [...dice, movedTo({ faces: 6, count: 1, zone: '' }, at)] : [...dice]
-}
-
-// The game's dice (#1139, beställarens beslut A med dynamiskt antal), under the counters and
-// written like them: one row per line of `setup.dice`, the whole list one edit (B4).
-function DicePanel({ client, setup, dice, fresh, onAdd, onFocused }: { client: ProjectClient; setup: Setup; dice: Die[]; fresh: number | null; onAdd(): void; onFocused(): void }) {
-  const t = useT()
-  const places = diePlaces(setup)
-  const known = new Set([...places.table, ...places.seats].map((p) => p.value))
-  const write = (next: Die[]) => client.setDice(next)
-  return (
-    <section>
-      <div className="byd-setup-counters">
-        <div className="byd-help-row">
-          <h2>{t('setup.dice')}</h2>
-          <Help topic={t('setup.dice.help.topic')}>
-            <p>{t('setup.dice.help')}</p>
-          </Help>
-        </div>
-        {dice.map((die, i) => (
-          <DieRow
-            key={i}
-            die={die}
-            n={i + 1}
-            places={places}
-            gone={!known.has(placeOf(die))}
-            reading={!client.mayEdit}
-            fresh={i === fresh}
-            onFocused={onFocused}
-            onChange={(next) => write(dice.map((d, j) => (j === i ? next : d)))}
-            onRemove={() => write(dice.filter((_, j) => j !== i))}
-          />
-        ))}
-        <button type="button" onClick={onAdd}>
-          {t('setup.die.add')}
-        </button>
-      </div>
-    </section>
-  )
-}
-
-function DieRow({ die, n, places, gone, reading, fresh, onFocused, onChange, onRemove }: { die: Die; n: number; places: { table: DiePlace[]; seats: DiePlace[] }; gone: boolean; reading: boolean; fresh: boolean; onFocused(): void; onChange(die: Die): void; onRemove(): void }) {
-  const t = useT()
-  const note = useId()
-  const first = useRef<HTMLInputElement>(null)
-  useEffect(() => {
-    if (!fresh) return
-    first.current?.focus()
-    onFocused()
-  }, [fresh, onFocused])
-  const count = useNumberDraft({ value: die.count, min: 1, max: 20, onCommit: (value) => onChange({ ...die, count: Math.trunc(value) }) })
-  const place = placeOf(die)
-  return (
-    <>
-      <div className="byd-setup-counter byd-setup-die">
-        <input
-          ref={first}
-          aria-label={t('setup.die.count', { n })}
-          type="number"
-          min={1}
-          max={20}
-          value={count.value}
-          readOnly={reading}
-          onChange={count.onChange}
-          onBlur={count.onBlur}
-          onKeyDown={(e) => {
-            count.onKey(e)
-          }}
-        />
-        <select aria-label={t('setup.die.kind', { n })} value={die.faces} disabled={reading} onChange={(e) => onChange({ ...die, faces: Number(e.target.value) as Die['faces'] })}>
-          {DIE_FACES.map((faces) => (
-            <option key={faces} value={faces}>
-              {t('setup.die.faces', { n: faces })}
-            </option>
-          ))}
-        </select>
-        {die.role !== undefined ? (
-          <span>{t('setup.die.perSeat')}</span>
-        ) : (
-          <select aria-label={t('setup.die.mode', { n })} value={die.perSeat ? 'perSeat' : 'total'} disabled={reading} onChange={(e) => onChange(e.target.value === 'perSeat' ? { ...die, perSeat: true } : (({ perSeat: _p, ...rest }) => rest)(die))}>
-            <option value="perSeat">{t('setup.die.perSeat')}</option>
-            <option value="total">{t('setup.die.total')}</option>
-          </select>
-        )}
-        <span className="byd-setup-die-where">
-          <span>{t('setup.die.in')}</span>
-          <select
-            aria-label={t('setup.die.place', { n })}
-            value={gone ? '' : place}
-            disabled={reading}
-            aria-invalid={gone ? true : undefined}
-            aria-describedby={gone ? note : undefined}
-            onChange={(e) => onChange(movedTo(die, e.target.value))}
-          >
-            {gone && (
-              <option value="" disabled>
-                {t('setup.die.place.gone')}
-              </option>
-            )}
-            <optgroup label={t('setup.group.table')}>
-              {places.table.map((p) => (
-                <option key={p.value} value={p.value}>
-                  {p.name}
-                </option>
-              ))}
-            </optgroup>
-            {places.seats.length > 0 && (
-              <optgroup label={t('setup.group.seats')}>
-                {places.seats.map((p) => (
-                  <option key={p.value} value={p.value}>
-                    {p.name}
-                  </option>
-                ))}
-              </optgroup>
-            )}
-          </select>
-        </span>
-        <button type="button" aria-label={t('setup.die.remove', { n })} onClick={onRemove}>
-          <CloseGlyph />
-        </button>
-      </div>
-      {gone && (
-        <p id={note} className="byd-setup-note" role="status">
-          {t('setup.die.homeless', { n })}
-        </p>
-      )}
-    </>
-  )
-}
-
-// Whether the game goes in turns (K30): one of three, each a version and a step back. It is the
-// game's and not the zones', so it stands last in the column, under the lists, where it costs the
-// ways to add a zone none of the height they are read at (#711).
-function TurnsPanel({ client, setup }: { client: ProjectClient; setup: Setup }) {
-  const t = useT()
-  return (
-    <section className="byd-setup-turns-panel">
-      <div className="byd-help-row">
-        <h2 id="byd-setup-turns">{t('setup.turns')}</h2>
-        <Help topic={t('setup.turns.help.topic')}>
-          <p>{t('setup.turns.help')}</p>
-        </Help>
-      </div>
-      <div className="byd-setup-turns" role="group" aria-labelledby="byd-setup-turns">
-        {([null, 'clockwise', 'counterclockwise'] as const).map((turns) => (
-          <button key={turns ?? 'none'} type="button" className="byd-choice" aria-pressed={(setup.turns ?? null) === turns} disabled={!client.mayEdit} onClick={() => (setup.turns ?? null) !== turns && client.setTurns(turns)}>
-            {t(turns === null ? 'setup.turns.none' : `setup.turns.${turns}`)}
-          </button>
-        ))}
-      </div>
-    </section>
-  )
-}
-
-// A new counter: the first is the score, the rest are lives — under a name no counter has yet, the
-// way new piles get one (#480). Two «Liv» were two «LIV» on the phone and the TV (#713).
-function newCounter(counters: readonly Counter[], t: T): Counter {
-  const [base, start] = counters.length === 0 ? [t('counter.score'), 0] : [t('counter.life'), 20]
-  const taken = new Set(counters.map((c) => c.name))
-  let name = base
-  for (let n = 2; taken.has(name); n++) name = `${base} ${n}`
-  // And an id no counter has, which the rules name it by however it is renamed later (#708).
-  const ids = new Set(counters.map(counterId))
-  let id = counterId({ name })
-  for (let n = 2; ids.has(id); n++) id = `${counterId({ name })}-${n}`
-  return { id, name, start }
-}
-
-// Vilken zonfamilj en zon hör till, eller ingen (#175). En zon är per plats när dess id är rollen
-// och platsen — `hand:A`, `mine:A`, `counters:A` — och platsen är den som äger zonen. En zon
-// designern själv lagt till och gett en ägare heter `yta-3` och hamnar därför aldrig i en familj:
-// den är en zon vid en plats, inte samma zon vid var sin.
-function familyRole(zone: Zone): string | null {
-  if (zone.owner === undefined) return null
-  const at = zone.id.lastIndexOf(':')
-  if (at <= 0) return null
-  return zone.id.slice(at + 1) === zone.owner ? zone.id.slice(0, at) : null
-}
-
-// Namnmallen och ordgränsregeln bor i `zone-name.ts`: rutorna i `ZoneActions` ställer samma
-// fråga om samma namn (#255), och två kopior av uttrycket är ett fel som väntar.
-
-// En zonfamilj: samma zon vid var sin plats. `first` är den zon som står först i dokumentet — den
-// familjen tar sin plats i listan efter, och den raden läser sitt slag och sitt «fast» ur. `differ`
-// är de platser vars namn inte följer familjens mall: en upplysning på raden, inte en lista som
-// öppnar sig själv.
-type Family = { role: string; name: string; first: Zone; zones: Zone[]; differ: Zone[] }
-type Row = { kind: 'family'; family: Family } | { kind: 'zone'; zone: Zone }
-
-// Listans rader ur bordets zoner, i dokumentets egen ordning: en familj tar den plats dess första
-// zon hade. Listan grupperar; modellen aldrig — filten ritar var och en av dem för sig.
-function rowsOf(zones: Zone[]): Row[] {
-  const rows: Row[] = []
-  const at = new Map<string, Family>()
-  for (const zone of zones) {
-    const role = familyRole(zone)
-    const family = role === null ? undefined : at.get(role)
-    if (family) {
-      family.zones.push(zone)
-      continue
-    }
-    if (role === null) {
-      rows.push({ kind: 'zone', zone })
-      continue
-    }
-    const made: Family = { role, name: '', first: zone, zones: [zone], differ: [] }
-    at.set(role, made)
-    rows.push({ kind: 'family', family: made })
-  }
-  return rows.map((row) => (row.kind === 'family' ? { kind: 'family', family: settle(row.family) } : row))
-}
-
-// Vilken mall familjen står för, och vilka platser som avviker från den: den mall flest platser
-// delar, och vid lika den som står först i dokumentet.
-function settle(family: Family): Family {
-  const counts = new Map<string, number>()
-  for (const zone of family.zones) {
-    const template = templateOf(zone)
-    counts.set(template, (counts.get(template) ?? 0) + 1)
-  }
-  let best = templateOf(family.first)
-  for (const [template, n] of counts) if (n > (counts.get(best) ?? 0)) best = template
-  return { ...family, name: nameOf(best) || family.first.name, differ: family.zones.filter((zone) => templateOf(zone) !== best) }
-}
-
-// Every zone the table has, in two groups: what stands on the table, and what belongs to a seat.
-// The row is the handle a keyboard can reach and the only way to a zone that lies under another;
-// opening one shows what the zone is, and the × takes it away — or says, where the × would be, why
-// this one stays.
-//
-// Each group carries the ways to add to it under its heading (#711, beställarens beslut B): they
-// stood last in the column, and at 1024 × 640 none of them showed without scrolling it. Under the
-// heading they say what they add to, and a group is drawn for them even when it holds no zone.
-//
-// Vid platserna är raden familjens och inte zonens (#175): «Hand · 8 platser» är en rad, inte åtta,
-// och trekanten fäller ut platserna när en enskild zon ska nås.
-function ZoneList({
-  setup,
-  rows: deck,
-  selected,
-  opened,
-  onSelect,
-  onOpen,
-  onRemove,
-  onPatch,
-  onDeck,
-  onHold,
-  adds,
-}: {
-  setup: Setup
-  rows: ProjectDoc['rows']
-  selected: string | null
-  opened: string[]
-  onSelect(id: string | null): void
-  onOpen(role: string): void
-  onRemove(zone: Zone): void
-  onPatch(id: string, patch: ZonePatch, gesture?: string): void
-  onDeck(id: string): void
-  onHold(id: string | null): void
-  adds: { table: ReactNode; seats: ReactNode }
-}) {
-  const t = useT()
-  const groups: [string, Row[], ReactNode][] = [
-    [t('setup.group.table'), setup.zones.filter((z) => z.owner === undefined).map((zone) => ({ kind: 'zone', zone })), adds.table],
-    [t('setup.group.seats'), rowsOf(setup.zones.filter((z) => z.owner !== undefined)), adds.seats],
-  ]
-  const row = (zone: Zone) => <ZoneRow key={zone.id} zone={zone} setup={setup} rows={deck} selected={selected} onSelect={onSelect} onRemove={onRemove} onPatch={onPatch} onDeck={onDeck} onHold={onHold} />
-  return (
-    <div className="byd-setup-zones" data-zone-list>
-      {groups.map(([title, rows, add]) => (
-        <section key={title}>
-          <h2>{title}</h2>
-          <div className="byd-setup-tools">{add}</div>
-          {rows.length > 0 && (
-            <ul aria-label={title}>
-              {rows.map((it) =>
-                it.kind === 'zone' ? (
-                  row(it.zone)
-                ) : (
-                  <FamilyRow key={it.family.role} family={it.family} setup={setup} open={opened.includes(it.family.role)} onOpen={() => onOpen(it.family.role)}>
-                    {it.family.zones.map(row)}
-                  </FamilyRow>
-                ),
-              )}
-            </ul>
-          )}
-        </section>
-      ))}
-    </div>
-  )
-}
-
-// En familjs rad: vad zonen är, hur många platser som har den, och — när platserna inte är lika —
-// att de inte är det. Raden fäller aldrig ut sig själv: en lista som ändrar form utan att någon
-// rört den är svår att lita på, och avvikelsen är en upplysning innan den är ett ärende.
-function FamilyRow({ family, setup, open, onOpen, children }: { family: Family; setup: Setup; open: boolean; onOpen(): void; children: ReactNode }) {
-  const t = useT()
-  const n = family.zones.length
-  const seats = setup.seats.length
-  const why = fixed(setup, family.first, t)
-  const whyId = useId()
-  const allFixed = why !== null && family.zones.every((zone) => fixed(setup, zone, t) !== null)
-  return (
-    <li data-zone-family={family.role} data-open={open ? 'true' : undefined}>
-      <div className="byd-setup-row">
-        <button type="button" className="byd-setup-name" aria-expanded={open} onClick={onOpen} {...(allFixed ? { 'aria-describedby': whyId } : {})}>
-          <i className="byd-setup-caret" aria-hidden="true">
-            <ChevronGlyph to="right" />
-          </i>
-          <i aria-hidden="true" data-kind={family.first.kind} />
-          {/* Mellanrummen är läsordningen och inte layouten: raden är en flexrad, som inte ritar
-              tomrum, men namnet den läses upp med sätts ihop av texten i knappen — utan dem säger
-              skärmläsaren «Framför8 platser». */}
-          <span>{family.name}</span>{' '}
-          <em>{n === seats ? t(n === 1 ? 'setup.family.seats.one' : 'setup.family.seats.other', { n }) : t('setup.family.some', { n, of: seats })}</em>
-          {family.differ.length > 0 && <> <em data-differ="true">{t('setup.family.differ', { n: family.differ.length })}</em></>}
-        </button>
-        {allFixed && (
-          <>
-            <span className="byd-setup-fast" title={why}>
-              {t('setup.fixed')}
-            </span>
-            {/* Why it stays, said to the keyboard as the row's description (#558): a title is
-                reached by a pointer alone, and an aria-label on a span with no role by nothing. */}
-            <span id={whyId} className="byd-offscreen">
-              {why}
-            </span>
-          </>
-        )}
-      </div>
-      {open && <ul aria-label={family.name}>{children}</ul>}
-    </li>
-  )
-}
-
-// En enskild zons rad, i listan eller i en utfälld familj: namnet, vems den är, och × som tar bort
-// den — eller, där × skulle stått, varför just den står kvar.
-function ZoneRow({
-  zone,
-  setup,
-  rows,
-  selected,
-  onSelect,
-  onRemove,
-  onPatch,
-  onDeck,
-  onHold,
-}: {
-  zone: Zone
-  setup: Setup
-  rows: ProjectDoc['rows']
-  selected: string | null
-  onSelect(id: string | null): void
-  onRemove(zone: Zone): void
-  onPatch(id: string, patch: ZonePatch, gesture?: string): void
-  onDeck(id: string): void
-  onHold(id: string | null): void
-}) {
-  const t = useT()
-  const reading = useContext(Reading)
-  const why = fixed(setup, zone, t)
-  const whyId = useId()
-  const open = selected === zone.id
-  const deck = setup.deckZone === zone.id
-  return (
-    <li data-zone-row={zone.id} data-open={open ? 'true' : undefined}>
-      <div className="byd-setup-row">
-        <button type="button" className="byd-setup-name" aria-expanded={open} onClick={() => onSelect(open ? null : zone.id)} {...(why !== null ? { 'aria-describedby': whyId } : {})}>
-          <i aria-hidden="true" data-kind={zone.kind} />
-          <span>{zone.name}</span>
-          {zone.owner !== undefined && <> <em>{zone.owner}</em></>}
-          {deck && <> <strong>{t('setup.deck.mark')}</strong></>}
-        </button>
-        {why === null ? (
-          <button type="button" className="byd-setup-x" aria-label={t('setup.remove.of', { name: zone.name })} onClick={() => onRemove(zone)}>
-            <CloseGlyph />
-          </button>
-        ) : (
-          <>
-            <span className="byd-setup-fast" title={why}>
-              {t('setup.fixed')}
-            </span>
-            <span id={whyId} className="byd-offscreen">
-              {why}
-            </span>
-          </>
-        )}
-      </div>
-      {open &&
-        (reading ? (
-          // A reader reads the zone's properties and writes none of them (#489).
-          <fieldset className="byd-reading-set" disabled>
-            <ZoneProps zone={zone} setup={setup} rows={rows} why={why} onPatch={(patch, gesture) => onPatch(zone.id, patch, gesture)} onDeck={() => onDeck(zone.id)} onHold={onHold} />
-          </fieldset>
-        ) : (
-          <ZoneProps zone={zone} setup={setup} rows={rows} why={why} onPatch={(patch, gesture) => onPatch(zone.id, patch, gesture)} onDeck={() => onDeck(zone.id)} onHold={onHold} />
-        ))}
-    </li>
   )
 }
 
@@ -1338,155 +818,6 @@ function place(client: ProjectClient, setup: Setup, t: T, line: MaterialLine, ce
   if (line.kind === 'die') client.setDice((setup.dice ?? []).map((d, i) => (i === line.index ? (next as Die) : d)), gesture)
   else client.setRecipe({ ...client.recipe, counters: client.recipe.counters.map((c, i) => (i === line.index ? (next as Counter) : c)) }, recipeWords(t), gesture)
   return true
-}
-
-// What a zone is, opened inside its row. Everything about it is the designer's — its name, its
-// verb on the phone, whose it is and who sees into it — because the table is theirs; a hand is the
-// exception, and the seat that owns it is the reason.
-function ZoneProps({ zone, setup, rows, why, onPatch, onDeck, onHold }: { zone: Zone; setup: Setup; rows: ProjectDoc['rows']; why: string | null; onPatch(patch: ZonePatch, gesture?: string): void; onDeck(): void; onHold(id: string | null): void }) {
-  const t = useT()
-  // The two fields that are written into a letter at a time. What is chosen rather than typed —
-  // where a pile is entered, whose the zone is, who may see it — is written once and is its own
-  // step back, as it always was (L14).
-  const typing = useGesture('zone-field')
-  const floor = zone.id === setup.floor
-  const hand = zone.kind === 'hand'
-  const g = zone.geometry
-  // Whether this pile's chosen side lays its cards off the table (L30): the felt shows the
-  // outline in amber for as long as the pile is selected, and the panel says what to do about it.
-  const ground = setup.zones.find((z) => z.id === setup.floor)
-  const offTable = zone.kind === 'pile' && ground !== undefined && landingOf(zone, ground.geometry).off
-  return (
-    <div className="byd-setup-props" data-zone-props={zone.id}>
-      {/* A hand has no name of its own to give. Whoever sits at it names it: the felt lays that
-          seat's name card on the hand (K9, K19) and the keyboard's list of places offers it under
-          the same name, so a name typed here was a string no surface ever drew — it lived in this
-          field and in an `aria-label`, and nowhere else. The field is gone and the reason stands
-          in its place, because a hole explains nothing (L4). */}
-      {hand ? (
-        <p className="byd-setup-hint">{t('setup.name.seat')}</p>
-      ) : (
-        <label>
-          {t('setup.name')}
-          <input aria-label={t('setup.name.of', { name: zone.name })} value={zone.name} {...typing.visit} onChange={(e) => onPatch({ name: e.target.value }, typing.token())} />
-        </label>
-      )}
-      {!floor && !hand && (
-        <label>
-          {t('setup.shortcut')}
-          <input aria-label={t('setup.shortcut.of', { name: zone.name })} placeholder={zone.name} value={zone.shortcut?.label ?? ''} {...typing.visit} onChange={(e) => onPatch({ shortcut: e.target.value ? { label: e.target.value, at: zone.shortcut?.at ?? 'top' } : undefined }, typing.token())} />
-        </label>
-      )}
-      {zone.kind === 'pile' && (
-        <>
-          <label>
-            {t('setup.at')}
-            <select aria-label={t('setup.at.of', { name: zone.name })} value={zone.shortcut?.at ?? 'top'} onChange={(e) => onPatch({ shortcut: { label: zone.shortcut?.label ?? zone.name, at: e.target.value === 'bottom' ? 'bottom' : 'top' } })}>
-              <option value="top">{t('setup.at.top')}</option>
-              <option value="bottom">{t('setup.at.bottom')}</option>
-            </select>
-          </label>
-          {/* Which side of this pile is "beside it" (K21): where Dra 1, Dela på hälften and every
-              action that lays cards beside the pile put them, in the pile's own rotation. Left is
-              what a pile that says nothing has always meant (#87), so it is the value the list
-              opens on rather than a blank. */}
-          <label>
-            {t('setup.beside')}
-            <select
-              aria-label={t('setup.beside.of', { name: zone.name })}
-              value={zone.beside ?? 'left'}
-              onChange={(e) => onPatch({ beside: e.target.value === 'left' ? undefined : (e.target.value as ZoneBeside) })}
-              // While the picker is held the felt shows where the cards land (L30): hovered or
-              // focused, so the keyboard gets the same as the mouse.
-              onMouseEnter={() => onHold(zone.id)}
-              onMouseLeave={() => onHold(null)}
-              onFocus={() => onHold(zone.id)}
-              onBlur={() => onHold(null)}
-            >
-              {(['left', 'right', 'above', 'below'] as const).map((side) => (
-                <option key={side} value={side}>
-                  {t(`setup.beside.${side}` as Key)}
-                </option>
-              ))}
-            </select>
-          </label>
-          {offTable && (
-            <p className="byd-setup-landing-warn" data-landing-warn>
-              {t('setup.landing.warn', { name: zone.name })}
-            </p>
-          )}
-          {/* The pile's bottom card (K23, variant A): one specific row of the deck, named here by
-              the title the designer gave it, and the side it lies on. It lies last from the start,
-              a shuffle leaves it there, and back in this pile it lies last again. A pile without one
-              has no side to choose, so the second list only stands once a card is named. */}
-          <label>
-            {t('setup.bottom')}
-            <select aria-label={t('setup.bottom.of', { name: zone.name })} value={zone.bottom?.cardRef ?? ''} onChange={(e) => onPatch({ bottom: e.target.value ? { cardRef: e.target.value, face: zone.bottom?.face ?? 'back' } : undefined })}>
-              <option value="">{t('setup.bottom.none')}</option>
-              {/* A title that repeats says which row of Tabell it is (#480, K23): four «Duel» in
-                  the list could not be told apart, and the bottom card is one specific row. */}
-              {rows.map((r, i) => {
-                const title = titleOfRow(r)
-                const twin = rows.some((o) => o.id !== r.id && titleOfRow(o) === title)
-                return (
-                  <option key={r.id} value={r.id}>
-                    {twin ? t('setup.bottom.row', { title, n: i + 1 }) : title}
-                  </option>
-                )
-              })}
-            </select>
-          </label>
-          {zone.bottom !== undefined && (
-            <label>
-              {t('setup.bottom.face')}
-              <select aria-label={t('setup.bottom.face.of', { name: zone.name })} value={zone.bottom.face} onChange={(e) => onPatch({ bottom: { cardRef: zone.bottom?.cardRef ?? '', face: e.target.value === 'front' ? 'front' : 'back' } })}>
-                <option value="front">{t('setup.bottom.front')}</option>
-                <option value="back">{t('setup.bottom.back')}</option>
-              </select>
-            </label>
-          )}
-          {/* The deck is a role a pile carries (B5, K10): a designer may call any pile the deck,
-              and the cards are dealt from wherever the role is. Moving it is also the only way to
-              be rid of the pile it lies in. */}
-          {setup.deckZone === zone.id ? (
-            <p className="byd-setup-hint">{t('setup.deck.here')}</p>
-          ) : (
-            <button type="button" onClick={onDeck}>
-              {t('setup.deck.move', { name: zone.name })}
-            </button>
-          )}
-        </>
-      )}
-      {!hand && (
-        <>
-          <label>
-            {t('setup.owner')}
-            <select aria-label={t('setup.owner.of', { name: zone.name })} value={zone.owner ?? ''} onChange={(e) => onPatch({ owner: e.target.value || undefined })}>
-              <option value="">{t('setup.owner.none')}</option>
-              {setup.seats.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            {t('setup.visibility')}
-            <select aria-label={t('setup.visibility.of', { name: zone.name })} value={zone.visibility} onChange={(e) => onPatch({ visibility: e.target.value === 'owner' ? 'owner' : e.target.value === 'none' ? 'none' : 'all' })}>
-              <option value="all">{t('setup.visible.all')}</option>
-              <option value="owner">{t('setup.visible.owner')}</option>
-              <option value="none">{t('setup.visible.none')}</option>
-            </select>
-          </label>
-        </>
-      )}
-      <span className="byd-setup-where" data-zone-where>
-        {Math.round(g.x)}, {Math.round(g.y)}
-        {zone.kind !== 'pile' ? ` · ${Math.round(g.w)} × ${Math.round(g.h)} mm` : ' mm'}
-      </span>
-      {why !== null && <p className="byd-setup-why">{why}</p>}
-    </div>
-  )
 }
 
 // What the phone shows (C4), as one seat sees it: every target with its verb, the floor last.

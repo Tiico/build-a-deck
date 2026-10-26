@@ -821,6 +821,19 @@
 .byd-setup-side { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-content: start; overflow: auto; padding-right: 4px; }
 .byd-setup h2 { margin: 0 0 4px; font-size: 13px; text-transform: uppercase; letter-spacing: 2px; color: var(--byd-editor-quiet); }
 .byd-setup-recipe { display: grid; gap: 18px; min-width: 0; }
+/* Spelet (#1403, beslut C): one strip that says players, turns and the deck's pile in a breath, and opens into their fields. */
+.byd-setup-game { display: flex; flex-wrap: wrap; align-items: center; gap: var(--byd-s1) var(--byd-s2); width: 100%; min-height: var(--byd-tap); padding: var(--byd-s2) var(--byd-s3); border: 1px solid var(--byd-secondary-line); border-radius: 12px; background: #171a23; color: #e6ecfa; font: inherit; font-weight: 600; text-align: left; cursor: pointer; }
+.byd-setup-game:hover { background: #1b1d23; }
+.byd-setup-game > .byd-setup-caret { transition: transform 120ms; }
+.byd-setup-game[aria-expanded='true'] > .byd-setup-caret { transform: rotate(90deg); }
+.byd-setup-game-part { display: inline-flex; gap: var(--byd-s2); align-items: baseline; color: #c7cede; font-weight: 500; }
+.byd-setup-game-part i { font-style: normal; color: #9aa3b8; }
+.byd-setup-game-part[data-line='own'] { flex-basis: 100%; }
+.byd-setup-game-open { padding: 0 var(--byd-s3) var(--byd-s3); border: 1px solid var(--byd-secondary-line); border-radius: 12px; background: #171a23; }
+.byd-setup-game-open > .byd-help-row > .byd-setup-game { padding-inline: 0; border: 0; background: transparent; font-size: 13px; text-transform: uppercase; letter-spacing: 2px; color: var(--byd-editor-quiet); }
+/* The deck's heading stands over its picker like the two headings over it; `.byd-setup-recipe label` would lay them side by side. */
+.byd-setup-recipe.byd-setup-game-open label { display: grid; gap: var(--byd-s1); margin: 0; }
+.byd-setup-game-open label > select { width: 100%; }
 .byd-setup-recipe label { display: flex; gap: 8px; align-items: center; margin: 4px 0; color: #e6ecfa; }
 /* The seat count is the shared stepper (#620, `stepper.css`): one row, where eight buttons wrapped. */
 .byd-setup-tools button, .byd-setup-counters > button, .byd-setup-adds > button, .byd-setup-props button { border: 1px solid #2f333d; border-radius: 8px; padding: 8px 12px; background: #1b1d23; color: #fff; font-weight: 700; cursor: pointer; }
@@ -841,11 +854,9 @@
    the kind, how the count is counted and × on the first, «i [yta]» on the second, starting under the
    count and ending under ×. Left to wrap, «i» hung alone at the column's edge and × followed the
    area instead of closing the row. */
-.byd-setup-counter.byd-setup-die { display: grid; justify-self: stretch; grid-template-columns: auto auto minmax(0, 1fr) auto; grid-template-areas: 'count kind mode x' 'where where where where'; }
-.byd-setup-die > input { grid-area: count; }
-.byd-setup-die > select:first-of-type { grid-area: kind; }
-.byd-setup-die > :is(span, select):nth-child(3) { grid-area: mode; justify-self: start; max-width: 100%; }
-.byd-setup-die > button { grid-area: x; }
+/* A die's fields on one line under its row (#1139, #1403): count, kind, and how the count is read. */
+.byd-setup-die { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; min-width: 0; color: #9aa3b8; }
+.byd-setup-props .byd-setup-die > select { width: auto; min-width: 0; }
 .byd-setup-die-where { grid-area: where; display: flex; gap: 6px; align-items: center; min-width: 0; }
 .byd-setup-die-where select { flex: 1 1 auto; }
 /* Border-box (#480): the editor's 44 px floor is the whole field's height, and with the padding
@@ -910,6 +921,9 @@
 .byd-setup-name i { flex: none; width: 11px; height: 14px; border: 1px solid #9aa3b8; border-radius: 2px; box-shadow: 2px -2px 0 -1px #6d7486; }
 .byd-setup-name i[data-kind='area'] { width: 16px; height: 11px; border-style: dashed; box-shadow: none; }
 .byd-setup-name i[data-kind='hand'] { width: 16px; height: 7px; box-shadow: none; }
+.byd-setup-name i[data-kind='die'] { width: 12px; height: 12px; border-radius: 3px; border-color: #f3e9d6; background: #f3e9d6; box-shadow: inset 0 0 0 4px #f3e9d6, inset 0 0 0 6px #1c1c1c; }
+.byd-setup-name i[data-kind='counter'] { width: 12px; height: 12px; border-radius: 50%; border-color: #ffd98a; background: #2a2f3c; box-shadow: none; }
+.byd-setup-name small { flex: none; color: #9aa3b8; font-size: 11px; }
 /* Efterledet: verktygets eget ord efter zonens namn, i en ram som säger just det (#255, A4).
    Ramen är alltså inte utsmyckning utan hela skälet att formen heter «Bricka» och inte «Tyst» —
    utan den blir `Hand A` typografiskt omöjlig att skilja från `Framför A`, som designern verkligen
@@ -931,6 +945,14 @@
    som formen den står i, inte mer. */
 .byd-setup-name em[data-differ] { color: #ffd98a; border-color: #8a7440; }
 .byd-setup-zones li > ul { padding-left: var(--byd-s4); }
+/* The tree's two roots (#1403): «Varje plats» is a row that opens nothing, and the ＋ on a row opens its menu in the flow under it. */
+[data-seats-root] > .byd-setup-row > .byd-setup-name { cursor: default; }
+[data-seats-root] > .byd-setup-row > .byd-setup-name:hover { background: transparent; }
+.byd-setup-add { flex: none; min-width: 32px; min-height: 32px; padding: 0 var(--byd-s2); border: 1px solid #2f333d; border-radius: 8px; background: #1b1d23; color: #e6ecfa; font: inherit; font-weight: 700; line-height: 1; cursor: pointer; }
+.byd-setup-add:hover, .byd-setup-add[aria-expanded='true'] { border-color: #ffd98a; color: #ffd98a; }
+.byd-setup-add-menu { display: grid; gap: 2px; margin: var(--byd-s1) 0 var(--byd-s2) var(--byd-s5); padding: var(--byd-s1); border: 1px solid #2f333d; border-radius: 10px; background: #1b1d23; }
+.byd-setup-add-menu > button { border: 0; border-radius: 8px; min-height: var(--byd-tap); padding: 0 var(--byd-s3); background: transparent; color: #e6ecfa; font: inherit; font-weight: 600; text-align: left; cursor: pointer; }
+.byd-setup-add-menu > button:hover { background: #2a2f3c; }
 .byd-setup-name strong { flex: none; color: #8ad0ff; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; }
 .byd-setup-x { flex: none; border: 1px solid #2f333d; border-radius: 8px; background: #1b1d23; color: #c7cede; font-size: 15px; line-height: 1; padding: 4px 8px; cursor: pointer; }
 .byd-setup-x:hover { background: #2a1b1b; border-color: #6b2b2b; color: #ff9a9a; }
