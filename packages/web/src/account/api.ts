@@ -150,12 +150,14 @@ export async function startTable(http: string, project: string, t: T = swedish, 
 
 // The tables of a game that are running and can still be joined (#724): the ones with a room code.
 // Only a role that may start tables is told the code, so only such a role is asked.
-export type RunningTable = { id: string; code: string; lastAt: string | null; seating?: Seating }
+// A table that lets people in: when it started and last moved (#1411), on which version, and how
+// its people sit (L77).
+export type RunningTable = { id: string; code: string; version: string; startedAt: string; lastAt: string | null; seating?: Seating }
 export async function runningTables(http: string, project: string): Promise<RunningTable[]> {
   const res = await fetch(`${http}/projects/${encodeURIComponent(project)}/sessions`, withCredentials())
   if (!res.ok) return []
-  const tables = (await res.json()) as { id: string; ended: boolean; lastAt: string | null; code?: string; seating?: Seating }[]
-  return tables.flatMap((x) => (!x.ended && x.code ? [{ id: x.id, code: x.code, lastAt: x.lastAt, ...(x.seating ? { seating: x.seating } : {}) }] : []))
+  const tables = (await res.json()) as { id: string; version: string; ended: boolean; startedAt: string; lastAt: string | null; code?: string; seating?: Seating }[]
+  return tables.flatMap((x) => (!x.ended && x.code ? [{ id: x.id, code: x.code, version: x.version, startedAt: x.startedAt, lastAt: x.lastAt, ...(x.seating ? { seating: x.seating } : {}) }] : []))
 }
 
 // Taking a game away (G1): its whole history goes with it, so the page asks first.

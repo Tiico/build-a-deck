@@ -8277,6 +8277,7 @@ Menyn öppnar på sitt första val, länk eller knapp.
 Startsidan frågar `GET /projects/:id/sessions` för varje spel som har bord och vars roll får starta bord; bara ett bord med en giltig kod räknas som pågående.
 `account-page.test.tsx` visar bandet efter en omladdning, länkens adress och menyns ordning; `home-layout.test.tsx` mäter bandets länk till 44 px vid 320, 390 och 1280.
 Prototypen: `docs/ux-audits/2026-10-05-pagaende-bord/prototyper/724/`.
+Tillägg 2026-10-26 (#1411): bandets form är L90:s, ett kort per spel med en rad per bord; sektionen, dess rubriker och vägen som ägare står kvar.
 
 ### L65. Bord-flikens rad heter rumskoden och uppdateras där den står (prototypat och beslutat 2026-10-05, #706)
 
@@ -9104,7 +9105,38 @@ Per-plats-material visas en gång under familjen, aldrig en gång per plats.
 Meeple, kub och bricka kommer som rader i ＋-menyn när deras typer finns (B1–B3), inte förr: en spärrad rad för något som inte finns är ett löfte i gränssnittet.
 `setup-column.test.tsx` pinnar remsan, rötterna, menyerna och materialets plats i trädet.
 
-### L90. Spelets låda, steg 1: tuckboxen följer leken, nätet redigerar och produktbilden visar upp (prototypat och beslutat 2026-10-26, #1406)
+### L90. «Pågår nu» är ett kort per spel, och varje bord en rad som säger hur man sitter (prototypat och beslutat 2026-10-26, #1411)
+
+Beställaren: «Banderollen för öppna bord ser lite placeholder-aktig ut, nu när vi börjar närma oss release tycker jag vi kan polera den.»
+L64:s band var en platt grön ruta med spelets namn, koden i naken monotyp och två lika tunga knappar: ingen bild, inga fakta om bordet fast listan redan bar version, senaste drag och hur man sitter (L77), och ingen väg som stod redo (L13).
+
+Tre former prövades i [`docs/ux-audits/2026-10-26-pagar-nu-bandet/prototyper/index.html`](docs/ux-audits/2026-10-26-pagar-nu-bandet/prototyper/index.html) vid 1280, 1024 och 390, ovanpå den byggda appen.
+A var ett fönster mot filten: en bild av bordets form med kodplattan i hörnet, spelets namn som väg till editorn och en fylld «Öppna bordet».
+B var ett kort per spel: spelets namn och «Öppna spelet» på en rubrikrad, och varje bord en slank rad som i sig är vägen till bordet.
+C var beskedet: koden stor och mitt i, läget i versaler och en mening om spelet.
+Agenten rekommenderade A; beställaren valde **B, med en ikon för hur man sitter**.
+
+- **Ett kort per spel**, i «Väntar på dig»:s form: spelets namn och den tysta vägen «Öppna spelet ›» på kortets huvud, och varje bord en rad under det.
+  Två bord på ett spel säger spelets namn en gång.
+  «Pågår nu» och «Startade, aldrig spelade» (#1376) ritar samma kort under var sin rubrik.
+- **Raden är vägen till bordet** (L80: ägarens vy i bordets egen flik), ett helt mål om minst 44 px, med fokusringen inuti kortet som klipper den.
+- **Raden leder med hur man sitter** (L77) som en glyf på egen grund: en skärm på fot för «Runt en skärm», två fönster för «Var och en vid sin dator», ritade i handens 16-rutnät (`SeatingGlyph`).
+  Orden står för skärmläsaren.
+  Ett bord från före frågan sitter runt en skärm, eftersom det är där det öppnas.
+  Grunden är bordets gröna medan det pågår och blågrå för ett bord som aldrig spelats.
+- **Sedan läget med en prick**, «Pågår» eller «Aldrig spelat», och under det när bordet senast rörde sig eller startades, i samma ord som sidan redan säger dagar med, och versionen i sin korta form.
+  Koden står på TV:ns platta (`byd-tv-join strong`) i kolumnens storlek, och en pil avslutar raden.
+
+Motivering:
+Kolumnen är 300 px vid 1024 och ska rymma flera bord utan att ta sidan; B kostar omkring 60 px per bord där A kostade 200.
+Formen finns redan på sidan, i «Väntar på dig», så kolumnens två kort läses som ett.
+Ikonen säger det en designer vill veta innan hon öppnar bordet: om det är TV:n eller hennes egen plats som öppnas.
+
+Följdkrav:
+`GET /projects/:id/sessions` säger `startedAt`, så ett orört bord kan säga när det startades; `SessionSummary` bär det ur båda affärerna.
+`account-page.test.tsx` visar grupperingen, ikonen per `seating` och raden som väg; `home-layout.test.tsx` mäter raden och «Öppna spelet» vid 320, 390, 1024, 1280 och 1440; `glyph-hand.test.ts` håller glyferna.
+
+### L91. Spelets låda, steg 1: tuckboxen följer leken, nätet redigerar och produktbilden visar upp (prototypat och beslutat 2026-10-26, #1406)
 
 Beställaren: «Vi vill spela på att en användare kommer vilja ha spelet som fysisk kopia. Ett stort fokus måste ligga på snygg rendering av paketet och leken.»
 Samma dag preciserat: «Det ska inte kännas som en case opening.»

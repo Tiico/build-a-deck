@@ -215,6 +215,16 @@ export function EraseGlyph() {
   )
 }
 
+// How the people at a table sit (L77, #1411): a screen on its stand for a table around one, and
+// two windows, one behind the other, for a table where each sits at a computer of their own.
+export function SeatingGlyph({ seating }: { seating: 'screen' | 'computer' }) {
+  return (
+    <Glyph name={seating}>
+      <Line d={seating === 'screen' ? 'M3 2.75h10a1 1 0 0 1 1 1v6.5a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1v-6.5a1 1 0 0 1 1-1zM8 11.25v2.5M5.25 13.75h5.5' : 'M2 5.75h7.5a1 1 0 0 1 1 1v5.5a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1v-5.5a1 1 0 0 1 1-1zM5.5 5.75V3.75a1 1 0 0 1 1-1H14a1 1 0 0 1 1 1v5.5a1 1 0 0 1-1 1h-3.5'} />
+    </Glyph>
+  )
+}
+
 // Something that could not happen (#1073): the warning sign the notice band was decided with,
 // drawn in this hand rather than on the 24 grid it came on.
 export function WarningGlyph() {

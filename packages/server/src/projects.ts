@@ -135,7 +135,7 @@ export type ProjectFont = z.infer<typeof ProjectFont>
 export const ProjectTheme = z.object({ from: z.string().min(1) })
 export type ProjectTheme = z.infer<typeof ProjectTheme>
 
-// Spelets låda (#1412, L90). `type` är lådtypen spelet pinnar (B3), i steg 1 alltid tuckboxen.
+// Spelets låda (#1412, L91). `type` är lådtypen spelet pinnar (B3), i steg 1 alltid tuckboxen.
 // Måtten står inte här, för de räknas fram ur leken (`boxOf`). Det som står här är designerns svar
 // på dem:
 // - `clearance` är luften runt kortet och i djupet, när den inte är typens.
