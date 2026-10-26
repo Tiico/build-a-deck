@@ -234,12 +234,14 @@ describe('Mina spel starts a table the same way (#1286)', () => {
     expect(await listed(run.projectId)).toHaveLength(0)
   })
 
-  it('opens a table around a TV at its screen from «Pågår nu»', async () => {
+  // A table just started has not been played, so its band is «Startade, aldrig spelade» (#1376),
+  // in the form of «Pågår nu» and with the same way to its screen.
+  it('opens a table around a TV at its screen from its band', async () => {
     const made = (await (await fetch(`${run.http}/projects/${run.projectId}/sessions`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ seating: 'screen' }) })).json()) as { id: string; code: string }
     await home()
     cleanup()
     render(<HomePage />)
-    const now = await screen.findByRole('region', { name: 'Pågår nu' })
+    const now = await screen.findByRole('region', { name: 'Startade, aldrig spelade' })
     const open = await within(now).findByRole('link', { name: new RegExp(`Öppna bordet ${made.code}`) })
     expect(at(open.getAttribute('href')!).pathname).toBe('/table')
   })
