@@ -54,27 +54,80 @@ export const isMaterial = (def: ComponentTypeDef): boolean => def.behaviours.rol
 
 export const typeKey = (ref: TypeRef): string => `${ref.id}@${ref.version}`
 
+// The game's box (#1412, #1406): a type in the same registry (B1, B2), but not a component. It never
+// lies on a table, and its size is not its own: it holds the deck, so its measure is worked out of
+// the deck's cards (`boxMeasure`) rather than declared here. What it declares is how much air it
+// leaves around the card and in the depth, and the step its depth is rounded up to.
+//
+// Six faces, named by the document's own keys and never translated (A4). The front is the game's
+// cover (#1406, beslut 3), so it is the face that carries the box's identity.
+export const BoxFace = z.enum(['front', 'back', 'left', 'right', 'lid', 'bottom'])
+export type BoxFace = z.infer<typeof BoxFace>
+export const BoxTypeDef = z.object({
+  kind: z.literal('box'),
+  id: z.string().min(1),
+  version: z.number().int().nonnegative(),
+  physical: z.object({
+    shape: z.literal('tuckbox'),
+    // The board the box is folded from: what a presentation gives its walls (#1414). The measure
+    // does not read it.
+    thicknessMm: z.number().positive(),
+    material: z.string().min(1),
+  }),
+  faces: z.array(BoxFace).min(1),
+  contentFace: BoxFace,
+  holds: z.object({
+    clearanceMm: z.object({ around: z.number().nonnegative(), depth: z.number().nonnegative() }),
+    stepMm: z.number().positive(),
+  }),
+  editorSchema: z.array(FieldDef),
+  print: z.object({
+    bleedMm: z.number().nonnegative(),
+    safeMm: z.number().nonnegative(),
+    dpi: z.number().int().positive(),
+    colorProfile: z.string().min(1),
+    minPtByScript: z.record(z.string(), z.number().positive()),
+  }),
+  manufacturableBy: z.array(z.string().min(1)),
+})
+export type BoxTypeDef = z.infer<typeof BoxTypeDef>
+
+const isBox = (def: ComponentTypeDef | BoxTypeDef): def is BoxTypeDef => 'kind' in def && def.kind === 'box'
+
 export class TypeRegistry {
   private readonly defs = new Map<string, ComponentTypeDef>()
+  private readonly boxes = new Map<string, BoxTypeDef>()
 
-  constructor(defs: readonly ComponentTypeDef[] = []) {
+  constructor(defs: readonly (ComponentTypeDef | BoxTypeDef)[] = []) {
     for (const d of defs) this.register(d)
   }
 
-  register(def: ComponentTypeDef): void {
+  register(def: ComponentTypeDef | BoxTypeDef): void {
     const key = typeKey(def)
-    if (this.defs.has(key)) throw new Error(`type ${key} is already registered and immutable`)
-    this.defs.set(key, ComponentTypeDef.parse(def))
+    if (this.defs.has(key) || this.boxes.has(key)) throw new Error(`type ${key} is already registered and immutable`)
+    if (isBox(def)) this.boxes.set(key, BoxTypeDef.parse(def))
+    else this.defs.set(key, ComponentTypeDef.parse(def))
   }
 
   get(ref: TypeRef): ComponentTypeDef {
     const def = this.defs.get(typeKey(ref))
-    if (!def) throw new Error(`unknown component type ${typeKey(ref)}`)
+    if (!def) throw new Error(this.boxes.has(typeKey(ref)) ? `type ${typeKey(ref)} is a box and not a component` : `unknown component type ${typeKey(ref)}`)
     return def
   }
 
+  // Whether a table can lay it: a component, never a box.
   has(ref: TypeRef): boolean {
     return this.defs.has(typeKey(ref))
+  }
+
+  box(ref: TypeRef): BoxTypeDef {
+    const def = this.boxes.get(typeKey(ref))
+    if (!def) throw new Error(`unknown box type ${typeKey(ref)}`)
+    return def
+  }
+
+  hasBox(ref: TypeRef): boolean {
+    return this.boxes.has(typeKey(ref))
   }
 }
 
@@ -143,3 +196,28 @@ export const DICE: readonly ComponentTypeDef[] = [die(4, 18), die(6, 16), die(8,
 
 // What every table knows.
 export const STANDARD_TYPES: readonly ComponentTypeDef[] = [CARD_STANDARD_63x88, TOKEN_COUNTER, ...DICE]
+
+// The tuckbox (#1412): the one box of step 1 (#1406, beslut 4). The deck stands in it on its edge
+// and the lid tucks in at the top. Its measure follows the deck with 1 mm of air around the card and
+// 2 mm in the depth, the depth rounded up to half a millimetre, which is the prototype's formula and
+// gives 65 × 90 × 34,5 mm for 108 standard cards. The designer may change the air and lock any
+// measure (`ProjectBox`), and this is only where both start.
+//
+// Its faces are drawn by the one renderer like a card's (E2), with the card's bleed and safe area.
+// It is not among `STANDARD_TYPES`: a table never lays a box, and the print providers are made from
+// that list, so a box there would be a box Testtryckeriet says it prints. That is step 2 (F1).
+export const TUCKBOX: BoxTypeDef = {
+  kind: 'box',
+  id: 'box.tuck',
+  version: 1,
+  physical: { shape: 'tuckbox', thicknessMm: 0.4, material: 'folding-carton-350gsm' },
+  faces: ['front', 'back', 'left', 'right', 'lid', 'bottom'],
+  contentFace: 'front',
+  holds: { clearanceMm: { around: 1, depth: 2 }, stepMm: 0.5 },
+  editorSchema: [],
+  print: { bleedMm: 3, safeMm: 3, dpi: 300, colorProfile: 'sRGB', minPtByScript: { Latn: 6, Hani: 8, Arab: 7 } },
+  manufacturableBy: [],
+}
+
+// Every box a game can be put in.
+export const BOX_TYPES: readonly BoxTypeDef[] = [TUCKBOX]
