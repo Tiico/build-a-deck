@@ -456,6 +456,14 @@ export const svEditor = {
   'wall.checks.help': 'En anmärkning gäller oftast mallen, inte kortet, och syns då på alla kort som använder elementet.',
   'wall.checks.help.topic': 'anmärkningarna',
   'wall.checks.print': 'Se tryckpaketet ›',
+  // Spelets låda (#1412): när ett låst mått inte rymmer leken, med korten som inte får plats och
+  // måtten i ord.
+  'wall.box.title': 'Lådan rymmer inte leken',
+  'wall.box.over.one': 'Ett kort får inte plats i lådan.',
+  'wall.box.over.other': '{n} kort får inte plats i lådan.',
+  'wall.box.depth': 'Leken är {deck} mm, och det låsta djupet rymmer {room} mm.',
+  'wall.box.width': 'Kortet är {card} mm brett, men den låsta bredden lämnar {room} mm innanför luften.',
+  'wall.box.height': 'Kortet är {card} mm högt, men den låsta höjden lämnar {room} mm innanför luften.',
   'wall.checks.fix': 'Rätta i mallen',
   'wall.checks.fix.said': '{what} rättad i mallen.',
   'wall.checks.fix.none': 'Det här är ett eget val och kan inte rättas automatiskt.',
@@ -503,6 +511,7 @@ export const svEditor = {
   'undo.what.rules': 'en ändring i reglerna',
   'undo.what.font': 'en ändring bland typsnitten',
   'undo.what.theme': 'temabytet',
+  'undo.what.box': 'en ändring av lådan',
   'undo.what.version': 'en tillbakatagen version',
   'undo.what.several': 'flera ändringar',
   'undo.what.proposal': 'det godtagna förslaget',

@@ -67,6 +67,9 @@ const DOC = record(
     fonts: map(leaf),
     rules: record({ title: leaf, blocks: list(leaf), source: leaf }, ['title', 'blocks']),
     theme: leaf,
+    // Lådan (#1412): ett lås och en luft per mått, så att Ada kan låsa djupet medan Bo ändrar luften,
+    // och ytorna som kortets.
+    box: record({ type: leaf, clearance: props, locked: props, faces: map(FACE) }, ['type']),
     setup: record({ zones: list(props), seats: leaf, floor: leaf, deckZone: leaf, counters: leaf, dice: leaf, turns: leaf }, ['zones', 'seats', 'floor', 'deckZone']),
   },
   ['name', 'template', 'rows', 'icons', 'setup'],
@@ -574,6 +577,8 @@ function skeleton(node: Node): unknown {
 
 function empty(node: Node, value: unknown): boolean {
   if (node.k === 'list' || node.k === 'map') return keysOf(node, value).length === 0
+  // En valfri post med egenskaper, som lådans lås (#1412), är tom när ingen egenskap står kvar.
+  if (node.k === 'props') return Object.values(value as Record<string, unknown>).every((v) => v === undefined)
   if (node.k !== 'record') return false
   return Object.entries(value as Record<string, unknown>).every(([key, v]) => {
     if (v === undefined) return true
