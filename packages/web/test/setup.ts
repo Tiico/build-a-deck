@@ -6,12 +6,23 @@ import { sv } from '../src/i18n/sv.js'
 import { watchHolds } from '../../../test-support/own-time.js'
 import { holdTestsToOwnTime } from '../../../test-support/own-time-guard.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
+import { listenForNesting, takeNestingWarnings } from './nesting.js'
 
 // The app fetches its words per surface and language before it draws (#760). A test mounts a
 // surface on its own, without the route that would have fetched them, so every test holds the
 // whole catalogue in both languages — what the app said before the split, from the first line.
 holdWords('sv', sv)
 holdWords('en', en)
+
+// Markup an HTML parser would rewrite fails the test that drew it (#1401): `nesting.ts` says why.
+// It is the first hook here so that it runs last (vitest runs a file's `afterEach` hooks in reverse):
+// a hook that throws skips the ones after it, and a skipped `cleanup` leaves the failing test's page
+// in the document for the next test to find twice.
+listenForNesting()
+afterEach(() => {
+  const said = takeNestingWarnings()
+  if (said.length > 0) throw new Error(`React drew markup an HTML parser would rewrite (#1401):\n${said.join('\n')}`)
+})
 
 // Testing Library only cleans up on its own with vitest globals; do it explicitly.
 afterEach(cleanup)

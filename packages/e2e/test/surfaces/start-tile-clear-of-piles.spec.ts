@@ -123,8 +123,28 @@ async function painted(page: Page): Promise<Painted> {
       return { seat: p.dataset['seatPlate'] ?? '?', l: r.left, t: r.top, r: r.right, b: r.bottom }
     }),
   )
+  // Where the tile can paint at all: its box, and as far past it as its outer shadows reach, read
+  // from the shadow it is drawn with. A pixel outside it changed for some other reason. The piles'
+  // count discs stand beside the plates, and the edge of one is rastered in one of two ways from
+  // shot to shot (#1407): at 1024 with four seats the «8» disc's edge lies in D's margin, and it once
+  // came out lit in the tile's photograph and the plates' and dark in both of the felt's.
+  const reach = await page.evaluate(() => {
+    const t = document.querySelector<HTMLElement>('[data-table-start]')!
+    const r = t.getBoundingClientRect()
+    const k = t.offsetWidth > 0 ? r.width / t.offsetWidth : 1
+    const out = { l: 0, t: 0, r: 0, b: 0 }
+    for (const s of getComputedStyle(t).boxShadow.split(/,(?![^(]*\))/)) {
+      if (/inset/.test(s)) continue
+      const [x = 0, y = 0, blur = 0, spread = 0] = (s.replace(/rgba?\([^)]*\)/, '').match(/-?[\d.]+px/g) ?? []).map(parseFloat)
+      out.l = Math.max(out.l, blur + spread - x)
+      out.r = Math.max(out.r, blur + spread + x)
+      out.t = Math.max(out.t, blur + spread - y)
+      out.b = Math.max(out.b, blur + spread + y)
+    }
+    return { l: r.left - out.l * k, t: r.top - out.t * k, r: r.right + out.r * k, b: r.bottom + out.b * k }
+  })
   return page.evaluate(
-    async ({ shots, boxes }) => {
+    async ({ shots, boxes, reach }) => {
       const read = async (src: string) => {
         const img = new Image()
         img.src = `data:image/png;base64,${src}`
@@ -142,8 +162,11 @@ async function painted(page: Page): Promise<Painted> {
       // few levels; its body, which reads as a shadow on a plate, is tens.
       const apart = (a: ImageData, b: ImageData, i: number) => Math.max(...[0, 1, 2].map((k) => Math.abs(a.data[i + k]! - b.data[i + k]!))) > 12
       const changed = (a: ImageData, i: number) => apart(a, neither, i) && !apart(again, neither, i)
+      // The pixel whose square meets where the tile can paint.
+      const tileCan = (x: number, y: number) => x + 1 > reach.l && x < reach.r && y + 1 > reach.t && y < reach.b
+      const byTile = (i: number) => changed(tile, i) && tileCan((i / 4) % w, Math.floor(i / 4 / w))
       let tilePainted = 0
-      for (let i = 0; i < tile.data.length; i += 4) if (changed(tile, i)) tilePainted++
+      for (let i = 0; i < tile.data.length; i += 4) if (byTile(i)) tilePainted++
       const out: Record<string, { painted: number; covered: number }> = {}
       for (const b of boxes) {
         let paintedHere = 0
@@ -154,13 +177,13 @@ async function painted(page: Page): Promise<Painted> {
             const i = (y * w + x) * 4
             if (!changed(plates, i)) continue
             paintedHere++
-            if (changed(tile, i)) covered++
+            if (byTile(i)) covered++
           }
         out[b.seat] = { painted: paintedHere, covered }
       }
       return { tile: tilePainted, plates: out }
     },
-    { shots: [plates, neither, tile, again], boxes },
+    { shots: [plates, neither, tile, again], boxes, reach },
   )
 }
 
