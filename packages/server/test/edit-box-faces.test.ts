@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Element } from '@byd/template'
 import { applyEdit, type EditIntent } from '../src/edits.js'
+import { boxFaceSize } from '@byd/engine'
 import { boxFaceOf, boxOf } from '../src/box.js'
 import { openingSetup } from '../src/recipe.js'
 import { changeOf, revertOf } from '../src/undo.js'
@@ -94,6 +95,33 @@ describe('en yta som inte är ritad (#1406, beslut 5)', () => {
     const plain = { ...game(), template: { faces: { front: { base: [], variants: {} } } } }
     const shape = boxFaceOf(plain, 'front').template.base.find((e) => e.kind === 'shape')
     expect(shape && 'fill' in shape && typeof shape.fill).toBe('string')
+  })
+
+  // #1448: en lek på högst 13 kort ger en rygg och ett lock under 6 mm, och den guidade startens lek
+  // har sex. Textrutan stod 3 mm in från båda kanterna och fick en negativ bredd, och den första
+  // ändringen, som lägger den neutrala ytan i dokumentet, vägrades då hela: ytan var låst.
+  it('är en giltig yta i varje mått, också på en låda till ett enda kort', () => {
+    for (const cards of [0, 1, 2, 6, 13, 14, 20, 108]) {
+      const doc = { ...game(), rows: cards === 0 ? [] : [{ id: 'kort-1', fields: { title: 'Ek', antal: cards } }] }
+      for (const face of ['front', 'back', 'left', 'right', 'lid', 'bottom'] as const) {
+        const { widthMm, heightMm } = boxFaceSize(face, boxOf(doc).size)
+        for (const el of boxFaceOf(doc, face).template.base) {
+          if (!('w' in el)) continue
+          const where = `${face} på en lek med ${cards} kort`
+          expect(el.w, where).toBeGreaterThan(0)
+          expect(el.h, where).toBeGreaterThan(0)
+          expect(el.x, where).toBeGreaterThanOrEqual(0)
+          expect(el.y, where).toBeGreaterThanOrEqual(0)
+          expect(el.x + el.w, where).toBeLessThanOrEqual(widthMm + 1e-9)
+          expect(el.y + el.h, where).toBeLessThanOrEqual(heightMm + 1e-9)
+          if (el.kind === 'text') expect(el.font.sizePt, where).toBeGreaterThan(0)
+        }
+        // Det designern först gör med ytan lägger den neutrala ytan i dokumentet, och den landar.
+        const neutral = boxFaceOf(doc, face).template.base
+        const drawn = applyEdit(doc, { v: 'compound', edits: [{ v: 'replaceFace', on: 'box', face, base: neutral }, { v: 'patchElement', on: 'box', face, id: 'ground', patch: { fill: '#aa3322' } }] })
+        expect(drawn.box?.faces?.[face]?.base.find((e) => e.id === 'ground')).toMatchObject({ fill: '#aa3322' })
+      }
+    }
   })
 
   it('är designerns egen yta så snart den är ritad', () => {

@@ -97,24 +97,31 @@ function neutralFace(face: BoxFace, { widthMm: w, heightMm: h }: { widthMm: numb
   // Namnet bärs av framsidan, locket och sidorna, där en låda i en hylla läses; baksidan och botten
   // är bara färg.
   if (face === 'back' || face === 'bottom') return [ground]
-  const air = 3
+  // Luften runt namnet är 3 mm, men aldrig mer än en fjärdedel av ytans mått på den ledden (#1448):
+  // en lek på högst 13 kort ger en rygg och ett lock under 6 mm, och där gav 3 mm från båda kanterna
+  // en ruta med negativ bredd, en mall ingen redigering kunde lägga in. Rutan är alltså alltid minst
+  // halva ytan, och namnet krymper i den (E6).
+  const airX = inset(w)
+  const airY = inset(h)
+  const round = (mm: number) => Math.round(mm * 10) / 10
+  const pt = (mm: number) => Math.max(1, Math.round(mm * PT_PER_MM))
   // Sidorna bär namnet längs ryggen (#1431), vridet ett kvarts varv som på en riktig tuckbox, med
   // bokstävernas överkant mot framsidan: nätet läser vänster sida, framsida, höger sida, så den
   // vänstra vrids medsols och den högra motsols. Rutan är hela ryggen innanför luften, och
   // bokstavens höjd tas ur ryggens bredd, lådans djup; ett namn som är för långt krymper (E6).
   if (face === 'left' || face === 'right') {
-    const across = Math.round((w - 2 * air) * 10) / 10
+    const across = round(w - 2 * airX)
     return [
       ground,
       {
         kind: 'text',
         id: 'title',
-        x: air,
-        y: air,
+        x: round(airX),
+        y: round(airY),
         w: across,
-        h: Math.round((h - 2 * air) * 10) / 10,
+        h: round(h - 2 * airY),
         bind: { literal: name },
-        font: { family: 'sans-serif', sizePt: Math.round(Math.min(9, across * 0.32) * PT_PER_MM), weight: 700, align: 'center' },
+        font: { family: 'sans-serif', sizePt: pt(Math.min(9, across * 0.32)), weight: 700, align: 'center' },
         color: ink,
         fit: 'shrink',
         valign: 'middle',
@@ -123,19 +130,21 @@ function neutralFace(face: BoxFace, { widthMm: w, heightMm: h }: { widthMm: numb
     ]
   }
   const sizeMm = face === 'front' ? w * 0.11 : Math.min(5, h * 0.16)
-  const boxH = face === 'front' ? Math.min(h - 2 * air, sizeMm * 3) : h - 2 * air
+  const boxH = face === 'front' ? Math.min(h - 2 * airY, sizeMm * 3) : h - 2 * airY
   const text: Element = {
     kind: 'text',
     id: 'title',
-    x: air,
-    y: Math.round(((h - boxH) / 2) * 10) / 10,
-    w: Math.round((w - 2 * air) * 10) / 10,
-    h: Math.round(boxH * 10) / 10,
+    x: round(airX),
+    y: round((h - boxH) / 2),
+    w: round(w - 2 * airX),
+    h: round(boxH),
     bind: { literal: name },
-    font: { family: 'sans-serif', sizePt: Math.round(sizeMm * PT_PER_MM), weight: 700, align: 'center' },
+    font: { family: 'sans-serif', sizePt: pt(sizeMm), weight: 700, align: 'center' },
     color: ink,
     fit: 'shrink',
     valign: 'middle',
   }
   return [ground, text]
 }
+const AIR = 3
+const inset = (mm: number) => Math.min(AIR, mm / 4)
