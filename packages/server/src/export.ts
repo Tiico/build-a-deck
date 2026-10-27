@@ -209,26 +209,41 @@ Formatet \`${m.format}\`, version ${m.formatVersion}.
 `
 }
 
-// The box in LASMIG (#1418): where its faces are, what it measures and what is the designer's, and
-// that the files a printer folds it from come with the partner (L91, F1, F2).
+// The box in words (#1418), as LASMIG of the export and of the print package both say it: its measure,
+// which of its measures are locked, and how many of its faces the designer has drawn.
 const mmOf = (n: number, lang: 'sv' | 'en'): string => (lang === 'sv' ? String(n).replace('.', ',') : String(n))
 const SIDE_WORDS = { sv: { width: 'bredden', height: 'höjden', depth: 'djupet' }, en: { width: 'the width', height: 'the height', depth: 'the depth' } } as const
+export type BoxSaid = { size: string; locked: string; drawn: string }
+export function boxSaid(lang: 'sv' | 'en', box: Pick<ExportBox, 'size' | 'locked'>, drawn: number, faces: number): BoxSaid {
+  const size = `${mmOf(box.size.width, lang)} × ${mmOf(box.size.height, lang)} × ${mmOf(box.size.depth, lang)} mm`
+  const sides = (['width', 'height', 'depth'] as const).filter((side) => box.locked[side]).map((side) => SIDE_WORDS[lang][side])
+  if (lang === 'en') {
+    return {
+      size: `${size} (width × height × depth)`,
+      locked: sides.length === 0 ? '' : `, and ${sides.join(' and ')} ${sides.length === 1 ? 'is' : 'are'} locked`,
+      drawn: drawn === 0 ? `No face is drawn yet, so all ${faces} are the neutral box with the game's name and the deck's colour` : `${drawn} of ${faces} faces ${drawn === 1 ? 'is' : 'are'} drawn, and the rest are the neutral box`,
+    }
+  }
+  return {
+    size: `${size} (bredd × höjd × djup)`,
+    locked: sides.length === 0 ? '' : `, och ${sides.join(' och ')} ${sides.length === 1 ? 'är låst' : 'är låsta'}`,
+    drawn: drawn === 0 ? `Ingen yta är ritad än, så alla ${faces} är den neutrala lådan med spelets namn och lekens färg` : `${drawn} av ${faces} ytor ${drawn === 1 ? 'är ritad' : 'är ritade'}, och resten är den neutrala lådan`,
+  }
+}
+
+// The box in LASMIG (#1418): where its faces are, what it measures and what is the designer's, and
+// that the files a printer folds it from come with the partner (L91, F1, F2).
 function boxLines(lang: 'sv' | 'en', box: ExportBox): string[] {
   const files = Object.values(box.faces).filter((f) => f !== undefined)
-  const drawn = files.filter((f) => f.drawn).length
-  const size = `${mmOf(box.size.width, lang)} × ${mmOf(box.size.height, lang)} × ${mmOf(box.size.depth, lang)} mm`
-  const locked = (['width', 'height', 'depth'] as const).filter((side) => box.locked[side]).map((side) => SIDE_WORDS[lang][side])
-  const lockedSaid = locked.length === 0 ? '' : lang === 'sv' ? `, och ${locked.join(' och ')} ${locked.length === 1 ? 'är låst' : 'är låsta'}` : `, and ${locked.join(' and ')} ${locked.length === 1 ? 'is' : 'are'} locked`
+  const said = boxSaid(lang, box, files.filter((f) => f.drawn).length, files.length)
   if (lang === 'en') {
-    const said = drawn === 0 ? `No face is drawn yet, so all ${files.length} are the neutral box with the game's name and the deck's colour` : `${drawn} of ${files.length} faces ${drawn === 1 ? 'is' : 'are'} drawn, and the rest are the neutral box`
     return [
-      `- \`tryck/lada/\` — the box's faces as print-ready PDFs with bleed, one per face: a tuckbox of ${size} (width × height × depth)${lockedSaid}. ${said}. Its measure, locks, air and net are in \`print.box\`, and what the designer drew is the document's \`box\`.`,
+      `- \`tryck/lada/\` — the box's faces as print-ready PDFs with bleed, one per face: a tuckbox of ${said.size}${said.locked}. ${said.drawn}. Its measure, locks, air and net are in \`print.box\`, and what the designer drew is the document's \`box\`.`,
       `- The box's print files for a printer, with the die line and in printing colours (CMYK), come once a print partner is chosen.`,
     ]
   }
-  const said = drawn === 0 ? `Ingen yta är ritad än, så alla ${files.length} är den neutrala lådan med spelets namn och lekens färg` : `${drawn} av ${files.length} ytor ${drawn === 1 ? 'är ritad' : 'är ritade'}, och resten är den neutrala lådan`
   return [
-    `- \`tryck/lada/\` — lådans ytor som tryckfärdiga PDF:er med utfall, en per yta: en tuckbox på ${size} (bredd × höjd × djup)${lockedSaid}. ${said}. Måtten, låsen, luften och nätet står i \`print.box\`, och det designern ritat står i dokumentets \`box\`.`,
+    `- \`tryck/lada/\` — lådans ytor som tryckfärdiga PDF:er med utfall, en per yta: en tuckbox på ${said.size}${said.locked}. ${said.drawn}. Måtten, låsen, luften och nätet står i \`print.box\`, och det designern ritat står i dokumentets \`box\`.`,
     `- Lådans tryckfiler till ett tryckeri, med stansform och i tryckfärger (CMYK), kommer när en tryckpartner är vald.`,
   ]
 }

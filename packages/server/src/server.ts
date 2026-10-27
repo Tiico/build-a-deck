@@ -32,7 +32,7 @@ import { printExportOf, queueFaces } from './faces.js'
 import { printFileJobsOf, printManifestOf, type PrintFileJob } from './print-files.js'
 import { boxFactsOf, boxPrintOf } from './box-print.js'
 import { Country, routeOrder, widestBleedMm, type PrintManifest, type PrintProvider, type Route } from '@byd/print'
-import { PRINT_PACKAGE_FORMAT, PRINT_PACKAGE_FORMAT_VERSION, packPrintPackage, printPackageDisposition, printPackageReadme, printPathOf, type PrintPackageManifest } from './print-package.js'
+import { PRINT_PACKAGE_FORMAT, PRINT_PACKAGE_FORMAT_VERSION, packPrintPackage, printPackageDisposition, printPackageReadme, printPathOf, type PrintPackageBox, type PrintPackageManifest } from './print-package.js'
 import { EXPORT_FORMAT, EXPORT_FORMAT_VERSION, EXPORT_SUMMARY_HEADER, ProjectExport, RULEBOOK_FILE, assetFileOf, assetHashesOf, duplicatedName, exportDisposition, exportSummaryOf, importedName, packExport, printFileOf, readExport, readmeOf, type ImportProblem } from './export.js'
 import { BlockedAsset, ReportBody, type ReportStore } from './reports.js'
 import { REPORT_SECTION, operatorMail, receiptMail } from './report-mail.js'
@@ -1497,7 +1497,9 @@ async function printPackageOf(opts: ServerOptions, rec: ProjectRecord, choose: (
   // requirements the files are made after, which the page says in words.
   const types = [...new Map([...order.cards, ...order.hardware].map((c) => [`${c.type.id}@${c.type.version}`, c.type])).values()]
   const requirements = types.map((type) => provider.requirements(type))
-  return { provider, manifest, order, requirements, files, rulebook, errors, warnings }
+  // The box as part 3 (#1418): its measure and whether it is drawn, and no file until a partner is.
+  const box: PrintPackageBox = { ...boxFactsOf(rec), files: [] }
+  return { provider, manifest, order, requirements, files, rulebook, errors, warnings, box }
 }
 const PACKAGE_RULEBOOK = 'regelhafte.pdf'
 
@@ -2427,6 +2429,7 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
         warnings: pkg.warnings,
         failed,
         credits: creditsOf(rec),
+        box: pkg.box,
       }
       const zip = packPrintPackage({ manifest, readme: printPackageReadme(lang, manifest), files: contents })
       res.writeHead(200, { 'content-type': 'application/zip', 'content-length': String(zip.length), 'content-disposition': printPackageDisposition(rec.name, rec.rev, lang), 'cache-control': 'no-store' })
@@ -2449,6 +2452,7 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       total,
       done,
       failed: failed.length,
+      box: pkg.box,
     })
     return true
   }
