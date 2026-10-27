@@ -12,13 +12,15 @@ import { FootSaid } from './said.js'
 import { CopyGlyph, ImportGlyph, PencilGlyph } from '../glyphs.js'
 import { useT } from '../i18n/index.js'
 import { useMm } from './box-mm.js'
+import { still } from './still.js'
 import './box-show.css'
 import { BOX_SCENE_CSS, DECK_GLOSS, FOLD_MS, GLOSS, REST, lit, netPose, poseTransform, showScene, swayed, turnedBy, type DeckPart, type Plane, type Pose } from '@byd/template'
 
 // «Visa upp» (#1414, L91, #1406 runda 2, hybriden): nätet viker ihop sig till lådan på sin plats, och
 // lådan och leken står i ljus, med lack, slitna vikkanter, kortens randiga kant och en skugga på golvet.
 // Lådan vrider sig lugnt och går att vrida. Ett klick på en sida, «Redigera nätet» eller Escape viker ut
-// den igen med den sidan vald, och vid `prefers-reduced-motion` byts läget direkt och lådan står still.
+// den igen med den sidan vald, och vid `prefers-reduced-motion` byts läget direkt (`BoxTab` hoppar över
+// vikningen, #1441) och lådan står still.
 //
 // Det är samma sex ytor hela vägen: varje plan börjar där dess panel ligger i nätet, i nätets skala, och
 // glider och vrids till sin sida. Ytorna är den enda renderarens (E2), ritade av `CardPreview` i sitt
@@ -45,8 +47,6 @@ const SETTLE_MS = 250
 const PRESS_PX = 4
 // How far one press of an arrow key turns the box.
 const KEY_DEG = 10
-const STILL = '(prefers-reduced-motion: reduce)'
-const still = () => typeof matchMedia === 'function' && matchMedia(STILL).matches
 
 const BOX_ORDER: readonly BoxFace[] = ['front', 'back', 'left', 'right', 'lid', 'bottom']
 const DECK_ORDER: readonly DeckPart[] = ['face', 'back', 'right', 'left', 'top']
@@ -187,8 +187,8 @@ export function BoxShow({ doc, fit, drawings, assetBase, motifs, look, net, onFo
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [look])
 
-  // Shown, whichever way it got there: under `prefers-reduced-motion` the fold is over before its
-  // frames have come, and arriving from Mina spel there was no fold at all.
+  // Shown, whichever way it got there: under `prefers-reduced-motion` and arriving from Mina spel
+  // there was no fold at all.
   useLayoutEffect(() => {
     if (look !== 'show') return
     setInstant(false)
@@ -251,8 +251,10 @@ export function BoxShow({ doc, fit, drawings, assetBase, motifs, look, net, onFo
     }
   }, [look])
 
-  // Escape goes back to the net, from wherever the focus is in the picture.
-  useEffect(() => {
+  // Escape goes back to the net, from wherever the focus is in the picture. Listened for in the
+  // commit that draws the picture, and not an effect later: a key pressed in between went nowhere,
+  // and the picture stood (#1441).
+  useLayoutEffect(() => {
     if (look !== 'show') return
     const key = (event: globalThis.KeyboardEvent) => {
       if (event.key !== 'Escape' || event.defaultPrevented) return

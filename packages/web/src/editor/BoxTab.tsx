@@ -8,6 +8,7 @@ import type { OwnIcon } from './IconCatalog.js'
 import type { ProjectClient } from './ProjectClient.js'
 import type { ProjectDoc } from './types.js'
 import { CardPreview } from './CardPreview.js'
+import { still } from './still.js'
 import { NetLines } from './box-net.js'
 import { PX_PER_MM } from './canvas.js'
 import { previewIcons } from './assets.js'
@@ -80,13 +81,24 @@ export function BoxTab({ doc, edit, reading, assetBase, motifs, face, onSelectFa
     void showing()
   }, [])
   const showButton = useRef<HTMLButtonElement | null>(null)
+  // Back on the net from the picture, the keys go to «Visa upp» again, in the commit that takes the
+  // picture away and so the first one in which the button is no longer inert.
+  const back = useRef(false)
+  useLayoutEffect(() => {
+    if (look !== 'net' || !back.current) return
+    back.current = false
+    showButton.current?.focus({ preventScroll: true })
+  }, [look])
+  // Under `prefers-reduced-motion` the place changes directly (#1441): no fold is drawn and nothing
+  // waits for one, so the press that asks for the picture or the net is the one that shows it.
   const unfold = useCallback(
     (to: BoxFace | null) => {
       if (to) {
         onSelectFace(to)
         onSelectElement(null)
       }
-      setLook('unfolding')
+      if (still()) back.current = true
+      setLook(still() ? 'net' : 'unfolding')
     },
     [onSelectFace, onSelectElement],
   )
@@ -157,8 +169,8 @@ export function BoxTab({ doc, edit, reading, assetBase, motifs, face, onSelectFa
               onUnfold={unfold}
               onUnfolded={() => setLook('settling')}
               onSettled={() => {
+                back.current = true
                 setLook('net')
-                showButton.current?.focus({ preventScroll: true })
               }}
               onShare={onShare}
               onSave={onSave}
@@ -185,7 +197,7 @@ export function BoxTab({ doc, edit, reading, assetBase, motifs, face, onSelectFa
               onDeselect={() => onSelectElement(null)}
             />
             <div className="byd-box-foot">
-              <button ref={showButton} type="button" className="byd-secondary" onClick={() => setLook('folding')}>
+              <button ref={showButton} type="button" className="byd-secondary" onClick={() => setLook(still() ? 'show' : 'folding')}>
                 <BoxGlyph />
                 {t('box.show')}
               </button>
