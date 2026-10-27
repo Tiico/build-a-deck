@@ -140,13 +140,17 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   // Resultat at that version. Read once, and taken out of the address so the editor's address stays
   // the game's own (L80) and a reload opens the editor as it always opens.
   const [results] = useState(() => params.get('results'))
+  // The way into «Visa upp» (#1414), from Mina spel or a link shared from it: `show=box` opens the
+  // Låda tab on the box shown off rather than on the net. Read once and taken out the same way.
+  const [shown] = useState(() => params.get('show') === 'box')
   useEffect(() => {
-    if (!results) return
+    if (!results && !shown) return
     const rest = new URLSearchParams(location.search)
     rest.delete('results')
+    rest.delete('show')
     history.replaceState(history.state, '', `${location.pathname}?${rest.toString()}${location.hash}`)
-  }, [results])
-  const [stage, setStage] = useState<Stage>(results ? 'tables' : 'wall')
+  }, [results, shown])
+  const [stage, setStage] = useState<Stage>(results ? 'tables' : shown ? 'box' : 'wall')
   // «Ny kod» asks before the code changes, and the band says what changed once it has (#679,
   // beställarens beslut C): the code on the TV and the one just sent stop working on one press.
   const [askingCode, setAskingCode] = useState(false)
@@ -156,6 +160,12 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   // So does a box whose tab has gone, which is a role that may no longer start tables.
   const here: Stage = (stages ? !stages.some(([s]) => s === stage) : !modes.some(([m]) => m === stage) && !isCanvasStage(stage)) ? 'wall' : stage
   const mode: Mode = modeOf(here)
+  // «Visa upp» asked for by name is the first look of the tab and not every look of it: back in the
+  // tab later it opens on the net, as it always does.
+  const [showBox, setShowBox] = useState(shown)
+  useEffect(() => {
+    if (showBox && here !== 'box' && client) setShowBox(false)
+  }, [showBox, here, client])
   // Which of the template's four panels the canvas draws: all four on the desk, one at a time
   // below it.
   const canvasStage = room === 'desk' ? null : isCanvasStage(here) ? here : 'canvas'
@@ -778,6 +788,13 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         onSelectFace={setBoxFace}
         element={boxElement}
         onSelectElement={setBoxElement}
+        shown={showBox}
+        onShare={() => {
+          const q = new URLSearchParams({ project: projectId ?? '', show: 'box' })
+          const server = params.get('server')
+          if (server) q.set('server', server)
+          void navigator.clipboard?.writeText(`${location.origin}/editor?${q.toString()}`).then(() => confirmation.confirm(t('box.show.shared')), () => undefined)
+        }}
         onOpenFonts={() => {
           revealThemeSection('fonts')
           setStage('theme')

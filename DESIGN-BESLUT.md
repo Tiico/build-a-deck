@@ -9207,6 +9207,11 @@ Byggt 2026-10-26 (#1412): typen, måtten, låsen, luften och raden i Fysisk kont
 Byggt 2026-10-27 (#1413): fliken «Låda» och nätet, där en yta redigeras av Malls egen duk med kortets redigeringar märkta `on: 'box'`, och en yta som inte är ritad är den neutrala (`boxFaceOf`) tills designern först ändrar den.
 Fliken följer knappen «Starta bord», som i dag står för varje roll som får starta bord, också med en tom lek.
 «Visa upp» (#1414), lådan i foten (#1415), heron (#1416), länkbilden (#1417) och exporten (#1418) är egna skivor.
+Byggt 2026-10-27 (#1414): «Visa upp» i fliken, där nätets sex paneler viks till lådans sidor på 0,9 s och leken ställer sig bredvid, ritade av renderaren i 1,25 gånger sitt mått och bara förminskade.
+Geometrin och ljuset räknas på ett ställe, `packages/web/src/editor/boxScene.ts`, och vridningen ändrar bara transform och opacitet.
+Mina spel når vyn genom spelets ⋯ med `show=box`, som editorn läser en gång och tar ur adressen (L80); «Dela länken» kopierar samma väg in.
+En telefon har ingen flik «Låda» (L10), så Mina spel erbjuder den ingen väg dit.
+«Spara bilden» hör till länkbilden (#1417), eftersom en bild av vyn bara får tas av renderaren (E2).
 
 ### L92. Designern låser vilken kolumn som står still i Tabell, och titeln är låst från start (prototypat och beslutat 2026-10-26, #1408)
 

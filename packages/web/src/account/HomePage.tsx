@@ -18,6 +18,7 @@ import type { StartAnswer } from '../editor/startAnswer.js'
 import { anotherAsk } from '../editor/another.js'
 import { GameMenu } from './GameMenu.js'
 import { useWide } from '../join/wide.js'
+import { useRoom } from '../room.js'
 import { guestAddress } from '../guestAddress.js'
 import { marked } from './marked.js'
 import { seatColor } from '../table/seatColor.js'
@@ -66,6 +67,8 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
   const params = useMemo(() => new URLSearchParams(location.search), [])
   const server = params.get('server')
   const http = server ?? location.origin
+  // Whether the editor will have its Låda tab here (L10): a phone has none, so it is offered no way to it.
+  const room = useRoom()
   const [email, setEmail] = useState<string | null | undefined>(undefined)
   // Whether the account has been asked what the others should call it (#1254): until it has, the
   // question is the page's one band.
@@ -338,6 +341,20 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
               {t(runningOf(p).length > 0 ? 'home.menu.start.new' : 'home.menu.start')}
             </button>
           )}
+          {/* «Visa upp» (#1414): the game's box shown off, where the Låda tab is, which is for the
+              roles that may start a table and at a desk or a tablet (L10, #1413). */}
+          {canStartTables(roleOf(p)) && room !== 'phone' && (
+            <a
+              href={showOf(p)}
+              onClick={(e) => {
+                e.preventDefault()
+                setMenu(null)
+                onNavigate(showOf(p))
+              }}
+            >
+              {t('home.menu.show')}
+            </a>
+          )}
           {/* The editor's own choices for the whole game (#738, #909): its name, a copy of
               it and taking it with you are the owner's and the co-editors' (G5, #527);
               the others see no control the server would refuse them. */}
@@ -413,6 +430,7 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
     </>
   )
   const editorOf = (p: ProjectSummary) => `/editor?${suffix(new URLSearchParams({ project: p.id }))}`
+  const showOf = (p: ProjectSummary) => `/editor?${suffix(new URLSearchParams({ project: p.id, show: 'box' }))}`
   const toEditor = (p: ProjectSummary) => (e: React.MouseEvent) => {
     e.preventDefault()
     onNavigate(editorOf(p))

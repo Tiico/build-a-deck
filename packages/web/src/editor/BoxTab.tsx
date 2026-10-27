@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
+import { useCallback, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { BoxFace, boxFaceSize, boxFaceType, tuckNet, type BoxNet, type BoxSide, type NetFlap } from '@byd/engine'
 import { boxFaceOf, boxOf, type GameBox } from '@byd/server/doc'
 import type { FaceTemplate, Motif } from '@byd/template'
@@ -14,8 +14,9 @@ import { previewFonts } from './fonts.js'
 import { Scrub, TemplateCanvas, faceName } from './TemplateCanvas.js'
 import { FootSaid } from './said.js'
 import { useGesture } from './gesture.js'
-import { LockGlyph } from '../glyphs.js'
-import { useLang, useT, type Key, type T } from '../i18n/index.js'
+import { BoxShow, useMm, type Look } from './BoxShow.js'
+import { BoxGlyph, LockGlyph } from '../glyphs.js'
+import { useT, type Key, type T } from '../i18n/index.js'
 
 // Fliken «Låda» (#1413, L91, #1406 runda 2, hybriden i läget «nätet»). Tuckboxen utvikt i millimeter
 // mitt i, med flikar, vik- och snittlinjer och locket upp och ner som på arket. Till vänster lådans
@@ -27,7 +28,7 @@ import { useLang, useT, type Key, type T } from '../i18n/index.js'
 // enda renderaren (E2) i sitt eget mått, också den neutrala ytan en låda har innan den ritats.
 // Flikarna och linjerna är nätets egna, eftersom de aldrig trycks.
 //
-// «Visa upp» och vikningen mellan nätet och produktbilden är nästa skiva (#1414).
+// «Visa upp» (#1414) viker ihop nätet till produktbilden på sin plats och ut igen (`BoxShow`).
 
 export const BOX_FACES: readonly BoxFace[] = BoxFace.options
 const SIDES: readonly BoxSide[] = ['width', 'height', 'depth']
@@ -50,15 +51,34 @@ export type BoxTabProps = {
   onCatalogIcon?: ((icon: CatalogIcon, gesture: string) => Promise<string>) | undefined
   onOwnIcon?: ((icon: OwnIcon, gesture: string) => Promise<string>) | undefined
   onAddPicture?: ((file: File) => Promise<string>) | undefined
+  // Whether the tab opens on «Visa upp» rather than on the net (#1414): the way in from Mina spel.
+  shown?: boolean | undefined
+  // Copies the way into «Visa upp» (#1414), and says so in the foot.
+  onShare?: (() => void) | undefined
 }
 
 // The canvas names the face it edits `box.` and the document's key, so a face of the box is never
 // taken for the card's side of the same name (`BOX_FACE_NAMES`).
 const canvasFace = (face: BoxFace) => `box.${face}`
 
-export function BoxTab({ doc, edit, reading, assetBase, motifs, face, onSelectFace, element, onSelectElement, onOpenFonts, onCatalogFont, onCatalogIcon, onOwnIcon, onAddPicture }: BoxTabProps) {
+export function BoxTab({ doc, edit, reading, assetBase, motifs, face, onSelectFace, element, onSelectElement, onOpenFonts, onCatalogFont, onCatalogIcon, onOwnIcon, onAddPicture, shown: showFirst = false, onShare }: BoxTabProps) {
   const t = useT()
   const mm = useMm()
+  // Where the box is in its fold (#1414). The tab opens on the net, as the prototype does, unless
+  // it was asked for «Visa upp» by name.
+  const [look, setLook] = useState<Look>(showFirst ? 'show' : 'net')
+  const netRef = useRef<HTMLDivElement | null>(null)
+  const showButton = useRef<HTMLButtonElement | null>(null)
+  const unfold = useCallback(
+    (to: BoxFace | null) => {
+      if (to) {
+        onSelectFace(to)
+        onSelectElement(null)
+      }
+      setLook('unfolding')
+    },
+    [onSelectFace, onSelectElement],
+  )
   const fit = useMemo(() => boxOf(doc), [doc])
   const drawings = useMemo(() => Object.fromEntries(BOX_FACES.map((f) => [f, boxFaceOf(doc, f)])) as Record<BoxFace, ReturnType<typeof boxFaceOf>>, [doc])
   const net = useMemo(() => tuckNet(fit.type, fit.size), [fit])
@@ -110,9 +130,32 @@ export function BoxTab({ doc, edit, reading, assetBase, motifs, face, onSelectFa
           onSelectElement(null)
         }} />,
         propsHead: <Measures fit={fit} edit={edit} reading={reading} />,
+        showing: look !== 'net' && look !== 'settling',
+        over:
+          look === 'net' ? null : (
+            <BoxShow
+              doc={doc}
+              fit={fit}
+              drawings={drawings}
+              assetBase={assetBase}
+              motifs={motifs}
+              look={look}
+              net={() => netRef.current}
+              onFolded={() => setLook('show')}
+              onUnfold={unfold}
+              onUnfolded={() => setLook('settling')}
+              onSettled={() => {
+                setLook('net')
+                showButton.current?.focus({ preventScroll: true })
+              }}
+              onShare={onShare}
+            />
+          ),
         stage: (editing) => (
           <>
             <NetStage
+              netRef={netRef}
+              away={look === 'folding' || look === 'show' || look === 'unfolding'}
               doc={doc}
               net={net}
               fit={fit}
@@ -128,6 +171,10 @@ export function BoxTab({ doc, edit, reading, assetBase, motifs, face, onSelectFa
               onDeselect={() => onSelectElement(null)}
             />
             <div className="byd-box-foot">
+              <button ref={showButton} type="button" className="byd-secondary" onClick={() => setLook('folding')}>
+                <BoxGlyph />
+                {t('box.show')}
+              </button>
               <FootSaid>
                 <p className="byd-box-foot-line">
                   <span>{t('box.editing', { face: named(face) })}</span>
@@ -150,15 +197,6 @@ export function BoxTab({ doc, edit, reading, assetBase, motifs, face, onSelectFa
 
 // How many cards the deck has, read back out of its thickness.
 const cardsOf = (fit: GameBox): number => Math.round(fit.deckMm / fit.card.thicknessMm)
-
-// A measure as the reader writes it: «34,5» in Swedish, «34.5» in English.
-function useMm(): (n: number) => string {
-  const { lang } = useLang()
-  return useMemo(() => {
-    const format = new Intl.NumberFormat(lang === 'sv' ? 'sv-SE' : 'en-GB', { maximumFractionDigits: 2 })
-    return (n: number) => format.format(n)
-  }, [lang])
-}
 
 // What the faces are drawn with, shared by the list and the net.
 function useLook(doc: ProjectDoc, drawings: Record<BoxFace, { template: FaceTemplate }>, assetBase: string | undefined) {
@@ -308,7 +346,7 @@ function shortWords(fit: GameBox, t: T, mm: (n: number) => string): string {
 // The net in the middle (#1406 variant A): every face drawn by the one renderer in its place on the
 // sheet, the one being edited with the canvas' hand on it, and the flaps and lines between them.
 // It is fitted to the room it is given, so the whole sheet is always in view.
-function NetStage({ doc, net, fit, drawings, face, assetBase, motifs, editing, onChoose, onDeselect }: { doc: ProjectDoc; net: BoxNet; fit: GameBox; drawings: Record<BoxFace, { template: FaceTemplate }>; face: BoxFace; assetBase: string | undefined; motifs: Record<string, Motif> | undefined; editing(scale: number): ReactNode; onChoose(face: BoxFace): void; onDeselect(): void }) {
+function NetStage({ netRef, away, doc, net, fit, drawings, face, assetBase, motifs, editing, onChoose, onDeselect }: { netRef: RefObject<HTMLDivElement | null>; away: boolean; doc: ProjectDoc; net: BoxNet; fit: GameBox; drawings: Record<BoxFace, { template: FaceTemplate }>; face: BoxFace; assetBase: string | undefined; motifs: Record<string, Motif> | undefined; editing(scale: number): ReactNode; onChoose(face: BoxFace): void; onDeselect(): void }) {
   const t = useT()
   const look = useLook(doc, drawings, assetBase)
   const room = useRef<HTMLElement | null>(null)
@@ -316,7 +354,7 @@ function NetStage({ doc, net, fit, drawings, face, assetBase, motifs, editing, o
   const px = PX_PER_MM * scale
   return (
     <section ref={room} className="byd-canvas-stage byd-box-stage" aria-label={t('box.net')} tabIndex={0} onClick={onDeselect} style={{ ['--byd-canvas-scale' as string]: String(scale) }}>
-      <div className="byd-box-net" style={{ width: `${net.width * px}px`, height: `${net.height * px}px` }}>
+      <div ref={netRef} className="byd-box-net" {...(away ? { 'data-away': '' } : {})} style={{ width: `${net.width * px}px`, height: `${net.height * px}px` }}>
         <NetLines net={net} px={px} part="flaps" />
         {net.panels.map((p) => (
           <div
