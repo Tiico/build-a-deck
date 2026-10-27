@@ -60,6 +60,10 @@ export type HomePageProps = { onNavigate?(url: string): void }
 // listed only the account's own games.
 const roleOf = (p: ProjectSummary): Role => p.role ?? 'owner'
 const mayDoAny = (role: Role): boolean => canStartTables(role) || canEdit(role) || canDelete(role)
+// Whether a table can be started from the game (#1415, L91): a role that may, and a deck with a card in
+// it, which is what the editor's «Starta bord» stands on and what the server holds a start to. A game
+// the list does not count is left to the server.
+const startable = (p: ProjectSummary): boolean => canStartTables(roleOf(p)) && (p.cards ?? 1) > 0
 
 export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePageProps) {
   const t = useT()
@@ -330,7 +334,7 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
               {t('home.menu.open', { code: table.code })}
             </a>
           ))}
-          {canStartTables(roleOf(p)) && (
+          {startable(p) && (
             <button
               type="button"
               onClick={() => {
@@ -716,7 +720,7 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
                         {t('home.menu.open', { code: heroTable.code })}
                       </a>
                     ) : (
-                      canStartTables(roleOf(hero)) && (
+                      startable(hero) && (
                         <button type="button" className="byd-secondary" onClick={() => startFrom(hero)}>
                           {t('home.menu.start')}
                         </button>

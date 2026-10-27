@@ -70,6 +70,22 @@ describe('projects (L4, L5)', () => {
     expect((await json('GET', '/projects/nope')).status).toBe(404)
   })
 
+  // Spelbar är en lek med minst ett kort (#1415, L91, beställarens beslut 2026-10-27): ett bord utan kort
+  // har inget att dela ut och inget att rita, och «Starta bord» står inte förrän leken har ett. Servern
+  // säger samma sak, så att en sida som inte hunnit få veta det inte startar ett tomt bord.
+  it('refuses to start a table from a game whose deck holds no card, and starts one once it holds one', async () => {
+    const { id } = (await (await json('POST', '/projects', { ...project(), rows: [] })).json()) as { id: string }
+    const refused = await json('POST', `/projects/${id}/sessions`, {})
+    expect(refused.status).toBe(409)
+    expect(await refused.json()).toEqual({ error: 'the deck has no cards' })
+    expect(await run.store.sessionsOf(id)).toEqual([])
+    // En rad med antal 0 är inget kort heller.
+    expect((await json('PUT', `/projects/${id}`, { ...project(), rows: [{ id: 'dragon', fields: { title: 'Drake', antal: 0 } }], rev: 1 })).status).toBe(200)
+    expect((await json('POST', `/projects/${id}/sessions`, {})).status).toBe(409)
+    expect((await json('PUT', `/projects/${id}`, { ...project(), rows: [{ id: 'dragon', fields: { title: 'Drake', antal: 1 } }], rev: 2 })).status).toBe(200)
+    expect((await json('POST', `/projects/${id}/sessions`, {})).status).toBe(201)
+  })
+
   // A name of 445 characters made the home page's tile sixteen lines tall (#476).
   it('refuses to make or replace a game whose name is longer than 64 characters', async () => {
     expect((await json('POST', '/projects', { ...project(), name: 'x'.repeat(65) })).status).toBe(400)
