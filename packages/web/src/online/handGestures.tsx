@@ -74,6 +74,25 @@ export function useHandGestures({ cards, faces, onPlay, locked = false, onCarry,
   useEffect(() => {
     if (dragging) putDown()
   }, [dragging])
+  // A mouse that has gone elsewhere puts its card down, read off where the pointer arrives and not
+  // only off React's leave (#1325). React leaves a card on the browser's `pointerout`, which goes to
+  // whatever the pointer was last known to be over. When that node has since been taken away — the
+  // words «Laddar kortet…» once the face arrives, a front swapped for a back — and the browser has
+  // not looked again before the next move, the `pointerout` goes to the node that is gone, React's
+  // listener never hears it, and the lift stayed up with the mouse at the other end of the window.
+  // Where the pointer arrives is always said, on a node that is there.
+  const mouseOn = pointed?.by === 'mouse' ? pointed.id : null
+  useEffect(() => {
+    if (mouseOn === null) return
+    const arrived = (e: PointerEvent) => {
+      if (e.pointerType !== 'mouse') return
+      const on = e.target instanceof Element ? e.target.closest('[data-hand-card]') : null
+      if (on?.getAttribute('data-hand-card') === mouseOn) return
+      setPointed((p) => (p?.id === mouseOn && p.by === 'mouse' ? null : p))
+    }
+    window.addEventListener('pointerover', arrived, true)
+    return () => window.removeEventListener('pointerover', arrived, true)
+  }, [mouseOn])
   const reading = drag ? null : pointed ?? read
   const readCard = reading ? cards.find((c) => c.id === reading.id) : undefined
   // A card whose words are smaller than the wizard's frame is lifted larger (#523).

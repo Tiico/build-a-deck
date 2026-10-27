@@ -44,6 +44,26 @@ describe('a card in the column, read with one action (K26, #510)', () => {
     expect(lifted()).toBeNull()
   })
 
+  // What Chromium sent in the CI run that kept a lift up (#1325), reproduced in a real browser by
+  // holding the faces and answering them under a mouse that rests on the card. The words «Laddar
+  // kortet…» stood under the pointer and were taken away when the face arrived; Chromium had not
+  // looked again at what was under the mouse when the next move came, so it sent the `pointerout`
+  // to the words that were gone, where React's listener never hears it, and the `pointerover` on
+  // what the mouse went to named the card as where it came from. React leaves a card on the
+  // `pointerout` alone, and lets an over from a node it knows pass, so the card was never left.
+  it('puts the card down when the mouse arrives elsewhere, even when the leaving went to a node that is gone (#1325)', () => {
+    const { el } = column()
+    const c1 = el('c1')
+    act(() => void fireEvent.pointerOver(c1, { pointerType: 'mouse', relatedTarget: document.body }))
+    expect(lifted()?.getAttribute('data-lift')).toBe('c1')
+    const gone = document.createElement('span')
+    act(() => void fireEvent.pointerOut(gone, { pointerType: 'mouse', relatedTarget: document.body }))
+    const elsewhere = document.body.appendChild(document.createElement('aside'))
+    act(() => void fireEvent.pointerOver(elsewhere, { pointerType: 'mouse', relatedTarget: c1 }))
+    expect(lifted()).toBeNull()
+    elsewhere.remove()
+  })
+
   it('a finger’s first press lifts the card and opens nothing; the second opens the panel', () => {
     const { el, onOpen } = column()
     press(el('c1'), 'touch')
