@@ -9217,6 +9217,9 @@ Foten håller sin höjd också med anmärkningarnas dörr, som förut gjorde den
 Den lilla lådan är en symbol för måtten och ritar ingen yta (E2): framsidan, locket och sidan i lekens färg, med sidan lika djup som leken mot lådans höjd.
 Den tar en rad i foten och inte mer, och den står inte på en telefon, som inte lägger något i millimeter (L10).
 `packages/web/test/wall-box-foot.test.tsx` och `packages/e2e/test/wall-box-grows.spec.ts` är grindarna.
+Byggt 2026-10-27 (#1431): en text i mallen kan vridas ett kvarts varv, `rotationDeg` 90 (läses nedåt) eller -90 (läses uppåt), och den neutrala lådans sidor bär namnet längs ryggen med bokstävernas överkant mot framsidan.
+Rutan vrids inte, bara orden i den, så markeringsramen, handtagen, dragningen och Fysisk kontroll står på rutan som för en upprätt text; den enda renderaren (E2) vrider orden i texturen och i PDF:en, och E6 anpassar och E5 mäter golvet längs rutans längd.
+I editorn är vridningen valet «Riktning» bakom «Finjustering» i textens egenskaper, eftersom textpanelen inte har någon rad över vid 1024 × 768 (#736).
 Byggt 2026-10-27 (#1418): exporten bär lådan och tryckpaketet visar den som del 3.
 Dokumentets `box` står i varje version, och manifestets `print.box` säger typen, måtten, låsen, luften, nätets mått och vilken PDF som är vilken yta.
 Lådans sex ytor ligger som tryck-PDF:er med typens utfall under `tryck/lada/`, ritade eller neutrala, kompilerade och ritade som korten (`box-print.ts`); de följer med även när tryckkontrollen stoppar kortfilerna, eftersom kontrollen läser korten.

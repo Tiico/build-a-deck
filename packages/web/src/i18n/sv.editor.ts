@@ -958,6 +958,11 @@ export const svEditor = {
   // «krymp till gräns» klipptes till «krymp till grä…».
   'canvas.fit.shrink': 'krymp',
   'canvas.fit.fixed': 'fast',
+  // Vilken väg orden löper (#1431), bakom «Finjustering» med de två avstånden.
+  'canvas.props.direction': 'Riktning',
+  'canvas.direction.across': 'vågrätt',
+  'canvas.direction.down': 'nedåt',
+  'canvas.direction.up': 'uppåt',
   // Niopunktsplattan (L41): ett grepp som svarar på båda leden, och varje rutas namn är de två
   // orden i den ordning plattan läses — i sidled först, som texten själv.
   'canvas.props.place': 'Placering i rutan',
