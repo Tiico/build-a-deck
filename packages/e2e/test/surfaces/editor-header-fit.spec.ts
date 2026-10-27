@@ -267,7 +267,8 @@ test.describe('the table strip under the header', () => {
     const project = await makeProject(page.request, { name: 'Remsan', players: 2, cards: 3 })
     await startTable(page.request, project.id)
     await page.goto(project.editorUrl)
-    const code = page.locator('.byd-editor-table-link .byd-editor-room button')
+    // The band's ⋯ (#1422), which «Ny kod» moved into: the band's own quiet button, a full target.
+    const code = page.locator('.byd-editor-table-link .byd-tables-more')
     await expect(code).toBeVisible()
     const drawn = await code.evaluate((b) => {
       const s = getComputedStyle(b)

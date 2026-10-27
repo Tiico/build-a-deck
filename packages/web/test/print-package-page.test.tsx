@@ -60,15 +60,15 @@ describe('the print package page', () => {
     expect(screen.queryByRole('heading', { name: 'Tryckpaketet' })).toBeNull()
   })
 
-  it('lays the package out in five numbered parts, with the packing slip beside them', async () => {
+  it('lays the package out in six numbered parts, with the packing slip beside them', async () => {
     await made(printable())
     open()
     expect(await screen.findByRole('heading', { level: 1, name: /^Tryckpaketet/ })).toBeTruthy()
     expect(screen.getByText('Skogens herrar · v1')).toBeTruthy()
     expect(screen.getByText(/Det här är vad ett tryckeri skulle få om Skogens herrar trycktes i dag/)).toBeTruthy()
     const parts = [...document.querySelectorAll('.byd-print-part h2')].map((h) => h.textContent)
-    expect(parts).toEqual(['Så skärs ett kort', 'Leken: 4 kort', 'Det som inte trycks', 'Testtryckeriets krav', 'Paketet'])
-    expect([...document.querySelectorAll('.byd-print-part .byd-print-nr')].map((n) => n.textContent)).toEqual(['1', '2', '3', '4', '5'])
+    expect(parts).toEqual(['Så skärs ett kort', 'Leken: 4 kort', 'Lådan', 'Det som inte trycks', 'Testtryckeriets krav', 'Paketet'])
+    expect([...document.querySelectorAll('.byd-print-part .byd-print-nr')].map((n) => n.textContent)).toEqual(['1', '2', '3', '4', '5', '6'])
     expect(within(slip()).getByRole('heading', { name: 'Vad tryckeriet skulle svara' })).toBeTruthy()
     expect(facts(slip().querySelector('dl')!)).toEqual({ Kort: '4', 'Olika framsidor': '3', 'Tärningar d6': '2', Tryckkontrollen: 'inga fel' })
     // Back to where the designer came from: Mina spel, or the game in the editor.
@@ -150,7 +150,41 @@ describe('the print package page', () => {
     expect(zip.textContent).toContain('… 2 filer till, fram och bak för varje kort')
     expect(zip.textContent).not.toContain('regelhafte')
     // What is not built is said, not pretended.
-    expect(zip.textContent).toContain('tryckbilden till lådan, och filer i tryckfärger (CMYK)')
+    expect(zip.textContent).toContain('lådans tryckfiler och filer i tryckfärger (CMYK)')
+  })
+
+  // Del 3 (#1418, L91, runda 2 steg 5): the box, neutral until it is drawn, with its measure and its
+  // net, every face drawn by the one renderer (E2); and its print files come with a chosen partner.
+  it('shows the box as part 3, neutral while it is not drawn, with its measure and its net', async () => {
+    await made(printable())
+    const gone = open()
+    const box = await screen.findByRole('region', { name: 'Lådan' })
+    // Four cards at 0,3 mm and 2 mm of air: 3,2 mm, a step of half a millimetre up.
+    expect(within(box).getByText('En tuckbox på 65 × 90 × 3,5 mm')).toBeTruthy()
+    expect(within(box).getByText('Neutral: spelets namn och lekens färg.')).toBeTruthy()
+    const net = within(box).getByRole('img', { name: 'Lådans nät' })
+    const faces = [...net.querySelectorAll<HTMLElement>('.byd-box-panel')].map((p) => p.dataset['face'])
+    expect(faces.sort()).toEqual(['back', 'bottom', 'front', 'left', 'lid', 'right'])
+    for (const panel of net.querySelectorAll('.byd-box-panel')) expect(panel.querySelector('[data-card]')).not.toBeNull()
+    expect(net.querySelector('.byd-box-lines')).not.toBeNull()
+    expect(within(box).getByText('Lådans tryckfiler, med stansform och i tryckfärger, kommer när en tryckpartner är vald.')).toBeTruthy()
+    const draw = within(box).getByRole('link', { name: 'Rita lådan ›' })
+    const to = `/editor?project=${run.projectId}&open=box&server=${encodeURIComponent(run.http)}`
+    expect(draw.getAttribute('href')).toBe(to)
+    fireEvent.click(draw)
+    expect(gone).toEqual([to])
+  })
+
+  it('says how much of the box is drawn and which measures are locked', async () => {
+    const front = { base: [{ kind: 'shape', id: 'ground', x: 0, y: 0, w: 65, h: 90, shape: 'rect', fill: '#7a2e1f' }], variants: {} }
+    await made({ ...printable(), box: { type: { id: 'box.tuck', version: 1 }, locked: { depth: 20 }, faces: { front } } } as ProjectDoc)
+    open()
+    const box = await screen.findByRole('region', { name: 'Lådan' })
+    expect(within(box).getByText('En tuckbox på 65 × 90 × 20 mm')).toBeTruthy()
+    expect(within(box).getByText('Ritade ytor: 1 av 6.')).toBeTruthy()
+    expect(within(box).getByText('Låst: djupet.')).toBeTruthy()
+    expect(within(box).queryByText(/^Neutral/)).toBeNull()
+    expect(within(box).getByRole('link', { name: 'Redigera lådan ›' })).toBeTruthy()
   })
 
   it('downloads the zip once its files are drawn, under the name the server gives it', async () => {

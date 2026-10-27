@@ -1712,6 +1712,13 @@ export class ProjectClient {
     const res = await fetch(`${this.http}/sessions/${encodeURIComponent(sessionId)}/kick`, hostAuthority(hostKey, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ seat }) }))
     if (!res.ok) throw new Error(`could not kick ${seat}: ${res.status}`)
   }
+  // «Avsluta bordet» from the band (#1422), which looks at the table through a lobby and may send it
+  // nothing: the host's third control, beside the code and the kick. The table ends as it ends
+  // itself (C9), and ending a table that is over is nothing.
+  async endTable(sessionId: string, hostKey: string | undefined): Promise<void> {
+    const res = await fetch(`${this.http}/sessions/${encodeURIComponent(sessionId)}/end`, hostAuthority(hostKey, { method: 'POST' }))
+    if (!res.ok) throw new Error(`could not end the table: ${res.status}`)
+  }
 
   // "Uppdatera bordet" on a running table (C7, L5): unsaved edits are saved first, then the
   // table takes the current rev as a version change without stopping the game.

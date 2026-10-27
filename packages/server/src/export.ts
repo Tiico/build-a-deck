@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { strFromU8, strToU8, unzipSync, zipSync, type Zippable } from 'fflate'
 import { ASSET_MAX_BYTES, sniffAsset } from '@byd/protocol'
+import { BoxFace } from '@byd/engine'
 import { ProjectDoc, checkedHistory, liftDoc } from './projects.js'
 import { assetHash, assetHashesOf, svgBytesRefusal } from './assets.js'
 import { PROJECT_NAME_MAX } from './edits.js'
@@ -15,7 +16,8 @@ import { PROJECT_NAME_MAX } from './edits.js'
 //   schema.json    the manifest's JSON Schema, generated from the very schema that validates it
 //   LASMIG.md      what each part is, in the language the export was asked for in (A4)
 //   assets/        every picture and typeface any version uses, as the file it is
-//   tryck/         the print-ready PDFs of the current version, with bleed, and the rulebook
+//   tryck/         the print-ready PDFs of the current version, with bleed, and the rulebook; the
+//                  box's faces in `tryck/lada/` (#1418)
 //
 // The names are fixed and never translated: they are a format, and a format is read by machines.
 // They are ASCII, too. The zip marks a non-ASCII name as UTF-8 as it should, but the unzip macOS
@@ -45,6 +47,22 @@ export const ExportAsset = z.object({
   size: z.number().int().nonnegative(),
   motif: Motif.optional(),
 })
+// The game's box as it is measured and drawn (#1418, L91): the type the game pins, its measure out of
+// the deck with the designer's locks and air, the net the sheet is folded from, and which print file
+// is which face. The document's own `box` stands in every version; this is that box worked out, so a
+// reader of the zip need not run our arithmetic. Derived, like the PDFs, so the import does not read it.
+const Measure = z.object({ width: z.number(), height: z.number(), depth: z.number() })
+export const ExportBox = z.object({
+  type: z.object({ id: z.string(), version: z.number().int().nonnegative() }),
+  size: Measure,
+  locked: z.object({ width: z.boolean(), height: z.boolean(), depth: z.boolean() }),
+  clearance: z.object({ around: z.number(), depth: z.number() }),
+  net: z.object({ width: z.number(), height: z.number() }),
+  // `drawn` is false for a face the designer has not drawn, which is printed as the neutral box.
+  faces: z.partialRecord(BoxFace, z.object({ file: z.string(), drawn: z.boolean() })),
+})
+export type ExportBox = z.infer<typeof ExportBox>
+
 export const ProjectExport = z.object({
   format: z.literal(EXPORT_FORMAT),
   formatVersion: z.literal(EXPORT_FORMAT_VERSION),
@@ -74,6 +92,8 @@ export const ProjectExport = z.object({
     errors: z.array(Finding),
     // Print files the renderer could not make, by the file they would have had.
     failed: z.array(z.string()),
+    // The box (#1418); absent from an export made before the box was.
+    box: ExportBox.optional(),
   }),
 })
 export type ProjectExport = z.infer<typeof ProjectExport>
@@ -105,6 +125,10 @@ export const assetFileOf = (hash: string, contentType: string): string => `asset
 // it is. Two ids that fold to the same name are told apart where the plan is made.
 export const printFileOf = (cardRef: string, face: string, nth = 1): string => `tryck/${safe(cardRef)}${nth > 1 ? `-${nth}` : ''}-${safe(face)}.pdf`
 export const RULEBOOK_FILE = 'tryck/regelhafte.pdf'
+// A face of the box (#1418), in a folder of its own: a card's file is `<id>-<face>.pdf`, and a card
+// may be called `lada`.
+export const BOX_PRINT_FOLDER = 'tryck/lada/'
+export const boxPrintFileOf = (face: BoxFace): string => `${BOX_PRINT_FOLDER}${face}.pdf`
 const safe = (s: string): string => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9_-]+/g, '_')
 
 // What the zip is called when it is saved: the game and its version, said as people read it, «v3»
@@ -152,6 +176,7 @@ export function readmeOf(lang: 'sv' | 'en', m: ProjectExport): string {
     if (cards || rulebook) lines.push(`- \`tryck/\` — ${cards ? `print-ready PDFs of version ${m.print.rev}, with bleed: one per face of each card${rulebook ? ', and the rulebook as a booklet' : ''}` : `the rulebook of version ${m.print.rev} as a booklet`}.`)
     if (m.print.errors.length > 0) lines.push(`- The cards' print-ready PDFs are left out: the print checks stopped version ${m.print.rev} (${m.print.errors.length} ${m.print.errors.length === 1 ? 'finding' : 'findings'}, listed in \`print.errors\`).`)
     if (m.print.failed.length > 0) lines.push(`- ${m.print.failed.length} print ${m.print.failed.length === 1 ? 'file' : 'files'} could not be made and ${m.print.failed.length === 1 ? 'is' : 'are'} left out; listed in \`print.failed\`.`)
+    if (m.print.box) lines.push(...boxLines('en', m.print.box))
     return `# ${m.project.name}, exported ${when}
 
 This is the whole of the game as it stood at version ${m.current.rev}, and every version before it.
@@ -172,6 +197,7 @@ Format \`${m.format}\`, version ${m.formatVersion}.
   if (cards || rulebook) lines.push(`- \`tryck/\` — ${cards ? `tryckfärdiga PDF:er av version ${m.print.rev}, med utfall: en per sida av varje kort${rulebook ? ', och regelhäftet som häfte' : ''}` : `regelhäftet för version ${m.print.rev} som häfte`}.`)
   if (m.print.errors.length > 0) lines.push(`- Kortens tryckfärdiga PDF:er är utelämnade: tryckkontrollen stoppade version ${m.print.rev} (${m.print.errors.length} fynd, listade i \`print.errors\`).`)
   if (m.print.failed.length > 0) lines.push(`- ${m.print.failed.length} ${m.print.failed.length === 1 ? 'tryckfil' : 'tryckfiler'} kunde inte skapas och följer inte med; de står i \`print.failed\`.`)
+  if (m.print.box) lines.push(...boxLines('sv', m.print.box))
   return `# ${m.project.name}, exporterat ${when}
 
 Det här är hela spelet som det stod i version ${m.current.rev}, och varje version före den.
@@ -181,6 +207,45 @@ ${lines.join('\n')}
 
 Formatet \`${m.format}\`, version ${m.formatVersion}.
 `
+}
+
+// The box in words (#1418), as LASMIG of the export and of the print package both say it: its measure,
+// which of its measures are locked, and how many of its faces the designer has drawn.
+const mmOf = (n: number, lang: 'sv' | 'en'): string => (lang === 'sv' ? String(n).replace('.', ',') : String(n))
+const SIDE_WORDS = { sv: { width: 'bredden', height: 'höjden', depth: 'djupet' }, en: { width: 'the width', height: 'the height', depth: 'the depth' } } as const
+export type BoxSaid = { size: string; locked: string; drawn: string }
+export function boxSaid(lang: 'sv' | 'en', box: Pick<ExportBox, 'size' | 'locked'>, drawn: number, faces: number): BoxSaid {
+  const size = `${mmOf(box.size.width, lang)} × ${mmOf(box.size.height, lang)} × ${mmOf(box.size.depth, lang)} mm`
+  const sides = (['width', 'height', 'depth'] as const).filter((side) => box.locked[side]).map((side) => SIDE_WORDS[lang][side])
+  if (lang === 'en') {
+    return {
+      size: `${size} (width × height × depth)`,
+      locked: sides.length === 0 ? '' : `, and ${sides.join(' and ')} ${sides.length === 1 ? 'is' : 'are'} locked`,
+      drawn: drawn === 0 ? `No face is drawn yet, so all ${faces} are the neutral box with the game's name and the deck's colour` : `${drawn} of ${faces} faces ${drawn === 1 ? 'is' : 'are'} drawn, and the rest are the neutral box`,
+    }
+  }
+  return {
+    size: `${size} (bredd × höjd × djup)`,
+    locked: sides.length === 0 ? '' : `, och ${sides.join(' och ')} ${sides.length === 1 ? 'är låst' : 'är låsta'}`,
+    drawn: drawn === 0 ? `Ingen yta är ritad än, så alla ${faces} är den neutrala lådan med spelets namn och lekens färg` : `${drawn} av ${faces} ytor ${drawn === 1 ? 'är ritad' : 'är ritade'}, och resten är den neutrala lådan`,
+  }
+}
+
+// The box in LASMIG (#1418): where its faces are, what it measures and what is the designer's, and
+// that the files a printer folds it from come with the partner (L91, F1, F2).
+function boxLines(lang: 'sv' | 'en', box: ExportBox): string[] {
+  const files = Object.values(box.faces).filter((f) => f !== undefined)
+  const said = boxSaid(lang, box, files.filter((f) => f.drawn).length, files.length)
+  if (lang === 'en') {
+    return [
+      `- \`tryck/lada/\` — the box's faces as print-ready PDFs with bleed, one per face: a tuckbox of ${said.size}${said.locked}. ${said.drawn}. Its measure, locks, air and net are in \`print.box\`, and what the designer drew is the document's \`box\`.`,
+      `- The box's print files for a printer, with the die line and in printing colours (CMYK), come once a print partner is chosen.`,
+    ]
+  }
+  return [
+    `- \`tryck/lada/\` — lådans ytor som tryckfärdiga PDF:er med utfall, en per yta: en tuckbox på ${said.size}${said.locked}. ${said.drawn}. Måtten, låsen, luften och nätet står i \`print.box\`, och det designern ritat står i dokumentets \`box\`.`,
+    `- Lådans tryckfiler till ett tryckeri, med stansform och i tryckfärger (CMYK), kommer när en tryckpartner är vald.`,
+  ]
 }
 
 // What the window that hands the zip over says about it (#1356), in a header beside the zip: the

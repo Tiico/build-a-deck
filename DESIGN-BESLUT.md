@@ -2088,7 +2088,7 @@ Byggt 2026-10-24 (#1208, beställarens beslut B efter [prototypen](https://githu
 - Sidan har fem numrerade delar: kniven, där kortet ritas som sin fil med utfall, snitt och skyddsmarginal av den enda renderaren och kniven går att pröva; leken med antal och tryckkontrollen; det som inte trycks; Testtryckeriets krav i ord; och zippens träd. Bredvid står följesedeln med antalen, kontrollen, exempelsvaret och nedladdningen.
 - Testtryckeriet är den enda provider servern registrerar i betan: en fake-provider som låtsas trycka i Sverige, inom EU (F2), och ställer exakt de krav kortets typ ställer, så att editorns kontroll, exporten och paketet mäter samma utfall. Sidan frågar efter paketet som en order till Sverige dirigeras, och svaret är stämplat «Exempel · inget riktigt pris», utan tull.
 - Nedladdningen är en zip med `LASMIG.md`, `manifest.json`, en PDF per kortsida under `tryck/` och regelhäftet. Hittar tryckkontrollen ett fel lämnas kortfilerna ute med exportens regel (G5), och sidan, manifestet och läsmig säger varför.
-- Lådans tryckbild och filer i CMYK finns inte, och sidan säger det. Läget «med partner» (#1209) är inte byggt; följesedeln är formad så att den kan bli kostnadsbeskedet (F3).
+- Lådans tryckbild och filer i CMYK finns inte, och sidan säger det. Sedan #1418 står lådan som del 3 med måtten och nätet, och paketet har sex numrerade delar. Läget «med partner» (#1209) är inte byggt; följesedeln är formad så att den kan bli kostnadsbeskedet (F3).
 
 ### F2. Adapterlager mot flera partner (fråga 11)
 
@@ -9206,6 +9206,12 @@ Lådans text vid skapandet skrivs på designerns språk och blir hennes (A4).
 Byggt 2026-10-26 (#1412): typen, måtten, låsen, luften och raden i Fysisk kontroll.
 Byggt 2026-10-27 (#1413): fliken «Låda» och nätet, där en yta redigeras av Malls egen duk med kortets redigeringar märkta `on: 'box'`, och en yta som inte är ritad är den neutrala (`boxFaceOf`) tills designern först ändrar den.
 Fliken följer knappen «Starta bord», som i dag står för varje roll som får starta bord, också med en tom lek.
+Byggt 2026-10-27 (#1418): exporten bär lådan och tryckpaketet visar den som del 3.
+Dokumentets `box` står i varje version, och manifestets `print.box` säger typen, måtten, låsen, luften, nätets mått och vilken PDF som är vilken yta.
+Lådans sex ytor ligger som tryck-PDF:er med typens utfall under `tryck/lada/`, ritade eller neutrala, kompilerade och ritade som korten (`box-print.ts`); de följer med även när tryckkontrollen stoppar kortfilerna, eftersom kontrollen läser korten.
+Importen tar tillbaka lådan med dokumentet, och rundturen ger samma `spel.json`; `print.box` läses inte in, eftersom den kan härledas.
+Tryckpaketets del 3 visar nätet med varje yta ur den enda renderaren, måtten, om lådan är ritad eller neutral och vilka mått som är låsta, med «Rita lådan ›» till fliken Låda (`open=box`).
+Paketets `manifest.json` bär lådan som den mäts, utan filer, och sidan och båda `LASMIG.md` säger att lådans tryckfiler, med stansform och i CMYK, kommer när en tryckpartner är vald (F1, F2).
 Byggt 2026-10-27 (#1416): heron i Mina spel visar lådan i C:s stilla form, framsidan och högra sidan vridna 24° bakom lekens första kort, när designern har öppnat fliken «Låda».
 Att hon har öppnat den sparas på spelet, i `projects.box_opened_at` (`openBox` och `boxOpened` i `ProjectStore`), och inte i dokumentet eller på kontot.
 I dokumentet hade öppnandet varit en redigering, med en version och ett steg att ångra, och en äldre version som togs tillbaka hade tagit det med sig.
@@ -9216,7 +9222,7 @@ Heron visar lådan också när någon yta är ritad, eftersom att rita den är a
 Locket står inte med: lutad så lite som prototypen lutar den blir lockets text några pixlar hög och läses som smuts.
 Kortet täcker sidan och framsidans nedre hörn och inte mer, så att spelets namn på en låda som inte är ritad står helt.
 Länkbilden (#1417) följer heron genom samma två frågor, `boxOpened` och `showsCover`.
-«Visa upp» (#1414), lådan i foten (#1415), länkbilden (#1417) och exporten (#1418) är egna skivor.
+«Visa upp» (#1414), lådan i foten (#1415) och länkbilden (#1417) är egna skivor.
 
 ### L92. Designern låser vilken kolumn som står still i Tabell, och titeln är låst från start (prototypat och beslutat 2026-10-26, #1408)
 
@@ -9246,3 +9252,35 @@ En designer som låst upp allt har sagt något, och får inte titeln tillbaka n�
 Mätt i prototypen vid 1280: listen 302 → 237 px, body:s tak (L46) 902 → 967 px, Tab från bocken till antal 1 → 2.
 Ett fynd att bära med: titeln ensam är inget namn — provleken har fyra «Duel» — och B:s underrad med id under titeln löste det; «A med B:s underrad» är nästa prototyp om det visar sig störa.
 `packages/web/test/data-table-lock.test.tsx` är grinden för låset, `data-table-hover.test.tsx` för listens målning, och `packages/e2e/test/surfaces/table-antal-rail.spec.ts` och `table-sticky-focus.spec.ts` för listen i det byggda appen.
+
+### L93. Bordsbandet är en biljett: koden störst, platserna på egen rad, «Öppna bordet» som knapp (prototypat och beslutat 2026-10-26, #1422)
+
+Bandet under huvudet när ett bord kör var en mening: «Bordet kör version 7 — öppna bordet · rumskod UF6H2W [Ny kod] · vid bordet: [Ada ×] …».
+Vägen in var en länk i gemener mitt i meningen, koden ett fetstilt ord, och «Ny kod», som trycks en gång i månaden, en kantad knapp bredvid det som läses högt till alla i rummet.
+Beställaren: «Banderollen för öppna bord ser lite placeholderaktig ut.»
+
+Sju former prövades i [`docs/ux-audits/2026-10-26-bordsbandet/`](docs/ux-audits/2026-10-26-bordsbandet/README.md), i två rundor.
+A, B och C polerade bandet på plats (raden med struktur, biljetten, en smal statusrad); D, E och F flyttade bordet ut ur bandet (en «nu spelas»-docka längst ned, ett flytande bordskort, en Bord-flik som lyser).
+Valet blev **B · Biljetten**.
+F mättes bort: huvudet rymmer inte «Bord ● UF6H2W» i CI:s typsnitt (namnet klipptes till 34 px vid 1440, fliken vid 1280), samma mätning som fällde L60:s variant B.
+
+**Koden är en biljett till vänster.**
+«rumskod» i versaler och koden under, i TV:ns bokstäver, monospace, spärrad, på en mörk bricka, som Bord-fliken och TV:n redan ritar den (K12, #706).
+Koden är det största på bandet, därför att den är det som läses högt; den är ingen träffyta, och «Kopiera länk» bredvid fakta är det som trycks om den (L77).
+
+**Bordets fakta står bredvid på två rader.**
+Rad ett: en levande punkt, samma mening som förut i samma live region, hur ni sitter i startens egna ord («Runt en skärm», «Var och en vid sin dator», L86; ett bord från före frågan säger inget), och «Kopiera länk».
+Rad två: lägets mening medan bordet har ett, kort som laddas eller kort som inte kunde laddas med «Försök igen», och annars platserna som brickor med × (L60, L61) och ett ansikte i platsens färg (`seatColor`, K9), en andra berättelse om platsen och aldrig den enda (L12).
+Platserna har alltid en egen rad: bandet bryter aldrig mitt i brickorna, och det som står på rad ett flyttar inte när någon sätter sig.
+
+**Vägen in och resten står till höger.**
+«Öppna bordet» är samma kantade knapp som Bord-flikens rad har, med samma namn för skärmläsaren och flikens tecken, och visas som förut först när korten är laddade (#765).
+Ett ⋯ «Fler val för bordet KOD» är radens egen meny (`RowWays`) med «Ny kod» och «Avsluta bordet»; båda frågar först som förut (#679, C9), och frågorna står under bandet.
+Punkten står stilla vid nedsatt rörelse och blir rosa när kort saknas, med bandets övriga färger.
+
+Måtten i den byggda appen: 75 px med platser vid bordet (61 förut), med 4 px luft över och under i stället för prototypens 8, eftersom Mall-flikens textpanel vid 1024 × 768 har exakt så mycket rum bredvid bandet (#736, `template-text-and-back-fit.spec.ts`).
+Priset är de 14 pixlarna på varje flik så länge bordet kör, och det är det priset formen valdes med.
+
+Följdkrav:
+Bandet tittar på bordet genom en lobby som förut, som bara ser platserna och slutet och kostar bordet ingenting (DRIFT §9); avslutet går över HTTP som koden och sparken, `POST /sessions/:id/end` med värdnyckeln eller ägarens inloggning, och bordet avslutas som det avslutar sig självt (C9).
+`editor-seat-chips.spec.ts` mäter att platserna står under första raden vid 1024 och 1280, att ×-et är helt och att fokus faller till ⋯ när sista platsen går; `editor-page.test.tsx` visar hur ni sitter, vägen in med radens namn, kopian, «Ny kod» och slutet ur ⋯.
