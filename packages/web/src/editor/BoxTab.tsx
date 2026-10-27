@@ -61,13 +61,15 @@ export type BoxTabProps = {
   shown?: boolean | undefined
   // Copies the way into «Visa upp» (#1414), and says so in the foot.
   onShare?: (() => void) | undefined
+  // «Spara bilden» (#1417): the link's still as a file, which `BoxShow` waits on.
+  onSave?: (() => Promise<void>) | undefined
 }
 
 // The canvas names the face it edits `box.` and the document's key, so a face of the box is never
 // taken for the card's side of the same name (`BOX_FACE_NAMES`).
 const canvasFace = (face: BoxFace) => `box.${face}`
 
-export function BoxTab({ doc, edit, reading, assetBase, motifs, face, onSelectFace, element, onSelectElement, onOpenFonts, onCatalogFont, onCatalogIcon, onOwnIcon, onAddPicture, shown: showFirst = false, onShare }: BoxTabProps) {
+export function BoxTab({ doc, edit, reading, assetBase, motifs, face, onSelectFace, element, onSelectElement, onOpenFonts, onCatalogFont, onCatalogIcon, onOwnIcon, onAddPicture, shown: showFirst = false, onShare, onSave }: BoxTabProps) {
   const t = useT()
   const mm = useMm()
   // Where the box is in its fold (#1414). The tab opens on the net, as the prototype does, unless
@@ -159,6 +161,7 @@ export function BoxTab({ doc, edit, reading, assetBase, motifs, face, onSelectFa
                 showButton.current?.focus({ preventScroll: true })
               }}
               onShare={onShare}
+              onSave={onSave}
             />
             </Suspense>
           ),

@@ -9227,10 +9227,17 @@ Importen tar tillbaka lådan med dokumentet, och rundturen ger samma `spel.json`
 Tryckpaketets del 3 visar nätet med varje yta ur den enda renderaren, måtten, om lådan är ritad eller neutral och vilka mått som är låsta, med «Rita lådan ›» till fliken Låda (`open=box`).
 Paketets `manifest.json` bär lådan som den mäts, utan filer, och sidan och båda `LASMIG.md` säger att lådans tryckfiler, med stansform och i CMYK, kommer när en tryckpartner är vald (F1, F2).
 Byggt 2026-10-27 (#1414): «Visa upp» i fliken, där nätets sex paneler viks till lådans sidor på 0,9 s och leken ställer sig bredvid, ritade av renderaren i 1,25 gånger sitt mått och bara förminskade.
-Geometrin och ljuset räknas på ett ställe, `packages/web/src/editor/boxScene.ts`, och vridningen ändrar bara transform och opacitet.
+Geometrin och ljuset räknas på ett ställe, `packages/template/src/box-scene.ts` (flyttad dit med #1417), och vridningen ändrar bara transform och opacitet.
 Mina spel når vyn genom spelets ⋯ med `show=box`, som editorn läser en gång och tar ur adressen (L80); «Dela länken» kopierar samma väg in.
 En telefon har ingen flik «Låda» (L10), så Mina spel erbjuder den ingen väg dit.
 «Spara bilden» hör till länkbilden (#1417), eftersom en bild av vyn bara får tas av renderaren (E2).
+Byggt 2026-10-27 (#1417): länkbilden är «Visa upp» som stillbild, 1200 × 630 och JPEG, tagen av renderaren som ett raster av sidan `boxStill` i `packages/template/src/box-still.ts`.
+Sidan har samma geometri, vilovinkel (`REST`), ljus (`lit`) och regler (`BOX_SCENE_CSS`) som vyn, och vyn lägger samma regler i sidan, så att bilden och vyn inte kan glida isär; varje yta och lekens första kort kompileras av den enda kompilatorn (E2), och spelets namn står bredvid lådan.
+Jobbet är nycklat på sidans innehåll, så samma version är samma bild och ritas en gång.
+Rumskodens (`/KOD`) och inbjudans (`/invites/<token>`) sida har den som `og:image` och `twitter:image` när `showsCover` säger att heron visar lådan, och annars handen (#1084); bilden köas av den första sidan som skulle ha den och nämns först när den är ritad, eftersom en förhandsvisare hämtar bilden direkt.
+Den hämtas utan inloggning från `/faces/<hash>`, med adressen på den publika origin.
+«Spara bilden» beställer samma bild med `POST /projects/:id/still` och laddar ner den från `/faces/<hash>?download=1`, där objektlagret svarar med `attachment`, så att ingen sida läser bytesen och R2:s saknade CORS inte spelar roll (DRIFT §4).
+Måtten i «Visa upp» står en gång, under namnet; foten säger bara vad som just hände.
 Byggt 2026-10-27 (#1416): heron i Mina spel visar lådan i C:s stilla form, framsidan och högra sidan vridna 24° bakom lekens första kort, när designern har öppnat fliken «Låda».
 Att hon har öppnat den sparas på spelet, i `projects.box_opened_at` (`openBox` och `boxOpened` i `ProjectStore`), och inte i dokumentet eller på kontot.
 I dokumentet hade öppnandet varit en redigering, med en version och ett steg att ångra, och en äldre version som togs tillbaka hade tagit det med sig.
