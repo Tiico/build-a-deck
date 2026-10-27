@@ -134,6 +134,7 @@ export const enAccount = {
   'home.card.never': 'not played',
   'home.card.nocards': 'no cards yet',
   'home.card.first': 'First card: {title}',
+  'home.card.box': 'The box for {name}',
   'home.card.nothing': 'not played yet',
   'home.card.last': 'last {when}',
   'home.card.tables.one': '{n} table · {at}',

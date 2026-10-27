@@ -9226,12 +9226,22 @@ Lådans sex ytor ligger som tryck-PDF:er med typens utfall under `tryck/lada/`, 
 Importen tar tillbaka lådan med dokumentet, och rundturen ger samma `spel.json`; `print.box` läses inte in, eftersom den kan härledas.
 Tryckpaketets del 3 visar nätet med varje yta ur den enda renderaren, måtten, om lådan är ritad eller neutral och vilka mått som är låsta, med «Rita lådan ›» till fliken Låda (`open=box`).
 Paketets `manifest.json` bär lådan som den mäts, utan filer, och sidan och båda `LASMIG.md` säger att lådans tryckfiler, med stansform och i CMYK, kommer när en tryckpartner är vald (F1, F2).
-Heron (#1416) och länkbilden (#1417) är egna skivor.
 Byggt 2026-10-27 (#1414): «Visa upp» i fliken, där nätets sex paneler viks till lådans sidor på 0,9 s och leken ställer sig bredvid, ritade av renderaren i 1,25 gånger sitt mått och bara förminskade.
 Geometrin och ljuset räknas på ett ställe, `packages/web/src/editor/boxScene.ts`, och vridningen ändrar bara transform och opacitet.
 Mina spel når vyn genom spelets ⋯ med `show=box`, som editorn läser en gång och tar ur adressen (L80); «Dela länken» kopierar samma väg in.
 En telefon har ingen flik «Låda» (L10), så Mina spel erbjuder den ingen väg dit.
 «Spara bilden» hör till länkbilden (#1417), eftersom en bild av vyn bara får tas av renderaren (E2).
+Byggt 2026-10-27 (#1416): heron i Mina spel visar lådan i C:s stilla form, framsidan och högra sidan vridna 24° bakom lekens första kort, när designern har öppnat fliken «Låda».
+Att hon har öppnat den sparas på spelet, i `projects.box_opened_at` (`openBox` och `boxOpened` i `ProjectStore`), och inte i dokumentet eller på kontot.
+I dokumentet hade öppnandet varit en redigering, med en version och ett steg att ångra, och en äldre version som togs tillbaka hade tagit det med sig.
+På kontot hade heron sett olika ut för ägaren och en medredigerare, och länkbilden, som också den som inte har loggat in ser, hade inte haft något konto att fråga.
+Den som får redigera spelet markerar det (`POST /projects/:id/box/opened`), när fliken öppnas i editorn; en testare eller läsare som tittar ritar ingen låda åt designern.
+Heron visar lådan också när någon yta är ritad, eftersom att rita den är att ha öppnat den och en import eller en kopia bär den ritade lådan men inte att fliken öppnades (`showsCover`).
+`GET /projects` säger `cover`, så att herons plats är lådans från första skärmen, och `GET /projects/:id/cover` bär ytorna efter listan, som solfjädern.
+Locket står inte med: lutad så lite som prototypen lutar den blir lockets text några pixlar hög och läses som smuts.
+Kortet täcker sidan och framsidans nedre hörn och inte mer, så att spelets namn på en låda som inte är ritad står helt.
+Länkbilden (#1417) följer heron genom samma två frågor, `boxOpened` och `showsCover`.
+Länkbilden (#1417) är en egen skiva.
 
 ### L92. Designern låser vilken kolumn som står still i Tabell, och titeln är låst från start (prototypat och beslutat 2026-10-26, #1408)
 

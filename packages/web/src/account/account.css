@@ -223,6 +223,19 @@ input.byd-code-field { font: 700 22px/1 ui-monospace, Menlo, monospace; letter-s
 .byd-home-fan-back[data-back='0'] { transform: rotate(-9deg) translateX(-26px); }
 .byd-home-fan-back[data-back='1'] { transform: rotate(8deg) translateX(26px); filter: brightness(0.84); }
 .byd-home-fan .byd-home-card { position: relative; box-shadow: 0 10px 30px rgb(0 0 0 / 45%); }
+/* The box behind the first card (#1416, L91), as the prototype's variant C stands it: still, turned a
+   little so its right side shows, and never moving. The frame is the place reserved from the
+   first screen (HeroBox.tsx gives its size); the card stands at the same place in it whether the box
+   has landed or not. The side is a step darker than the front, which is how two planes of one
+   colour read as a box without a light. */
+.byd-home-box { position: relative; display: block; }
+.byd-home-box-scene { position: absolute; perspective: 1600px; }
+.byd-home-box-body { position: absolute; inset: 0; transform-style: preserve-3d; }
+.byd-home-box-face { position: absolute; overflow: hidden; backface-visibility: hidden; }
+.byd-home-box-face[data-box-face='front'] { box-shadow: 0 14px 30px rgb(0 0 0 / 50%); }
+.byd-home-box-face[data-box-face='right'] { filter: brightness(0.72); }
+.byd-home-box-card { position: absolute; transform: rotate(7deg); transform-origin: 50% 100%; }
+.byd-home-box-card .byd-home-card { box-shadow: 0 10px 22px rgb(0 0 0 / 55%); }
 .byd-home-hero-text { display: grid; gap: 12px; min-width: 0; }
 .byd-home-hero-text > h2 { margin: 0; }
 .byd-home-hero-text > strong { font-size: 32px; line-height: 1.15; }

@@ -238,7 +238,8 @@ const withoutFraming = <T>(doc: T): T => {
 // there is a card at all and what to call it. What it takes to draw the card travels apart.
 // `cards`, `players` and `savedAt` are what the workbench says of a game (#1204): the copies the
 // table deals (#1195), the seats it is set for, and when its newest version was saved.
-export type ProjectSummary = { id: string; name: string; rev: number; tables?: number; lastPlayed?: string | null; role?: Role; card?: CardPeek | null; cards?: number; players?: number; savedAt?: string | null }
+// `boxOpened` is that a designer has opened the game's box (#1416), only when one has.
+export type ProjectSummary = { id: string; name: string; rev: number; tables?: number; lastPlayed?: string | null; role?: Role; card?: CardPeek | null; cards?: number; players?: number; savedAt?: string | null; boxOpened?: boolean }
 
 // A version in the history (B4): every save is one, and none of them is ever written again.
 // `label` is the name a designer gave the versions that meant something — a blind test, a print
@@ -292,6 +293,13 @@ export type ProjectStore = {
   ownedIds(owner: string): Promise<string[]>
   load(id: string): Promise<ProjectRecord | null>
   list(owner: string): Promise<ProjectSummary[]>
+  // That a designer has opened the game's box (#1416, L91): the hero in Mina spel shows the box from
+  // then on, and the link's picture follows the hero (#1417). Kept on the game and not in its
+  // document: it is no change to the game, so it makes no version and no step back, a version
+  // taken back does not take it with it, and it holds on every screen and for whoever sees the
+  // link. Once is enough and it is never taken back. False when there is no such game.
+  openBox(id: string): Promise<boolean>
+  boxOpened(id: string): Promise<boolean>
   // Replaces the document if `expectedRev` is current; 'conflict' otherwise (optimistic concurrency).
   // A document that is already the stored one is not a saving (B4): the record comes back at the
   // revision it already had, and the history gains nothing. The history is meant to be read, and
@@ -365,6 +373,8 @@ export class MemoryProjectStore implements ProjectStore {
   private readonly invites = new Map<string, { project: string; email: string; role: Role; expiresAt: string; by?: string; sentAt: string; used?: boolean; usedAt?: string }>()
   // The games gone from each member's Mina spel (#1334), by account.
   private readonly gone = new Map<string, GoneGame[]>()
+  // The games whose box a designer has opened (#1416).
+  private readonly opened = new Set<string>()
   // The writes held to a ceiling on storage, one after another (#1197): weighing asks the asset
   // store, which is a wait, and no other such write may come in between the count and the write.
   private turn: Promise<unknown> = Promise.resolve()
@@ -500,9 +510,19 @@ export class MemoryProjectStore implements ProjectStore {
     const out: ProjectSummary[] = []
     for (const rec of this.docs.values()) {
       const role = await this.roleOf(rec.id, account)
-      if (role) out.push({ id: rec.id, name: rec.name, rev: rec.rev, role, card: peekCard(rec.rows) })
+      if (role) out.push({ id: rec.id, name: rec.name, rev: rec.rev, role, card: peekCard(rec.rows), ...(this.opened.has(rec.id) ? { boxOpened: true } : {}) })
     }
     return out
+  }
+
+  async openBox(id: string): Promise<boolean> {
+    if (!this.docs.has(id)) return false
+    this.opened.add(id)
+    return true
+  }
+
+  async boxOpened(id: string): Promise<boolean> {
+    return this.docs.has(id) && this.opened.has(id)
   }
 
   async roleOf(id: string, account: string): Promise<Role | null> {
@@ -644,6 +664,7 @@ export class MemoryProjectStore implements ProjectStore {
       }
     }
     const had = this.docs.delete(id)
+    this.opened.delete(id)
     this.history.delete(id)
     this.edits.delete(id)
     this.shared.delete(id)

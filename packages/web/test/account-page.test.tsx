@@ -526,6 +526,35 @@ describe('a game on the home page (G1)', () => {
     expect(within(hero).queryByRole('button', { name: 'Starta bord' })).toBeNull()
   })
 
+  // Lådan i heron (#1416, L91): C:s stilla form, lådan bakom lekens första kort, först när designern
+  // själv har öppnat fliken «Låda». Tills dess är heron som i dag, med solfjädern.
+  it('shows the box behind the first card only once the designer has opened it, neutral while undrawn (#1416)', async () => {
+    await home()
+    const hero = screen.getByRole('region', { name: 'Fortsätt där du slutade' })
+    await waitFor(() => expect(hero.querySelectorAll('.byd-home-fan-back')).toHaveLength(2))
+    expect(hero.querySelector('.byd-home-box')).toBeNull()
+
+    expect((await fetch(`${run.http}/projects/${run.otherProjectId}/box/opened`, { method: 'POST' })).status).toBe(204)
+    cleanup()
+    render(<HomePage />)
+    const again = await screen.findByRole('region', { name: 'Fortsätt där du slutade' })
+    // The place is the box's from the first screen, before its faces have landed.
+    const box = again.querySelector<HTMLElement>('.byd-home-box')!
+    expect(box).not.toBeNull()
+    expect(again.querySelector('.byd-home-fan-back')).toBeNull()
+    // Its front and right side, each drawn by the one CardPreview, and the game's own first card in front.
+    await waitFor(() => expect([...box.querySelectorAll<HTMLElement>('[data-box-face]')].map((f) => f.dataset['boxFace'])).toEqual(['front', 'right']))
+    await waitFor(() => expect(box.querySelectorAll('[data-box-face] .byd-preview')).toHaveLength(2))
+    within(again).getByRole('img', { name: 'Första kortet: Drake' })
+    // Not drawn, so neutral: the game's name on the deck's colour, and nothing else.
+    expect(box.querySelector('[data-box-face="front"] [data-element="title"]')?.textContent).toBe('Vinterspelet')
+    expect([...box.querySelectorAll('[data-box-face="front"] [data-element]')].map((el) => el.getAttribute('data-element'))).toEqual(['ground', 'title'])
+    expect(box.getAttribute('role')).toBe('img')
+    expect(box.getAttribute('aria-label')).toBe('Lådan till Vinterspelet')
+    // The game saved before it stands as a row, untouched (#1204).
+    expect(card().querySelector('.byd-home-box')).toBeNull()
+  })
+
   // The table started is the first of the band (#724, beslut C + B): the room's code and the way to
   // its screen, where they stay after a reload — the banner that said it went with the page. A table
   // just started has not been played, so it stands under «Startade, aldrig spelade» (#1376) and not
