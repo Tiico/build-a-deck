@@ -1,5 +1,5 @@
 /* The print package (#1208, beslut B 2026-10-23, prototype `docs/ux-audits/2026-10-23-tryckpaketet`):
-   five numbered parts and a packing slip beside them that stays, on the account's dark ground. It
+   six numbered parts and a packing slip beside them that stays, on the account's dark ground. It
    travels with the page's own chunk, never in the sheet the felt's first frame blocks on. */
 .byd-print {
   --byd-print-line: #262a35;
@@ -106,14 +106,23 @@
 .byd-print-card-count { color: var(--byd-print-quiet); font-size: 13px; font-variant-numeric: tabular-nums; }
 .byd-print-card-count b { color: #fff; }
 
-/* 3 · What is not printed. */
+/* 3 · The box (#1418): its net in a well, every face drawn by the renderer, and its measure beside. */
+.byd-print-box { display: grid; grid-template-columns: minmax(0, 360px) minmax(0, 1fr); gap: 24px; align-items: start; }
+.byd-print-box-room { min-width: 0; padding: 16px; border-radius: 12px; background: var(--byd-print-well); border: 1px solid var(--byd-print-line); }
+.byd-print-box-room .byd-box-net { margin: 0 auto; }
+.byd-print-box .byd-box-panel { cursor: default; }
+.byd-print-box-facts { display: grid; gap: 6px; align-content: start; }
+.byd-print-box-facts > b { font-size: 17px; font-variant-numeric: tabular-nums; }
+.byd-print-box-facts .byd-muted { font-size: 13px; }
+
+/* 4 · What is not printed. */
 .byd-print-stock { display: grid; gap: 10px; }
 .byd-print-item { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 12px; align-items: center; padding: 12px; border-radius: 12px; background: var(--byd-print-well); border: 1px solid var(--byd-print-line); font-size: 15px; }
 .byd-print-item b { color: #fff; }
 .byd-print-die { display: grid; place-items: center; width: 44px; height: 44px; margin: 4px; border-radius: 10px; background: #f3efe6; color: #3a2a1a; font-size: 30px; }
 .byd-print-counter { display: grid; place-items: center; width: 36px; height: 36px; margin: 8px; border-radius: 50%; box-sizing: border-box; border: 2px dashed #6f7a90; background: #2c3242; color: var(--byd-print-soft); font-size: 14px; font-weight: 800; }
 
-/* 4 · The requirements. */
+/* 5 · The requirements. */
 .byd-print-needs { width: 100%; border-collapse: collapse; font-size: 14px; }
 .byd-print-needs th { text-align: left; font-weight: 600; color: var(--byd-print-quiet); padding: 7px 12px 7px 0; vertical-align: top; white-space: nowrap; }
 .byd-print-needs td { padding: 7px 0; }
@@ -160,6 +169,8 @@
 @media (max-width: 1100px) {
   .byd-print-cut { grid-template-columns: minmax(0, 1fr); }
   .byd-print-sheet { max-width: 300px; }
+  .byd-print-box { grid-template-columns: minmax(0, 1fr); }
+  .byd-print-box-room { max-width: 360px; box-sizing: border-box; }
 }
 /* A phone and a narrow window: one column, the slip last and the download first. */
 @media (max-width: 760px) {

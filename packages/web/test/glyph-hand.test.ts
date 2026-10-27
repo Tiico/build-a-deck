@@ -123,13 +123,14 @@ const ALLOWED: Allowed[] = [
     { file: `src/i18n/${lang}.account.ts`, char: '×', in: '{w} × {h} px', why: `a printer's raster (#1208): ${SIZE}` },
     { file: `src/i18n/${lang}.account.ts`, char: '×', in: '× {n}', why: `a card's copies in the print package, «× 2»: ${FIGURE}` },
     { file: `src/i18n/${lang}.account.ts`, char: '×', in: '{n} × {kind}', why: `how many dice the printer packs, «2 × sexsidig»: ${FIGURE}` },
+    { file: `src/i18n/${lang}.account.ts`, char: '×', in: '{h} × {d} mm', why: `the box's measure in the print package (#1418): ${SIZE}` },
   ]),
   ...(
     [
       ['src/i18n/sv.editor.ts', ['typsnittet i Speltema ›', 'i Tabell ›', '({n}) ›', 'biblioteket ›', '‹ Spelets', 'finns i Speltema ›', 'tryckpaketet ›']],
       ['src/i18n/en.editor.ts', ['font under Theme ›', 'in Data ›', '({n}) ›', 'library ›', '‹ The game', 'are under Theme ›', 'print package ›']],
-      ['src/i18n/sv.account.ts', ['i editorn ›']],
-      ['src/i18n/en.account.ts', ['in the editor ›']],
+      ['src/i18n/sv.account.ts', ['i editorn ›', 'lådan ›']],
+      ['src/i18n/en.account.ts', ['in the editor ›', 'the box ›']],
     ] as const
   ).flatMap(([file, names]) => names.map((name) => ({ file, char: [...name].find((c) => ICONS.includes(c))!, in: name, why: NAMED }))),
   // Icons that are not among the twenty the table drew, and so have no drawing in the hand yet.
@@ -151,7 +152,7 @@ const DRAWINGS: Record<string, { count: number; why: string }> = {
   'src/editor/icon-catalog.ts': { count: 1, why: 'the icon catalogue: card art, drawn on cards by the card renderer' },
   'src/editor/svg-clean.ts': { count: 1, why: 'the words of a refusal, naming the root element a designer’s own SVG lacked' },
   'src/account/PrintPackagePage.tsx': { count: 1, why: 'the knife: the bleed, the trim and the safe margin drawn over a card in its own millimetres (#1208)' },
-  'src/editor/BoxTab.tsx': { count: 1, why: 'the box net’s flaps, cut and folds (#1413), in the net’s own millimetres; they are folded in and never printed, and the faces are the renderer’s' },
+  'src/editor/box-net.tsx': { count: 1, why: 'the box net’s flaps, cut and folds (#1413), in the net’s own millimetres, in the Låda tab and the print package (#1418); they are folded in and never printed, and the faces are the renderer’s' },
   'src/editor/TemplateCanvas.tsx': { count: 2, why: 'a shape’s and a pattern’s picture in the gallery, drawn by the path generator and tile the card is drawn by' },
 }
 

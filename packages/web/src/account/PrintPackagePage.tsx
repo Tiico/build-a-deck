@@ -1,12 +1,13 @@
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode, type RefObject } from 'react'
-import { CARD_STANDARD_63x88, DICE } from '@byd/engine'
+import { CARD_STANDARD_63x88, DICE, boxFaceType, tuckNet, type BoxFace, type BoxSide } from '@byd/engine'
 import type { PreparedFile, PrintRequirements, Quote } from '@byd/print'
-import { titleOfRow } from '@byd/server/doc'
+import { boxFaceOf, boxOf, titleOfRow } from '@byd/server/doc'
 import type { Motif } from '@byd/template'
 import { LoginCard } from './LoginCard.js'
 import { readPrintPackage, readPrintZip, whoAmI, withCredentials, Unauthorized, type PrintFinding, type PrintPackage } from './api.js'
 import { marked } from './marked.js'
 import { CardPreview } from '../editor/CardPreview.js'
+import { NetLines } from '../editor/box-net.js'
 import { previewIcons, mediaInGame } from '../editor/assets.js'
 import { previewFonts } from '../editor/fonts.js'
 import { previewMotifs } from '../editor/motifs.js'
@@ -24,8 +25,8 @@ import './print-package.css'
 // prototype on `proto/1208-tryckpaketet`): what would be sent to a printer, said so that a designer
 // who has never ordered print understands it, and downloadable during the beta (F1).
 //
-// One page in one sweep, in five numbered parts — how a card is cut, the deck, what is not printed,
-// the printer's requirements and the package — with a packing slip beside them that stays: the
+// One page in one sweep, in six numbered parts — how a card is cut, the deck, the box (#1418), what is
+// not printed, the printer's requirements and the package — with a packing slip beside them that stays: the
 // counts, the print checks, what the printer would answer, and the download. On a phone the slip
 // comes last, and the download is offered at the top as well.
 //
@@ -243,9 +244,10 @@ function Package({ doc, pkg, http, project, motifs, backLink, editor, go }: { do
             t('print.deck.lead', { cards: deck.total, pairs: deck.cards.length }),
             <DeckPart deck={deck} fronts={fronts} errors={errors} chosen={chosen} onChoose={setChosen} drawing={drawing} editor={editor} go={go} />,
           )}
-          {part(3, 'stock', t('print.stock.title'), t('print.stock.lead'), <Stock doc={doc} pkg={pkg} />)}
-          {card && part(4, 'needs', t('print.needs.title'), t('print.needs.lead'), <Needs req={card} />)}
-          {part(5, 'zip', t('print.zip.title'), t('print.zip.lead'), <ZipTree doc={doc} pkg={pkg} deck={deck} />)}
+          {part(3, 'box', t('print.box.title'), t('print.box.lead'), <BoxPart drawing={drawing} editor={editor} go={go} />)}
+          {part(4, 'stock', t('print.stock.title'), t('print.stock.lead'), <Stock doc={doc} pkg={pkg} />)}
+          {card && part(5, 'needs', t('print.needs.title'), t('print.needs.lead'), <Needs req={card} />)}
+          {part(6, 'zip', t('print.zip.title'), t('print.zip.lead'), <ZipTree doc={doc} pkg={pkg} deck={deck} />)}
         </div>
         <aside className="byd-print-slip" aria-label={t('print.slip.label')}>
           <h2>{t('print.slip.title')}</h2>
@@ -523,7 +525,68 @@ function DeckPart({ deck, fronts, errors, chosen, onChoose, drawing, editor, go 
   )
 }
 
-// 3 · What is not printed: the dice the printer packs (#1140), those it does not, and the counters
+// 3 · The box (#1418, L91, runda 2 steg 5): the game's tuckbox as `boxOf` measures it, neutral until
+// the designer draws it, with its net and every face in it drawn by the one renderer (E2) as the Låda
+// tab draws them. Its print files are a partner's, with the die line and in CMYK, and come with a
+// chosen one (F1, F2), which the part says rather than pretends.
+const BOX_SIDES: readonly BoxSide[] = ['width', 'height', 'depth']
+// A face's picture at a zoom of one, in CSS pixels per millimetre, as `CardPreview` lays it out.
+const PX_PER_MM = 96 / 25.4
+// How wide the net's well is at most, so a small deck's box does not fill a desk's column, and what
+// its padding and border take of it (print-package.css).
+const NET_MAX_W = 360
+const NET_WELL_PX = 2 * 16 + 2 * 1
+function BoxPart({ drawing, editor, go }: { drawing: Drawing; editor: string; go(url: string): (e: MouseEvent<HTMLAnchorElement>) => void }) {
+  const t = useT()
+  const { lang } = useLang()
+  const { doc } = drawing
+  const fit = useMemo(() => boxOf(doc), [doc])
+  const net = useMemo(() => tuckNet(fit.type, fit.size), [fit])
+  const faces = useMemo(() => Object.fromEntries(fit.type.faces.map((f) => [f, boxFaceOf(doc, f)])) as Record<BoxFace, ReturnType<typeof boxFaceOf>>, [doc, fit])
+  const drawn = fit.type.faces.filter((f) => faces[f].drawn).length
+  const locked = BOX_SIDES.filter((side) => fit.locked[side]).map((side) => t(`print.box.side.${side}` as Key))
+  const [room, width] = useWidth<HTMLDivElement>(NET_MAX_W)
+  const scale = Math.max(0, Math.min(width, NET_MAX_W) - NET_WELL_PX) / (net.width * PX_PER_MM)
+  const px = PX_PER_MM * scale
+  const to = editorWith(editor, 'box')
+  return (
+    <div className="byd-print-box">
+      <div className="byd-print-box-room" ref={room}>
+        <div className="byd-box-net" role="img" aria-label={t('print.box.net')} style={{ width: `${net.width * px}px`, height: `${net.height * px}px` }}>
+          <NetLines net={net} px={px} part="flaps" />
+          {net.panels.map((p) => (
+            <div key={p.face} className="byd-box-panel" data-face={p.face} {...(p.turned ? { 'data-turned': '' } : {})} style={{ left: `${p.x * px}px`, top: `${p.y * px}px`, width: `${p.width * px}px`, height: `${p.height * px}px` }}>
+              <CardPreview id={`byd-print-box-${p.face}`} type={boxFaceType(fit.type, p.face, fit.size)} face={faces[p.face].template} row={{}} icons={drawing.icons} fonts={drawing.fonts} scale={scale} assetBase={drawing.http} motifs={drawing.motifs} palette={drawing.palette} />
+            </div>
+          ))}
+          <NetLines net={net} px={px} part="lines" />
+        </div>
+      </div>
+      <div className="byd-print-box-facts">
+        <b className="byd-print-strong">{t('print.box.size', { w: decimal(fit.size.width, lang), h: decimal(fit.size.height, lang), d: decimal(fit.size.depth, lang) })}</b>
+        <p>{drawn === 0 ? t('print.box.neutral') : t('print.box.drawn', { n: drawn, of: fit.type.faces.length })}</p>
+        {locked.length > 0 && <p>{t('print.box.locked', { sides: locked.reduce((a, b) => t('print.box.and', { a, b })) })}</p>}
+        <a className="byd-print-fix" href={to} onClick={go(to)}>
+          {t(drawn === 0 ? 'print.box.draw' : 'print.box.edit')}
+        </a>
+        <p className="byd-muted">{t('print.box.files')}</p>
+      </div>
+    </div>
+  )
+}
+// The editor's address with a tab to open (#1418), before the server it is served from, as the
+// editor reads it once and takes it out again.
+function editorWith(editor: string, open: string): string {
+  const [path, query = ''] = editor.split('?')
+  const q = new URLSearchParams(query)
+  const server = q.get('server')
+  q.delete('server')
+  q.set('open', open)
+  if (server !== null) q.set('server', server)
+  return `${path}?${q.toString()}`
+}
+
+// 4 · What is not printed: the dice the printer packs (#1140), those it does not, and the counters
 // that exist only on the table (C4).
 function Stock({ doc, pkg }: { doc: Doc; pkg: PrintPackage }) {
   const t = useT()
@@ -566,7 +629,7 @@ function Stock({ doc, pkg }: { doc: Doc; pkg: PrintPackage }) {
   )
 }
 
-// 4 · The printer's requirements, in words, from its `requirements()`.
+// 5 · The printer's requirements, in words, from its `requirements()`.
 function Needs({ req }: { req: Extract<PrintRequirements, { kind: 'printed' }> }) {
   const t = useT()
   const { lang } = useLang()
@@ -599,7 +662,7 @@ function Needs({ req }: { req: Extract<PrintRequirements, { kind: 'printed' }> }
   )
 }
 
-// 5 · The package as the tree of the zip: its real file names, the first card's pair of them and how
+// 6 · The package as the tree of the zip: its real file names, the first card's pair of them and how
 // many more, and what is not in it yet, said rather than pretended (#1207: no box, no CMYK).
 function ZipTree({ doc, pkg, deck }: { doc: Doc; pkg: PrintPackage; deck: ReturnType<typeof deckOf> }) {
   const t = useT()

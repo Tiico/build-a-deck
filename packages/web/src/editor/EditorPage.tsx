@@ -139,14 +139,17 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   // The way in from «Väntar på dig» on Mina spel (#1225): `results=rev-N` opens the Bord tab's
   // Resultat at that version. Read once, and taken out of the address so the editor's address stays
   // the game's own (L80) and a reload opens the editor as it always opens.
+  // The print package's «Rita lådan ›» (#1418) comes the same way: `open=box` opens the Låda tab.
   const [results] = useState(() => params.get('results'))
+  const [opening] = useState<Stage | null>(() => (params.get('open') === 'box' ? 'box' : null))
   useEffect(() => {
-    if (!results) return
+    if (!results && !params.has('open')) return
     const rest = new URLSearchParams(location.search)
     rest.delete('results')
+    rest.delete('open')
     history.replaceState(history.state, '', `${location.pathname}?${rest.toString()}${location.hash}`)
-  }, [results])
-  const [stage, setStage] = useState<Stage>(results ? 'tables' : 'wall')
+  }, [results, params])
+  const [stage, setStage] = useState<Stage>(results ? 'tables' : (opening ?? 'wall'))
   // «Ny kod» asks before the code changes, and the band says what changed once it has (#679,
   // beställarens beslut C): the code on the TV and the one just sent stop working on one press.
   const [askingCode, setAskingCode] = useState(false)
