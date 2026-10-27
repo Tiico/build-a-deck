@@ -9206,6 +9206,9 @@ Lådans text vid skapandet skrivs på designerns språk och blir hennes (A4).
 Byggt 2026-10-26 (#1412): typen, måtten, låsen, luften och raden i Fysisk kontroll.
 Byggt 2026-10-27 (#1413): fliken «Låda» och nätet, där en yta redigeras av Malls egen duk med kortets redigeringar märkta `on: 'box'`, och en yta som inte är ritad är den neutrala (`boxFaceOf`) tills designern först ändrar den.
 Fliken följer knappen «Starta bord», som i dag står för varje roll som får starta bord, också med en tom lek.
+Byggt 2026-10-27 (#1431): en text i mallen kan vridas ett kvarts varv, `rotationDeg` 90 (läses nedåt) eller -90 (läses uppåt), och den neutrala lådans sidor bär namnet längs ryggen med bokstävernas överkant mot framsidan.
+Rutan vrids inte, bara orden i den, så markeringsramen, handtagen, dragningen och Fysisk kontroll står på rutan som för en upprätt text; den enda renderaren (E2) vrider orden i texturen och i PDF:en, och E6 anpassar och E5 mäter golvet längs rutans längd.
+I editorn är vridningen valet «Riktning» under «Anpassning» i textens egenskaper.
 «Visa upp» (#1414), lådan i foten (#1415), heron (#1416), länkbilden (#1417) och exporten (#1418) är egna skivor.
 
 ### L92. Designern låser vilken kolumn som står still i Tabell, och titeln är låst från start (prototypat och beslutat 2026-10-26, #1408)

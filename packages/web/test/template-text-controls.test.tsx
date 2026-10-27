@@ -112,3 +112,36 @@ describe('the «Finjustering» door (#219, L41)', () => {
     expect(onPatch).toHaveBeenLastCalledWith('body', { font: { family: 'sans-serif', sizePt: 9, letterSpacing: 0.04 } }, undefined)
   })
 })
+
+// Which way the text runs (#1431): upright, or turned a quarter round to read down or up a box,
+// as a game's name runs along a box's spine. A choice of three named ways, in the panel's own form
+// for a choice of a few: a select beside the pad, under «Anpassning».
+describe('the text’s direction (#1431)', () => {
+  const direction = () => screen.getByRole('combobox', { name: 'Riktning' }) as HTMLSelectElement
+
+  it('offers the three ways by name, and says the upright one for a text that says nothing', () => {
+    canvas()
+    expect(within(direction()).getAllByRole('option').map((o) => o.textContent)).toEqual(['vågrätt', 'nedåt', 'uppåt'])
+    expect(direction().selectedOptions[0]?.textContent).toBe('vågrätt')
+  })
+
+  it('turns the text either way, and back upright', async () => {
+    const user = userEvent.setup()
+    const { onPatch } = canvas()
+
+    await user.selectOptions(direction(), screen.getByRole('option', { name: 'nedåt' }))
+    expect(onPatch).toHaveBeenLastCalledWith('body', { rotationDeg: 90 }, undefined)
+    await user.selectOptions(direction(), screen.getByRole('option', { name: 'uppåt' }))
+    expect(onPatch).toHaveBeenLastCalledWith('body', { rotationDeg: -90 }, undefined)
+    await user.selectOptions(direction(), screen.getByRole('option', { name: 'vågrätt' }))
+    expect(onPatch).toHaveBeenLastCalledWith('body', { rotationDeg: 0 }, undefined)
+  })
+
+  it('shows the way a turned text already runs', () => {
+    const doc = projectDoc()
+    const body = doc.template.faces['front']!.base.find((e) => e.id === 'body')!
+    Object.assign(body, { rotationDeg: -90 })
+    canvas({ doc })
+    expect(direction().selectedOptions[0]?.textContent).toBe('uppåt')
+  })
+})

@@ -2531,6 +2531,18 @@ function Properties({
               <option value="fixed">{t('canvas.fit.fixed')}</option>
             </select>
           </label>
+          {/* Which way the words run (#1431): upright, or a quarter turn to read down or up the box,
+              as a name runs along a box's spine. The box stays where it is drawn, so the handles,
+              the outline and the drag stand on it as on any text; only the words turn. Upright is
+              written as a nought rather than taken off, since the compiler draws the two alike. */}
+          <label className="byd-props-fit">
+            {t('canvas.props.direction')}
+            <select value={el.rotationDeg ?? 0} onChange={(e) => onPatch({ rotationDeg: Number(e.target.value) as 0 | 90 | -90 })}>
+              <option value={0}>{t('canvas.direction.across')}</option>
+              <option value={90}>{t('canvas.direction.down')}</option>
+              <option value={-90}>{t('canvas.direction.up')}</option>
+            </select>
+          </label>
           <TuningDoor el={el} onPatch={onPatch} />
         </Section>
       )}
