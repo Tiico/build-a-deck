@@ -22,7 +22,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { useState } from 'react'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { fireEvent, render } from '@testing-library/react'
 import { chromium, type Browser } from 'playwright'
 import { DataTable, columnsOutside, markCut } from '../src/editor/DataTable.js'
@@ -72,11 +72,19 @@ function deckDoc(cards: ProjectDoc['rows'] = CARDS): ProjectDoc {
   }
 }
 
+// The project the locks are kept under (#1408): the title from the start, and what a case seeds.
+const PROJECT = 'p-sideways'
+const lockedFor = (locked: readonly string[]) => localStorage.setItem('byd.locks', JSON.stringify({ [PROJECT]: locked }))
+// And the widths, which are kept per project too (#46): a case that bursts the box must not leave
+// its 1 400 px `body` to the case that expects the table to fit.
+beforeEach(() => localStorage.clear())
+
 function Table({ prose, cards }: { prose?: ProjectDoc['prose']; cards?: ProjectDoc['rows'] }) {
   const [doc, setDoc] = useState(() => (prose ? { ...deckDoc(cards), prose } : deckDoc(cards)))
   return (
     <DataTable
       doc={doc}
+      project={PROJECT}
       selectedRow={null}
       onSelectRow={() => undefined}
       onCell={() => undefined}
@@ -148,7 +156,9 @@ async function at<T_>(html: string, to: 'start' | 'end', read_: (page: import('p
 // The fixture that bursts the box: `body` at 1400 px, which is the issue's own first row.
 const burst = () => markup({ field: 'body', by: 1400 })
 
-describe('the card the row belongs to, at the far end of a sideways scroll (#145)', () => {
+// Since #1408 what stands still is what the designer locked, the title from the start: the
+// card's name rather than its key, which rolls with the row. The rail is measured on the title.
+describe('the card the row belongs to, at the far end of a sideways scroll (#145, #1408)', () => {
   it('is still on the screen, on every row', async () => {
     const seen = await at(burst(), 'end', (page) =>
       page.evaluate(() => {
@@ -160,8 +170,8 @@ describe('the card the row belongs to, at the far end of a sideways scroll (#145
         const over = box.scrollWidth - box.clientWidth
         const gone: string[] = []
         for (const row of box.querySelectorAll('tbody tr')) {
-          const id = row.querySelector('.byd-data-id') as HTMLElement | null
-          if (!id) return { scrolled, over, gone: ['no id cell at all'] }
+          const id = row.querySelector('td[data-col="title"]') as HTMLElement | null
+          if (!id) return { scrolled, over, gone: ['no title cell at all'] }
           const seat = id.getBoundingClientRect()
           if (seat.left < room.left - 0.5 || seat.right > room.right + 0.5) {
             gone.push(`${row.getAttribute('data-card-ref')}: ${Math.round(room.left - seat.left)}px out of sight`)
@@ -181,7 +191,7 @@ describe('the card the row belongs to, at the far end of a sideways scroll (#145
         const box = document.querySelector('.byd-data-scroll') as HTMLElement
         const behind: string[] = []
         for (const row of box.querySelectorAll('tbody tr')) {
-          const id = row.querySelector('.byd-data-id') as HTMLElement
+          const id = row.querySelector('td[data-col="title"]') as HTMLElement
           const seat = id.getBoundingClientRect()
           // What the browser itself answers at the middle of the cell. A cell that is merely in
           // the right place while a value is drawn on top of it is not standing still.
@@ -218,8 +228,8 @@ describe('the card the row belongs to, at the far end of a sideways scroll (#145
         box.scrollTop = box.scrollHeight - box.clientHeight
         const room = box.getBoundingClientRect()
         // The heading is named by the column it heads, not by the body cell's class.
-        const head = box.querySelector('thead th[data-col="id"]') as HTMLElement | null
-        if (!head) return 'no id heading'
+        const head = box.querySelector('thead th[data-col="title"]') as HTMLElement | null
+        if (!head) return 'no title heading'
         const seat = head.getBoundingClientRect()
         const across = seat.left >= room.left - 0.5 && seat.right <= room.right + 0.5
         // The head is held to the top by `top: 0`; the corner has to answer to both at once.
@@ -271,7 +281,7 @@ describe('den öppna cellen när lådan är rullad i båda leder (#696)', () => 
           // cell's top under the head.
           const head = (box.querySelector('thead') as HTMLElement).getBoundingClientRect()
           const cell = (write.closest('td') as HTMLElement).getBoundingClientRect()
-          const rail = (box.querySelector('thead th[data-col="id"]') as HTMLElement).getBoundingClientRect()
+          const rail = (box.querySelector('thead th[data-pinned-last]') as HTMLElement).getBoundingClientRect()
           box.scrollLeft = cell.left - rail.right + 300
           box.scrollTop = cell.top - head.bottom + 40
         },
@@ -282,8 +292,8 @@ describe('den öppna cellen när lådan är rullad i båda leder (#696)', () => 
         const box = document.querySelector('.byd-data-scroll') as HTMLElement
         const td = box.querySelector(`tr[data-card-ref="${open}"] td[data-col="body"]`) as HTMLElement
         const cell = td.querySelector('.byd-data-bodycell') as HTMLElement
-        const id = box.querySelector(`tr[data-card-ref="${open}"] .byd-data-id`) as HTMLElement
-        const idHead = box.querySelector('thead th[data-col="id"]') as HTMLElement
+        const id = box.querySelector(`tr[data-card-ref="${open}"] td[data-col="title"]`) as HTMLElement
+        const idHead = box.querySelector('thead th[data-col="title"]') as HTMLElement
         const name = box.querySelector('thead th[data-col="body"]') as HTMLElement
         const said = (el: Element | null) => (el ? `${el.tagName.toLowerCase()}.${[...el.classList].join('.')}` : 'ingenting')
         const owner = (hit: Element | null, want: HTMLElement) => (want === hit || want.contains(hit) ? 'sig själv' : said(hit))
@@ -359,9 +369,9 @@ const rubrikenOchLådan = (page: import('playwright').Page, col: string) =>
     const namn = th.querySelector('button') as HTMLElement
     const låda = box.getBoundingClientRect()
     const r = namn.getBoundingClientRect()
-    // Det som står stilla ovanpå kolumnen, mätt på sidan i stället för skrivet här: bocken, `id`
-    // och sedan #695 `antal`.
-    const fast = [...box.querySelectorAll('thead .byd-data-check, thead th[data-col="id"], thead th[data-col="antal"]')]
+    // Det som står stilla ovanpå kolumnen, mätt på sidan i stället för skrivet här: bocken och
+    // det som är låst (#1408), titeln från start.
+    const fast = [...box.querySelectorAll('thead .byd-data-check, thead th[data-pinned]')]
       .reduce((sum, cell) => sum + cell.getBoundingClientRect().width, 0)
     return {
       vänster: Math.round(r.left - låda.left),
@@ -433,11 +443,12 @@ const kantenAvLådan = (page: import('playwright').Page) =>
     }
   })
 
-// `id` är en del av det fastnålade, inte en kolumn som rullar förbi det (#629). #401:s glidning
-// knuffar varje rubrik fram till lanens slut — och lanen *är* bocken plus `id` — så `id`:s eget
-// namn hamnade vid sin cells högerkant, ~150 px från texten under det. Villkoret mäts mot en
-// rubrik som inte glider än: vid lådans början står varje namn lika långt in i sin cell.
-describe('rubriken «id» står över sin egen text (#629)', () => {
+// En låst kolumn är en del av det fastnålade, inte en kolumn som rullar förbi det (#629, #1408:
+// titeln från start). #401:s glidning knuffar varje rubrik fram till lanens slut — och lanen *är*
+// bocken plus det låsta — så den låsta kolumnens eget namn hamnade vid sin cells högerkant, ~150 px
+// från texten under det. Villkoret mäts mot en rubrik som inte glider än: vid lådans början står
+// varje namn lika långt in i sin cell.
+describe('rubriken över en låst kolumn står över sin egen text (#629, #1408)', () => {
   const indrag = (page: import('playwright').Page, col: string) =>
     page.evaluate((col) => {
       const th = document.querySelector(`.byd-data thead th[data-col="${col}"]`)!
@@ -445,27 +456,29 @@ describe('rubriken «id» står över sin egen text (#629)', () => {
     }, col)
 
   it('står lika långt in i sin cell som rubrikerna bredvid, i vila och utrullad', async () => {
-    const [id, typ] = await at(burst(), 'start', async (page) => [await indrag(page, 'id'), await indrag(page, 'typ')])
+    const [title, typ] = await at(burst(), 'start', async (page) => [await indrag(page, 'title'), await indrag(page, 'typ')])
     // Inte ett prov på en tom rubrik: `typ` står i sin cell med rubrikens egen indragning.
     expect(typ).toBeGreaterThan(0)
-    expect(id).toBe(typ)
-    // Och `id` glider inte när resten rullar förbi: den är redan där lanen slutar.
-    expect(await at(burst(), 'end', (page) => indrag(page, 'id'))).toBe(id)
+    expect(title).toBe(typ)
+    // Och titeln glider inte när resten rullar förbi: den är redan där lanen slutar.
+    expect(await at(burst(), 'end', (page) => indrag(page, 'title'))).toBe(title)
   }, 90_000)
 
-  // Samma sak för `antal`, som står på listen sedan #695: den är lika mycket en del av det
-  // fastnålade som `id`, och knuffades den till lanens slut stod namnet vid sin egen högerkant.
-  it('gäller också «antal», som står på listen bredvid id (#695)', async () => {
+  // Samma sak för en kolumn designern låst själv: `antal` låst står på listen före titeln, i
+  // lekens ordning, och är lika mycket en del av det fastnålade som den.
+  it('gäller också «antal» när den är låst (#1408)', async () => {
+    lockedFor(['title', 'antal'])
     const [antal, typ] = await at(burst(), 'start', async (page) => [await indrag(page, 'antal'), await indrag(page, 'typ')])
     expect(antal).toBe(typ)
     expect(await at(burst(), 'end', (page) => indrag(page, 'antal'))).toBe(antal)
   }, 90_000)
 })
 
-// antal på listen (#695, beställarens val D + A 2026-10-20). Den stod sist, och L46:s tak gör body
-// exakt lika bred som det rum som syns, så en kolumn efter body kunde inte börja i bild vid någon
-// bredd: antal började bakom × också vid 1440. Nu står den bredvid `id`, och listen är tre kolumner.
-describe('antal på listen bredvid id (#695)', () => {
+// antal på listen (#695, beställarens val D + A 2026-10-20; sedan #1408 när designern låst den).
+// Den stod sist, och L46:s tak gör body exakt lika bred som det rum som syns, så en kolumn efter
+// body kunde inte börja i bild vid någon bredd: antal började bakom × också vid 1440. Låst står
+// den på listen före titeln, i lekens ordning, och titeln bär listens kant som listens sista.
+describe('antal låst på listen bredvid titeln (#695, #1408)', () => {
   const listen = (page: import('playwright').Page) =>
     page.evaluate(() => {
       const box = document.querySelector('.byd-data-scroll') as HTMLElement
@@ -474,7 +487,7 @@ describe('antal på listen bredvid id (#695)', () => {
       const fel: string[] = []
       const rows = [...box.querySelectorAll('thead tr, tbody tr')]
       for (const row of rows) {
-        const id = row.querySelector('[data-col="id"]') as HTMLElement
+        const title = row.querySelector('[data-col="title"]') as HTMLElement
         const antal = row.querySelector('[data-col="antal"]') as HTMLElement | null
         const vem = row.getAttribute('data-card-ref') ?? 'huvudet'
         if (!antal) {
@@ -482,8 +495,8 @@ describe('antal på listen bredvid id (#695)', () => {
           continue
         }
         const a = antal.getBoundingClientRect()
-        const i = id.getBoundingClientRect()
-        if (Math.abs(a.left - i.right) > 0.5) fel.push(`${vem}: ${Math.round(a.left - i.right)} px från id`)
+        const i = title.getBoundingClientRect()
+        if (Math.abs(i.left - a.right) > 0.5) fel.push(`${vem}: ${Math.round(i.left - a.right)} px från titeln`)
         if (a.left < room.left - 0.5 || a.right > room.right + 0.5) fel.push(`${vem}: utanför lådan`)
         // Vad webbläsaren själv svarar mitt i cellen: en cell som står på rätt plats medan ett
         // värde ritas ovanpå den står inte stilla.
@@ -493,7 +506,8 @@ describe('antal på listen bredvid id (#695)', () => {
       return { rullad: Math.round(box.scrollLeft), över: box.scrollWidth - box.clientWidth, rader: rows.length, fel }
     })
 
-  it('står bredvid id på varje rad och i huvudet, också rullad till slutet, och ritas ovanpå det som rullar', async () => {
+  it('står bredvid titeln på varje rad och i huvudet, också rullad till slutet, och ritas ovanpå det som rullar', async () => {
+    lockedFor(['title', 'antal'])
     const [början, slutet] = await Promise.all([at(burst(), 'start', listen), at(burst(), 'end', listen)])
     // Premissen: tabellen rullar verkligen, och är rullad till slutet.
     expect(slutet.över).toBeGreaterThan(0)
@@ -503,19 +517,20 @@ describe('antal på listen bredvid id (#695)', () => {
     expect(slutet.fel).toEqual([])
   }, 90_000)
 
-  // Kanten mot det som glider in under listen står på listens sista kolumn, alltså på antal och
-  // inte längre på id (L55): en kant mitt i listen säger att det är där det fasta slutar.
-  it('bär listens kant, och id gör det inte längre', async () => {
+  // Kanten mot det som glider in under listen står på listens sista kolumn, alltså på titeln och
+  // inte på antal (L55): en kant mitt i listen säger att det är där det fasta slutar.
+  it('lämnar listens kant åt titeln, som står sist på listen', async () => {
+    lockedFor(['title', 'antal'])
     const kanter = await at(burst(), 'end', (page) =>
       page.evaluate(() => {
         const shadow = (sel: string) => getComputedStyle(document.querySelector(sel) as HTMLElement).boxShadow
-        return { id: shadow('tbody tr .byd-data-id'), antal: shadow('tbody tr td[data-col="antal"]'), idHead: shadow('thead th[data-col="id"]'), antalHead: shadow('thead th[data-col="antal"]') }
+        return { title: shadow('tbody tr td[data-col="title"]'), antal: shadow('tbody tr td[data-col="antal"]'), titleHead: shadow('thead th[data-col="title"]'), antalHead: shadow('thead th[data-col="antal"]') }
       }),
     )
-    expect(kanter.antal).toContain('inset')
-    expect(kanter.antalHead).toContain('inset')
-    expect(kanter.id).toBe('none')
-    expect(kanter.idHead).toBe('none')
+    expect(kanter.title).toContain('inset')
+    expect(kanter.titleHead).toContain('inset')
+    expect(kanter.antal).toBe('none')
+    expect(kanter.antalHead).toBe('none')
   }, 90_000)
 })
 
@@ -600,13 +615,14 @@ describe('vilka kolumner som står utanför lådan (#695)', () => {
   it('nämner det som står helt utanför åt höger, och inte det som delvis syns', async () => {
     // `typ` dragen bredare än lådan: allt efter den står utanför vid början, och den själv syns.
     const sedd = await at(markup({ field: 'typ', by: 1400 }), 'start', ute)
-    expect(sedd).toEqual({ left: [], right: ['title', 'body'] })
+    // Titeln står på listen (#1408) och är aldrig utanför.
+    expect(sedd).toEqual({ left: [], right: ['body'] })
   }, 90_000)
 
   it('nämner det som rullats förbi åt vänster, och aldrig listens egna kolumner', async () => {
     // `body` dragen bredare än lådan: vid slutet står allt före den utanför åt vänster.
     const sedd = await at(burst(), 'end', ute)
-    expect(sedd).toEqual({ left: ['typ', 'title'], right: [] })
+    expect(sedd).toEqual({ left: ['id', 'antal', 'typ'], right: [] })
   }, 90_000)
 
   it('nämner ingenting när tabellen får plats', async () => {

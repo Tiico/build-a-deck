@@ -4,10 +4,11 @@ import type { ProjectCredit, ProjectDoc, ProjectFont, ProjectRow, RuleDoc, Versi
 import { catalogFont, type CatalogFamily, fileInSheet, fileSheetHref } from './font-catalog.js'
 import type { DocDiff, Playtest, VersionChange } from '@byd/server/doc'
 import type { Element } from '@byd/template'
+import { BOX_SIDES, type BoxClearance, type BoxFace, type BoxSide } from '@byd/engine'
 import { Unauthorized, withCredentials } from '../account/api.js'
 import { QuotaReached, quotaIn, quotaOf, type Quota } from '../account/quota.js'
 import { QuotaSaid, quotaWords, type QuotaDoing } from '../account/quota-words.js'
-import { applyEdit, cellColumn, changeOf, copiesOf, decideEdit, joined, plainEdits, recipeOf, revertOf, type Change, type Clearable, type ColumnKind, type Die, type EditIntent, type Recipe, type RecipeWords, type SeatRole, type Zone, type ZonePatch } from '@byd/server/doc'
+import { applyEdit, boxFaceOf, cellColumn, changeOf, copiesOf, decideEdit, joined, plainEdits, recipeOf, revertOf, type Change, type Clearable, type ColumnKind, type Die, type EditIntent, type Recipe, type RecipeWords, type SeatRole, type Zone, type ZonePatch } from '@byd/server/doc'
 import { ASSET_PREFIX, assetBytesUrl, assetRef, assetRefOf } from './assets.js'
 import { measureAsset } from './motifs.js'
 import type { Motif } from '@byd/template'
@@ -856,6 +857,55 @@ export class ProjectClient {
 
   moveElement(face: string, id: string, to: number): void {
     this.edit({ v: 'moveElement', face, id, to })
+  }
+
+  // Spelets låda (#1412, #1413): ett lås per mått, på det värde måttet har när det låses och skrivet
+  // i loggen så, och `null` för att följa leken igen. Luften med `null` är typens luft igen.
+  lockBox(side: BoxSide, mm: number | null): void {
+    this.edit({ v: 'lockBox', side, mm })
+  }
+
+  setBoxClearance(side: keyof BoxClearance, mm: number | null): void {
+    this.edit({ v: 'setBoxClearance', side, mm })
+  }
+
+  // «Följ leken igen»: every lock taken off at once, as one thing the designer did and one step back.
+  followDeck(): void {
+    const locked = BOX_SIDES.filter((side) => this.doc.box?.locked?.[side] !== undefined)
+    if (locked.length > 0) this.editTogether(locked.map((side) => ({ v: 'lockBox', side, mm: null })), 'undo.what.box')
+  }
+
+  // En yta på lådan redigeras med kortets egna redigeringar, märkta `on: 'box'` (#1413). En yta som
+  // aldrig ritats är den neutrala (`boxFaceOf`), och det designern först gör med den lägger den
+  // neutrala ytan i dokumentet i samma redigering: hon ser namnet och färgen när hon börjar, och de
+  // är hennes från första ändringen, i ett steg tillbaka och inte två (B4).
+  patchBoxElement(face: BoxFace, id: string, patch: Partial<Element>, gesture?: string): void {
+    const clear = Object.entries(patch).flatMap(([key, value]) => (value === undefined ? [key as Clearable] : []))
+    const set = Object.fromEntries(Object.entries(patch).filter(([, value]) => value !== undefined)) as Partial<Element>
+    this.onBox(face, { v: 'patchElement', on: 'box', face, id, patch: set, ...(clear.length ? { clear } : {}) }, gesture)
+  }
+
+  addBoxElement(face: BoxFace, element: Element): void {
+    this.onBox(face, { v: 'addElement', on: 'box', face, element })
+  }
+
+  removeBoxElement(face: BoxFace, id: string): void {
+    this.onBox(face, { v: 'removeElement', on: 'box', face, id })
+  }
+
+  moveBoxElement(face: BoxFace, id: string, to: number): void {
+    this.onBox(face, { v: 'moveElement', on: 'box', face, id, to })
+  }
+
+  replaceBoxFace(face: BoxFace, base: Element[]): void {
+    this.edit({ v: 'replaceFace', on: 'box', face, base })
+  }
+
+  private onBox(face: BoxFace, intent: EditIntent, gesture?: string): void {
+    const drawing = boxFaceOf(this.doc, face)
+    // A step of a gesture that has begun is on a face the gesture's first step already drew.
+    if (drawing.drawn) return this.edit(intent, gesture)
+    this.edit({ v: 'compound', edits: [{ v: 'replaceFace', on: 'box', face, base: drawing.template.base }, intent] }, gesture)
   }
 
   rename(name: string): void {

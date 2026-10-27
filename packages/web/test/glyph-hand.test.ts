@@ -114,6 +114,9 @@ const ALLOWED: Allowed[] = [
     { file: `src/i18n/${lang}.editor.ts`, char: '×', in: '{w} × {h} mm', why: SIZE },
     { file: `src/i18n/${lang}.editor.ts`, char: '×', in: '{n}×', why: `how many of an icon a cell holds: ${FIGURE}` },
     { file: `src/i18n/${lang}.editor.ts`, char: '×', in: '{count} × d{faces}', why: `how many dice a line lays, «2 × d6» (#1403): ${FIGURE}` },
+    { file: `src/i18n/${lang}.editor.ts`, char: '×', in: '{w} × {h}', why: `a face of the box and the box itself (#1413): ${SIZE}` },
+    { file: `src/i18n/${lang}.editor.ts`, char: '×', in: '2 × {air}', why: `the box's measure worked out, «kortet 63 + 2 × 1 luft», read as «times» (#1413): ${FIGURE}` },
+    { file: `src/i18n/${lang}.editor.ts`, char: '×', in: '× {t}', why: `the deck's thickness worked out, «108 × 0,3», read as «times» (#1413): ${FIGURE}` },
     { file: `src/i18n/${lang}.play.ts`, char: '−', in: '−1', why: `a step down on a counter: ${FIGURE}` },
     { file: `src/i18n/${lang}.account.ts`, char: '→', in: ' 4 → 5', why: `the landing page's example of a change: ${CHANGE}` },
     { file: `src/i18n/${lang}.account.ts`, char: '×', in: '{w} × {h} mm', why: `the print package's card and file (#1208): ${SIZE}` },
@@ -148,6 +151,7 @@ const DRAWINGS: Record<string, { count: number; why: string }> = {
   'src/editor/icon-catalog.ts': { count: 1, why: 'the icon catalogue: card art, drawn on cards by the card renderer' },
   'src/editor/svg-clean.ts': { count: 1, why: 'the words of a refusal, naming the root element a designer’s own SVG lacked' },
   'src/account/PrintPackagePage.tsx': { count: 1, why: 'the knife: the bleed, the trim and the safe margin drawn over a card in its own millimetres (#1208)' },
+  'src/editor/BoxTab.tsx': { count: 1, why: 'the box net’s flaps, cut and folds (#1413), in the net’s own millimetres; they are folded in and never printed, and the faces are the renderer’s' },
   'src/editor/TemplateCanvas.tsx': { count: 2, why: 'a shape’s and a pattern’s picture in the gallery, drawn by the path generator and tile the card is drawn by' },
 }
 

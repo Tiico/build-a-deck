@@ -31,11 +31,13 @@ export function whatOf(intent: EditIntent): Key {
     case 'setColumnKind':
     case 'renameField':
       return 'undo.what.field'
+    // En yta på lådan är lådan, fastän den ritas med kortets lager (#1413).
     case 'patchElement':
     case 'addElement':
     case 'removeElement':
     case 'moveElement':
     case 'replaceFace':
+      return intent.on === 'box' ? 'undo.what.box' : 'undo.what.template'
     case 'resetElement':
     case 'setGroupColumn':
       return 'undo.what.template'
@@ -75,6 +77,10 @@ export function whatOf(intent: EditIntent): Key {
     // back names the theme and not any one of the three.
     case 'setTheme':
       return 'undo.what.theme'
+    // Spelets låda (#1412): ett lås eller luften.
+    case 'lockBox':
+    case 'setBoxClearance':
+      return 'undo.what.box'
     // Taking a version back is an edit like any other (B4), so it can be taken back too.
     case 'restore':
       return 'undo.what.version'

@@ -1,4 +1,4 @@
-import { useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type DragEvent, type PointerEvent as ReactPointerEvent, type FocusEvent, type KeyboardEvent } from 'react'
+import { useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent, type PointerEvent as ReactPointerEvent, type FocusEvent, type KeyboardEvent } from 'react'
 import { useWordSteps } from './word-steps.js'
 import type { ProjectDoc, ProjectRow } from './types.js'
 import { copiesOf, deckKeepsFields, fieldsOf, fieldLabel, takenNames, nextCardRef } from './fields.js'
@@ -33,6 +33,7 @@ import { exportCardsCsv, importCardsCsv } from './csv.js'
 import { keepOrder, nextSort, sortRows, type SortState, cellOf } from './sorting.js'
 import { deckValues, dragScroll, fitColumns, markValues, takesSymbols, widthKind } from './columns.js'
 import { TAP_FLOOR, heldWidths, rememberWidths } from './widths.js'
+import { defaultLocks, heldLocks, rememberLocks } from './locks.js'
 import { countLabel, discreteColumns, filterRows, isFiltering, noFilter, toggleValue, typedColumn, type FilterState } from './filtering.js'
 import { duplicateRows, keepRows, markRows, noSelection, removeRows, selectionLabel, setColumn, toggleRow, type Selection } from './selection.js'
 import { useMarked } from './marked.js'
@@ -45,7 +46,11 @@ import { useGesture } from './gesture.js'
 import { lineKey } from './lineKeys.js'
 import { useSay } from '../status/StatusLive.js'
 import { FootSaid } from './said.js'
-import { ChevronGlyph, CloseGlyph, PlusGlyph, SortGlyph } from '../glyphs.js'
+import { ChevronGlyph, CloseGlyph, LockGlyph, PlusGlyph, SortGlyph } from '../glyphs.js'
+
+// What a cell of a locked column carries (#1408): the mark the stylesheet pins by, the mark the
+// rail's edge is drawn on, and where along the rail the cell stands.
+type PinnedProps = { 'data-pinned'?: ''; 'data-pinned-last'?: ''; style?: CSSProperties }
 
 export type DataTableProps = {
   doc: ProjectDoc
@@ -798,6 +803,12 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   // column being pulled may not also be picked up and carried off by the same grip.
   const [widths, setWidths] = useState<Record<string, number>>(() => heldWidths(project))
   const [pulling, setPulling] = useState<string | null>(null)
+  // The columns the designer locked so that they stand still when the table scrolls sideways
+  // (#1408, beställarens val A). Null until she has said anything, and then the title is what
+  // stands still: it is the one she orients herself by, where the rail used to hold the card's
+  // key and its count (#145, #695). Held in this table and remembered in the browser, as the
+  // widths are (L4): how one person reads a deck on her screen is not a fact about the game.
+  const [chosenLocks, setChosenLocks] = useState<string[] | null>(() => heldLocks(project))
   // The pull the hand is making right now: which edge it came down on, where, the width the
   // column had then, and whether it has gone anywhere yet. A ref beside that state for the same
   // reason `carried` is one — it is read inside an event and never drawn, while `pulling` is
@@ -899,7 +910,9 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
     // away. Everything else the table keeps in its own state leaves the deck as it was — except
     // the caret arriving in a cell or leaving one, which is what decides whether the widths are
     // being held; leaving one is therefore also when they settle on what was written.
-  }, [deck, editing, widths])
+    // And a lock turned (#1408): the columns stand in another order then, and where each
+    // pinned one begins is this measurement's to say again.
+  }, [deck, editing, widths, chosenLocks])
   // Ikonfliken följer med cellen man står i (#693), och vilken sida av fältet den hänger på är
   // lådans egen läsning (`markCut`). Den läses alltså om när fliken flyttar, inte bara när lådan
   // rullas: Enter och ↓ går från raden mot huvudet till raden under utan att något annat ändras.
@@ -964,12 +977,37 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   // `antal` stands on the rail beside it (L55, #695), so a move of it could not be seen and a
   // place in front of it is not on offer.
   const mine = fields.filter((field) => field !== ANTAL)
-  // The columns in the order the table draws them: `antal` first, on the rail with the tick and
-  // `id` (#695, beställarens val D + A), and then the designer's own in her order. It stood last,
-  // and at every width it began behind the × — the column that says how many copies go into the
-  // deck was the last one a new designer found. `fields` keeps the document's order, which is the
-  // one CSV and the bulk row's list speak in; only the table's columns move.
-  const drawn = [ANTAL, ...mine]
+  // The table's columns in the deck's order: the card's key, its count — which stood last and at
+  // every width began behind the × (#695), so it stands right after the key — and then the
+  // designer's own in her order. `fields` keeps the document's order, which is the one CSV and
+  // the bulk row's list speak in; only the table's columns move.
+  const natural = ['id', ANTAL, ...mine]
+  // What is locked right now: what she chose, or the title until she has chosen (#1408). A lock
+  // on a column the deck no longer has is nothing.
+  const locked = (chosenLocks ?? defaultLocks(fields)).filter((field) => natural.includes(field))
+  const isLocked = (field: string) => locked.includes(field)
+  // And in the order the table draws them: the locked ones first, on the rail with the tick, in
+  // the deck's order among themselves, and then everything that scrolls. The rail's edge stands on
+  // the last of them.
+  const laid = [...natural.filter(isLocked), ...natural.filter((field) => !isLocked(field))]
+  const lastLocked = laid.filter(isLocked).at(-1) ?? null
+  // What a cell of a locked column carries: the mark the stylesheet pins by, and where it stands,
+  // which only the measurement knows and says per column on the table as `--byd-data-at-<n>` —
+  // by the column's place in the row and not its name, since a name is the designer's and need not
+  // be a word a custom property can carry. Nought until the first measurement, so the cell is
+  // pinned at all before anything is measured, which is what the measurement asks the sheet.
+  const pinnedProps = (field: string): PinnedProps => {
+    if (!isLocked(field)) return {}
+    return { 'data-pinned': '', ...(field === lastLocked ? { 'data-pinned-last': '' as const } : {}), style: { left: `var(--byd-data-at-${laid.indexOf(field) + 1}, 0px)` } }
+  }
+  // A lock turned, and remembered (#1408). What is kept is the whole answer and not the one
+  // column, so an unlocked everything is an answer too, and the next visit is not handed the
+  // title again.
+  const setLocked = (field: string, on: boolean) => {
+    const next = on ? [...new Set([...locked, field])] : locked.filter((f) => f !== field)
+    setChosenLocks(next)
+    rememberLocks(project, next)
+  }
   // Where a column comes to stand when it is dropped on a heading. Dropped on one to its left it
   // stands in front of that heading; dropped on one to its right it stands after it, which is in
   // front of whatever follows and last of all when nothing does. Said in columns and never in
@@ -1004,6 +1042,14 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
     if (widths[from] !== undefined) {
       const { [from]: px, ...rest } = widths
       hold({ ...rest, [to]: px as number })
+    }
+    // And the lock goes with the name too (#1408): a column renamed is the same column, and a
+    // rail that let it go on a rename would be a rail that moves under the designer's hand. Said
+    // outright even where the lock was the tool's own guess, since the guess was about `title`.
+    if (isLocked(from)) {
+      const next = locked.map((f) => (f === from ? to : f))
+      setChosenLocks(next)
+      rememberLocks(project, next)
     }
     say?.('polite', t('table.column.renamed', { from, to }))
   }
@@ -1553,13 +1599,12 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
             `fitColumns` needs to know nothing about what any of them is called. */}
         <colgroup>
           <col data-kind="tap" />
-          <col data-col="id" data-kind="key" />
           {/* And what the designer set it to, when she has set it (#46). It travels on the column
               beside what the column is worth sizing like, so the measurement is told the whole of
               it by the table and needs to know nothing about what any column is called. */}
-          {drawn.map((f) => (
-            <col key={f} data-col={f} data-kind={widthKind(doc, f)} {...(widths[f] === undefined ? {} : { 'data-width': widths[f] })} />
-          ))}
+          {laid.map((f) =>
+            f === 'id' ? <col key={f} data-col="id" data-kind="key" /> : <col key={f} data-col={f} data-kind={widthKind(doc, f)} {...(widths[f] === undefined ? {} : { 'data-width': widths[f] })} />,
+          )}
           <col data-kind="tap" />
         </colgroup>
         <thead>
@@ -1579,15 +1624,21 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
               />
               </label>
             </th>
-            <SortableHeader field="id" label="id" sort={sort} onSort={setSort} />
-            {drawn.map((f) => (
+            {laid.map((f) => f === 'id' ? (
+              <SortableHeader key={f} field="id" label="id" sort={sort} onSort={setSort} pinned={pinnedProps(f)} lock={{ on: isLocked(f), onTurn: (on) => setLocked(f, on) }} />
+            ) : (
               <SortableHeader
                 key={f}
                 field={f}
                 label={fieldLabel(f, t)}
+                pinned={pinnedProps(f)}
+                lock={{ on: isLocked(f), onTurn: (on) => setLocked(f, on) }}
                 sort={sort}
                 onSort={setSort}
-                carry={pulling === null ? carryOf(f) : undefined}
+                // A locked column is not carried and is not a place to land (#1408), for the
+                // reason the tool's own two never were (L4): it stands on the rail, where no move
+                // would be seen.
+                carry={pulling === null && !isLocked(f) ? carryOf(f) : undefined}
                 pull={pullOf(f)}
                 filter={
                   discrete.some((d) => d.field === f)
@@ -1634,7 +1685,12 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
               {adding && (
                 <ColumnDoor
                   cell={doorCell}
-                  columns={['id', ...fields]}
+                  // The designer's own in the order the table draws them, and the tool's two
+                  // after: `antal` stood last here already, and a list that began with the
+                  // tool's rows put two rows nobody renames before the first one somebody does.
+                  columns={[...laid.filter((f) => f !== 'id' && f !== ANTAL), 'id', ANTAL]}
+                  locked={locked}
+                  onLock={setLocked}
                   canRemove={(field) => field !== 'id' && field !== ANTAL}
                   onRemove={(field) => {
                     // One question at a time: a column asked about takes back whatever the foot
@@ -1707,7 +1763,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
         <tbody>
           {shown.map(({ id: cardRef, fields: row }) =>
             proposal?.changed.has(cardRef) ? (
-              <ProposedRow key={cardRef} cardRef={cardRef} fields={drawn} change="changed" was={row} now={proposal.doc.rows.find((r) => r.id === cardRef)?.fields ?? row} marked={{ ticked: selected.has(cardRef), chosen: selectedRow === cardRef, onTick: () => setSelected(toggleRow(selected, cardRef)), onChoose: () => onSelectRow(cardRef), onFocus: () => setStanding(cardRef), onKeyDown: (event) => rowKey(cardRef, event, (r) => r.querySelector('.byd-data-check input')), ...stop(cardRef) }} />
+              <ProposedRow key={cardRef} cardRef={cardRef} columns={laid} pinned={pinnedProps} change="changed" was={row} now={proposal.doc.rows.find((r) => r.id === cardRef)?.fields ?? row} marked={{ ticked: selected.has(cardRef), chosen: selectedRow === cardRef, onTick: () => setSelected(toggleRow(selected, cardRef)), onChoose: () => onSelectRow(cardRef), onFocus: () => setStanding(cardRef), onKeyDown: (event) => rowKey(cardRef, event, (r) => r.querySelector('.byd-data-check input')), ...stop(cardRef) }} />
             ) : (
             <tr
               key={cardRef}
@@ -1733,10 +1789,11 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                   />
                 </label>
               </td>
-              <td className="byd-data-id" data-col="id">{cardRef}</td>
-              {drawn.map((f) =>
-                imageFields.includes(f) && assetBase ? (
-                  <td key={f} className="byd-data-image" data-col={f}>
+              {laid.map((f) =>
+                f === 'id' ? (
+                  <td key={f} className="byd-data-id" data-col="id" {...pinnedProps(f)}>{cardRef}</td>
+                ) : imageFields.includes(f) && assetBase ? (
+                  <td key={f} className="byd-data-image" data-col={f} {...pinnedProps(f)}>
                     {/* Bildrutan (L75): the tile is the whole control, and the library behind it
                         takes a file and clears the card. A library picture dragged here is reused
                         without a new upload (E1); a file dropped here is uploaded into this cell
@@ -1764,6 +1821,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                   <BodyTd
                     key={f}
                     field={f}
+                    pinned={pinnedProps(f)}
                     cardRef={cardRef}
                     doc={doc}
                     row={row}
@@ -1806,7 +1864,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                     {cellPicker(cardRef, f)}
                   </BodyTd>
                 ) : (
-                <td key={f} data-col={f}>
+                <td key={f} data-col={f} {...pinnedProps(f)}>
                   {moved(changeOf(cardRef), f) && <s className="byd-data-was">{String(wasCell(cardRef, f) ?? '')}</s>}
                   {/* The field and the tab its icon control hangs from (#593). It is a box inside
                       the cell and not the cell itself, so the tab can stand on the field's own
@@ -1951,7 +2009,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
             ),
           )}
           {addedShown.map(({ id: cardRef, fields: row }) => (
-            <ProposedRow key={cardRef} cardRef={cardRef} fields={drawn} change="added" was={null} now={row} />
+            <ProposedRow key={cardRef} cardRef={cardRef} columns={laid} pinned={pinnedProps} change="added" was={null} now={row} />
           ))}
                   {/* A card gone since the version compared with is a record of what it was (#479, B4):
               its values as text and struck through, with nothing on it to write in, tick or press
@@ -1960,12 +2018,15 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
           {goneShown.map(({ id: cardRef, fields: row }) => (
             <tr key={cardRef} data-card-ref={cardRef} data-change="removed">
               <td className="byd-data-check" />
-              <td className="byd-data-id" data-col="id">{cardRef}</td>
-              {drawn.map((f) => (
-                <td key={f} data-col={f} className="byd-data-gone">
-                  <s>{String(row[f] ?? '')}</s>
-                </td>
-              ))}
+              {laid.map((f) =>
+                f === 'id' ? (
+                  <td key={f} className="byd-data-id" data-col="id" {...pinnedProps(f)}>{cardRef}</td>
+                ) : (
+                  <td key={f} data-col={f} className="byd-data-gone" {...pinnedProps(f)}>
+                    <s>{String(row[f] ?? '')}</s>
+                  </td>
+                ),
+              )}
               <td className="byd-data-remove" />
             </tr>
           ))}
@@ -2227,6 +2288,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
 // en cell växer med sitt innehåll oavsett, vilket prototypen mätte som 101 px där 34 begärdes.
 function BodyTd({
   field,
+  pinned,
   cardRef,
   doc,
   row,
@@ -2236,6 +2298,8 @@ function BodyTd({
   ...cell
 }: Omit<BodyCellProps, 'label' | 'head' | 'value'> & {
   field: string
+  // What the cell carries when its column is locked on the rail (#1408).
+  pinned: PinnedProps
   cardRef: string
   doc: ProjectDoc
   row: ProjectRow['fields']
@@ -2244,7 +2308,7 @@ function BodyTd({
 }) {
   const value = row[field]
   return (
-    <td data-col={field}>
+    <td data-col={field} {...pinned}>
       {was !== null && <s className="byd-data-was">{was}</s>}
       <BodyCell
         {...cell}
@@ -2297,12 +2361,16 @@ type Pull = {
 // column's name and the way it is sorted, moved and pulled, and nothing that opens.
 type ProseSign = { from: 'height' | 'choice' }
 
-function SortableHeader({ field, label, sort, onSort, carry, pull, prose, filter, grouped }: { field: string; label: string; sort: SortState | null; onSort(next: SortState | null): void; carry?: Carry | undefined; pull?: Pull | undefined; prose?: ProseSign | undefined; filter?: ColumnFilterProps | undefined; grouped?: string | undefined }) {
+// The column's lock (#1408): whether it stands still on the rail, and the way to turn that.
+type Lock = { on: boolean; onTurn(on: boolean): void }
+
+function SortableHeader({ field, label, sort, onSort, carry, pull, prose, filter, grouped, pinned, lock }: { field: string; label: string; sort: SortState | null; onSort(next: SortState | null): void; carry?: Carry | undefined; pull?: Pull | undefined; prose?: ProseSign | undefined; filter?: ColumnFilterProps | undefined; grouped?: string | undefined; pinned: PinnedProps; lock: Lock }) {
   const t = useT()
   const active = sort?.field === field ? sort.dir : null
   return (
     <th
       data-col={field}
+      {...pinned}
       aria-sort={active ?? 'none'}
       draggable={carry ? true : undefined}
       onDragStart={carry?.onPickUp}
@@ -2343,6 +2411,27 @@ function SortableHeader({ field, label, sort, onSort, carry, pull, prose, filter
       {/* The column's filter, after its sort (#617): a Tab through the head meets what the column
           is called and sorts on, then what it is narrowed to. */}
       {filter && <ColumnFilter {...filter} />}
+      {/* The column's lock (#1408, beställarens val A), after the name: the heading of a locked
+          column says so, and the lock is the way out. Only on a locked column — the prototype also
+          drew one on every other heading under the pointer, but a control that is painted only
+          once a pointer rests on it is a control nobody can see (#140, #193), and the door behind
+          ＋ has the lock on every column's row, where locking belongs with the rest of what a
+          column is. One stop more in a head that is one stop per column (#46), on the one or two
+          columns that are locked. */}
+      {lock.on && (
+        <button
+          type="button"
+          className="byd-data-lock"
+          aria-label={t('table.column.unlock', { field: label })}
+          title={t('table.column.unlock', { field: label })}
+          onClick={(event) => {
+            event.stopPropagation()
+            lock.onTurn(false)
+          }}
+        >
+          <LockGlyph />
+        </button>
+      )}
       {/* The column the template is grouped by, said on a line of its own under the name (#695,
           beställarens val D + A): the mark says in a glance that this column decides the card's
           look, and L32's question mark says where the look is changed. On a second line because
@@ -2462,7 +2551,7 @@ function CompareSummary({ diff }: { diff: DocDiff }) {
 // (#575), so the panel, the foot and the rows say the same selection; a bulk action works on it
 // with the game's own values, since the table never holds the proposal's.
 type RowMarks = { ticked: boolean; chosen: boolean; onTick: () => void; onChoose: () => void; onFocus: () => void; onKeyDown: (event: KeyboardEvent<HTMLElement>) => void; tabIndex?: number }
-function ProposedRow({ cardRef, fields, change, was, now, marked }: { cardRef: string; fields: readonly string[]; change: 'changed' | 'added'; was: Record<string, Cell> | null; now: Record<string, Cell>; marked?: RowMarks }) {
+function ProposedRow({ cardRef, columns, pinned, change, was, now, marked }: { cardRef: string; columns: readonly string[]; pinned: (field: string) => PinnedProps; change: 'changed' | 'added'; was: Record<string, Cell> | null; now: Record<string, Cell>; marked?: RowMarks }) {
   const t = useT()
   const text = (value: Cell | undefined) => (value === undefined || value === null ? '' : String(value))
   return (
@@ -2474,15 +2563,18 @@ function ProposedRow({ cardRef, fields, change, was, now, marked }: { cardRef: s
           </label>
         )}
       </td>
-      <td className="byd-data-id" data-col="id">
-        {cardRef} <span className="byd-data-proposed">{t(change === 'added' ? 'ai.proposal.ghost' : 'ai.proposal.changedTag')}</span>
-      </td>
-      {fields.map((f) => (
-        <td key={f} data-col={f} className="byd-data-record">
-          {was && text(was[f]) !== text(now[f]) && <s className="byd-data-was">{text(was[f])}</s>}
-          <span>{text(now[f] ?? (f === 'antal' ? 1 : ''))}</span>
-        </td>
-      ))}
+      {columns.map((f) =>
+        f === 'id' ? (
+          <td key={f} className="byd-data-id" data-col="id" {...pinned(f)}>
+            {cardRef} <span className="byd-data-proposed">{t(change === 'added' ? 'ai.proposal.ghost' : 'ai.proposal.changedTag')}</span>
+          </td>
+        ) : (
+          <td key={f} data-col={f} className="byd-data-record" {...pinned(f)}>
+            {was && text(was[f]) !== text(now[f]) && <s className="byd-data-was">{text(was[f])}</s>}
+            <span>{text(now[f] ?? (f === 'antal' ? 1 : ''))}</span>
+          </td>
+        ),
+      )}
       <td className="byd-data-remove" />
     </tr>
   )

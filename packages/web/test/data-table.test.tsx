@@ -24,7 +24,8 @@ describe('DataTable (B as a tab)', () => {
     // row (#46).
     const heads = screen.getAllByRole('columnheader')
     const headers = heads.map((h) => (h.getAttribute('aria-label') ?? h.querySelector('button')?.textContent ?? h.textContent ?? '').replace(/\s*¶?\s*$/, ''))
-    expect(headers).toEqual(['', 'id', 'Antal', 'Titel', 'body', 'Ta bort'])
+    // The title stands first, on the rail, since #1408; `id` and `antal` follow it in the row.
+    expect(headers).toEqual(['', 'Titel', 'id', 'Antal', 'body', 'Ta bort'])
     // And nothing about which columns are the designer's is said in the head itself any more: the
     // × that took one away, and the padlock that stood in its place where one could not be taken
     // away, are both behind the head's own door (#46 on #32), which is where the table already

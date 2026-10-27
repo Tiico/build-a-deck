@@ -255,7 +255,7 @@ async function readView(html: string, width: number): Promise<Pair[]> {
 
 // Every mode the editor can be showing, in the room being walked, named so that a walk which finds
 // nothing fails instead of agreeing with itself.
-const DESK_VIEWS = ['Bord', 'Kortvägg', 'Mall', 'Media', 'Regler', 'Speltema', 'Speltema, biblioteket öppet', 'Speltema, exemplen öppna', 'Tabell'] as const
+const DESK_VIEWS = ['Bord', 'Kortvägg', 'Låda', 'Mall', 'Media', 'Regler', 'Speltema', 'Speltema, biblioteket öppet', 'Speltema, exemplen öppna', 'Tabell'] as const
 const PHONE_VIEWS = ['Bord', 'Kortvägg', 'Media', 'Regler', 'Speltema', 'Speltema, biblioteket öppet', 'Speltema, exemplen öppna', 'Tabell'] as const
 
 async function editorViews(width: number): Promise<Record<string, string>> {

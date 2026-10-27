@@ -22,6 +22,10 @@ export type ColumnDoorProps = {
   // Which of them are the designer's to take away. The two that are not are the card's id and
   // `antal`, which is how many copies of the card the deck holds (L4).
   canRemove(field: string): boolean
+  // Which of them stand still on the rail when the table scrolls sideways (#1408), and the way to
+  // turn that for any column — the tool's own two included.
+  locked: readonly string[]
+  onLock(field: string, on: boolean): void
   onRemove(field: string): void
   // The × of each column, so the question one of them asks can hand the focus back to it (#8).
   removeRef(field: string, el: HTMLButtonElement | null): void
@@ -85,9 +89,9 @@ const REFUSED = 'byd-column-refused'
 
 // What a row of the list can hold, in the order it holds it (#388). The name is a control only
 // where the column is the designer's own, and the width only where a hand set one.
-type Cell = 'name' | 'width' | ColumnKind | 'follow' | 'remove'
+type Cell = 'name' | 'width' | ColumnKind | 'follow' | 'lock' | 'remove'
 
-export function ColumnDoor({ cell, columns, canRemove, onRemove, removeRef, asked, question, widths, onWidth, onRename, kindOf, onKind, keptIn, taken, keeps, onCreate, onCancel }: ColumnDoorProps) {
+export function ColumnDoor({ cell, columns, canRemove, locked, onLock, onRemove, removeRef, asked, question, widths, onWidth, onRename, kindOf, onKind, keptIn, taken, keeps, onCreate, onCancel }: ColumnDoorProps) {
   const t = useT()
   // A column's switch, where there is one: the door has to have somewhere to write the answer.
   const kindHere = (field: string) => (onKind ? (kindOf?.(field) ?? null) : null)
@@ -189,6 +193,10 @@ export function ColumnDoor({ cell, columns, canRemove, onRemove, removeRef, aske
       ...(widths[field] !== undefined ? (['width'] as Cell[]) : []),
       ...(kind ? (['text', 'prose', 'image'] as Cell[]) : []),
       ...(kind?.chosen ? (['follow'] as Cell[]) : []),
+      // The lock stands before the × (#1408): the × stays the row's last cell, which is where the
+      // hand is set down again when the row it stood in is taken away (#388), and the tool's two
+      // rows, which have nothing else, are a lock alone.
+      'lock',
       ...(canRemove(field) ? (['remove'] as Cell[]) : []),
     ]
   }
@@ -310,6 +318,20 @@ export function ColumnDoor({ cell, columns, canRemove, onRemove, removeRef, aske
                   )}
                   {kind && <KindSwitch label={fieldLabel(field, t)} {...kind} onKind={(next) => onKind?.(field, next)} keys={keys} />}
                   {kind && <KindReset label={fieldLabel(field, t)} {...kind} onKind={(next) => onKind?.(field, next)} keys={keys} />}
+                  {/* The column's lock (#1408, beställarens val A): on the rail, standing still
+                      when the table scrolls sideways, or in the row with the rest. Every column
+                      has one, the tool's own two included; what they cannot be is taken away or
+                      renamed, which the row says by having no × and no name to press. */}
+                  <button
+                    type="button"
+                    className="byd-columns-lock"
+                    {...keys('lock')}
+                    aria-pressed={locked.includes(field)}
+                    aria-label={t(locked.includes(field) ? 'table.column.unlock' : 'table.column.lock', { field: fieldLabel(field, t) })}
+                    onClick={() => onLock(field, !locked.includes(field))}
+                  >
+                    <LockGlyph open={!locked.includes(field)} />
+                  </button>
                   {canRemove(field) ? (
                     <button
                       type="button"
@@ -324,9 +346,11 @@ export function ColumnDoor({ cell, columns, canRemove, onRemove, removeRef, aske
                       <CloseGlyph />
                     </button>
                   ) : (
-                    // The lock replaces an unavailable action; its accessible name explains why.
+                    // The word replaces an unavailable action, and its name explains why. It was
+                    // a padlock, meaning «the game's»; since #1408 a padlock on this row means
+                    // «stands still», so the word is the sign now.
                     <span className="byd-columns-system" role="img" aria-label={t('table.field.system', { field: fieldLabel(field, t) })} title={t('table.field.system', { field: fieldLabel(field, t) })}>
-                      <LockGlyph />
+                      {t('table.field.system.short')}
                     </span>
                   )}
                 </>
