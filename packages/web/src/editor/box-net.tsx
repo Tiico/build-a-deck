@@ -1,9 +1,9 @@
 import type { BoxNet, NetFlap } from '@byd/engine'
-import './box-net.css'
 
 // The tuckbox's net as lines (#1413, #1418): what the Låda tab draws round the faces it edits, and
 // what the print package draws round the faces it shows. Its own module, so the print package's page
-// takes these lines without the editor's canvas.
+// takes these lines without the editor's canvas. Their rules are in each page's own sheet, editor.css
+// and print-package.css: a sheet shared by the two would be a second sheet /editor fetches (#186).
 
 // The net's own lines, in its own millimetres (#1406 variant A): the flaps, the cut round the sheet
 // and the folds dashed. None of it is a face, so none of it is the renderer's: it is folded in and

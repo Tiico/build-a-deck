@@ -110,7 +110,18 @@
 .byd-print-box { display: grid; grid-template-columns: minmax(0, 360px) minmax(0, 1fr); gap: 24px; align-items: start; }
 .byd-print-box-room { min-width: 0; padding: 16px; border-radius: 12px; background: var(--byd-print-well); border: 1px solid var(--byd-print-line); }
 .byd-print-box-room .byd-box-net { margin: 0 auto; }
-.byd-print-box .byd-box-panel { cursor: default; }
+/* The net as editor.css draws it in the Låda tab, scoped to this part: the print package does not
+   load the editor's sheet, and a sheet shared by the two would be one more /editor fetches (#186). */
+.byd-print-box .byd-box-net { position: relative; flex: none; }
+.byd-print-box .byd-box-lines { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
+.byd-print-box .byd-box-flap { fill: #d9d4c7; stroke: #222; stroke-width: 1px; vector-effect: non-scaling-stroke; }
+.byd-print-box .byd-box-flap-glue { fill: url(#byd-box-glue); }
+.byd-print-box .byd-box-glue-ground { fill: #d9d4c7; }
+.byd-print-box .byd-box-glue { stroke: #7a7f8c; stroke-width: 0.8; }
+.byd-print-box .byd-box-cut { fill: none; stroke: #222; stroke-width: 1px; vector-effect: non-scaling-stroke; }
+.byd-print-box .byd-box-fold { stroke: #8a91a2; stroke-width: 1px; stroke-dasharray: 4 3; vector-effect: non-scaling-stroke; }
+.byd-print-box .byd-box-panel { position: absolute; cursor: default; }
+.byd-print-box .byd-box-panel[data-turned] > .byd-preview { transform: rotate(180deg); }
 .byd-print-box-facts { display: grid; gap: 6px; align-content: start; }
 .byd-print-box-facts > b { font-size: 17px; font-variant-numeric: tabular-nums; }
 .byd-print-box-facts .byd-muted { font-size: 13px; }
