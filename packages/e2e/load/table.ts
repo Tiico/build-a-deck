@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import type { Intent, Snapshot } from '@byd/protocol'
+import { tableProtocols, type Intent, type Snapshot } from '@byd/protocol'
 import { applyPatch } from '@byd/engine'
 
 /** A running table and the two things that open it: the code guests join by, and the host key. */
@@ -31,7 +31,8 @@ export async function playTable(origin: string, table: TableAddress, o: { intent
   // Each screen fetches on its own, as each browser does.
   const faces = () => new Faces(origin)
   const at = (q: Record<string, string>) => `${ws}/sessions/${encodeURIComponent(table.session)}?${new URLSearchParams(q).toString()}`
-  const tv = await Screen.open(at({ host: table.hostKey }), faces())
+  // The host key in the protocol header (#1306); the door refuses it in the address (#1341).
+  const tv = await Screen.open(at({}), faces(), tableProtocols({ host: table.hostKey }))
   const seats = (await tv.view()).seats.map((s) => s.id)
   const phones: Screen[] = []
   for (const seat of seats) {
@@ -167,8 +168,8 @@ class Screen {
     })
   }
 
-  static async open(url: string, faces: Faces): Promise<Screen> {
-    const ws = new WebSocket(url)
+  static async open(url: string, faces: Faces, protocols?: string[]): Promise<Screen> {
+    const ws = new WebSocket(url, protocols)
     await new Promise<void>((resolve, reject) => {
       ws.addEventListener('open', () => resolve(), { once: true })
       ws.addEventListener('error', () => reject(new Error(`could not open ${url}`)), { once: true })
