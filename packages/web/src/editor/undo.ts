@@ -31,11 +31,13 @@ export function whatOf(intent: EditIntent): Key {
     case 'setColumnKind':
     case 'renameField':
       return 'undo.what.field'
+    // En yta på lådan är lådan, fastän den ritas med kortets lager (#1413).
     case 'patchElement':
     case 'addElement':
     case 'removeElement':
     case 'moveElement':
     case 'replaceFace':
+      return intent.on === 'box' ? 'undo.what.box' : 'undo.what.template'
     case 'resetElement':
     case 'setGroupColumn':
       return 'undo.what.template'

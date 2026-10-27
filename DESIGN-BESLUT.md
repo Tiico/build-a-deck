@@ -9204,7 +9204,9 @@ Varje yta ritas av samma mallkompilator och renderare som korten (E2): inte en S
 Lådans text vid skapandet skrivs på designerns språk och blir hennes (A4).
 
 Byggt 2026-10-26 (#1412): typen, måtten, låsen, luften och raden i Fysisk kontroll.
-Fliken och nätet (#1413), «Visa upp» (#1414), lådan i foten (#1415), heron (#1416), länkbilden (#1417) och exporten (#1418) är egna skivor.
+Byggt 2026-10-27 (#1413): fliken «Låda» och nätet, där en yta redigeras av Malls egen duk med kortets redigeringar märkta `on: 'box'`, och en yta som inte är ritad är den neutrala (`boxFaceOf`) tills designern först ändrar den.
+Fliken följer knappen «Starta bord», som i dag står för varje roll som får starta bord, också med en tom lek.
+«Visa upp» (#1414), lådan i foten (#1415), heron (#1416), länkbilden (#1417) och exporten (#1418) är egna skivor.
 
 ### L92. Designern låser vilken kolumn som står still i Tabell, och titeln är låst från start (prototypat och beslutat 2026-10-26, #1408)
 

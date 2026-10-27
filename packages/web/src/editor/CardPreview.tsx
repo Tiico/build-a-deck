@@ -1,5 +1,5 @@
 import { useCallback, useContext, useLayoutEffect, useMemo, useRef, type ReactNode } from 'react'
-import { CARD_STANDARD_63x88 } from '@byd/engine'
+import { CARD_STANDARD_63x88, type ComponentTypeDef } from '@byd/engine'
 import { compile, fitInDocument, type FaceTemplate, type FitReport, type Motif, type Row, type Warning } from '@byd/template'
 import { arrivingIn, holdIcons, resolveAssetFace, resolveAssetRow } from './assets.js'
 import { holdFonts } from './fonts.js'
@@ -42,11 +42,14 @@ export type CardPreviewProps = {
   // The bleed in millimetres, the compiler's one print option: the card drawn as the file a printer
   // is sent, with the background carried past the trim (#1208). Nothing else draws it that way.
   bleed?: number | undefined
+  // What is drawn, when it is not a card (#1413): a face of the game's box, as a board of the face's
+  // own measure. The same compiler and the same fitting draw it (E2); only the measure differs.
+  type?: ComponentTypeDef | undefined
 }
 
 // One card through the real compiler and the real DOM fitting — the same code the renderer runs,
 // so what the editor shows is what the table and the print get (E2).
-export function CardPreview({ face, row, icons, fonts, id, scale = 1, selectedElement, onSelectElement, onWarnings, onFitted, onMeasured, overlay, assetBase, motifs, palette, bleed }: CardPreviewProps) {
+export function CardPreview({ face, row, icons, fonts, id, scale = 1, selectedElement, onSelectElement, onWarnings, onFitted, onMeasured, overlay, assetBase, motifs, palette, bleed, type = CARD_STANDARD_63x88 }: CardPreviewProps) {
   // The face's own pictures resolved once per face (#320), for the same reason the icons are
   // resolved once per document: a fresh face every render is a fresh compile every render.
   const drawnFace = useMemo(() => (assetBase ? resolveAssetFace(face, assetBase) : face), [face, assetBase])
@@ -54,7 +57,7 @@ export function CardPreview({ face, row, icons, fonts, id, scale = 1, selectedEl
   const draw = useCallback(
     (f: FaceTemplate, r: Row, i: Record<string, string>, fs: CardPreviewProps['fonts']) =>
       compile({
-        type: CARD_STANDARD_63x88,
+        type,
         face: f,
         row: r,
         icons: i,
@@ -64,7 +67,7 @@ export function CardPreview({ face, row, icons, fonts, id, scale = 1, selectedEl
         ...(palette ? { palette } : {}),
         ...(bleed !== undefined ? { bleed } : {}),
       }),
-    [id, motifs, palette, bleed],
+    [id, motifs, palette, bleed, type],
   )
   // The card as it is once every byte it names has landed. Compiling is pure and asks nothing of
   // the service; only the markup put into the page does.

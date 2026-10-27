@@ -176,17 +176,20 @@
 @media (min-width: 1024px) and (max-width: 1279px) {
   /* 4 px and 8 px since #477: with a table running, a machine whose system-ui is DejaVu (CI's
      Linux) still cut a game called «Sal's Saloon» by 8–11 px at 6 and 12. */
-  .byd-editor > header { gap: var(--byd-s1); padding: 0 var(--byd-s2); }
-  .byd-editor > header [role='tablist'] { margin-left: 0; padding: 2px; } /* undantag: halva steget, mätt med DejaVu (#477) */
+  /* 2 px between the row's parts and none round the tabs since the eighth tab, «Låda» (#1413): with a
+     table running the game's name was 36 px short on CI's DejaVu. */
+  .byd-editor > header { --byd-head-gap: 2px; gap: var(--byd-head-gap); padding: 0 var(--byd-s2); }
+  .byd-editor > header [role='tablist'] { margin-left: 0; padding: 0; }
   .byd-editor > header > .byd-editor-saved { font-size: 12px; }
   .byd-editor > header > .byd-editor-rev { padding: 4px 2px; } /* undantag: halva steget, mätt med DejaVu (#477) */
-  /* And the tabs speak at the crown's 12 px here: seven of them were over 400 px of the row. */
-  .byd-editor > header [role='tab'] { padding: 0 4px; font-size: 12px; }
+  /* And the tabs speak smaller here: seven of them at 12 px were over 400 px of the row, and eight
+     since «Låda» (#1413) are at 11 px. */
+  .byd-editor > header [role='tab'] { padding: 0 4px; font-size: 11px; }
   .byd-editor > header > button:where(.byd-primary, .byd-secondary) { padding: 0 8px; }
   /* The game's own ⋯ (#542) leans on the name beside it rather than on the row: its 44 px are a
      target and mostly air, the name is no control, and at 1024 in English with DejaVu the name was
      1 px short once the ⋯ and its gap were in the row. */
-  .byd-editor > header > .byd-editor-more { margin-left: -4px; }
+  .byd-editor > header > .byd-editor-more { margin-left: calc(-1 * var(--byd-head-gap)); }
 }
 /* Below 1440 on the desk the step buttons (#566) took the room the row had left (beslut 2026-09-30):
    measured on CI's DejaVu with a table running, the game's name and «Uppdatera bordet» were 19 to
@@ -207,7 +210,7 @@
   .byd-editor > header > .byd-editor-saved[data-unsaved='true'] > .byd-editor-saved-mark { width: 9px; height: 9px; border-radius: 50%; background: currentColor; }
   .byd-editor-primary-long { display: none; }
   .byd-editor-primary-short { display: inline; }
-  /* What the row has left goes to the tabs' air, and only up to the 12 px a side they have at 1440.
+  /* What the row has left goes to the tabs' air, and only up to the 8 px a side they have at 1440.
      A tab's own padding is the least it has; beside its word stand two empty columns that are
      nothing at its smallest and `--byd-tab-air` at its widest. So the tab list asks for its
      smallest as its start and its widest as its ceiling, grows into the row's rest before the
@@ -220,13 +223,21 @@
   .byd-editor > header [role='tab']::before,
   .byd-editor > header [role='tab']::after { content: ''; }
 }
+/* Never past the 8 px a side the tabs have at 1440 since the eighth tab, «Låda» (#1413). */
 @media (min-width: 1024px) and (max-width: 1279px) {
-  .byd-editor > header { --byd-tab-air: var(--byd-s2); }
+  .byd-editor > header { --byd-tab-air: var(--byd-s1); }
 }
 /* The same air, given more gently, where the desk is wide but not wide: at 1280 in English the row
    had 4 px left with DejaVu (#477). */
 @media (min-width: 1280px) and (max-width: 1439px) {
   .byd-editor > header { --byd-tab-air: var(--byd-s1); }
+  /* Eight tabs since «Låda» (#1413): at the crown's 12 px and the ladder's smallest rung, or the game's
+     name was 44 px short with a table running on CI's DejaVu. */
+  .byd-editor > header [role='tab'] { padding: 0 var(--byd-s1); font-size: 12px; }
+}
+/* And at 1440 the tabs' air is the ladder's 8 and not the 12 every other width gave way from: the
+   eighth tab cut the game's name there too (#1413). */
+@media (min-width: 1440px) {
   .byd-editor > header [role='tab'] { padding: 0 var(--byd-s2); }
 }
 /* What a phone does not get, said where the tools would have been (L10). */
@@ -380,7 +391,9 @@
    button is exactly one target wide: the face, and pressing it opens the list that says the rest.
    A width and not a ceiling (#1250): the ceiling held only where it met every button's floor. */
 @media (min-width: 1024px) and (max-width: 1279px) {
-  .byd-editor > header > .byd-editor-here { width: var(--byd-tap); margin-left: 0; padding: 0; }
+  /* It keeps the 4 px it had from the tabs since the header's gap became 2 (#1413): the faces that
+     hang under it are wider than the door, and stand clear of the last tab only with them. */
+  .byd-editor > header > .byd-editor-here { width: var(--byd-tap); margin-left: calc(var(--byd-s1) - var(--byd-head-gap)); padding: 0; }
   .byd-editor > header > .byd-editor-here .byd-editor-here-word { display: none; }
 }
 .byd-editor-here:hover, .byd-editor-here[aria-expanded='true'] { background: #1b1d23; }
@@ -3487,9 +3500,9 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
 .byd-editor > header > .byd-editor-primary:has(+ .byd-editor-split) { border-radius: 8px 0 0 8px; }
 .byd-editor-split > .byd-editor-caret { border-radius: 0 8px 8px 0; margin-left: 0; padding: 8px 12px; font: inherit; cursor: pointer; }
 @media (min-width: 1024px) and (max-width: 1279px) {
-  /* The header's gap is 4 px in this band, so the caret takes back 4 and not 12: taking 12 laid
-     it over the last letters of the primary (#477). */
-  .byd-editor-split { margin-left: calc(-1 * var(--byd-s1)); }
+  /* The header's gap is its own in this band, so the caret takes back that and not 12: taking 12
+     laid it over the last letters of the primary (#477). */
+  .byd-editor-split { margin-left: calc(-1 * var(--byd-head-gap)); }
 }
 .byd-editor-ways {
   position: absolute;
@@ -4906,3 +4919,87 @@ label.byd-ai-rules { cursor: pointer; }
 /* An ended table's one line in the Bord view (A:s rad): what came of it, and the way to it. */
 .byd-tables-results { justify-self: start; min-height: var(--byd-tap); padding: 0; border: 0; background: transparent; color: var(--byd-tables-ink); font: inherit; font-size: 12px; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 .byd-tables-results:hover { color: #fff; }
+
+/* Fliken «Låda» (#1413, L91, #1406 runda 2, nätet). Malls duk med lådans yta i kortets ställe: samma
+   fyra kolumner, och nätet i mitten där kortet stod. Kolumnerna bär lådans eget huvud, ytorna till
+   vänster och måtten till höger, så lagrens kolumn har en rad mer än i Mall. */
+.byd-canvas[data-surface='box'] .byd-canvas-layers { grid-template-rows: auto auto minmax(0, 1fr) auto; }
+.byd-box-faces { padding-bottom: var(--byd-s2); margin-bottom: var(--byd-s2); border-bottom: 1px solid #2f333d; }
+.byd-box-faces ul { list-style: none; margin: 0; padding: 0; display: grid; }
+.byd-box-faces button, .byd-box-flaps {
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--byd-s2);
+  width: 100%;
+  min-height: var(--byd-tap);
+  padding: 0 var(--byd-s2);
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #dce3f2;
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+.byd-box-faces button:hover { background: #232838; }
+/* The face chosen speaks the button language's chosen (#1083, B): no fill, the mark's bar under it. */
+.byd-box-faces button[aria-pressed='true'] { color: #fff; font-weight: 600; box-shadow: inset 0 -3px 0 var(--byd-editor-primary-mark); }
+.byd-box-face-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.byd-box-faces small { color: var(--byd-editor-source-ink); font-size: 11px; font-variant-numeric: tabular-nums; }
+.byd-box-thumb { display: grid; place-items: center; width: 28px; height: 28px; overflow: hidden; }
+/* The flaps are folded in and never printed (#1406): a row that says so, and no button. */
+.byd-box-flaps { min-height: 32px; color: var(--byd-editor-source-ink); cursor: default; }
+.byd-box-flaps .byd-box-thumb::before { content: ''; width: 14px; height: 14px; border: 1px solid #5b6275; border-radius: 2px; }
+/* The net on the room's chequerboard, fitted whole into it (`useFitted`). */
+.byd-box-stage { min-height: 0; background: repeating-conic-gradient(#20232b 0 25%, #1b1d23 0 50%) 0 0 / 24px 24px; }
+.byd-box-net { position: relative; flex: none; }
+.byd-box-lines { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
+/* Flaps in board grey, the cut drawn whole and the folds dashed in a grey that reads on a dark face
+   and a light one alike, as a tuckbox's net is drawn
+   (#1406). The lines are a pixel at every scale. */
+.byd-box-flap { fill: #d9d4c7; stroke: #222; stroke-width: 1px; vector-effect: non-scaling-stroke; }
+.byd-box-flap-glue { fill: url(#byd-box-glue); }
+.byd-box-glue-ground { fill: #d9d4c7; }
+.byd-box-glue { stroke: #7a7f8c; stroke-width: 0.8; }
+.byd-box-cut { fill: none; stroke: #222; stroke-width: 1px; vector-effect: non-scaling-stroke; }
+.byd-box-fold { stroke: #8a91a2; stroke-width: 1px; stroke-dasharray: 4 3; vector-effect: non-scaling-stroke; }
+.byd-box-panel { position: absolute; cursor: pointer; }
+.byd-box-panel [data-card] { background: var(--byd-editor-blank-paper); }
+/* The face being edited, ringed in the editor's mark and over its neighbours, so its handles are. */
+.byd-box-panel[data-chosen] { z-index: 1; cursor: default; outline: 2px solid var(--byd-editor-primary-mark); outline-offset: 1px; }
+/* The lid stands upside down on the sheet, as it is printed (#1406). */
+.byd-box-panel[data-turned] > .byd-preview { transform: rotate(180deg); }
+/* The foot under the net (#698, beslut B): which face is edited, and the box's measure. */
+.byd-box-foot { display: flex; align-items: center; gap: var(--byd-s2); min-height: var(--byd-tap); padding: var(--byd-s1) var(--byd-s3); border-top: 1px solid #2f333d; background: var(--byd-editor-card-row-bg); }
+.byd-box-foot .byd-editor-confirm { flex: 1 1 auto; }
+.byd-box-foot .byd-foot-quiet { flex: 1 1 auto; min-width: 0; }
+.byd-box-foot-line { display: flex; width: 100%; align-items: baseline; gap: var(--byd-s3); margin: 0; color: #9aa3b8; font-size: 12px; white-space: nowrap; }
+.byd-box-foot-size { margin-left: auto; overflow: hidden; text-overflow: ellipsis; color: #c3cbdd; font-variant-numeric: tabular-nums; }
+.byd-box-foot-size b { color: #fff; }
+/* The measures over the properties (#1406, beslut 4): a lock each, the formula, and the air. */
+.byd-box-measures > section { padding-bottom: var(--byd-s3); margin-bottom: var(--byd-s3); border-bottom: 1px solid #2f333d; }
+.byd-box-sides { margin: 0; display: grid; }
+.byd-box-side { display: grid; grid-template-columns: 56px minmax(0, 1fr) var(--byd-tap); align-items: center; min-height: var(--byd-tap); }
+.byd-box-side dt { color: #c3cbdd; font-size: 13px; }
+.byd-box-side dd { display: grid; min-width: 0; margin: 0; }
+.byd-box-side b { color: #fff; font-size: 15px; font-variant-numeric: tabular-nums; }
+.byd-box-side small { color: var(--byd-editor-source-ink); font-size: 11px; }
+.byd-box-side[data-locked] small { color: var(--byd-editor-locked-ink); }
+.byd-box-lock button { display: grid; place-items: center; width: var(--byd-tap); height: var(--byd-tap); padding: 0; border: 0; border-radius: 6px; background: transparent; color: var(--byd-editor-unlocked-ink); cursor: pointer; }
+.byd-box-lock button:hover { background: #232838; color: #dce3f2; }
+.byd-box-lock button[aria-pressed='true'] { color: var(--byd-editor-locked-ink); }
+.byd-box-lock button:disabled { cursor: default; }
+.byd-box-lock svg { width: 16px; height: 16px; }
+.byd-box-formula { margin: var(--byd-s2) 0; padding: var(--byd-s2) var(--byd-s3); border: 1px solid #2f333d; border-radius: 8px; background: #15171c; color: #dce3f2; font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; font-variant-numeric: tabular-nums; }
+.byd-box-over { display: grid; gap: var(--byd-s2); padding: var(--byd-s2) var(--byd-s3); border: 1px solid #8a6a2a; border-radius: 8px; background: #2a2417; color: #f3e2b8; font-size: 12px; line-height: 1.45; }
+.byd-box-over p { margin: 0; }
+.byd-box-over b { color: #ffd98a; }
+.byd-box-over button { justify-self: start; }
+.byd-box-air { display: grid; grid-template-columns: 1fr 1fr; gap: var(--byd-s2); }
+.byd-box-air-f { display: grid; gap: var(--byd-s1); font-size: 11px; color: #9aa3b8; }
+/* A face of the box says what it says in the panel, as fixed words (#1413). */
+.byd-props label.byd-props-words { grid-template-columns: minmax(0, 1fr); align-items: stretch; }
+.byd-props-words textarea { min-height: var(--byd-tap); resize: vertical; background: #0f1115; border: 1px solid var(--byd-secondary-line); color: #fff; border-radius: 6px; padding: var(--byd-s1) var(--byd-s2); font: inherit; font-size: 13px; box-sizing: border-box; width: 100%; }

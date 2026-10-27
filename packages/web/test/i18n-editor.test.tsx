@@ -34,7 +34,7 @@ const openTab = (name: string) => fireEvent.click(screen.getByRole('tab', { name
 describe('the editor in the reader\'s own language (A4)', () => {
   it('says the frame and the card wall in English, and leaves the deck alone', async () => {
     await openEditor()
-    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Card wall', 'Template', 'Data', 'Theme', 'Media', 'Rules', 'Tables'])
+    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Card wall', 'Template', 'Box', 'Data', 'Theme', 'Media', 'Rules', 'Tables'])
     expect(screen.getByRole('button', { name: 'Save' })).toBeTruthy()
     // The game has no table yet, so the filled action is the one that starts one (#417).
     expect(screen.getByRole('button', { name: 'Start a table' })).toBeTruthy()

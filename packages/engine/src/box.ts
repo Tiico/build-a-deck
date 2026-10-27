@@ -1,4 +1,4 @@
-import type { BoxTypeDef, ComponentTypeDef } from './typedef.js'
+import type { BoxFace, BoxTypeDef, ComponentTypeDef } from './typedef.js'
 
 // The box's measure out of the deck (#1412, #1406). Pure arithmetic over the type and the deck: the
 // editor, the physical check and the presentations to come (#1413, #1414) all ask here, so the box
@@ -90,5 +90,129 @@ export function boxFit({ type, card, cards, clearance, locked }: BoxFitInput): B
     holds,
     over,
     short: over === 0 ? null : (narrow ?? 'depth'),
+  }
+}
+
+// ── En yta och nätet (#1413) ─────────────────────────────────────────────────────────────────────
+
+export type FaceSize = { widthMm: number; heightMm: number }
+
+// The measure of one face: the front and the back are the box's width by its height, the sides its
+// depth by its height, and the lid and the bottom its width by its depth. A face's template is laid
+// out in exactly this rectangle, and the net puts exactly this rectangle on the sheet.
+export function boxFaceSize(face: BoxFace, size: BoxMeasure): FaceSize {
+  switch (face) {
+    case 'front':
+    case 'back':
+      return { widthMm: size.width, heightMm: size.height }
+    case 'left':
+    case 'right':
+      return { widthMm: size.depth, heightMm: size.height }
+    case 'lid':
+    case 'bottom':
+      return { widthMm: size.width, heightMm: size.depth }
+  }
+}
+
+// What the one renderer draws a face of the box as (E2): a straight board of the face's measure,
+// with the box's bleed, safe area and print profile. `compile` takes a component type, and this is
+// the face put in those terms. It is made where it is drawn and never registered: a table never
+// lays a face of a box, and nothing looks it up by its id.
+export function boxFaceType(type: BoxTypeDef, face: BoxFace, size: BoxMeasure): ComponentTypeDef {
+  const { widthMm, heightMm } = boxFaceSize(face, size)
+  return {
+    id: `${type.id}.${face}`,
+    version: type.version,
+    physical: { shape: 'rect', widthMm, heightMm, thicknessMm: type.physical.thicknessMm, material: type.physical.material },
+    faces: ['front'],
+    contentFace: 'front',
+    behaviours: { stackable: false, shufflable: false, flippable: false, rollable: false, counter: false },
+    editorSchema: [],
+    print: { ...type.print },
+    manufacturableBy: [...type.manufacturableBy],
+  }
+}
+
+// The tuckbox unfolded on the sheet, in millimetres from its top left corner (#1413, #1406 variant
+// A). Read left to right: the glue flap, the left side, the front, the right side and the back. The
+// lid hangs on the back with its tuck flap above it, drawn upside down as it stands on the sheet,
+// and the bottom hangs under the front with its own. The sides carry dust flaps at both ends.
+//
+// A panel is where a face's template is drawn; the flaps and the lines are the net's own, since they
+// are folded in and never printed.
+export type NetPanel = { face: BoxFace; x: number; y: number; width: number; height: number; turned: boolean }
+export type NetFlap =
+  | { kind: 'glue' | 'dust'; points: [number, number][] }
+  // A tuck flap is a rectangle with its free corners rounded, opening away from its face.
+  | { kind: 'tuck'; x: number; y: number; width: number; height: number; opens: 'up' | 'down' }
+// A fold, from one end to the other.
+export type NetFold = [number, number, number, number]
+export type BoxNet = { width: number; height: number; panels: NetPanel[]; flaps: NetFlap[]; folds: NetFold[] }
+
+// How far the glue flap and the dust flaps are drawn in at their free end, so they fold past the
+// panel beside them.
+const GLUE_INSET_MM = 5
+const DUST_INSET_MM = 3
+
+export function tuckNet(type: BoxTypeDef, size: BoxMeasure): BoxNet {
+  const { glueMm, tuckMm, dust } = type.physical.flaps
+  const { width: W, height: H, depth: D } = size
+  const xL = glueMm
+  const xF = tidy(xL + D)
+  const xR = tidy(xF + W)
+  const xB = tidy(xR + D)
+  const yLid = tuckMm
+  const yK = tidy(yLid + D)
+  const yBot = tidy(yK + H)
+  const yTuck = tidy(yBot + D)
+  const dd = tidy(dust * D)
+  const at = (face: BoxFace, x: number, y: number, turned = false): NetPanel => {
+    const { widthMm, heightMm } = boxFaceSize(face, size)
+    return { face, x, y, width: widthMm, height: heightMm, turned }
+  }
+  const dustFlap = (x: number, y: number, toward: 1 | -1): NetFlap => ({
+    kind: 'dust',
+    points: [
+      [x, y],
+      [tidy(x + DUST_INSET_MM), tidy(y + toward * dd)],
+      [tidy(x + D - DUST_INSET_MM), tidy(y + toward * dd)],
+      [tidy(x + D), y],
+    ],
+  })
+  return {
+    width: tidy(glueMm + 2 * D + 2 * W),
+    height: tidy(2 * tuckMm + 2 * D + H),
+    panels: [at('left', xL, yK), at('front', xF, yK), at('right', xR, yK), at('back', xB, yK), at('lid', xB, yLid, true), at('bottom', xF, yBot)],
+    flaps: [
+      {
+        kind: 'glue',
+        points: [
+          [0, tidy(yK + GLUE_INSET_MM)],
+          [xL, yK],
+          [xL, yBot],
+          [0, tidy(yBot - GLUE_INSET_MM)],
+        ],
+      },
+      dustFlap(xL, yK, -1),
+      dustFlap(xR, yK, -1),
+      dustFlap(xL, yBot, 1),
+      dustFlap(xR, yBot, 1),
+      { kind: 'tuck', x: xB, y: 0, width: W, height: tuckMm, opens: 'up' },
+      { kind: 'tuck', x: xF, y: yTuck, width: W, height: tuckMm, opens: 'down' },
+    ],
+    folds: [
+      [xL, yK, xL, yBot],
+      [xF, yK, xF, yBot],
+      [xR, yK, xR, yBot],
+      [xB, yK, xB, yBot],
+      [xB, yLid, tidy(xB + W), yLid],
+      [xB, yK, tidy(xB + W), yK],
+      [xF, yBot, tidy(xF + W), yBot],
+      [xF, yTuck, tidy(xF + W), yTuck],
+      [xL, yK, xF, yK],
+      [xR, yK, xB, yK],
+      [xL, yBot, xF, yBot],
+      [xR, yBot, xB, yBot],
+    ],
   }
 }

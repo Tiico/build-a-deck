@@ -143,7 +143,7 @@ for (const locale of ['sv-SE', 'en-GB']) {
 }
 
 // What the row has left below 1440 is the tabs' air (#668): every tab grows by the same amount into
-// the rest, up to the 12 px a side the tabs have at 1440, and the spacer after them gets only what
+// the rest, up to the 8 px a side the tabs have at 1440 (12 before the eighth tab, #1413), and the spacer after them gets only what
 // is over once they are there. Measured as the room between each tab's word and its own edges, so
 // it holds in whatever font the machine has. A tab whose word is short («Bord» and «Mall» with
 // DejaVu) can be held a whole target wide, and then has more air than the share; it is left out of
@@ -164,7 +164,8 @@ const tabAir = (page: Page) =>
   })
 
 for (const locale of ['sv-SE', 'en-GB']) {
-  for (const [width, least] of [[1024, 4], [1280, 8]] as const) {
+  // The least is the tab's own padding: 4 at both since the eighth tab, «Låda» (#1413).
+  for (const [width, least] of [[1024, 4], [1280, 4]] as const) {
     test.describe(`the tabs' air at ${width} in ${locale}`, () => {
       test.use({ viewport: { width, height: 800 }, locale })
 
@@ -175,14 +176,17 @@ for (const locale of ['sv-SE', 'en-GB']) {
         await page.goto(`${project.editorUrl}&lang=${locale.slice(0, 2)}`)
         await expect(page.locator('.byd-editor > header .byd-editor-primary:not(.byd-editor-caret)')).toHaveAttribute('data-table-kind', 'running')
         const { air, even, rest } = await tabAir(page)
-        const most = Math.max(...air)
+        // The air the row gives, read off the tabs it reached: a short word in a tab's 44 px floor has
+        // more round it than any air, and that is the floor's and not the row's.
+        const most = Math.max(...even)
         const fewest = Math.min(...air)
         expect(fewest).toBeGreaterThanOrEqual(least - 0.5)
-        expect(most).toBeLessThanOrEqual(12.5)
+        // Never past 1440's 8 a side since the eighth tab, «Låda» (#1413).
+        expect(most).toBeLessThanOrEqual(8.5)
         expect(even.length).toBeGreaterThanOrEqual(6)
         expect(Math.max(...even) - Math.min(...even)).toBeLessThanOrEqual(1)
         // Either the tabs are at their ceiling, or nothing is left over beside them.
-        if (fewest < 11.5) expect(rest).toBeLessThan(1)
+        if (fewest < 7.5) expect(rest).toBeLessThan(1)
       })
     })
   }
