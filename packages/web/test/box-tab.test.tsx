@@ -346,8 +346,14 @@ describe('«Visa upp» (#1414)', () => {
       await waitFor(() => expect(shown()!.querySelector('[role="status"]')?.textContent).toBe('Bilden tas…'))
       expect(screen.getByRole('button', { name: 'Spara bilden' }).getAttribute('aria-disabled')).toBe('true')
       expect(pressed).toEqual([])
-      await run.completeRenders()
-      await waitFor(() => expect(pressed).toHaveLength(1), { timeout: 5000 })
+      // The still is queued once the press has reached the server; the worker draws whatever is queued.
+      await waitFor(
+        async () => {
+          await run.completeRenders()
+          expect(pressed).toHaveLength(1)
+        },
+        { timeout: 5000 },
+      )
       const still = (await (await fetch(`${run.http}/projects/${run.projectId}/still`, { method: 'POST' })).json()) as { hash: string }
       expect(pressed[0]).toBe(`${run.http}/faces/${still.hash}?name=Skogens%20herrar.jpg&download=1 Skogens herrar.jpg`)
       expect(screen.getByRole('button', { name: 'Spara bilden' }).getAttribute('aria-disabled')).toBeNull()
