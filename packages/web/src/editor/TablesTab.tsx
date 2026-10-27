@@ -26,7 +26,7 @@ import { lastMoveWords } from './when.js'
 import { versionWord } from '../i18n/version.js'
 import { rowSummary } from './playtestReading.js'
 import type { PlaytestTable } from '@byd/server/doc'
-import { ChevronGlyph, PlayGlyph } from '../glyphs.js'
+import { ChevronGlyph, MoreGlyph, PlayGlyph } from '../glyphs.js'
 
 // The Bord tab (#19): every table this game has, and the ways into it. A table is a session
 // started from the project (C9: it survives everyone disconnecting), so the list is the server's
@@ -704,7 +704,7 @@ function TableRow({ table, server, rev, onEnded, onPlayed, onUpdate, textures: w
 const STATE_WORD: Record<TableGroupId, Key> = { played: 'tables.state.played', untouched: 'tables.state.untouched', ended: 'tables.ended' }
 
 // One entry in the row's menu: a way into the table, or something the row does to itself.
-type WayItem = { id: string; label: Key; href?: string; target?: string; press?(): void; expanded?: boolean; apart?: boolean }
+export type WayItem = { id: string; label: Key; href?: string; target?: string; press?(): void; expanded?: boolean; apart?: boolean }
 
 // The five other ways, behind one press (#176). A real menu (APG): the button says what it opens
 // and whether it is open, the arrows move inside it, Enter and Space take the item under them —
@@ -713,7 +713,9 @@ type WayItem = { id: string; label: Key; href?: string; target?: string; press?(
 //
 // It is drawn only while it is open, and the button that opens it is drawn always: a control that
 // appears when a pointer rests on a row is not there at all for a thumb or a keyboard (#184).
-function RowWays({ table, ways, button }: { table: string; ways: WayItem[]; button: RefObject<HTMLButtonElement | null> }) {
+// `mark` is what the button is drawn as: the row's chevron, or the ⋯ the band draws it with (#1422),
+// where a chevron beside «Öppna bordet» would read as that button's own caret.
+export function RowWays({ table, ways, button, mark = 'chevron' }: { table: string; ways: WayItem[]; button: RefObject<HTMLButtonElement | null>; mark?: 'chevron' | 'more' }) {
   const t = useT()
   const [open, setOpen] = useState(false)
   const menuId = useId()
@@ -748,7 +750,7 @@ function RowWays({ table, ways, button }: { table: string; ways: WayItem[]; butt
         aria-label={t('tables.more.of', { table })}
         onClick={() => setOpen((was) => !was)}
       >
-        <ChevronGlyph to="down" />
+        {mark === 'more' ? <MoreGlyph /> : <ChevronGlyph to="down" />}
       </button>
       {open && (
         <div

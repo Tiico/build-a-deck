@@ -730,8 +730,9 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
       if (!guest) return json(res, 404, { error: 'no seat of yours at this table' })
       return json(res, 200, { session: sessionId, token: guestToken, kind: guest.kind, seat: guest.seat, name: guest.name })
     }
-    // The host's controls (DRIFT §9): a new code (and with it a new host key, #820), and a kick. With the host key, or the owner's cookie.
-    const control = /^\/sessions\/([^/]+)\/(code|kick)$/.exec(url.pathname)
+    // The host's controls (DRIFT §9): a new code (and with it a new host key, #820), a kick, and the
+    // end (#1422). With the host key, or the owner's cookie.
+    const control = /^\/sessions\/([^/]+)\/(code|kick|end)$/.exec(url.pathname)
     if (req.method === 'POST' && control) {
       const sessionId = decodeURIComponent(control[1] ?? '')
       const session = await opts.store.loadSession(sessionId)
@@ -750,6 +751,9 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
         actor?.tellTable({ t: 'room', code, expiresAt, hostKey })
         return json(res, 200, { code, expiresAt, hostKey })
       }
+      // The end goes the way the table itself ends (C9): the log is locked and every screen at it
+      // is told. Ending a table that is over is nothing, said as such and not as a fault.
+      if (control[2] === 'end') return json(res, 200, { ok: true, ended: await opts.host.end(sessionId) })
       const { seat } = KickBody.parse(JSON.parse(await readBody(req)))
       if (!session.setup.seats.includes(seat)) return json(res, 404, { error: `unknown seat ${seat}` })
       const revoked = await opts.store.revokeGuests(sessionId, seat, clock(opts).toISOString())

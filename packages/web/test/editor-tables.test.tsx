@@ -847,7 +847,7 @@ describe('a rendering that stands still says so (#88, UX-43, L5)', () => {
     expect(within(line).getByText(/laddar kort 1\/4/)).toBeTruthy()
     // The rest lands: the link opens and the warning is gone for good.
     expect(await run.completeRenders()).toBe(3)
-    expect(await within(line).findByRole('link', { name: 'öppna bordet' })).toBeTruthy()
+    expect(await within(line).findByRole('link', { name: /öppna bordet/i })).toBeTruthy()
     expect(within(line).queryByText(/laddningen har stannat/)).toBeNull()
   })
 
@@ -857,7 +857,7 @@ describe('a rendering that stands still says so (#88, UX-43, L5)', () => {
     const user = userEvent.setup()
     const line = await startFromEditor()
     await run.completeRenders()
-    await within(line).findByRole('link', { name: 'öppna bordet' })
+    await within(line).findByRole('link', { name: /öppna bordet/i })
     await user.click(screen.getByRole('button', { name: 'Uppdatera bordet' }))
     await screen.findByText(/Bordet kör redan version 1/)
     expect(screen.queryByText(/Bordet uppdaterat/)).toBeNull()
@@ -867,7 +867,7 @@ describe('a rendering that stands still says so (#88, UX-43, L5)', () => {
     const user = userEvent.setup()
     const line = await startFromEditor()
     await run.completeRenders()
-    await within(line).findByRole('link', { name: 'öppna bordet' })
+    await within(line).findByRole('link', { name: /öppna bordet/i })
     // A changed card is one more texture to render, and the update waits for it (L5).
     await user.click(screen.getByRole('tab', { name: 'Tabell' }))
     await user.clear(screen.getByLabelText('dragon title'))
