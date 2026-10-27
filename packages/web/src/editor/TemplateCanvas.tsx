@@ -2829,6 +2829,12 @@ const LETTER_SPACINGS = [
   { value: 0.1, name: 'canvas.letterSpacing.caps' },
 ] as const
 
+const DIRECTIONS = [
+  { value: 0, name: 'canvas.direction.across' },
+  { value: 90, name: 'canvas.direction.down' },
+  { value: -90, name: 'canvas.direction.up' },
+] as const
+
 function TuningDoor({ el, onPatch }: { el: TextEl; onPatch(patch: Partial<Element>, gesture?: string): void }) {
   const t = useT()
   const [open, setOpen] = useState(false)
@@ -2854,6 +2860,19 @@ function TuningDoor({ el, onPatch }: { el: TextEl; onPatch(patch: Partial<Elemen
             value={font.letterSpacing ?? 0}
             own={own}
             onWrite={(letterSpacing) => onPatch({ font: { ...font, letterSpacing } })}
+          />
+          {/* Which way the words run (#1431): upright, or a quarter turn to read down or up the box,
+              as a name runs along a box's spine. Behind the door with the spacings, because the
+              text panel has no row to spare at 1024 × 768 (#736) and a turned text is the
+              exception. The box stays where it is drawn, so the handles, the outline and the drag
+              stand on it as on any text; only the words turn. Upright is written as a nought rather
+              than taken off, since the compiler draws the two alike. */}
+          <Steps
+            name={t('canvas.props.direction')}
+            steps={DIRECTIONS.map((step) => ({ value: step.value, label: t(step.name) }))}
+            value={el.rotationDeg ?? 0}
+            own={own}
+            onWrite={(rotationDeg) => onPatch({ rotationDeg: rotationDeg as 0 | 90 | -90 })}
           />
         </div>
       )}
