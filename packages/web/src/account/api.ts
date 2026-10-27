@@ -2,7 +2,7 @@
 // the browser keeps, and the projects that belong to the account. `http` is the server origin;
 // in development it is another port, so credentials are sent explicitly.
 import type { SeatId, Seating } from '@byd/protocol'
-import type { CardFace, CardPeek, Role } from '@byd/server/doc'
+import type { CardFace, CardPeek, GameCover, Role } from '@byd/server/doc'
 import type { PreparedOrder, PrintRequirements, Quote } from '@byd/print'
 import { translate, type T } from '../i18n/index.js'
 import { Said } from '../i18n/said.js'
@@ -19,7 +19,8 @@ const swedish: T = (key, params) => translate('sv', key, params)
 // of them was last played at, and which of its own cards stands on it (#231) — `null` for a game
 // with no cards yet, which is the tile's deliberate empty state.
 // `cards`, `players` and `savedAt` are what the workbench says of a game (#1204).
-export type ProjectSummary = { id: string; name: string; rev: number; tables?: number; lastPlayed?: string | null; card?: CardPeek | null; role?: 'owner' | 'editor' | 'tester' | 'viewer'; cards?: number; players?: number; savedAt?: string | null }
+// `cover` is that the hero shows the game's box (#1416): its designer has opened it.
+export type ProjectSummary = { id: string; name: string; rev: number; tables?: number; lastPlayed?: string | null; card?: CardPeek | null; role?: 'owner' | 'editor' | 'tester' | 'viewer'; cards?: number; players?: number; savedAt?: string | null; cover?: boolean }
 export async function myProjects(http: string): Promise<ProjectSummary[]> {
   const res = await fetch(`${http}/projects`, withCredentials())
   if (res.status === 401) throw new Unauthorized()
@@ -43,6 +44,13 @@ export async function gameFan(http: string, project: string): Promise<CardFace[]
   const res = await fetch(`${http}/projects/${encodeURIComponent(project)}/fan`, withCredentials())
   if (!res.ok) throw new Error(`could not read the fan: ${res.status}`)
   return (await res.json()) as CardFace[]
+}
+
+// The hero's box (#1416, L91): its front, right side and lid, asked for after the list as the fan is.
+export async function gameCover(http: string, project: string): Promise<GameCover> {
+  const res = await fetch(`${http}/projects/${encodeURIComponent(project)}/cover`, withCredentials())
+  if (!res.ok) throw new Error(`could not read the box: ${res.status}`)
+  return (await res.json()) as GameCover
 }
 
 // What waits for the account, game by game (#1225, #1204 beslut B), for «Väntar på dig» and the

@@ -629,8 +629,8 @@ export class PostgresProjectStore implements ProjectStore {
     // The deck's first row only, as an id and a title: the list names one card per game (G1,
     // #231), and a hundred whole rows per game would be a document each just to name one. The
     // order is the document's own, so the row that comes back is the row the table shows first.
-    const rows = await this.sql<{ id: string; rev: number; name: string; role: string; first: ProjectRow | null }[]>`
-      select p.id, p.rev, p.doc->>'name' as name,
+    const rows = await this.sql<{ id: string; rev: number; name: string; role: string; first: ProjectRow | null; box_opened: boolean }[]>`
+      select p.id, p.rev, p.doc->>'name' as name, p.box_opened_at is not null as box_opened,
              case when p.owner = ${account} or p.owner is null then 'owner' else m.role end as role,
              jsonb_build_object('id', p.doc->'rows'->0->>'id', 'fields', jsonb_build_object('title', p.doc->'rows'->0->'fields'->>'title')) as first
       from projects p
@@ -638,7 +638,17 @@ export class PostgresProjectStore implements ProjectStore {
       where p.owner = ${account} or p.owner is null or m.role is not null
       order by p.updated_at desc
     `
-    return rows.map((r) => ({ id: r.id, name: r.name, rev: r.rev, role: r.role as Role, card: peekCard(r.first?.id ? [r.first] : []) }))
+    return rows.map((r) => ({ id: r.id, name: r.name, rev: r.rev, role: r.role as Role, card: peekCard(r.first?.id ? [r.first] : []), ...(r.box_opened ? { boxOpened: true } : {}) }))
+  }
+
+  // The first time is kept: the box was opened then, and opening it again says nothing new.
+  async openBox(id: string): Promise<boolean> {
+    return (await this.sql`update projects set box_opened_at = coalesce(box_opened_at, now()) where id = ${id} returning 1`).length > 0
+  }
+
+  async boxOpened(id: string): Promise<boolean> {
+    const [row] = await this.sql<{ opened: boolean }[]>`select box_opened_at is not null as opened from projects where id = ${id}`
+    return row?.opened === true
   }
 
   async roleOf(id: string, account: string): Promise<Role | null> {

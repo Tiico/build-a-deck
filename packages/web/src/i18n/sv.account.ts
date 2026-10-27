@@ -156,6 +156,7 @@ export const svAccount = {
   'home.card.never': 'inte spelat',
   'home.card.nocards': 'inga kort ännu',
   'home.card.first': 'Första kortet: {title}',
+  'home.card.box': 'Lådan till {name}',
   'home.card.nothing': 'inte spelat ännu',
   'home.card.last': 'senast {when}',
   'home.card.tables.one': '{n} bord · {at}',

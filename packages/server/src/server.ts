@@ -20,6 +20,7 @@ import { changeOf, diffProjects, type DocDiff, type VersionChange } from './diff
 import { ProjectHost, type EditorMessage, type Saved } from './project-actor.js'
 import { checkedName, type EditIntent } from './edits.js'
 import { arrangementOf, fanFaces, namesOfProject, peekFace, type CardFace } from './names.js'
+import { coverOf, showsCover } from './box.js'
 import { SurveyAsk, SurveyBody, sameSender, type SurveyAnswer, type SurveyStanding, type SurveyStore } from './surveys.js'
 import { playtestOf, type PlaytestSource } from './playtest.js'
 import { playtestWaiting, WAITING_VERBS, type GameWaiting, type Waiting, type WaitingTable } from './waiting.js'
@@ -1830,7 +1831,11 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
         // What the workbench says of a game (#1204) is the live document's, as the name is.
         const about = live ? { cards: cardsUsed(live).cardCopiesPerProject, players: live.setup.seats.length } : {}
         const savedAt = (await projects.versions(p.id))[0]?.at ?? null
-        return { ...p, name: live?.name ?? p.name, ...about, savedAt, tables: sessions.length, lastPlayed: last.sort().at(-1) ?? null }
+        // Whether the hero shows the game's box (#1416), said in the list so the hero's place is the
+        // box's from the first screen and nothing changes shape when the drawing lands.
+        const { boxOpened, ...game } = p
+        const cover = showsCover(live ?? { box: undefined }, boxOpened === true) ? { cover: true } : {}
+        return { ...game, name: live?.name ?? p.name, ...about, savedAt, tables: sessions.length, lastPlayed: last.sort().at(-1) ?? null, ...cover }
       }),
     )
     json(res, 200, played)
@@ -1903,6 +1908,28 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     const gate = await owned(decodeURIComponent(fan[1] ?? ''))
     if (!('rec' in gate)) json(res, gate.status, { error: gate.error })
     else json(res, 200, fanFaces((await editors(opts, projects).live(gate.rec.id)) ?? gate.rec))
+    return true
+  }
+  // The hero's box (#1416, L91): its front, right side and lid as `boxFaceOf` draws them, asked for
+  // after the list as the fan is, so the first screen never waits for it.
+  const cover = /^\/projects\/([^/]+)\/cover$/.exec(url.pathname)
+  if (req.method === 'GET' && cover) {
+    const gate = await owned(decodeURIComponent(cover[1] ?? ''))
+    if (!('rec' in gate)) json(res, gate.status, { error: gate.error })
+    else json(res, 200, coverOf((await editors(opts, projects).live(gate.rec.id)) ?? gate.rec))
+    return true
+  }
+  // A designer opened the game's box (#1416): the hero shows it from then on. Whoever may edit the
+  // game is its designer; a tester or a viewer looking at the tab draws no box for her. No edit
+  // and no version: it is kept on the game beside its document.
+  const opened = /^\/projects\/([^/]+)\/box\/opened$/.exec(url.pathname)
+  if (req.method === 'POST' && opened) {
+    const gate = await allowed(decodeURIComponent(opened[1] ?? ''), canEdit)
+    if (!('rec' in gate)) json(res, gate.status, { error: gate.error })
+    else {
+      await projects.openBox(gate.rec.id)
+      res.writeHead(204).end()
+    }
     return true
   }
   // A game brought back from an export (G5, #528): a new project owned by whoever brings it, with
