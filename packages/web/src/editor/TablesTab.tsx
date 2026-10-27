@@ -17,6 +17,7 @@ import { Question } from './Question.js'
 import { anotherAsk } from './another.js'
 import { useLang, useT, type Key, type T } from '../i18n/index.js'
 import { saidOr } from '../i18n/said.js'
+import { playable } from '@byd/server/doc'
 import { QuotaReached } from '../account/quota.js'
 import { quotaWords, type QuotaWords } from '../account/quota-words.js'
 import { Help } from './HelpDrawer.js'
@@ -199,12 +200,14 @@ export function TablesTab({ client, server, started = null, onResults }: TablesT
           that did nothing (jfr #215). */}
       {/* `aria-disabled` and not `disabled` (#480): the button keeps the focus while it starts the
           table, and the handler refuses a second start itself. */}
-      <button ref={newButton} type="button" className="byd-tables-new byd-secondary" aria-disabled={starting} aria-busy={starting} onClick={() => (newest ? setAnother(true) : !inFlight.current && setAsking(true))}>
-        <span className="byd-tables-new-icon">
-          <PlayGlyph />
-        </span>
-        {starting ? t('tables.starting') : t('tables.new')}
-      </button>
+      {client.startable && (
+        <button ref={newButton} type="button" className="byd-tables-new byd-secondary" aria-disabled={starting} aria-busy={starting} onClick={() => (newest ? setAnother(true) : !inFlight.current && setAsking(true))}>
+          <span className="byd-tables-new-icon">
+            <PlayGlyph />
+          </span>
+          {starting ? t('tables.starting') : t('tables.new')}
+        </button>
+      )}
       {another && newest && (
         <Question
           className="byd-tables-question"
@@ -239,9 +242,9 @@ export function TablesTab({ client, server, started = null, onResults }: TablesT
         </Suspense>
       )}
       {/* A table started from a deck with no cards has nothing to deal and nothing to draw (#751).
-          The button stays — the deck may be filled in a minute — but the tab says so, and where
-          cards are added. */}
-      {deckIsEmpty(client.doc) && <p className="byd-tables-empty">{t('tables.noCards')}</p>}
+          Until the deck has a card there is no table to start (#1415, L91): the button is not
+          drawn, and the tab says why and where cards are added. */}
+      {!playable(client.doc) && <p className="byd-tables-empty">{t('tables.noCards')}</p>}
       {revealed?.why === 'started' && failed === null && (
         <p className="byd-tables-started" role="status">
           {t('tables.started', { table: revealed.code ?? '' })}
@@ -262,7 +265,9 @@ export function TablesTab({ client, server, started = null, onResults }: TablesT
         </p>
       )}
       {tables.length === 0 ? (
-        <p className="byd-tables-empty">{t('tables.none')}</p>
+        // The sentence names «Starta bord», which a deck with no card does not have (#1415): the line
+        // about the deck above says it instead.
+        playable(client.doc) && <p className="byd-tables-empty">{t('tables.none')}</p>
       ) : (
         tableGroups(tables, t).map((group) => (
           <TableGroupView
@@ -844,10 +849,3 @@ function seated(seats: readonly { id: string; name: string | null }[] | null, ob
   return watching.length === 0 ? who : t('tables.watching', { who, names: watching.join(', ') })
 }
 
-// How many cards the deck holds: every row, as many times as its `antal` says (C7).
-function deckIsEmpty(doc: { rows: readonly { fields: Record<string, unknown> }[] }): boolean {
-  return doc.rows.every((row) => {
-    const n = Number(row.fields['antal'] ?? 1)
-    return Number.isFinite(n) && n <= 0
-  })
-}

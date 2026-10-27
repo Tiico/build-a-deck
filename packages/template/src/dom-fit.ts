@@ -19,7 +19,12 @@ export function fitInDocument(root: ParentNode): FitReport[] {
     const shrink = el.dataset['fit'] === 'shrink'
     let size = start
     el.style.fontSize = `${size}pt`
-    const overflows = () => el.scrollHeight > el.clientHeight + 0.5 || el.scrollWidth > el.clientWidth + 0.5
+    // A text turned a quarter round (#1431) is laid out in a block of its own, turned onto the box,
+    // and that block is what holds the words and clips them. The element never overflows a block
+    // turned to cover it exactly, so the block is what is measured, in its own upright terms.
+    const turn = Number(el.querySelector<HTMLElement>(':scope > [data-turn]')?.dataset['turn'] ?? 0)
+    const block = turn === 0 ? el : (el.querySelector<HTMLElement>(':scope > [data-turn]') ?? el)
+    const overflows = () => block.scrollHeight > block.clientHeight + 0.5 || block.scrollWidth > block.clientWidth + 0.5
     if (shrink) {
       while (overflows() && size - 0.5 >= min - 1e-9) {
         size -= 0.5
@@ -34,16 +39,22 @@ export function fitInDocument(root: ParentNode): FitReport[] {
     let hidden = 0
     const doc = el.ownerDocument
     if (overflow && typeof doc.createRange === 'function') {
-      const bottom = el.getBoundingClientRect().bottom
+      // How far down the text a rectangle on the screen lies. Upright that is the screen's own
+      // down; a block turned to 90 reads its lines from the right edge leftwards, and one turned
+      // to -90 from the left edge rightwards.
+      const along = (r: { top: number; bottom: number; left: number; right: number }) =>
+        turn === 90 ? { top: -r.right, bottom: -r.left } : turn === -90 ? { top: r.left, bottom: r.right } : { top: r.top, bottom: r.bottom }
+      const bottom = along(el.getBoundingClientRect()).bottom
       const tops: { top: number; bottom: number }[] = []
       // 4 is `NodeFilter.SHOW_TEXT`, written out because this runs serialised in another page.
       const walk = doc.createTreeWalker(el, 4)
       const range = doc.createRange()
       for (let node = walk.nextNode(); node; node = walk.nextNode()) {
         range.selectNodeContents(node)
-        for (const r of typeof range.getClientRects === 'function' ? range.getClientRects() : []) {
-          if (r.width < 0.5 || r.height < 0.5) continue
-          const line = tops.find((l) => Math.abs(l.top - r.top) < r.height / 2)
+        for (const rect of typeof range.getClientRects === 'function' ? range.getClientRects() : []) {
+          if (rect.width < 0.5 || rect.height < 0.5) continue
+          const r = along(rect)
+          const line = tops.find((l) => Math.abs(l.top - r.top) < (r.bottom - r.top) / 2)
           if (line) line.bottom = Math.max(line.bottom, r.bottom)
           else tops.push({ top: r.top, bottom: r.bottom })
         }

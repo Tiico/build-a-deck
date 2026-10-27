@@ -438,6 +438,9 @@ export const svEditor = {
   'wall.foot.found.one': '{shown} av {total} kort',
   'wall.foot.found.other': '{shown} av {total} kort',
   'wall.foot.checked': 'Inga anmärkningar',
+  // Lådan i foten (#1415): det den mäter före leken är spelbar, och vägen till fliken därefter.
+  'wall.foot.box': 'Lådan {w} × {h} × {d} mm',
+  'wall.foot.box.open': 'Låda {w} × {h} × {d} mm',
   'wall.empty.title': 'Inga kort ännu',
   'wall.empty.body': 'Lägg till kort i Tabell och rita mallen i Mall.',
   'wall.empty.drawn.title': 'Mallen är ritad, men det finns inga kort',
@@ -955,6 +958,11 @@ export const svEditor = {
   // «krymp till gräns» klipptes till «krymp till grä…».
   'canvas.fit.shrink': 'krymp',
   'canvas.fit.fixed': 'fast',
+  // Vilken väg orden löper (#1431), bakom «Finjustering» med de två avstånden.
+  'canvas.props.direction': 'Riktning',
+  'canvas.direction.across': 'vågrätt',
+  'canvas.direction.down': 'nedåt',
+  'canvas.direction.up': 'uppåt',
   // Niopunktsplattan (L41): ett grepp som svarar på båda leden, och varje rutas namn är de två
   // orden i den ordning plattan läses — i sidled först, som texten själv.
   'canvas.props.place': 'Placering i rutan',
@@ -2188,5 +2196,12 @@ export const svEditor = {
   'box.air.grip.around': 'R',
   'box.air.grip.depth': 'D',
   'box.air.hint': 'Mer luft för kortfickor: {air} mm runt kortet ger {w} × {h} mm.',
+  'box.show': 'Visa upp',
+  'box.show.back': 'Redigera nätet',
+  'box.show.tip': 'Dra för att vrida lådan. Klicka på en sida för att redigera den, Escape går tillbaka till nätet.',
+  'box.show.scene': 'Lådan och leken. Piltangenterna vrider lådan.',
+  'box.show.line': 'låda {w} × {h} × {d} mm · lek {deck} mm',
+  'box.show.share': 'Dela länken',
+  'box.show.shared': 'Länken till Visa upp är kopierad.',
   'canvas.props.words': 'Text',
 } as const

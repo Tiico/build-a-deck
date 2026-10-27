@@ -127,10 +127,11 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   // How much room there is (L10), and where the designer is standing. One state answers both:
   // the desk shows a mode, a smaller screen shows the stage that mode is made of.
   const room = useRoom()
-  // Whether «Starta bord» can be used (L5): the header's button stands exactly when this is true. The
-  // box's tab comes at the same moment and not before (#1406, beslut 2 och 3, #1413), so the two are
-  // asked the one question.
-  const startable = client?.mayStartTables === true
+  // Whether «Starta bord» can be used (L5): the header's button stands exactly when this is true, which
+  // is a role that may start tables and a deck with a card in it (#1415, L91). The box's tab comes at
+  // the same moment and not before (#1406, beslut 2 och 3, #1413), so the two are asked the one
+  // question; until then the box only grows in the wall's foot.
+  const startable = client?.startable === true
   const modes = modesFor(startable)
   const stages = room === 'desk' ? null : stagesFor(room, startable)
   // Below the desk «Spara» and «Uppdatera bordet» stand in the header while the header stands, as
@@ -144,14 +145,19 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   // the game's own (L80) and a reload opens the editor as it always opens.
   // The print package's «Rita lådan ›» (#1418) comes the same way: `open=box` opens the Låda tab.
   const [results] = useState(() => params.get('results'))
-  const [opening] = useState<Stage | null>(() => (params.get('open') === 'box' ? 'box' : null))
+  // `open=box` is the way into the Låda tab from the print package (#1418), and `show=box` the way
+  // into «Visa upp» (#1414), from Mina spel or a link shared from it: the tab opens on the box shown
+  // off rather than on the net. Both are read once and taken out the same way.
+  const [shown] = useState(() => params.get('show') === 'box')
+  const [opening] = useState<Stage | null>(() => (params.get('open') === 'box' || shown ? 'box' : null))
   useEffect(() => {
-    if (!results && !params.has('open')) return
+    if (!results && !params.has('open') && !shown) return
     const rest = new URLSearchParams(location.search)
     rest.delete('results')
     rest.delete('open')
+    rest.delete('show')
     history.replaceState(history.state, '', `${location.pathname}?${rest.toString()}${location.hash}`)
-  }, [results, params])
+  }, [results, params, shown])
   const [stage, setStage] = useState<Stage>(results ? 'tables' : (opening ?? 'wall'))
   // «Ny kod» asks before the code changes, and the band says what changed once it has (#679,
   // beställarens beslut C): the code on the TV and the one just sent stop working on one press.
@@ -162,6 +168,12 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   // So does a box whose tab has gone, which is a role that may no longer start tables.
   const here: Stage = (stages ? !stages.some(([s]) => s === stage) : !modes.some(([m]) => m === stage) && !isCanvasStage(stage)) ? 'wall' : stage
   const mode: Mode = modeOf(here)
+  // «Visa upp» asked for by name is the first look of the tab and not every look of it: back in the
+  // tab later it opens on the net, as it always does.
+  const [showBox, setShowBox] = useState(shown)
+  useEffect(() => {
+    if (showBox && here !== 'box' && client) setShowBox(false)
+  }, [showBox, here, client])
   // Which of the template's four panels the canvas draws: all four on the desk, one at a time
   // below it.
   const canvasStage = room === 'desk' ? null : isCanvasStage(here) ? here : 'canvas'
@@ -710,6 +722,9 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         // the edits land as one version and one step back: a designer who presses this once and
         // changes her mind presses undo once.
         {...(client.mayEdit ? { printPackage: { href: printPackage, onGo: (from: HTMLElement) => leave(printPackage, from) } } : {})}
+        // The box grows in the foot from the first card, and is the way to its tab once the deck is
+        // playable (#1415, L91). A phone lays nothing out in millimetres (L10), and has no tab to go to.
+        box={room === 'phone' ? undefined : { onOpen: startable ? () => setStage('box') : undefined }}
         onFixChecks={(fixes) => {
           const gesture = `fix-check-${Date.now()}`
           for (const fix of fixes) client?.patchElement(fix.face, fix.element, fix.patch, undefined, gesture)
@@ -803,6 +818,13 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         onSelectFace={setBoxFace}
         element={boxElement}
         onSelectElement={setBoxElement}
+        shown={showBox}
+        onShare={() => {
+          const q = new URLSearchParams({ project: projectId ?? '', show: 'box' })
+          const server = params.get('server')
+          if (server) q.set('server', server)
+          void navigator.clipboard?.writeText(`${location.origin}/editor?${q.toString()}`).then(() => confirmation.confirm(t('box.show.shared')), () => undefined)
+        }}
         onOpenFonts={() => {
           revealThemeSection('fonts')
           setStage('theme')
@@ -896,7 +918,9 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   // The name follows the state, in both what it does and what it is doing.
   const tableAction = table ? (updating ? 'editor.updatingTable' : 'editor.updateTable') : updating ? 'editor.startingTable' : 'editor.startTable'
   // A tester runs tables and a viewer does not (D3, #489).
-  const updateButton = !client.mayStartTables ? null : (
+  // A deck with no card has no table to start (#1415, L91): until it has one the button is not drawn.
+  // A table that already runs can still be moved to the saved version, whatever the deck holds.
+  const updateButton = !client.mayStartTables || (!table && !startable) ? null : (
     <button
       type="button"
       className="byd-editor-primary byd-primary"
@@ -997,7 +1021,8 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
             {/* «Nytt bord» is in the caret's menu (beslut 2026-09-27, #477): the header holds the
                 errand the primary names, and a second table is the rarer, deliberate choice. */}
             {updateButton}
-            {client.mayStartTables && <TableMenu client={client} server={params.get('server')} onShowTables={() => setStage('tables')} onNewTable={table ? () => setAskingStart(true) : undefined} />}
+            {/* The caret is the primary's own half, so it stands where the primary stands (#1415). */}
+            {updateButton && <TableMenu client={client} server={params.get('server')} onShowTables={() => setStage('tables')} onNewTable={table && startable ? () => setAskingStart(true) : undefined} />}
           </>
         )}
       </header>

@@ -19,6 +19,7 @@ import type { StartAnswer } from '../editor/startAnswer.js'
 import { anotherAsk } from '../editor/another.js'
 import { GameMenu } from './GameMenu.js'
 import { useWide } from '../join/wide.js'
+import { useRoom } from '../room.js'
 import { guestAddress } from '../guestAddress.js'
 import { marked } from './marked.js'
 import { seatColor } from '../table/seatColor.js'
@@ -60,6 +61,10 @@ export type HomePageProps = { onNavigate?(url: string): void }
 // listed only the account's own games.
 const roleOf = (p: ProjectSummary): Role => p.role ?? 'owner'
 const mayDoAny = (role: Role): boolean => canStartTables(role) || canEdit(role) || canDelete(role)
+// Whether a table can be started from the game (#1415, L91): a role that may, and a deck with a card in
+// it, which is what the editor's «Starta bord» stands on and what the server holds a start to. A game
+// the list does not count is left to the server.
+const startable = (p: ProjectSummary): boolean => canStartTables(roleOf(p)) && (p.cards ?? 1) > 0
 
 export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePageProps) {
   const t = useT()
@@ -67,6 +72,8 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
   const params = useMemo(() => new URLSearchParams(location.search), [])
   const server = params.get('server')
   const http = server ?? location.origin
+  // Whether the editor will have its Låda tab here (L10): a phone has none, so it is offered no way to it.
+  const room = useRoom()
   const [email, setEmail] = useState<string | null | undefined>(undefined)
   // Whether the account has been asked what the others should call it (#1254): until it has, the
   // question is the page's one band.
@@ -338,7 +345,7 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
               {t('home.menu.open', { code: table.code })}
             </a>
           ))}
-          {canStartTables(roleOf(p)) && (
+          {startable(p) && (
             <button
               type="button"
               onClick={() => {
@@ -348,6 +355,20 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
             >
               {t(runningOf(p).length > 0 ? 'home.menu.start.new' : 'home.menu.start')}
             </button>
+          )}
+          {/* «Visa upp» (#1414): the game's box shown off, where the Låda tab is, which is for the
+              roles that may start a table and at a desk or a tablet (L10, #1413). */}
+          {canStartTables(roleOf(p)) && room !== 'phone' && (
+            <a
+              href={showOf(p)}
+              onClick={(e) => {
+                e.preventDefault()
+                setMenu(null)
+                onNavigate(showOf(p))
+              }}
+            >
+              {t('home.menu.show')}
+            </a>
           )}
           {/* The editor's own choices for the whole game (#738, #909): its name, a copy of
               it and taking it with you are the owner's and the co-editors' (G5, #527);
@@ -424,6 +445,7 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
     </>
   )
   const editorOf = (p: ProjectSummary) => `/editor?${suffix(new URLSearchParams({ project: p.id }))}`
+  const showOf = (p: ProjectSummary) => `/editor?${suffix(new URLSearchParams({ project: p.id, show: 'box' }))}`
   const toEditor = (p: ProjectSummary) => (e: React.MouseEvent) => {
     e.preventDefault()
     onNavigate(editorOf(p))
@@ -720,7 +742,7 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
                         {t('home.menu.open', { code: heroTable.code })}
                       </a>
                     ) : (
-                      canStartTables(roleOf(hero)) && (
+                      startable(hero) && (
                         <button type="button" className="byd-secondary" onClick={() => startFrom(hero)}>
                           {t('home.menu.start')}
                         </button>

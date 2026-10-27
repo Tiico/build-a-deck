@@ -9176,7 +9176,9 @@ Vikningen är den enda rörelsen utanför «Visa upp», och vid `prefers-reduced
 En designer som just har börjat på sin lek är inte intresserad av lådan, men att den går att styra är en säljpunkt.
 Från första kortet står därför en liten neutral låda i kortväggens fot och blir tjockare för varje kort.
 När leken är spelbar blir den en knapp och fliken «Låda» kommer.
-Spelbar betyder samma villkor som för «Starta bord».
+Spelbar betyder samma villkor som för «Starta bord», och sedan 2026-10-27 betyder det att leken har minst ett kort och att ett bord går att starta.
+«Starta bord» skärptes därför på samma sätt: ett bord utan kort har inget att dela ut och inget att rita (#751), så knappen står inte förrän leken har ett kort, varken i editorns huvud, i Bord eller i Mina spel, och servern vägrar starta ett bord ur en lek utan kort.
+För den som får starta bord är leken alltså spelbar från första kortet, och lådan är en knapp från det att den står i foten; den växer utan att vara en knapp för den som inte får starta bord.
 
 **Omslaget är lådans framsida.**
 Det syns i heron i Mina spel, i de delade länkarnas bild (rumskod och inbjudan) och i en egen vy, «Visa upp».
@@ -9205,13 +9207,30 @@ Lådans text vid skapandet skrivs på designerns språk och blir hennes (A4).
 
 Byggt 2026-10-26 (#1412): typen, måtten, låsen, luften och raden i Fysisk kontroll.
 Byggt 2026-10-27 (#1413): fliken «Låda» och nätet, där en yta redigeras av Malls egen duk med kortets redigeringar märkta `on: 'box'`, och en yta som inte är ritad är den neutrala (`boxFaceOf`) tills designern först ändrar den.
-Fliken följer knappen «Starta bord», som i dag står för varje roll som får starta bord, också med en tom lek.
+Fliken följer knappen «Starta bord».
+Byggt 2026-10-27 (#1415): skärpningen av spelbar och lådan i kortväggens fot.
+Spelbar är `playable` i `packages/server/src/setup.ts`, en lek med minst ett kort räknat som bordet delar ut det (`copiesOf`), och editorn frågar `ProjectClient.startable`, som är rollens `mayStartTables` och en spelbar lek; `POST /projects/:id/sessions` svarar 409 på en lek utan kort.
+Ett bord som redan finns kan fortfarande uppdateras, och borden ett spel har läses som förut av rollen.
+Lådan i foten står längst ut i kortväggens fot från första kortet, med `boxOf`:s mått, och är en knapp till fliken när leken är spelbar.
+Knappen talar fotens dörrspråk, som anmärkningarna bredvid den: orden understrukna och pilen efter, och ingen ram, eftersom fotens enda rad inte rymmer prototypens ram utan att foten växer.
+Foten håller sin höjd också med anmärkningarnas dörr, som förut gjorde den 29 px högre när leken fick sin första anmärkning.
+Den lilla lådan är en symbol för måtten och ritar ingen yta (E2): framsidan, locket och sidan i lekens färg, med sidan lika djup som leken mot lådans höjd.
+Den tar en rad i foten och inte mer, och den står inte på en telefon, som inte lägger något i millimeter (L10).
+`packages/web/test/wall-box-foot.test.tsx` och `packages/e2e/test/wall-box-grows.spec.ts` är grindarna.
+Byggt 2026-10-27 (#1431): en text i mallen kan vridas ett kvarts varv, `rotationDeg` 90 (läses nedåt) eller -90 (läses uppåt), och den neutrala lådans sidor bär namnet längs ryggen med bokstävernas överkant mot framsidan.
+Rutan vrids inte, bara orden i den, så markeringsramen, handtagen, dragningen och Fysisk kontroll står på rutan som för en upprätt text; den enda renderaren (E2) vrider orden i texturen och i PDF:en, och E6 anpassar och E5 mäter golvet längs rutans längd.
+I editorn är vridningen valet «Riktning» bakom «Finjustering» i textens egenskaper, eftersom textpanelen inte har någon rad över vid 1024 × 768 (#736).
 Byggt 2026-10-27 (#1418): exporten bär lådan och tryckpaketet visar den som del 3.
 Dokumentets `box` står i varje version, och manifestets `print.box` säger typen, måtten, låsen, luften, nätets mått och vilken PDF som är vilken yta.
 Lådans sex ytor ligger som tryck-PDF:er med typens utfall under `tryck/lada/`, ritade eller neutrala, kompilerade och ritade som korten (`box-print.ts`); de följer med även när tryckkontrollen stoppar kortfilerna, eftersom kontrollen läser korten.
 Importen tar tillbaka lådan med dokumentet, och rundturen ger samma `spel.json`; `print.box` läses inte in, eftersom den kan härledas.
 Tryckpaketets del 3 visar nätet med varje yta ur den enda renderaren, måtten, om lådan är ritad eller neutral och vilka mått som är låsta, med «Rita lådan ›» till fliken Låda (`open=box`).
 Paketets `manifest.json` bär lådan som den mäts, utan filer, och sidan och båda `LASMIG.md` säger att lådans tryckfiler, med stansform och i CMYK, kommer när en tryckpartner är vald (F1, F2).
+Byggt 2026-10-27 (#1414): «Visa upp» i fliken, där nätets sex paneler viks till lådans sidor på 0,9 s och leken ställer sig bredvid, ritade av renderaren i 1,25 gånger sitt mått och bara förminskade.
+Geometrin och ljuset räknas på ett ställe, `packages/web/src/editor/boxScene.ts`, och vridningen ändrar bara transform och opacitet.
+Mina spel når vyn genom spelets ⋯ med `show=box`, som editorn läser en gång och tar ur adressen (L80); «Dela länken» kopierar samma väg in.
+En telefon har ingen flik «Låda» (L10), så Mina spel erbjuder den ingen väg dit.
+«Spara bilden» hör till länkbilden (#1417), eftersom en bild av vyn bara får tas av renderaren (E2).
 Byggt 2026-10-27 (#1416): heron i Mina spel visar lådan i C:s stilla form, framsidan och högra sidan vridna 24° bakom lekens första kort, när designern har öppnat fliken «Låda».
 Att hon har öppnat den sparas på spelet, i `projects.box_opened_at` (`openBox` och `boxOpened` i `ProjectStore`), och inte i dokumentet eller på kontot.
 I dokumentet hade öppnandet varit en redigering, med en version och ett steg att ångra, och en äldre version som togs tillbaka hade tagit det med sig.
@@ -9222,7 +9241,7 @@ Heron visar lådan också när någon yta är ritad, eftersom att rita den är a
 Locket står inte med: lutad så lite som prototypen lutar den blir lockets text några pixlar hög och läses som smuts.
 Kortet täcker sidan och framsidans nedre hörn och inte mer, så att spelets namn på en låda som inte är ritad står helt.
 Länkbilden (#1417) följer heron genom samma två frågor, `boxOpened` och `showsCover`.
-«Visa upp» (#1414), lådan i foten (#1415) och länkbilden (#1417) är egna skivor.
+Länkbilden (#1417) är en egen skiva.
 
 ### L92. Designern låser vilken kolumn som står still i Tabell, och titeln är låst från start (prototypat och beslutat 2026-10-26, #1408)
 

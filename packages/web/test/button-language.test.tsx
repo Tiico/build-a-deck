@@ -333,7 +333,7 @@ describe('the guided start', () => {
 // Every mode the editor can be showing at the desk, and the two doors inside them that have to be
 // held open to be seen at all. Named here so that a walk which finds nothing fails instead of
 // agreeing with itself.
-const EDITOR_VIEWS = ['Bord', 'Kortvägg', 'Låda', 'Mall', 'Mall, ikonbiblioteket öppet', 'Media', 'Regler', 'Speltema', 'Speltema, biblioteket öppet', 'Speltema, exemplen öppna', 'Tabell', 'Tabell, ett nytt fält på väg', 'Tabell, filtrerad'] as const
+const EDITOR_VIEWS = ['Bord', 'Kortvägg', 'Låda', 'Låda, visad upp', 'Mall', 'Mall, ikonbiblioteket öppet', 'Media', 'Regler', 'Speltema', 'Speltema, biblioteket öppet', 'Speltema, exemplen öppna', 'Tabell', 'Tabell, ett nytt fält på väg', 'Tabell, filtrerad'] as const
 
 // Whichever mode is open, the blue button that puts the work on the table is the only filled thing
 // in the room.
@@ -396,6 +396,15 @@ async function editorViews(width: number): Promise<Record<string, string>> {
         await within(sheet).findAllByRole('button', { name: / · Deckster · / })
         out['Mall, ikonbiblioteket öppet'] = document.querySelector('.byd-editor')!.outerHTML
         fireEvent.click(within(sheet).getByRole('button', { name: 'Stäng' }))
+      }
+      // «Visa upp» lays the box over the whole tab with buttons of its own (#1414), so it is read
+      // folded up, and then unfolded again for the tabs after it.
+      if (tab.textContent?.trim() === 'Låda') {
+        fireEvent.click(screen.getByRole('button', { name: 'Visa upp' }))
+        await waitFor(() => expect(document.querySelector('.byd-box-show[data-look="show"]')).not.toBeNull(), { timeout: 5000 })
+        out['Låda, visad upp'] = document.querySelector('.byd-editor')!.outerHTML
+        fireEvent.click(screen.getByRole('button', { name: 'Redigera nätet' }))
+        await waitFor(() => expect(document.querySelector('.byd-box-show')).toBeNull(), { timeout: 5000 })
       }
     }
     return out
@@ -1414,6 +1423,7 @@ describe('every suite that measures a surface', () => {
       'button-state-contrast.test.tsx',
       'canvas-band.test.tsx',
       'canvas-pan.test.tsx',
+      'canvas-turned-text.test.tsx',
       'checkbox-edge.test.tsx',
       'counter-ink.test.tsx',
       'counter-touch.test.tsx',

@@ -75,7 +75,7 @@ describe('when the tables cannot be listed', () => {
     // The list is the server's; a server that cannot answer must not leave the tab pretending
     // to be busy, because nothing will ever arrive to end it.
     const { TablesTab } = await import('../src/editor/TablesTab.js')
-    const client = { rev: 1, doc: projectDoc(), tables: () => Promise.reject(new Error('could not list the tables: 500')), startTable: () => Promise.reject(new Error('nej')) }
+    const client = { rev: 1, startable: true, doc: projectDoc(), tables: () => Promise.reject(new Error('could not list the tables: 500')), startTable: () => Promise.reject(new Error('nej')) }
     render(<TablesTab client={client as unknown as Parameters<typeof TablesTab>[0]['client']} server={run.http} />)
     // In a sentence of the tab's own, never in the server's words (#812).
     expect((await screen.findByRole('alert')).textContent).toBe('Borden kunde inte läsas. Försök igen om en stund.')
@@ -123,14 +123,16 @@ describe('the Bord tab (#19)', () => {
   })
 
   // A game with no cards started a table without a word, and the phone then asked for a card out
-  // of an empty draw pile (#751). The button stays — the deck may be filled in a minute — but the
-  // tab says what the table would hold, and where cards are added.
-  it('says the deck has no cards yet, and where they are added, when the game has none', async () => {
+  // of an empty draw pile (#751). Since #1415 (L91) a deck with no card is not playable: there is
+  // no button to start one, and the tab says why and where cards are added, in the place the
+  // sentence about the button would have stood.
+  it('says the deck has no cards yet, and where they are added, and offers no table, when the game has none', async () => {
     await run.projects.create(run.projectId, { ...projectDoc(), rows: [] })
     await openTables()
     const said = await screen.findByText(/Leken har inga kort än/)
     expect(said.textContent).toBe('Leken har inga kort än. Lägg till kort i Tabell innan du startar ett bord.')
-    expect(screen.getByRole('button', { name: 'Starta nytt bord' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Starta nytt bord' })).toBeNull()
+    expect(screen.queryByText(/Inget bord ännu/)).toBeNull()
   })
 
   it('says nothing about the deck when the game has cards', async () => {
@@ -543,7 +545,7 @@ describe('a second table is asked about first (#1145)', () => {
     const { TablesTab } = await import('../src/editor/TablesTab.js')
     let started = 0
     const over = { id: 'bord-1', version: 'rev-1', lastAt: new Date().toISOString(), ended: true, code: 'ABCDEF' }
-    const client = { rev: 1, doc: projectDoc(), tables: () => Promise.resolve([over]), startTable: () => ((started += 1), Promise.resolve({ ...over, id: 'bord-2', ended: false })) }
+    const client = { rev: 1, startable: true, doc: projectDoc(), tables: () => Promise.resolve([over]), startTable: () => ((started += 1), Promise.resolve({ ...over, id: 'bord-2', ended: false })) }
     render(<TablesTab client={client as unknown as Parameters<typeof TablesTab>[0]['client']} server={run.http} />)
     await userEvent.setup().click(await screen.findByRole('button', { name: 'Starta nytt bord' }))
     expect(screen.queryByRole('alertdialog')).toBeNull()
@@ -598,6 +600,7 @@ describe('the wait, the second press and the failure of «Starta nytt bord» (#2
     let finish = (): void => undefined
     const client = {
       rev: 1,
+      startable: true,
       doc: projectDoc(),
       tables: () => Promise.resolve(done ? [one] : []),
       startTable: () => {
@@ -643,6 +646,7 @@ describe('the wait, the second press and the failure of «Starta nytt bord» (#2
     let attempts = 0
     const client = {
       rev: 1,
+      startable: true,
       doc: projectDoc(),
       tables: () => Promise.resolve(done ? [one] : []),
       startTable: () => {

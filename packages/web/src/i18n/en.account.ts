@@ -331,6 +331,7 @@ export const enAccount = {
   'error.renameGame.failed': 'could not rename the game, try again in a moment',
   // The game's own choices in the editor's ⋯ (#738): its name, and a second game made of it.
   'home.menu.rename': 'Rename…',
+  'home.menu.show': 'Show off the box',
   'home.menu.duplicate': 'Duplicate',
   'home.rename.title': 'Rename “{name}”',
   'home.rename.field': 'The game’s name',

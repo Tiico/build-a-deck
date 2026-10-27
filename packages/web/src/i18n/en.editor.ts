@@ -388,6 +388,8 @@ export const enEditor = {
   'wall.density.said': 'Cards {px} px wide',
   'wall.foot.cards.one': '{n} card',
   'wall.foot.cards.other': '{n} cards',
+  'wall.foot.box': 'The box {w} × {h} × {d} mm',
+  'wall.foot.box.open': 'Box {w} × {h} × {d} mm',
   'wall.foot.proposed.one': '{n} proposed',
   'wall.foot.proposed.other': '{n} proposed',
   'wall.foot.found.one': '{shown} of {total} card',
@@ -853,6 +855,11 @@ export const enEditor = {
   // One word each (#736): the picker stands beside the placement's nine squares, about 110 px wide.
   'canvas.fit.shrink': 'shrink',
   'canvas.fit.fixed': 'fixed',
+  // Which way the words run (#1431), behind «Fine tuning» with the two spacings.
+  'canvas.props.direction': 'Direction',
+  'canvas.direction.across': 'across',
+  'canvas.direction.down': 'down',
+  'canvas.direction.up': 'up',
   'canvas.props.place': 'Placement in the box',
   'canvas.place.at': '{x}, {y}',
   'canvas.place.left': 'left',
@@ -1984,5 +1991,12 @@ export const enEditor = {
   'box.air.grip.around': 'A',
   'box.air.grip.depth': 'D',
   'box.air.hint': 'More clearance for sleeves: {air} mm around the card gives {w} × {h} mm.',
+  'box.show': 'Show off',
+  'box.show.back': 'Edit the net',
+  'box.show.tip': 'Drag to turn the box. Click a side to edit it, Escape goes back to the net.',
+  'box.show.scene': 'The box and the deck. The arrow keys turn the box.',
+  'box.show.line': 'box {w} × {h} × {d} mm · deck {deck} mm',
+  'box.show.share': 'Share the link',
+  'box.show.shared': 'The link to Show off is copied.',
   'canvas.props.words': 'Text',
 } as const

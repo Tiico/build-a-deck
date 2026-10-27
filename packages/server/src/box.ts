@@ -98,8 +98,32 @@ function neutralFace(face: BoxFace, { widthMm: w, heightMm: h }: { widthMm: numb
   // är bara färg.
   if (face === 'back' || face === 'bottom') return [ground]
   const air = 3
-  const sizeMm = face === 'front' ? w * 0.11 : Math.min(5, (face === 'lid' ? h : w) * 0.16)
-  const boxH = face === 'front' ? Math.min(h - 2 * air, sizeMm * 3) : face === 'lid' ? h - 2 * air : Math.min(h - 2 * air, sizeMm * 4)
+  // Sidorna bär namnet längs ryggen (#1431), vridet ett kvarts varv som på en riktig tuckbox, med
+  // bokstävernas överkant mot framsidan: nätet läser vänster sida, framsida, höger sida, så den
+  // vänstra vrids medsols och den högra motsols. Rutan är hela ryggen innanför luften, och
+  // bokstavens höjd tas ur ryggens bredd, lådans djup; ett namn som är för långt krymper (E6).
+  if (face === 'left' || face === 'right') {
+    const across = Math.round((w - 2 * air) * 10) / 10
+    return [
+      ground,
+      {
+        kind: 'text',
+        id: 'title',
+        x: air,
+        y: air,
+        w: across,
+        h: Math.round((h - 2 * air) * 10) / 10,
+        bind: { literal: name },
+        font: { family: 'sans-serif', sizePt: Math.round(Math.min(9, across * 0.32) * PT_PER_MM), weight: 700, align: 'center' },
+        color: ink,
+        fit: 'shrink',
+        valign: 'middle',
+        rotationDeg: face === 'left' ? 90 : -90,
+      },
+    ]
+  }
+  const sizeMm = face === 'front' ? w * 0.11 : Math.min(5, h * 0.16)
+  const boxH = face === 'front' ? Math.min(h - 2 * air, sizeMm * 3) : h - 2 * air
   const text: Element = {
     kind: 'text',
     id: 'title',

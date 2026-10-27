@@ -189,6 +189,15 @@ export function LockGlyph({ open = false }: { open?: boolean }) {
   )
 }
 
+// The game's box (#1414): a carton seen from a corner, its lid and two sides.
+export function BoxGlyph() {
+  return (
+    <Glyph name="box">
+      <Line d="M2.5 5 8 2.5 13.5 5v6L8 13.5 2.5 11zM2.5 5 8 7.5l5.5-2.5M8 7.5v6" />
+    </Glyph>
+  )
+}
+
 // The rules: an open book.
 export function BookGlyph() {
   return (

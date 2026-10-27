@@ -48,6 +48,14 @@ export const TextElement = z.object({
   // stood since there were text elements — so an old template compiles to the bytes it always
   // compiled to.
   valign: z.enum(['top', 'middle', 'bottom']).optional(),
+  // A quarter turn (#1431): the words run along the box's length instead of across it, as a
+  // game's name runs along a box's spine. 90 reads from the top down with the letters' tops to the
+  // box's right edge, and -90 from the bottom up with them to the left. The box itself is not
+  // turned: it is still where the designer drew it, so every handle, outline, guide and check
+  // stands on the box as it does for an upright text. Only a quarter turn either way, because any
+  // other angle is a box that no longer covers what it draws. Nought and nothing are the same
+  // upright text, and nothing is written for either.
+  rotationDeg: z.union([z.literal(0), z.literal(90), z.literal(-90)]).optional(),
 })
 export const ImageElement = z.object({
   kind: z.literal('image'),

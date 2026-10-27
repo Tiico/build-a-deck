@@ -140,6 +140,10 @@ export type Surface = {
   propsHead: ReactNode
   // The stage, given the face being edited at a scale the stage chooses, with the hand on it.
   stage(face: (scale: number) => ReactNode): ReactNode
+  // Laid over the whole canvas, the tools and both columns included (#1414): the box folded up and
+  // shown off. While it is `showing` everything under it is inert and drawn away.
+  over?: ReactNode
+  showing?: boolean
 }
 
 // The measure the hand works in, the card's unless a surface says otherwise (#1413), and whether the
@@ -394,10 +398,12 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
   // One panel or all four: a stage draws exactly what it is named after, so nothing is mounted
   // twice and nothing a tab does not point at is left in the tab order.
   const shows = (which: CanvasStage) => stage === null || stage === which
+  // Whether the surface is laid over the canvas (#1414), so that nothing under it is reached.
+  const away = surface?.showing === true
   return (
     <SurfaceSize.Provider value={size}>
     <Turned.Provider value={surface?.turned ?? false}>
-    <div className="byd-canvas" {...(surface ? { 'data-surface': 'box' } : {})} {...(sheet && stage === null ? { 'data-catalog': 'open' } : {})} {...(stage ? { 'data-stage': stage } : folded && !surface ? { 'data-folded': 'props' } : {})}>
+    <div className="byd-canvas" {...(surface ? { 'data-surface': 'box' } : {})} {...(surface?.showing ? { 'data-showing': '' } : {})} {...(sheet && stage === null ? { 'data-catalog': 'open' } : {})} {...(stage ? { 'data-stage': stage } : folded && !surface ? { 'data-folded': 'props' } : {})}>
       {/* The crown over the whole desk and not over the card alone (#129): which column makes the
           groups, which group is open, whether the properties are folded away, and which face is
           being edited. It spans the four columns because that is the only place its four controls
@@ -422,10 +428,10 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
           <FaceSwitch faces={Object.keys(doc.template.faces)} face={face} onSelect={onSelectFace} />
         </div>
       )}
-      {shows('tools') && <ToolRail onAdd={add} onPlaceIcon={placeIcon} />}
+      {shows('tools') && <ToolRail onAdd={add} onPlaceIcon={placeIcon} away={away} />}
       {shows('layers') && (
       // Two columns stand beside the canvas, so each says which it is (#762).
-      <aside className="byd-canvas-layers" aria-label={t('editor.stage.layers')}>
+      <aside className="byd-canvas-layers" aria-label={t('editor.stage.layers')} inert={away}>
         {surface?.layersHead}
         {/* The column is a frame and not a scroller (#129): a crown that says which face is being
             listed and how many cards the panel is about, the list itself, and a foot with the line
@@ -514,7 +520,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
       </aside>
       )}
       {shows('canvas') && (
-      <div className="byd-canvas-main">
+      <div className="byd-canvas-main" inert={away}>
         {/* The stage and the band beside it share a box of their own, so the band stands in the
             canvas' lower corner rather than inside the thing that scrolls: a control that pans
             away with the card is a control that is gone exactly when the card is big enough to
@@ -627,7 +633,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
       {shows('props') && !(stage === null && folded) && (
       <Reading.Provider value={reading}>
       <SectionsOpen.Provider value={sections}>
-      <aside className="byd-canvas-props" id={PROPS_COLUMN} aria-label={t('canvas.props')}>
+      <aside className="byd-canvas-props" id={PROPS_COLUMN} aria-label={t('canvas.props')} inert={away}>
         {surface?.propsHead}
         {/* The layer's one name (#699), as the designer wrote it and not set in capitals the way the
             word «Egenskaper» before it is: an id in capitals was a third name for the same layer. */}
@@ -699,6 +705,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
       </SectionsOpen.Provider>
       </Reading.Provider>
       )}
+      {surface?.over}
     </div>
     </Turned.Provider>
     </SurfaceSize.Provider>
@@ -1719,12 +1726,12 @@ export function FaceSwitch({ faces, face, names = FACE_NAMES, onSelect }: { face
 // places an empty icon layer and the canvas opens the libraries' sheet under the card for it
 // (#1093, beslut 2026-10-22), the one way to an icon the panel already takes (L71) — a small list
 // of the twenty symbols drawn for the project used to hang off the rail instead.
-function ToolRail({ onAdd, onPlaceIcon }: { onAdd(kind: ElementKind): void; onPlaceIcon(): void }) {
+function ToolRail({ onAdd, onPlaceIcon, away = false }: { onAdd(kind: ElementKind): void; onPlaceIcon(): void; away?: boolean }) {
   const t = useT()
   const { itemProps } = useRoving({ ids: TOOLS.map((tool) => tool.id), selected: null, orientation: 'vertical' })
   return (
     // A toolbar, not a column beside the work: an aside's own role may not be overridden (#762).
-    <div className="byd-canvas-tools" role="toolbar" aria-label={t('canvas.tools')} aria-orientation="vertical">
+    <div className="byd-canvas-tools" role="toolbar" aria-label={t('canvas.tools')} aria-orientation="vertical" inert={away}>
       {TOOLS.map((tool) => (
         <button key={tool.id} type="button" onClick={() => (tool.id === 'icon' ? onPlaceIcon() : onAdd(tool.id))} {...itemProps(tool.id)}>
           <span aria-hidden="true">{tool.glyph}</span>
@@ -2829,6 +2836,12 @@ const LETTER_SPACINGS = [
   { value: 0.1, name: 'canvas.letterSpacing.caps' },
 ] as const
 
+const DIRECTIONS = [
+  { value: 0, name: 'canvas.direction.across' },
+  { value: 90, name: 'canvas.direction.down' },
+  { value: -90, name: 'canvas.direction.up' },
+] as const
+
 function TuningDoor({ el, onPatch }: { el: TextEl; onPatch(patch: Partial<Element>, gesture?: string): void }) {
   const t = useT()
   const [open, setOpen] = useState(false)
@@ -2854,6 +2867,19 @@ function TuningDoor({ el, onPatch }: { el: TextEl; onPatch(patch: Partial<Elemen
             value={font.letterSpacing ?? 0}
             own={own}
             onWrite={(letterSpacing) => onPatch({ font: { ...font, letterSpacing } })}
+          />
+          {/* Which way the words run (#1431): upright, or a quarter turn to read down or up the box,
+              as a name runs along a box's spine. Behind the door with the spacings, because the
+              text panel has no row to spare at 1024 × 768 (#736) and a turned text is the
+              exception. The box stays where it is drawn, so the handles, the outline and the drag
+              stand on it as on any text; only the words turn. Upright is written as a nought rather
+              than taken off, since the compiler draws the two alike. */}
+          <Steps
+            name={t('canvas.props.direction')}
+            steps={DIRECTIONS.map((step) => ({ value: step.value, label: t(step.name) }))}
+            value={el.rotationDeg ?? 0}
+            own={own}
+            onWrite={(rotationDeg) => onPatch({ rotationDeg: rotationDeg as 0 | 90 | -90 })}
           />
         </div>
       )}

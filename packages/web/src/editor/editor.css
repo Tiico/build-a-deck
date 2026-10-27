@@ -1257,6 +1257,33 @@
 
 .byd-crown-foot .byd-crown-end { color: var(--byd-editor-quiet); }
 
+/* The box in the wall's foot (#1415, L91): at the foot's far end, one line of it and nothing more. The
+   symbol and the button are a line of text's height in the row, so the foot keeps the height it has
+   without them. The button is a door in the foot's own language, as the remarks beside it are: the
+   words underlined, and the 44 px every target in the editor is without a frame round it, which the
+   foot's one line has no room for. */
+.byd-crown-foot .byd-wall-box { margin-left: auto; display: inline-flex; align-items: center; gap: var(--byd-s1); color: var(--byd-editor-quiet); font: inherit; font-variant-numeric: tabular-nums; white-space: nowrap; }
+/* The symbol stands on the line's foot and rises into the room over it, so the box stands on the
+   foot as the words do and the row keeps a line of text's height. */
+.byd-wall-box-symbol { --byd-wall-box-symbol: 20px; flex: none; width: var(--byd-wall-box-symbol); height: var(--byd-wall-box-symbol); margin-block: calc(1lh - var(--byd-wall-box-symbol)) 0; }
+/* The deck's colour may be as dark as the foot, so the box is drawn with an edge the foot's ink is. */
+.byd-wall-box-symbol > * { stroke: color-mix(in srgb, var(--byd-editor-quiet) 70%, transparent); stroke-width: 1; stroke-linejoin: round; }
+.byd-wall-box-front { fill: var(--byd-wall-box-colour); }
+.byd-wall-box-top { fill: color-mix(in srgb, var(--byd-wall-box-colour) 72%, #fff); }
+.byd-wall-box-side { fill: color-mix(in srgb, var(--byd-wall-box-colour) 62%, #000); }
+.byd-crown-foot button.byd-wall-box { min-height: var(--byd-tap); margin-block: calc((1lh - var(--byd-tap)) / 2); padding: 0 0 0 var(--byd-s2); border: 0; background: transparent; color: #cfd5e3; font-weight: 600; cursor: pointer; }
+.byd-wall-box-words { text-decoration: underline; text-decoration-color: color-mix(in srgb, currentColor 45%, transparent); text-underline-offset: 3px; }
+.byd-crown-foot button.byd-wall-box:hover { color: #fff; }
+.byd-crown-foot button.byd-wall-box:hover .byd-wall-box-words { text-decoration-color: currentColor; }
+.byd-crown-foot button.byd-wall-box:focus-visible { outline-offset: -4px; }
+.byd-wall-box-way { display: inline-flex; }
+.byd-wall-box-way > .byd-glyph { width: 12px; height: 12px; }
+/* Below the tablet's width (a desk zoomed to 400 %, L12) the foot has no room for the measures beside
+   the count: the box is drawn and its measures are read, not drawn, so the page never scrolls sideways. */
+@media (max-width: 767px) {
+  .byd-wall-box-words { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+}
+
 /* Wall */
 /* The wall wears a crown (#128): one row of tools, the deck under it, what it adds up to below.
    Nothing here is a column beside the deck any more — the report that used to take 320 px of the
@@ -1383,7 +1410,9 @@
 .byd-wall-legible p { margin: 0; }
 .byd-wall-legible ul { margin: var(--byd-s1) 0 0; padding: 0 0 0 var(--byd-s4); }
 /* The count of remarks in the foot is the door to Kontroll (L81): a word, underlined, never a box. */
-.byd-wall-foot-door { min-height: 24px; padding: 0; border: 0; background: transparent; color: #cfd5e3; font: inherit; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+/* A line of text's height in the row, as the box beside it is (#1415): the door is the 44 px every
+   target is, and the foot stood 29 px taller the moment a deck had its first remark. */
+.byd-wall-foot-door { min-height: var(--byd-tap); margin-block: calc((1lh - var(--byd-tap)) / 2); padding: 0; border: 0; background: transparent; color: #cfd5e3; font: inherit; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 .byd-wall-foot-door:hover { color: #fff; }
 /* Where the wall is too narrow for its column, its cards and the panel, the panel lies over the
    wall's right edge rather than leaving the cards a sliver. */
@@ -5036,6 +5065,22 @@ label.byd-ai-rules { cursor: pointer; }
 .byd-box-foot-line { display: flex; width: 100%; align-items: baseline; gap: var(--byd-s3); margin: 0; color: #9aa3b8; font-size: 12px; white-space: nowrap; }
 .byd-box-foot-size { margin-left: auto; overflow: hidden; text-overflow: ellipsis; color: #c3cbdd; font-variant-numeric: tabular-nums; }
 .byd-box-foot-size b { color: #fff; }
+.byd-box-foot:has(> button) { padding: var(--byd-s2) var(--byd-s3); }
+.byd-box-foot > button { flex: none; display: inline-flex; align-items: center; gap: var(--byd-s2); padding: 0 var(--byd-s3); border-radius: 8px; font: inherit; font-size: 13px; white-space: nowrap; cursor: pointer; }
+
+/* «Visa upp» (#1414, L91, #1406 runda 2): the net folded into the box in place, and the box and the
+   deck in light. Laid over the whole canvas, the tools and both columns included, which are drawn
+   away under it. Only transform and opacity ever change here: the fold is a transition between
+   two sets of transforms, the light is two opacities a plane, and the turn is one transform. */
+.byd-canvas[data-surface='box'] { position: relative; }
+.byd-canvas[data-surface='box'] > .byd-canvas-tools, .byd-canvas[data-surface='box'] > .byd-canvas-layers, .byd-canvas[data-surface='box'] > .byd-canvas-props { transition: opacity 0.35s ease, transform 0.6s cubic-bezier(0.6, 0, 0.25, 1); }
+.byd-canvas[data-surface='box'][data-showing] > .byd-canvas-tools, .byd-canvas[data-surface='box'][data-showing] > .byd-canvas-layers { opacity: 0; transform: translateX(-24px); }
+.byd-canvas[data-surface='box'][data-showing] > .byd-canvas-props { opacity: 0; transform: translateX(24px); }
+.byd-box-net { transition: opacity 0.3s ease; }
+.byd-box-net[data-away] { opacity: 0; }
+@media (prefers-reduced-motion: reduce) {
+  .byd-box-net, .byd-canvas[data-surface='box'] > * { transition: none !important; }
+}
 /* The measures over the properties (#1406, beslut 4): a lock each, the formula, and the air. */
 .byd-box-measures > section { padding-bottom: var(--byd-s3); margin-bottom: var(--byd-s3); border-bottom: 1px solid #2f333d; }
 .byd-box-sides { margin: 0; display: grid; }

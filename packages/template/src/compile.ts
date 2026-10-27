@@ -189,6 +189,23 @@ function standing(valign: 'top' | 'middle' | 'bottom' | undefined): string {
   return `display:flex;flex-direction:column;justify-content:safe ${valign === 'middle' ? 'center' : 'flex-end'};`
 }
 
+// A text turned a quarter round (#1431). The element stays the box the designer drew, and inside it
+// stands a block as long as the box is tall and as deep as it is wide, laid out like any upright
+// text and then turned onto the box from its top left corner. At 90 the block's top faces the box's
+// right edge and its lines read from the top down; at -90 its top faces the left edge and they read
+// from the bottom up. The block clips what does not fit, as an upright box does, and it is what
+// `fitInDocument` measures, since the element itself never overflows a block turned to cover it.
+// It is a transform in the one renderer's own stylesheet (E2), so the texture, the print PDF and
+// the editor's preview turn it the same way, and the PDF keeps its text as text.
+export type Turn = 0 | 90 | -90
+export function turnOf(el: { rotationDeg?: 0 | 90 | -90 | undefined }): Turn {
+  return el.rotationDeg ?? 0
+}
+function turned(turn: 90 | -90, box: { w: number; h: number }): string {
+  const onto = turn === 90 ? `translate(${box.w}mm,0)` : `translate(0,${box.h}mm)`
+  return `position:absolute;left:0;top:0;width:${box.h}mm;height:${box.w}mm;overflow:hidden;transform-origin:0 0;transform:${onto} rotate(${turn}deg);`
+}
+
 // Whether a cell is a picture the card can draw (#802). A picture reaches the compiler as an
 // address — a URL with its scheme, a data URL, a path, a file name with a picture's ending, or
 // the `asset:` reference the editor and the server resolve before compiling — and an address has
@@ -212,9 +229,12 @@ function render(el: Element, dx: number, dy: number, input: CompileInput, html: 
       const mfont = { family: f.family, sizePt: f.sizePt, weight: f.weight ?? 400, lineHeight: f.lineHeight ?? DEFAULT_LINE_HEIGHT, ...(f.letterSpacing === undefined ? {} : { letterSpacing: f.letterSpacing }) }
       const minPt = input.type.print.minPtByScript[detectScript(value)] ?? input.type.print.minPtByScript['Latn'] ?? 6
       const measure = input.measure ?? estimateHeight
+      // A turned text's lines run along the box's length (#1431), so that is the line it is fitted to.
+      const turn = turnOf(el)
+      const lines = turn === 0 ? { w: el.w, h: el.h } : { w: el.h, h: el.w }
       const fit = (el.fit ?? 'shrink') === 'shrink'
-        ? fitText(value, mfont, { w: el.w, h: el.h }, minPt, measure)
-        : { sizePt: f.sizePt, overflow: measure(value, mfont, el.w) > el.h }
+        ? fitText(value, mfont, lines, minPt, measure)
+        : { sizePt: f.sizePt, overflow: measure(value, mfont, lines.w) > lines.h }
       if (fit.overflow) {
         warnings.push(
           (el.fit ?? 'shrink') === 'shrink'
@@ -225,11 +245,13 @@ function render(el: Element, dx: number, dy: number, input: CompileInput, html: 
       css.push(
         `[data-element="${attr(el.id)}"]{left:${el.x + dx}mm;top:${el.y + dy}mm;width:${el.w}mm;height:${el.h}mm;font-size:${fit.sizePt}pt;` +
           `font-family:${familyOf(f.family, input.fonts)};font-weight:${f.weight ?? 400};text-align:${f.align ?? 'left'};line-height:${f.lineHeight ?? DEFAULT_LINE_HEIGHT};color:${el.color};` +
-          `${standing(el.valign)}${f.letterSpacing === undefined ? '' : `letter-spacing:${f.letterSpacing}em;`}}`,
+          `${turn === 0 ? standing(el.valign) : ''}${f.letterSpacing === undefined ? '' : `letter-spacing:${f.letterSpacing}em;`}}`,
       )
+      if (turn !== 0) css.push(`[data-element="${attr(el.id)}"]>[data-turn]{${turned(turn, el)}${standing(el.valign)}}`)
+      const words = renderParagraphs(value, el.id, symbolsOf(input), warnings)
       html.push(
         `<div data-element="${attr(el.id)}" data-fit="${el.fit ?? 'shrink'}" data-size-pt="${f.sizePt}" data-min-pt="${minPt}">` +
-          `${renderParagraphs(value, el.id, symbolsOf(input), warnings)}</div>`,
+          `${turn === 0 ? words : `<div data-turn="${turn}">${words}</div>`}</div>`,
       )
       break
     }
