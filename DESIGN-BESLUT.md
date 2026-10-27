@@ -2088,7 +2088,7 @@ Byggt 2026-10-24 (#1208, beställarens beslut B efter [prototypen](https://githu
 - Sidan har fem numrerade delar: kniven, där kortet ritas som sin fil med utfall, snitt och skyddsmarginal av den enda renderaren och kniven går att pröva; leken med antal och tryckkontrollen; det som inte trycks; Testtryckeriets krav i ord; och zippens träd. Bredvid står följesedeln med antalen, kontrollen, exempelsvaret och nedladdningen.
 - Testtryckeriet är den enda provider servern registrerar i betan: en fake-provider som låtsas trycka i Sverige, inom EU (F2), och ställer exakt de krav kortets typ ställer, så att editorns kontroll, exporten och paketet mäter samma utfall. Sidan frågar efter paketet som en order till Sverige dirigeras, och svaret är stämplat «Exempel · inget riktigt pris», utan tull.
 - Nedladdningen är en zip med `LASMIG.md`, `manifest.json`, en PDF per kortsida under `tryck/` och regelhäftet. Hittar tryckkontrollen ett fel lämnas kortfilerna ute med exportens regel (G5), och sidan, manifestet och läsmig säger varför.
-- Lådans tryckbild och filer i CMYK finns inte, och sidan säger det. Läget «med partner» (#1209) är inte byggt; följesedeln är formad så att den kan bli kostnadsbeskedet (F3).
+- Lådans tryckbild och filer i CMYK finns inte, och sidan säger det. Sedan #1418 står lådan som del 3 med måtten och nätet, och paketet har sex numrerade delar. Läget «med partner» (#1209) är inte byggt; följesedeln är formad så att den kan bli kostnadsbeskedet (F3).
 
 ### F2. Adapterlager mot flera partner (fråga 11)
 
@@ -9217,7 +9217,13 @@ Foten håller sin höjd också med anmärkningarnas dörr, som förut gjorde den
 Den lilla lådan är en symbol för måtten och ritar ingen yta (E2): framsidan, locket och sidan i lekens färg, med sidan lika djup som leken mot lådans höjd.
 Den tar en rad i foten och inte mer, och den står inte på en telefon, som inte lägger något i millimeter (L10).
 `packages/web/test/wall-box-foot.test.tsx` och `packages/e2e/test/wall-box-grows.spec.ts` är grindarna.
-«Visa upp» (#1414), heron (#1416), länkbilden (#1417) och exporten (#1418) är egna skivor.
+Byggt 2026-10-27 (#1418): exporten bär lådan och tryckpaketet visar den som del 3.
+Dokumentets `box` står i varje version, och manifestets `print.box` säger typen, måtten, låsen, luften, nätets mått och vilken PDF som är vilken yta.
+Lådans sex ytor ligger som tryck-PDF:er med typens utfall under `tryck/lada/`, ritade eller neutrala, kompilerade och ritade som korten (`box-print.ts`); de följer med även när tryckkontrollen stoppar kortfilerna, eftersom kontrollen läser korten.
+Importen tar tillbaka lådan med dokumentet, och rundturen ger samma `spel.json`; `print.box` läses inte in, eftersom den kan härledas.
+Tryckpaketets del 3 visar nätet med varje yta ur den enda renderaren, måtten, om lådan är ritad eller neutral och vilka mått som är låsta, med «Rita lådan ›» till fliken Låda (`open=box`).
+Paketets `manifest.json` bär lådan som den mäts, utan filer, och sidan och båda `LASMIG.md` säger att lådans tryckfiler, med stansform och i CMYK, kommer när en tryckpartner är vald (F1, F2).
+«Visa upp» (#1414), heron (#1416) och länkbilden (#1417) är egna skivor.
 
 ### L92. Designern låser vilken kolumn som står still i Tabell, och titeln är låst från start (prototypat och beslutat 2026-10-26, #1408)
 

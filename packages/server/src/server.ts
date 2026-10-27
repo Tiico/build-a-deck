@@ -30,8 +30,9 @@ import { inviteMail } from './invite-mail.js'
 import { NAME_MAX, nameOf } from './account-name.js'
 import { printExportOf, queueFaces } from './faces.js'
 import { printFileJobsOf, printManifestOf, type PrintFileJob } from './print-files.js'
+import { boxFactsOf, boxPrintOf } from './box-print.js'
 import { Country, routeOrder, widestBleedMm, type PrintManifest, type PrintProvider, type Route } from '@byd/print'
-import { PRINT_PACKAGE_FORMAT, PRINT_PACKAGE_FORMAT_VERSION, packPrintPackage, printPackageDisposition, printPackageReadme, printPathOf, type PrintPackageManifest } from './print-package.js'
+import { PRINT_PACKAGE_FORMAT, PRINT_PACKAGE_FORMAT_VERSION, packPrintPackage, printPackageDisposition, printPackageReadme, printPathOf, type PrintPackageBox, type PrintPackageManifest } from './print-package.js'
 import { EXPORT_FORMAT, EXPORT_FORMAT_VERSION, EXPORT_SUMMARY_HEADER, ProjectExport, RULEBOOK_FILE, assetFileOf, assetHashesOf, duplicatedName, exportDisposition, exportSummaryOf, importedName, packExport, printFileOf, readExport, readmeOf, type ImportProblem } from './export.js'
 import { BlockedAsset, ReportBody, type ReportStore } from './reports.js'
 import { REPORT_SECTION, operatorMail, receiptMail } from './report-mail.js'
@@ -1467,7 +1468,12 @@ async function printPlanOf(opts: ServerOptions, rec: ProjectRecord, lang: Return
   }
   const rulebook = rec.rules ? RULEBOOK_FILE : undefined
   if (rec.rules) jobs.push({ file: RULEBOOK_FILE, job: await bookletJobOf(opts, rec, rec.rules, lang) })
-  return { cards, rulebook, warnings, errors, jobs }
+  // The box's faces (#1418), drawn or neutral, whatever the checks say of the cards: the checks read
+  // the cards, and the box is the designer's data as much as they are (G5).
+  const assets = opts.assets
+  const box = await boxPrintOf(rec, await deckOf(opts, rec), clock(opts).getTime(), assets ? (template) => resolveTemplate(template, assets, rec.pictures ?? {}) : undefined)
+  jobs.push(...box.jobs)
+  return { cards, rulebook, warnings, errors, jobs, box: box.box }
 }
 
 // The print package of a version for one provider (F1, F2, #1207): the order it would get, prepared
@@ -1495,7 +1501,9 @@ async function printPackageOf(opts: ServerOptions, rec: ProjectRecord, choose: (
   // requirements the files are made after, which the page says in words.
   const types = [...new Map([...order.cards, ...order.hardware].map((c) => [`${c.type.id}@${c.type.version}`, c.type])).values()]
   const requirements = types.map((type) => provider.requirements(type))
-  return { provider, manifest, order, requirements, files, rulebook, errors, warnings }
+  // The box as part 3 (#1418): its measure and whether it is drawn, and no file until a partner is.
+  const box: PrintPackageBox = { ...boxFactsOf(rec), files: [] }
+  return { provider, manifest, order, requirements, files, rulebook, errors, warnings, box }
 }
 const PACKAGE_RULEBOOK = 'regelhafte.pdf'
 
@@ -2425,6 +2433,7 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
         warnings: pkg.warnings,
         failed,
         credits: creditsOf(rec),
+        box: pkg.box,
       }
       const zip = packPrintPackage({ manifest, readme: printPackageReadme(lang, manifest), files: contents })
       res.writeHead(200, { 'content-type': 'application/zip', 'content-length': String(zip.length), 'content-disposition': printPackageDisposition(rec.name, rec.rev, lang), 'cache-control': 'no-store' })
@@ -2447,6 +2456,7 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       total,
       done,
       failed: failed.length,
+      box: pkg.box,
     })
     return true
   }
@@ -2530,7 +2540,7 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       assets,
       absent,
       ...(blocked.length > 0 ? { blocked: blocked.map((b) => ({ hash: b.hash, since: b.at })) } : {}),
-      print: { rev: rec.rev, cards: plan.cards, ...(plan.rulebook && prints.has(plan.rulebook) ? { rulebook: plan.rulebook } : {}), credits: creditsOf(rec), warnings: plan.warnings, errors: plan.errors, failed },
+      print: { rev: rec.rev, cards: plan.cards, ...(plan.rulebook && prints.has(plan.rulebook) ? { rulebook: plan.rulebook } : {}), credits: creditsOf(rec), warnings: plan.warnings, errors: plan.errors, failed, box: plan.box },
     })
     const zip = packExport({ manifest, readme: readmeOf(lang, manifest), assets: assetFiles, prints })
     res.writeHead(200, { 'content-type': 'application/zip', 'content-length': String(zip.length), 'content-disposition': exportDisposition(rec.name, rec.rev), [EXPORT_SUMMARY_HEADER]: exportSummaryOf(manifest), 'cache-control': 'no-store' })
