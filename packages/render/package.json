@@ -19,10 +19,10 @@
     "@byd/template": "workspace:*",
     "playwright": "^1.55.0",
     "postgres": "^3.4.5",
+    "tsx": "^4.20.0",
     "zod": "^4.0.0"
   },
   "devDependencies": {
-    "pdfjs-dist": "6.4.299",
-    "tsx": "^4.20.0"
+    "pdfjs-dist": "6.4.299"
   }
 }

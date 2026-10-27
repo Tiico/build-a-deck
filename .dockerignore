@@ -1,0 +1,6 @@
+# The images install their own dependencies (#1442); a checkout's node_modules, and what its runs
+# leave behind, must never be copied over them.
+**/node_modules
+**/dist
+.git
+.stack

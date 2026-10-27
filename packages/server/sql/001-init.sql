@@ -273,7 +273,9 @@ create table if not exists account_plans (
 -- games name, and this table is only so that the sum is not a walk over every version at every
 -- upload: derived from `project_versions`, written in the transaction that writes a version, and
 -- gone with the game. It holds nothing the versions do not say, so it is rebuilt from them whenever
--- it is not there: dropped, the next start makes it again out of every version. A name no asset
+-- the script runs and finds it missing: dropped, it is made again out of every version by the next
+-- start that runs the script — one after the script changes, or after its row in `schema_migrations`
+-- is deleted (#1442). A name no asset
 -- answers to is kept like any other, and weighs nothing until the bytes come.
 do $$
 begin

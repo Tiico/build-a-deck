@@ -191,6 +191,9 @@ describe.skipIf(!url)('the survey keys arriving on a database that has answers t
     const sql = (store as unknown as { sql: import('postgres').Sql }).sql
     await sql`drop index surveys_seat`
     await sql`drop index surveys_observer`
+    // A box from before the keys: its schema was brought up to an earlier script, so the next start
+    // runs this one (#1442).
+    await sql`delete from schema_migrations where name = 'server/001-init.sql'`
     await store.createSession({ id: 'old', version: 'v1', setup: twoSeatSetup() })
     const row = (at: string, who: string, seat: string | null, fun: number) =>
       sql`insert into surveys (session_id, version, at, who, seat, observer, answers) values ('old', 'v1', ${at}, ${who}, ${seat}, ${seat === null}, ${sql.json({ ...answers, fun })})`

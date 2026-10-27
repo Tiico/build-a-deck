@@ -120,6 +120,8 @@ describe.skipIf(!url)('bakåtfyllnaden av project_versions.saved_by (#1225)', ()
     const sql = postgres(url!, { max: 1, onnotice: () => undefined, connection: { search_path: before } })
     try {
       await sql`alter table project_versions drop column saved_by`
+      // Och dess schema fördes upp till ett äldre skript, så nästa start kör det här (#1442).
+      await sql`delete from schema_migrations where name = 'server/001-init.sql'`
     } finally {
       await sql.end()
     }

@@ -6,6 +6,7 @@ import type { RenderKind } from './hash.js'
 import { contentTypeOf, outputKey, type ClaimedJob, type EnqueueResult, type Fit, type JobStatus, type Priority, type RenderRequest, type RenderStore, type ScreeningFailure } from './store.js'
 import type { ObjectStore } from './objects.js'
 import { assetKey, type AssetBytes, type AssetSource } from './assets.js'
+import { migrate } from './migrate.js'
 
 type Row = {
   hash: string
@@ -37,9 +38,9 @@ export class PostgresRenderStore implements RenderStore {
   }
   private schema: string | undefined
 
+  // Once per change to the script, under a lock the app's start shares (#1442, see migrate.ts).
   async migrate(): Promise<void> {
-    if (this.schema) await this.sql.unsafe(`create schema if not exists "${this.schema.replace(/"/g, '')}"`)
-    await this.sql.unsafe(await readFile(fileURLToPath(new URL('../sql/001-render.sql', import.meta.url)), 'utf8'))
+    await migrate(this.sql, 'render/001-render.sql', await readFile(fileURLToPath(new URL('../sql/001-render.sql', import.meta.url)), 'utf8'), this.schema)
   }
 
   // Drops a schema made for a test run.
