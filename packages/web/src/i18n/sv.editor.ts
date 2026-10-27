@@ -955,7 +955,7 @@ export const svEditor = {
   // «krymp till gräns» klipptes till «krymp till grä…».
   'canvas.fit.shrink': 'krymp',
   'canvas.fit.fixed': 'fast',
-  // Vilken väg orden löper (#1431), ett ord var av samma skäl: väljaren står under «Anpassning».
+  // Vilken väg orden löper (#1431), bakom «Finjustering» med de två avstånden.
   'canvas.props.direction': 'Riktning',
   'canvas.direction.across': 'vågrätt',
   'canvas.direction.down': 'nedåt',

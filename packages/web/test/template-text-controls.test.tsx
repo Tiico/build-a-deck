@@ -4,7 +4,7 @@
 // for the pad, the arrows inside it, and a door that says whether it is open — not how the panel
 // is put together.
 import { describe, expect, it, vi } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { TemplateCanvas, type TemplateCanvasProps } from '../src/editor/TemplateCanvas.js'
 import { projectDoc } from './project-doc.js'
@@ -36,6 +36,7 @@ function canvas(over: Partial<TemplateCanvasProps> = {}) {
   return props
 }
 
+const canvasClosed = canvas
 const pad = () => screen.getByRole('radiogroup', { name: 'Placering i rutan' })
 
 describe('the nine-point pad (#219, L41)', () => {
@@ -115,9 +116,20 @@ describe('the «Finjustering» door (#219, L41)', () => {
 
 // Which way the text runs (#1431): upright, or turned a quarter round to read down or up a box,
 // as a game's name runs along a box's spine. A choice of three named ways, in the panel's own form
-// for a choice of a few: a select beside the pad, under «Anpassning».
+// for a choice of a few named steps, behind «Finjustering» with the spacings: the text panel has
+// no row to spare at 1024 × 768 (#736).
 describe('the text’s direction (#1431)', () => {
   const direction = () => screen.getByRole('combobox', { name: 'Riktning' }) as HTMLSelectElement
+  const canvas = (over: Partial<TemplateCanvasProps> = {}) => {
+    const props = canvasClosed(over)
+    fireEvent.click(screen.getByRole('button', { name: 'Finjustering' }))
+    return props
+  }
+
+  it('stands behind «Finjustering», and costs the panel no row while the door is shut', () => {
+    canvasClosed()
+    expect(screen.queryByRole('combobox', { name: 'Riktning' })).toBeNull()
+  })
 
   it('offers the three ways by name, and says the upright one for a text that says nothing', () => {
     canvas()

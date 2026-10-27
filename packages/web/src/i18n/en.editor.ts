@@ -853,7 +853,7 @@ export const enEditor = {
   // One word each (#736): the picker stands beside the placement's nine squares, about 110 px wide.
   'canvas.fit.shrink': 'shrink',
   'canvas.fit.fixed': 'fixed',
-  // Which way the words run (#1431), one word each for the same reason.
+  // Which way the words run (#1431), behind «Fine tuning» with the two spacings.
   'canvas.props.direction': 'Direction',
   'canvas.direction.across': 'across',
   'canvas.direction.down': 'down',

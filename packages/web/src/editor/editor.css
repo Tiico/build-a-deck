@@ -4275,12 +4275,11 @@ img[data-arriving] { opacity: 0; }
 .byd-props-pad button[aria-checked='true'] { border-color: var(--byd-editor-primary-mark); background: #2f3a55; color: #ffffff; }
 
 /* The text section's lower half (#736, beslut C 2026-10-06): the nine squares in a column of their
-   own, exactly as wide as they are, and «Anpassning», «Riktning» (#1431) and «Finjustering» stacked
-   beside them. Under
+   own, exactly as wide as they are, and «Anpassning» and «Finjustering» stacked beside them. Under
    each other they made the text panel 751 px in a column of 589–621. The column's width is the
    pad's, so every row of the section shares it. */
 .byd-props-sec[data-section='text'] > .byd-props-rows { grid-template-columns: calc(3 * var(--byd-tap) + 6px) minmax(0, 1fr); }
-.byd-props-sec[data-section='text'] .byd-props-pad { grid-column: 1; grid-row: span 3; align-self: start; }
+.byd-props-sec[data-section='text'] .byd-props-pad { grid-column: 1; grid-row: span 2; align-self: start; }
 .byd-props-sec[data-section='text'] :is(.byd-props-fit, .byd-props-disclose) { grid-column: 2; align-self: start; }
 .byd-props-disclose {
   grid-column: 1 / -1;
