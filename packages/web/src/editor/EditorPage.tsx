@@ -821,6 +821,23 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
           if (server) q.set('server', server)
           void navigator.clipboard?.writeText(`${location.origin}/editor?${q.toString()}`).then(() => confirmation.confirm(t('box.show.shared')), () => undefined)
         }}
+        // «Spara bilden» (#1417, L91): the still the game's links show, which only the renderer may
+        // take (E2), waited on as the booklet is and then handed to the browser to save. A press of
+        // a link, not a fetch: R2 answers a page without CORS (DRIFT §4), and the file needs none.
+        onSave={async () => {
+          const hash = await client.orderStill()
+          for (let i = 0; i < 240; i++) {
+            if (await client.rendered(hash)) {
+              const link = document.createElement('a')
+              link.href = client.stillUrl(hash, `${doc.name}.jpg`)
+              link.download = `${doc.name}.jpg`
+              link.click()
+              return
+            }
+            await new Promise((r) => setTimeout(r, 250))
+          }
+          throw new Error('the picture was not taken in a minute')
+        }}
         onOpenFonts={() => {
           revealThemeSection('fonts')
           setStage('theme')

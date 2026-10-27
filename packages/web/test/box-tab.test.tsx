@@ -304,6 +304,42 @@ describe('«Visa upp» (#1414)', () => {
     expect(document.querySelector('.byd-box-show-name b')?.textContent).toBe('Skogens herrar')
   })
 
+  // Måtten stod både under namnet och i foten (#1417): de står en gång, under namnet, med leken.
+  it('säger lådans mått en gång', async () => {
+    await open()
+    await openBox()
+    await showOff()
+    const said = shown()!.textContent ?? ''
+    expect(said.split('65 × 90 × 34,5 mm').length - 1).toBe(1)
+    expect(document.querySelector('.byd-box-show-name')?.textContent).toContain('65 × 90 × 34,5 mm')
+  })
+
+  // «Spara bilden» (#1417, L91): samma stillbild som länkarna visar, tagen av renderaren och given
+  // webbläsaren att spara, under spelets namn. Ingen sida läser bytesen; R2 svarar utan CORS.
+  it('sparar länkens stillbild som en fil', async () => {
+    const pressed: string[] = []
+    const click = HTMLAnchorElement.prototype.click
+    HTMLAnchorElement.prototype.click = function (this: HTMLAnchorElement) {
+      pressed.push(`${this.href} ${this.download}`)
+    }
+    try {
+      await open()
+      await openBox()
+      await showOff()
+      fireEvent.click(screen.getByRole('button', { name: 'Spara bilden' }))
+      await waitFor(() => expect(shown()!.querySelector('[role="status"]')?.textContent).toBe('Bilden tas…'))
+      expect(screen.getByRole('button', { name: 'Spara bilden' }).getAttribute('aria-disabled')).toBe('true')
+      expect(pressed).toEqual([])
+      await run.completeRenders()
+      await waitFor(() => expect(pressed).toHaveLength(1), { timeout: 5000 })
+      const still = (await (await fetch(`${run.http}/projects/${run.projectId}/still`, { method: 'POST' })).json()) as { hash: string }
+      expect(pressed[0]).toBe(`${run.http}/faces/${still.hash}?name=Skogens%20herrar.jpg&download=1 Skogens herrar.jpg`)
+      expect(screen.getByRole('button', { name: 'Spara bilden' }).getAttribute('aria-disabled')).toBeNull()
+    } finally {
+      HTMLAnchorElement.prototype.click = click
+    }
+  })
+
   it('viker ut med en klickad sida vald', async () => {
     await open()
     await openBox()

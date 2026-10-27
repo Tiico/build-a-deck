@@ -1778,6 +1778,27 @@ export class ProjectClient {
     return `${this.http}/faces/${hash}?name=${encodeURIComponent(name)}`
   }
 
+  // «Spara bilden» (#1417, L91): the link's still, the box as the renderer photographed it, of the
+  // game as it is saved. A box changed since the last save is saved first, as the booklet is (#481),
+  // so the picture is the box on the screen. The queue answers with the rendering's hash.
+  async orderStill(): Promise<string> {
+    if (this.dirty) {
+      const saved = await this.save()
+      if (!saved.ok) throw new Error(`could not save before taking the picture: ${saved.reason}`)
+    }
+    const res = await fetch(`${this.http}/projects/${encodeURIComponent(this.id)}/still`, withCredentials({ method: 'POST' }))
+    if (res.status === 401) throw new Unauthorized()
+    if (!res.ok) throw new Error(`could not order the picture: ${res.status}`)
+    return ((await res.json()) as { hash: string }).hash
+  }
+
+  // The still as a file to keep (#1417): the object store hands it over as an attachment under this
+  // name, so the browser saves it without any page reading its bytes, which R2 would refuse a page
+  // (DRIFT §4).
+  stillUrl(hash: string, name: string): string {
+    return `${this.http}/faces/${hash}?name=${encodeURIComponent(name)}&download=1`
+  }
+
   textures(sessionId: string): Promise<Textures> {
     return readTextures(this.http, sessionId)
   }

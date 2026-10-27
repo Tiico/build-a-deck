@@ -4,10 +4,10 @@ import { createReadStream } from 'node:fs'
 import { stat } from 'node:fs/promises'
 import { extname, join, normalize, resolve, sep } from 'node:path'
 import { compressible, encodedBytes, encodedCopy, precompressed, typeOf } from './compress.js'
-import { sharedPage } from './share.js'
+import { sharedPage, type LinkPicture } from './share.js'
 import { WebSocketServer, type WebSocket } from 'ws'
 import { z } from 'zod'
-import { ASSET_MAX_BYTES, assetFormatsNamed, assetKindDeclared, ClientMessage, PHYSICAL_VERBS, REDACTED, SEATINGS, TABLE_PROTOCOL, hostKeyOfProtocols, offersTableProtocol, sniffAsset, tokenOfProtocols, type Applied, type Seating, type ServerMessage } from '@byd/protocol'
+import { ASSET_MAX_BYTES, assetFormatsNamed, assetKindDeclared, ClientMessage, PHYSICAL_VERBS, codeOfAddress, REDACTED, SEATINGS, TABLE_PROTOCOL, hostKeyOfProtocols, offersTableProtocol, sniffAsset, tokenOfProtocols, type Applied, type Seating, type ServerMessage } from '@byd/protocol'
 import { CARD_STANDARD_63x88, validateSetup, type DeckFacts, type SetupDef, type TypeRegistry } from '@byd/engine'
 import { renderRules, Template, validateCard, type Issue } from '@byd/template'
 import { A5, bookletOf } from './booklet.js'
@@ -31,6 +31,8 @@ import { NAME_MAX, nameOf } from './account-name.js'
 import { printExportOf, queueFaces } from './faces.js'
 import { printFileJobsOf, printManifestOf, type PrintFileJob } from './print-files.js'
 import { boxFactsOf, boxPrintOf } from './box-print.js'
+import { boxStillJobOf } from './box-still.js'
+import { showsCover } from './box.js'
 import { Country, routeOrder, widestBleedMm, type PrintManifest, type PrintProvider, type Route } from '@byd/print'
 import { PRINT_PACKAGE_FORMAT, PRINT_PACKAGE_FORMAT_VERSION, packPrintPackage, printPackageDisposition, printPackageReadme, printPathOf, type PrintPackageBox, type PrintPackageManifest } from './print-package.js'
 import { EXPORT_FORMAT, EXPORT_FORMAT_VERSION, EXPORT_SUMMARY_HEADER, ProjectExport, RULEBOOK_FILE, assetFileOf, assetHashesOf, duplicatedName, exportDisposition, exportSummaryOf, importedName, packExport, printFileOf, readExport, readmeOf, type ImportProblem } from './export.js'
@@ -814,8 +816,10 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
       // life, so a texture is one round trip to the house and then none.
       // A booklet is opened by name (#678): the reader's tab and the file she saves say what it
       // is. A face of a card is fetched by nobody's name and carries none.
+      // A file asked for with `download` is handed over to be saved (#1417), by the object store's
+      // own answer, so that the bytes never pass through the house and no page has to read them.
       const name = url.searchParams.get('name')
-      const disposition = name ? inlineDisposition(name) : undefined
+      const disposition = name ? fileDisposition(name, url.searchParams.get('download') === '1' ? 'attachment' : 'inline') : undefined
       const link = await opts.renders.link(hash, FACE_LINK_TTL_S, disposition)
       if (link) {
         res.writeHead(302, { location: link, 'cache-control': `private, max-age=${FACE_LINK_TTL_S - FACE_LINK_SLACK_S}` })
@@ -847,7 +851,8 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
     }
     if (opts.staticDir && (req.method === 'GET' || req.method === 'HEAD')) {
       const policy = (scriptHashes: readonly string[]) => pagePolicy({ scriptHashes, nonce: pageNonce(), socket: socketOrigin(req.headers.host, schemeOf(opts, req) === 'https'), objects: opts.objects?.origin ?? null })
-      if (await serveStatic(opts.staticDir, url.pathname, req.headers['accept'], req.headers['accept-encoding'], res, policy, originOf(opts.publicOrigin))) return
+      const picture = (req.headers['accept'] ?? '').includes('text/html') ? await linkPictureOf(opts, url.pathname) : null
+      if (await serveStatic(opts.staticDir, url.pathname, req.headers['accept'], req.headers['accept-encoding'], res, policy, originOf(opts.publicOrigin), picture)) return
     }
     json(res, 404, { error: 'not found' })
   } catch (err) {
@@ -861,20 +866,23 @@ export function renderedTypeOf(bytes: Uint8Array): string {
   const starts = (sig: number[]) => sig.every((b, i) => bytes[i] === b)
   if (starts([0x25, 0x50, 0x44, 0x46, 0x2d])) return 'application/pdf'
   if (starts([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])) return 'image/png'
+  // The link's still (#1417) is a JPEG, as a partner's raster may be (#1207).
+  if (starts([0xff, 0xd8, 0xff])) return 'image/jpeg'
   return 'application/octet-stream'
 }
 
-// `inline` with the name the file is to have (RFC 6266): the name in full as UTF-8, and a plain
+// `inline` (or `attachment`) with the name the file is to have (RFC 6266): the name in full as UTF-8, and a plain
 // ASCII stand-in for a reader that knows only the old form. Whatever the name holds, it never
 // leaves the quoted string, so a name cannot write a header of its own.
-export function inlineDisposition(name: string): string {
+// `attachment` for a file the reader asked to keep rather than to look at: «Spara bilden» (#1417).
+export function fileDisposition(name: string, kind: 'inline' | 'attachment' = 'inline'): string {
   const plain = name
     .normalize('NFKD')
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[\u2010-\u2015]/g, '-')
     .replace(/[^\x20-\x7e]|["\\]/g, '_')
   const full = encodeURIComponent(name).replace(/['()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`)
-  return `inline; filename="${plain}"; filename*=UTF-8''${full}`
+  return `${kind}; filename="${plain}"; filename*=UTF-8''${full}`
 }
 
 // A face link lives an hour; the browser may reuse it for all but the last ten minutes, so a
@@ -890,7 +898,7 @@ const API_PREFIXES = ['/sessions', '/projects', '/faces', '/health', '/rooms', '
 // following it asks for HTML and gets the app, which accepts the invitation with a POST to the
 // same path; anything else asking gets the API's answer.
 const PAGE_PATHS = [/^\/invites\/[A-Za-z0-9_-]+$/]
-async function serveStatic(dir: string, pathname: string, wants: string | undefined, accept: string | undefined, res: ServerResponse, policy: (scriptHashes: readonly string[]) => string, publicOrigin: string | null): Promise<boolean> {
+async function serveStatic(dir: string, pathname: string, wants: string | undefined, accept: string | undefined, res: ServerResponse, policy: (scriptHashes: readonly string[]) => string, publicOrigin: string | null, picture: LinkPicture | null = null): Promise<boolean> {
   const page = PAGE_PATHS.some((p) => p.test(pathname)) && (wants ?? '').includes('text/html')
   // The API never falls back to the app, whatever is or is not mounted.
   if (!page && API_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + '/'))) return false
@@ -915,9 +923,10 @@ async function serveStatic(dir: string, pathname: string, wants: string | undefi
   // must not hand an identity answer to a client that would have taken brotli — or the other way
   // about, which is worse.
   if (compressible(type)) head['vary'] = 'accept-encoding'
-  // A page names the picture a shared link shows at the public origin (#1084, share.ts).
-  if (type.startsWith('text/html') && publicOrigin) {
-    const page = await sharedPage(file, publicOrigin)
+  // A page names the picture a shared link shows at the public origin (#1084, share.ts), and a room's
+  // or an invitation's names its game's still when the hero shows the box (#1417).
+  if (type.startsWith('text/html') && (publicOrigin || picture)) {
+    const page = await sharedPage(file, publicOrigin ?? '', picture)
     const encoded = await encodedBytes(page.identity, page.bytes, type, accept)
     const bytes = encoded?.bytes ?? page.bytes
     res.writeHead(200, { ...head, ...(encoded ? { 'content-encoding': encoded.encoding } : {}), 'content-length': String(bytes.length) })
@@ -1367,6 +1376,59 @@ async function deckOf(opts: ServerOptions, rec: ProjectRecord): Promise<Deck> {
   const own = await resolveTemplate(rec.template, opts.assets, rec.pictures ?? {})
   const doc = deckFromProject({ ...rec, rows, template: own.template, icons: await resolveIcons(rec.icons, opts.assets) })
   return { ...doc, motifs: { ...motifs, ...own.motifs }, fonts: await resolveFonts(rec.fonts ?? {}, opts.assets) }
+}
+
+// The link's still of a game as it stands (#1417, L91), by the revision it was made of: a room's page
+// is asked for by every phone that joins, and the still is the same until the game is saved again.
+const stills = new WeakMap<ServerOptions, Map<string, RenderRequest>>()
+async function stillJobOf(opts: ServerOptions, rec: ProjectRecord): Promise<RenderRequest> {
+  const kept = stills.get(opts) ?? new Map<string, RenderRequest>()
+  stills.set(opts, kept)
+  const key = `${rec.id}@${rec.rev}`
+  const now = clock(opts).getTime()
+  const known = kept.get(key)
+  if (known) return { ...known, requestedAt: now }
+  const assets = opts.assets
+  const job = await boxStillJobOf(rec, await deckOf(opts, rec), now, assets ? (template) => resolveTemplate(template, assets, rec.pictures ?? {}) : undefined)
+  // A game is saved many times a session; only its newest still is worth keeping at hand.
+  for (const old of kept.keys()) if (old.startsWith(`${rec.id}@`)) kept.delete(old)
+  kept.set(key, job)
+  return job
+}
+
+// The picture a room's or an invitation's link shows (#1417, L91): the game's still when the hero in
+// Mina spel shows its box (`showsCover`), and otherwise the hand the page names (#1084). The still is
+// asked for here, by the first page that would name it, and named only once it is drawn: a previewer
+// fetches the picture at once, and one still on its way would be no picture at all. Whatever goes
+// wrong here, the page goes out with the hand: a link is never refused for its picture.
+async function linkPictureOf(opts: ServerOptions, pathname: string): Promise<LinkPicture | null> {
+  const { projects, renders } = opts
+  if (!projects || !renders) return null
+  try {
+    const id = await linkedProjectOf(opts, projects, pathname)
+    const rec = id ? await projects.load(id) : null
+    if (!rec || !showsCover(rec, await projects.boxOpened(rec.id))) return null
+    const job = await stillJobOf(opts, rec)
+    if ((await renders.enqueue(job, rec.owner)) !== 'cached') return null
+    return { path: `/faces/${job.hash}`, alt: `Lådan och leken till ${rec.name}` }
+  } catch (err) {
+    console.error(JSON.stringify({ msg: 'link-picture-failed', path: pathname, error: err instanceof Error ? err.message : String(err) }))
+    return null
+  }
+}
+
+// The game a link leads to: a room's code while it lives (DRIFT §9), or an invitation while it can
+// still be followed (D3). The same answers `GET /rooms/:code` and `GET /invites/:token` give, and no
+// table is woken to give them.
+async function linkedProjectOf(opts: ServerOptions, projects: ProjectStore, pathname: string): Promise<string | null> {
+  const code = codeOfAddress(pathname)
+  if (code) {
+    const found = await opts.store.sessionByCode(code)
+    if (!found || Date.parse(found.codeExpiresAt) <= clock(opts).getTime()) return null
+    return (await opts.store.loadSession(found.id))?.project ?? null
+  }
+  const invite = /^\/invites\/([A-Za-z0-9_-]+)$/.exec(pathname)
+  return invite ? projects.inviteTo(hash(decodeURIComponent(invite[1] ?? '')), clock(opts).toISOString()) : null
 }
 
 // What a deck knows about its cards — texture hashes, titles and printed text — without queueing a
@@ -2259,6 +2321,25 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     // Borne by the game's owner, whoever asked (#1197, A2).
     await opts.renders.enqueue(job, rec.owner)
     json(res, 202, { hash })
+    return true
+  }
+  // «Spara bilden» in «Visa upp» (#1417, L91): the still a room's and an invitation's link show,
+  // asked for by whoever may read the game and borne by its owner, as the booklet is. The file is
+  // fetched where every rendering is once it is done, to be saved (`/faces/:hash?download=1`).
+  const still = /^\/projects\/([^/]+)\/still$/.exec(url.pathname)
+  if (still && req.method === 'POST') {
+    const gate = await allowed(decodeURIComponent(still[1] ?? ''), canRead)
+    if (!('rec' in gate)) {
+      json(res, gate.status, { error: gate.error })
+      return true
+    }
+    if (!opts.renders) {
+      json(res, 503, { error: 'render queue unavailable' })
+      return true
+    }
+    const job = await stillJobOf(opts, gate.rec)
+    await opts.renders.enqueue(job, gate.rec.owner)
+    json(res, 202, { hash: job.hash })
     return true
   }
   // The project's current revision as print work (#14): one manifest entry per physical card,

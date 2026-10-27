@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { BoxFace } from '@byd/engine'
-import { FACE_NORMALS, REST, facing, lit, netPose, poseTransform, showScene, swayed, turnedBy } from '../src/editor/boxScene.js'
+import { FACE_NORMALS, REST, facing, lit, netPose, poseTransform, showScene, swayed, turnedBy } from '../src/box-scene.js'
 
 // Produktbilden i «Visa upp» (#1414, L91, #1406 runda 2): lådan och leken som tolv plan i CSS 3D,
 // med ljuset bakat i två lager per plan och räknat ur planets normal. Geometrin och ljuset är rena

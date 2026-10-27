@@ -1,13 +1,15 @@
 import { boxFaceSize, type BoxFace, type BoxMeasure } from '@byd/engine'
 
-// Produktbilden i «Visa upp» (#1414, L91, #1406 runda 2): lådan och leken som föremål på ett golv, i
+// Produktbilden i «Visa upp» (#1414, L91, #1406 runda 2) och länkbilden (#1417), som är samma bild
+// fotograferad av renderaren: lådan och leken som föremål på ett golv, i
 // lekens egna mått. Tolv plan i CSS 3D: lådans sex ytor, lekens framkort, baksida och tre kanter, och
 // golvet. Ljuset är bakat i två lager per plan, skuggningen efter planets normal och en glansrand där
 // lacken speglar ljuset, och båda räknas om när lådan vrids. Bara transform och opacitet ändras, så
 // webbläsaren sammansätter bilden på grafikkortet utan att lägga ut något igen.
 //
-// Här står bara geometrin och ljuset, utan React och utan DOM, så att det som ritas och det som
-// prövas räknas på ett ställe. Ytorna själva är renderarens (E2); ingenting här ritar en yta.
+// Här står bara geometrin, ljuset och planens regler, utan React och utan DOM, så att vyn i editorn,
+// stillbilden renderaren tar (`box-still.ts`) och det som prövas räknas på ett ställe. Ytorna själva
+// är renderarens (E2); ingenting här ritar en yta.
 
 export type Pose = { x: number; y: number; z: number; rx: number; ry: number; rz: number; s: number }
 export type Normal = readonly [number, number, number]
@@ -43,6 +45,29 @@ export const FACE_NORMALS: Record<BoxFace, Normal> = { front: [0, 0, 1], back: [
 // The lacquer lies on the front and the lid; the rest is matt laminate with a little sheen.
 export const GLOSS: Record<BoxFace, number> = { front: 1, lid: 1, back: 0.4, right: 0.4, left: 0.4, bottom: 0.4 }
 export const DECK_GLOSS: Record<DeckPart, number> = { face: 0.6, back: 0.3, right: 0, left: 0, top: 0 }
+
+// How the planes, the light and the floor look, the same in the view and in the still: «Visa upp»
+// puts it in the page beside its own stylesheet, which holds only what moves (the fold, the fades),
+// and the still carries it in the page the renderer photographs. Neither has a copy of its own.
+export const BOX_SCENE_CSS = [
+  '.byd-box-show-ground{position:absolute;inset:0;background:radial-gradient(60% 70% at 50% 45%,#333845,#17191f 70%)}',
+  '.byd-box-show-middle{position:absolute;left:50%;top:50%;width:0;height:0;perspective:2400px}',
+  '.byd-box-show-fit,.byd-box-show-turn{position:absolute;left:0;top:0;transform-style:preserve-3d}',
+  '.byd-box-show-plane{position:absolute;overflow:hidden;border-radius:1px;backface-visibility:hidden}',
+  '.byd-box-show-plane [data-card]{background:var(--byd-editor-blank-paper,#f4f1ea)}',
+  // The deck's sides are its cards' edges, one stripe a card.
+  ".byd-box-show-plane:is([data-deck='right'],[data-deck='left']){background:repeating-linear-gradient(90deg,#f4ecda 0 calc(var(--byd-edge) * 0.62),#cdbf9f calc(var(--byd-edge) * 0.62) var(--byd-edge))}",
+  ".byd-box-show-plane[data-deck='top']{background:repeating-linear-gradient(0deg,#f4ecda 0 calc(var(--byd-edge) * 0.62),#cdbf9f calc(var(--byd-edge) * 0.62) var(--byd-edge))}",
+  ".byd-box-show-plane[data-deck='back']:not(:has([data-card])){background:var(--byd-editor-blank-paper,#f4f1ea)}",
+  // The light, baked in two layers a plane: a shadow by the plane's normal, and a band where the
+  // lacquer shines. The worn folds are the board showing at every edge.
+  '.byd-box-show-lit{position:absolute;inset:0;pointer-events:none}',
+  '.byd-box-show-shade,.byd-box-show-shine,.byd-box-show-wear{position:absolute;inset:0}',
+  '.byd-box-show-shade{background:#000;opacity:0}',
+  '.byd-box-show-shine{inset:-40%;opacity:0;mix-blend-mode:screen;background:linear-gradient(115deg,transparent 38%,rgb(255 255 255 / 85%) 50%,transparent 62%)}',
+  '.byd-box-show-wear{border-radius:inherit;box-shadow:inset 0 0 0 0.6px rgb(255 248 230 / 45%),inset 0 0 9px rgb(0 0 0 / 28%)}',
+  '.byd-box-show-floor{position:absolute;pointer-events:none;background:radial-gradient(closest-side,rgb(0 0 0 / 60%),rgb(0 0 0 / 22%) 55%,transparent)}',
+].join('')
 
 const pose = (x: number, y: number, z: number, rx = 0, ry = 0): Pose => ({ x, y, z, rx, ry, rz: 0, s: 1 })
 

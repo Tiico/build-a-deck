@@ -9,11 +9,11 @@ import { PX_PER_MM } from './canvas.js'
 import { previewIcons } from './assets.js'
 import { previewFonts } from './fonts.js'
 import { FootSaid } from './said.js'
-import { CopyGlyph, PencilGlyph } from '../glyphs.js'
+import { CopyGlyph, ImportGlyph, PencilGlyph } from '../glyphs.js'
 import { useT } from '../i18n/index.js'
 import { useMm } from './box-mm.js'
 import './box-show.css'
-import { DECK_GLOSS, FOLD_MS, GLOSS, REST, lit, netPose, poseTransform, showScene, swayed, turnedBy, type DeckPart, type Plane, type Pose } from './boxScene.js'
+import { BOX_SCENE_CSS, DECK_GLOSS, FOLD_MS, GLOSS, REST, lit, netPose, poseTransform, showScene, swayed, turnedBy, type DeckPart, type Plane, type Pose } from '@byd/template'
 
 // «Visa upp» (#1414, L91, #1406 runda 2, hybriden): nätet viker ihop sig till lådan på sin plats, och
 // lådan och leken står i ljus, med lack, slitna vikkanter, kortens randiga kant och en skugga på golvet.
@@ -66,12 +66,15 @@ export type BoxShowProps = {
   onUnfolded(): void
   onSettled(): void
   onShare?: (() => void) | undefined
+  // «Spara bilden» (#1417): the link's still, taken by the renderer and handed over as a file. It
+  // settles when the file is on its way, and throws when no picture came.
+  onSave?: (() => Promise<void>) | undefined
 }
 
 // Its own chunk, with its stylesheet: nothing of it is fetched until the tab is opened.
 export default BoxShow
 
-export function BoxShow({ doc, fit, drawings, assetBase, motifs, look, net, onFolded, onUnfold, onUnfolded, onSettled, onShare }: BoxShowProps) {
+export function BoxShow({ doc, fit, drawings, assetBase, motifs, look, net, onFolded, onUnfold, onUnfolded, onSettled, onShare, onSave }: BoxShowProps) {
   const t = useT()
   const mm = useMm()
   const scene = useMemo(() => showScene(fit.size, fit.card, fit.deckMm, PX), [fit])
@@ -100,6 +103,17 @@ export function BoxShow({ doc, fit, drawings, assetBase, motifs, look, net, onFo
   // a change of place is a jump and not a fold.
   const [instant, setInstant] = useState(look === 'folding')
   const fitted = useFit(room, scene)
+  const [saving, setSaving] = useState<'idle' | 'working' | 'failed'>('idle')
+  const save = async () => {
+    if (!onSave || saving === 'working') return
+    setSaving('working')
+    try {
+      await onSave()
+      setSaving('idle')
+    } catch {
+      setSaving('failed')
+    }
+  }
 
   // The angle, and the turning of its own, held outside React: they change every frame and only
   // ever write a transform and two opacities.
@@ -330,6 +344,9 @@ export function BoxShow({ doc, fit, drawings, assetBase, motifs, look, net, onFo
 
   return (
     <div ref={root} className="byd-box-show" data-look={look} data-pose={pose} {...(flat || pose === 'show' ? {} : { 'data-unplaced': '' })} {...(instant ? { 'data-instant': '' } : {})}>
+      {/* How the planes, the light and the floor look, the same rules the link's still is taken with
+          (#1417): `box-show.css` holds only what moves. */}
+      <style>{BOX_SCENE_CSS}</style>
       <div className="byd-box-show-ground" aria-hidden="true" />
       <p className="byd-box-show-tip">{t('box.show.tip')}</p>
       <div
@@ -368,23 +385,25 @@ export function BoxShow({ doc, fit, drawings, assetBase, motifs, look, net, onFo
           <PencilGlyph />
           {t('box.show.back')}
         </button>
+        {onSave && (
+          // `aria-disabled` and not `disabled` while the renderer works (#558), as the booklet's.
+          <button type="button" className="byd-secondary" aria-disabled={saving === 'working' ? 'true' : undefined} onClick={() => void save()}>
+            <ImportGlyph />
+            {t('box.show.save')}
+          </button>
+        )}
         {onShare && (
           <button type="button" className="byd-secondary" onClick={onShare}>
             <CopyGlyph />
             {t('box.show.share')}
           </button>
         )}
-        <FootSaid>
-          <p className="byd-box-foot-line">
-            <span className="byd-box-foot-size">
-              <b>{t('box.size.line', { w: mm(fit.size.width), h: mm(fit.size.height), d: mm(fit.size.depth) })}</b>
-              {' · '}
-              {cardsWord}
-              {' · '}
-              {t(Object.values(fit.locked).some(Boolean) ? 'box.state.locked' : 'box.state.follows')}
-            </span>
-          </p>
-        </FootSaid>
+        <span role="status" className={saving === 'working' ? undefined : 'byd-offscreen'}>
+          {saving === 'working' ? t('box.show.saving') : ''}
+        </span>
+        {saving === 'failed' && <span role="alert">{t('box.show.saveFailed')}</span>}
+        {/* The measures stand once, under the name (#1417): the foot says only what just happened. */}
+        <FootSaid />
       </div>
     </div>
   )
