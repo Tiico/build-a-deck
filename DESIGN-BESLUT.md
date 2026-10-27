@@ -9226,7 +9226,12 @@ Lådans sex ytor ligger som tryck-PDF:er med typens utfall under `tryck/lada/`, 
 Importen tar tillbaka lådan med dokumentet, och rundturen ger samma `spel.json`; `print.box` läses inte in, eftersom den kan härledas.
 Tryckpaketets del 3 visar nätet med varje yta ur den enda renderaren, måtten, om lådan är ritad eller neutral och vilka mått som är låsta, med «Rita lådan ›» till fliken Låda (`open=box`).
 Paketets `manifest.json` bär lådan som den mäts, utan filer, och sidan och båda `LASMIG.md` säger att lådans tryckfiler, med stansform och i CMYK, kommer när en tryckpartner är vald (F1, F2).
-«Visa upp» (#1414), heron (#1416) och länkbilden (#1417) är egna skivor.
+Heron (#1416) och länkbilden (#1417) är egna skivor.
+Byggt 2026-10-27 (#1414): «Visa upp» i fliken, där nätets sex paneler viks till lådans sidor på 0,9 s och leken ställer sig bredvid, ritade av renderaren i 1,25 gånger sitt mått och bara förminskade.
+Geometrin och ljuset räknas på ett ställe, `packages/web/src/editor/boxScene.ts`, och vridningen ändrar bara transform och opacitet.
+Mina spel når vyn genom spelets ⋯ med `show=box`, som editorn läser en gång och tar ur adressen (L80); «Dela länken» kopierar samma väg in.
+En telefon har ingen flik «Låda» (L10), så Mina spel erbjuder den ingen väg dit.
+«Spara bilden» hör till länkbilden (#1417), eftersom en bild av vyn bara får tas av renderaren (E2).
 
 ### L92. Designern låser vilken kolumn som står still i Tabell, och titeln är låst från start (prototypat och beslutat 2026-10-26, #1408)
 

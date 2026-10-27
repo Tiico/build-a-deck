@@ -145,14 +145,19 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   // the game's own (L80) and a reload opens the editor as it always opens.
   // The print package's «Rita lådan ›» (#1418) comes the same way: `open=box` opens the Låda tab.
   const [results] = useState(() => params.get('results'))
-  const [opening] = useState<Stage | null>(() => (params.get('open') === 'box' ? 'box' : null))
+  // `open=box` is the way into the Låda tab from the print package (#1418), and `show=box` the way
+  // into «Visa upp» (#1414), from Mina spel or a link shared from it: the tab opens on the box shown
+  // off rather than on the net. Both are read once and taken out the same way.
+  const [shown] = useState(() => params.get('show') === 'box')
+  const [opening] = useState<Stage | null>(() => (params.get('open') === 'box' || shown ? 'box' : null))
   useEffect(() => {
-    if (!results && !params.has('open')) return
+    if (!results && !params.has('open') && !shown) return
     const rest = new URLSearchParams(location.search)
     rest.delete('results')
     rest.delete('open')
+    rest.delete('show')
     history.replaceState(history.state, '', `${location.pathname}?${rest.toString()}${location.hash}`)
-  }, [results, params])
+  }, [results, params, shown])
   const [stage, setStage] = useState<Stage>(results ? 'tables' : (opening ?? 'wall'))
   // «Ny kod» asks before the code changes, and the band says what changed once it has (#679,
   // beställarens beslut C): the code on the TV and the one just sent stop working on one press.
@@ -163,6 +168,12 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   // So does a box whose tab has gone, which is a role that may no longer start tables.
   const here: Stage = (stages ? !stages.some(([s]) => s === stage) : !modes.some(([m]) => m === stage) && !isCanvasStage(stage)) ? 'wall' : stage
   const mode: Mode = modeOf(here)
+  // «Visa upp» asked for by name is the first look of the tab and not every look of it: back in the
+  // tab later it opens on the net, as it always does.
+  const [showBox, setShowBox] = useState(shown)
+  useEffect(() => {
+    if (showBox && here !== 'box' && client) setShowBox(false)
+  }, [showBox, here, client])
   // Which of the template's four panels the canvas draws: all four on the desk, one at a time
   // below it.
   const canvasStage = room === 'desk' ? null : isCanvasStage(here) ? here : 'canvas'
@@ -803,6 +814,13 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         onSelectFace={setBoxFace}
         element={boxElement}
         onSelectElement={setBoxElement}
+        shown={showBox}
+        onShare={() => {
+          const q = new URLSearchParams({ project: projectId ?? '', show: 'box' })
+          const server = params.get('server')
+          if (server) q.set('server', server)
+          void navigator.clipboard?.writeText(`${location.origin}/editor?${q.toString()}`).then(() => confirmation.confirm(t('box.show.shared')), () => undefined)
+        }}
         onOpenFonts={() => {
           revealThemeSection('fonts')
           setStage('theme')

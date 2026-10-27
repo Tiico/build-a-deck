@@ -378,6 +378,7 @@ export const svAccount = {
   'error.renameGame.failed': 'kunde inte byta namn på spelet, försök igen om en stund',
   // The game's own choices in the editor's ⋯ (#738): its name, and a second game made of it.
   'home.menu.rename': 'Byt namn…',
+  'home.menu.show': 'Visa upp lådan',
   'home.menu.duplicate': 'Duplicera',
   'home.rename.title': 'Byt namn på «{name}»',
   'home.rename.field': 'Spelets namn',

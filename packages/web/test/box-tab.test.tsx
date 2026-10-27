@@ -265,3 +265,117 @@ describe('måtten och luften (#1406 beslut 4)', () => {
     expect(document.querySelector('.byd-box-formula')?.textContent).toBe('108 × 0.3 = 32.4 mm deck · holds 108 cards')
   })
 })
+
+// «Visa upp» (#1414, L91, #1406 runda 2): nätet viker ihop sig till produktbilden på sin plats, och
+// ett klick på en sida, «Redigera nätet» eller Escape viker ut den igen med den sidan vald. Här prövas
+// vägen och tillståndet; ljuset, sidornas plats och rörelsen mäts i Chromium (`packages/e2e`).
+describe('«Visa upp» (#1414)', () => {
+  const shown = () => document.querySelector<HTMLElement>('.byd-box-show')
+  const showOff = async () => {
+    fireEvent.click(screen.getByRole('button', { name: 'Visa upp' }))
+    await waitFor(() => expect(shown()?.dataset['look']).toBe('show'), { timeout: 3000 })
+  }
+  const gone = () => waitFor(() => expect(shown()).toBeNull(), { timeout: 3000 })
+  const STILL = '(prefers-reduced-motion: reduce)'
+  const still = (on: boolean) => {
+    // A desk with a mouse (L10), which asks for stillness or does not.
+    const answer = (query: string) => (query === STILL ? on : !query.includes('prefers-') && !query.includes('max-'))
+    window.matchMedia = ((query: string) => ({ matches: answer(query), media: query, addEventListener: () => undefined, removeEventListener: () => undefined })) as unknown as typeof window.matchMedia
+  }
+  afterEach(() => {
+    delete (window as { matchMedia?: unknown }).matchMedia
+  })
+
+  it('viker ihop nätet till lådan, med varje yta och leken ritade av renderaren, och panelerna undan', async () => {
+    await open()
+    await openBox()
+    await showOff()
+    for (const face of ['front', 'back', 'left', 'right', 'lid', 'bottom'] as const) {
+      // Samma renderare som nätet (E2): ytans egen mall, kompilerad, och ingenting ritat vid sidan av.
+      const plane = document.querySelector(`[data-show-face="${face}"]`)!
+      expect(plane.querySelector('.byd-preview [data-card]')).not.toBeNull()
+      expect(plane.querySelector('canvas, svg:not(.byd-preview svg)')).toBeNull()
+    }
+    expect(document.querySelector('[data-deck="face"] .byd-preview [data-card]')).not.toBeNull()
+    expect(document.querySelectorAll('[data-deck]')).toHaveLength(5)
+    // Lagren, verktygen och måtten är dragna undan och går inte att nå.
+    for (const sel of ['.byd-canvas-tools', '.byd-canvas-layers', '.byd-canvas-props', '.byd-canvas-main']) expect(document.querySelector(sel)!.hasAttribute('inert')).toBe(true)
+    expect(screen.getByRole('group', { name: /lådan och leken/i })).toBeTruthy()
+    expect(document.querySelector('.byd-box-show-name b')?.textContent).toBe('Skogens herrar')
+  })
+
+  it('viker ut med en klickad sida vald', async () => {
+    await open()
+    await openBox()
+    await showOff()
+    const right = document.querySelector('[data-show-face="right"]')!
+    fireEvent.pointerDown(right, { button: 0, clientX: 100, clientY: 100, pointerId: 1 })
+    fireEvent.pointerUp(right, { button: 0, clientX: 101, clientY: 100, pointerId: 1 })
+    await gone()
+    expect(panel('right').hasAttribute('data-chosen')).toBe(true)
+    expect(screen.getByRole('button', { name: /höger sida/i }).getAttribute('aria-pressed')).toBe('true')
+    expect(document.querySelector('.byd-canvas-layers')!.hasAttribute('inert')).toBe(false)
+  })
+
+  it('vrider lådan när pekaren drar, och en dragning väljer ingen sida', async () => {
+    // Stilla, så att den lugna vridningen inte har flyttat vinkeln före greppet; handen vrider ändå.
+    still(true)
+    await open()
+    await openBox()
+    await showOff()
+    const turn = document.querySelector<HTMLElement>('.byd-box-show-turn')!
+    const right = document.querySelector('[data-show-face="right"]')!
+    fireEvent.pointerDown(right, { button: 0, clientX: 100, clientY: 100, pointerId: 1 })
+    fireEvent.pointerMove(right, { button: 0, clientX: 180, clientY: 100, pointerId: 1 })
+    fireEvent.pointerUp(right, { button: 0, clientX: 180, clientY: 100, pointerId: 1 })
+    // Från vilovinkeln, −28°, en halv grad per bildpunkt åt sidan.
+    expect(turn.style.transform).toBe('rotateX(-12deg) rotateY(12deg)')
+    expect(shown()?.dataset['look']).toBe('show')
+  })
+
+  it('går tillbaka till nätet med Escape och med «Redigera nätet», med sidan som var vald', async () => {
+    await open()
+    await openBox()
+    fireEvent.click(screen.getByRole('button', { name: /^lock/i }))
+    await showOff()
+    fireEvent.keyDown(window, { key: 'Escape' })
+    await gone()
+    expect(panel('lid').hasAttribute('data-chosen')).toBe(true)
+    await showOff()
+    fireEvent.click(screen.getByRole('button', { name: 'Redigera nätet' }))
+    await gone()
+    expect(panel('lid').hasAttribute('data-chosen')).toBe(true)
+  })
+
+  it('byter läge direkt vid prefers-reduced-motion', async () => {
+    still(true)
+    await open()
+    await openBox()
+    fireEvent.click(screen.getByRole('button', { name: 'Visa upp' }))
+    await waitFor(() => expect(shown()?.dataset['look']).toBe('show'), { timeout: 200 })
+    fireEvent.keyDown(window, { key: 'Escape' })
+    await waitFor(() => expect(shown()).toBeNull(), { timeout: 200 })
+  })
+
+  it('öppnar på produktbilden från Mina spel, och adressen blir spelets egen', async () => {
+    await run.projects.create(run.projectId, deck())
+    history.replaceState(null, '', `/editor?project=${run.projectId}&show=box&server=${encodeURIComponent(run.http)}`)
+    render(
+      <Language lang="sv">
+        <StatusLive>
+          <EditorPage />
+        </StatusLive>
+      </Language>,
+    )
+    await waitFor(() => expect(shown()?.dataset['look']).toBe('show'), { timeout: 3000 })
+    expect(new URLSearchParams(location.search).has('show')).toBe(false)
+    expect(screen.getByRole('tab', { name: 'Låda' }).getAttribute('aria-selected')).toBe('true')
+    // Tillbaka i fliken en annan gång öppnar den på nätet, som den alltid gör.
+    fireEvent.keyDown(window, { key: 'Escape' })
+    await gone()
+    fireEvent.click(screen.getByRole('tab', { name: 'Mall' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Låda' }))
+    await waitFor(() => expect(document.querySelector('.byd-box-net')).not.toBeNull())
+    expect(shown()).toBeNull()
+  })
+})

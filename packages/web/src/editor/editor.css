@@ -5065,6 +5065,22 @@ label.byd-ai-rules { cursor: pointer; }
 .byd-box-foot-line { display: flex; width: 100%; align-items: baseline; gap: var(--byd-s3); margin: 0; color: #9aa3b8; font-size: 12px; white-space: nowrap; }
 .byd-box-foot-size { margin-left: auto; overflow: hidden; text-overflow: ellipsis; color: #c3cbdd; font-variant-numeric: tabular-nums; }
 .byd-box-foot-size b { color: #fff; }
+.byd-box-foot:has(> button) { padding: var(--byd-s2) var(--byd-s3); }
+.byd-box-foot > button { flex: none; display: inline-flex; align-items: center; gap: var(--byd-s2); padding: 0 var(--byd-s3); border-radius: 8px; font: inherit; font-size: 13px; white-space: nowrap; cursor: pointer; }
+
+/* «Visa upp» (#1414, L91, #1406 runda 2): the net folded into the box in place, and the box and the
+   deck in light. Laid over the whole canvas, the tools and both columns included, which are drawn
+   away under it. Only transform and opacity ever change here: the fold is a transition between
+   two sets of transforms, the light is two opacities a plane, and the turn is one transform. */
+.byd-canvas[data-surface='box'] { position: relative; }
+.byd-canvas[data-surface='box'] > .byd-canvas-tools, .byd-canvas[data-surface='box'] > .byd-canvas-layers, .byd-canvas[data-surface='box'] > .byd-canvas-props { transition: opacity 0.35s ease, transform 0.6s cubic-bezier(0.6, 0, 0.25, 1); }
+.byd-canvas[data-surface='box'][data-showing] > .byd-canvas-tools, .byd-canvas[data-surface='box'][data-showing] > .byd-canvas-layers { opacity: 0; transform: translateX(-24px); }
+.byd-canvas[data-surface='box'][data-showing] > .byd-canvas-props { opacity: 0; transform: translateX(24px); }
+.byd-box-net { transition: opacity 0.3s ease; }
+.byd-box-net[data-away] { opacity: 0; }
+@media (prefers-reduced-motion: reduce) {
+  .byd-box-net, .byd-canvas[data-surface='box'] > * { transition: none !important; }
+}
 /* The measures over the properties (#1406, beslut 4): a lock each, the formula, and the air. */
 .byd-box-measures > section { padding-bottom: var(--byd-s3); margin-bottom: var(--byd-s3); border-bottom: 1px solid #2f333d; }
 .byd-box-sides { margin: 0; display: grid; }

@@ -1991,5 +1991,12 @@ export const enEditor = {
   'box.air.grip.around': 'A',
   'box.air.grip.depth': 'D',
   'box.air.hint': 'More clearance for sleeves: {air} mm around the card gives {w} × {h} mm.',
+  'box.show': 'Show off',
+  'box.show.back': 'Edit the net',
+  'box.show.tip': 'Drag to turn the box. Click a side to edit it, Escape goes back to the net.',
+  'box.show.scene': 'The box and the deck. The arrow keys turn the box.',
+  'box.show.line': 'box {w} × {h} × {d} mm · deck {deck} mm',
+  'box.show.share': 'Share the link',
+  'box.show.shared': 'The link to Show off is copied.',
   'canvas.props.words': 'Text',
 } as const

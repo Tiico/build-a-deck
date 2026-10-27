@@ -2196,5 +2196,12 @@ export const svEditor = {
   'box.air.grip.around': 'R',
   'box.air.grip.depth': 'D',
   'box.air.hint': 'Mer luft för kortfickor: {air} mm runt kortet ger {w} × {h} mm.',
+  'box.show': 'Visa upp',
+  'box.show.back': 'Redigera nätet',
+  'box.show.tip': 'Dra för att vrida lådan. Klicka på en sida för att redigera den, Escape går tillbaka till nätet.',
+  'box.show.scene': 'Lådan och leken. Piltangenterna vrider lådan.',
+  'box.show.line': 'låda {w} × {h} × {d} mm · lek {deck} mm',
+  'box.show.share': 'Dela länken',
+  'box.show.shared': 'Länken till Visa upp är kopierad.',
   'canvas.props.words': 'Text',
 } as const

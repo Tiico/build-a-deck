@@ -28,7 +28,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { chromium, type Browser, type Page } from 'playwright'
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { contrastRatio, flatten, parseColor } from '../src/player/contrast.js'
@@ -97,6 +97,9 @@ const enumerate = (page: Page): Promise<Found[]> =>
     const found: Found[] = []
     for (const el of editor.querySelectorAll<HTMLButtonElement>('button')) {
       if (!el.checkVisibility()) continue
+      // A button under something laid over it is out of reach and drawn away, not drawn faintly:
+      // the tab's tools and columns while «Visa upp» shows the box (#1414).
+      if (el.closest('[inert]')) continue
       if (!(el.textContent ?? '').trim()) continue
       const box = el.getBoundingClientRect()
       if (box.width < 1 || box.height < 1) continue
@@ -255,7 +258,7 @@ async function readView(html: string, width: number): Promise<Pair[]> {
 
 // Every mode the editor can be showing, in the room being walked, named so that a walk which finds
 // nothing fails instead of agreeing with itself.
-const DESK_VIEWS = ['Bord', 'Kortvägg', 'Låda', 'Mall', 'Media', 'Regler', 'Speltema', 'Speltema, biblioteket öppet', 'Speltema, exemplen öppna', 'Tabell'] as const
+const DESK_VIEWS = ['Bord', 'Kortvägg', 'Låda', 'Låda, visad upp', 'Mall', 'Media', 'Regler', 'Speltema', 'Speltema, biblioteket öppet', 'Speltema, exemplen öppna', 'Tabell'] as const
 const PHONE_VIEWS = ['Bord', 'Kortvägg', 'Media', 'Regler', 'Speltema', 'Speltema, biblioteket öppet', 'Speltema, exemplen öppna', 'Tabell'] as const
 
 async function editorViews(width: number): Promise<Record<string, string>> {
@@ -282,6 +285,14 @@ async function editorViews(width: number): Promise<Record<string, string>> {
         // its own, so both are read open.
         openExample('Skogssaga')
         out['Speltema, exemplen öppna'] = document.querySelector('.byd-editor')!.outerHTML
+      }
+      // «Visa upp» lays the box over the tab with a foot of its own (#1414).
+      if (tab.textContent?.trim() === 'Låda') {
+        fireEvent.click(screen.getByRole('button', { name: 'Visa upp' }))
+        await waitFor(() => expect(document.querySelector('.byd-box-show[data-look="show"]')).not.toBeNull(), { timeout: 5000 })
+        out['Låda, visad upp'] = document.querySelector('.byd-editor')!.outerHTML
+        fireEvent.click(screen.getByRole('button', { name: 'Redigera nätet' }))
+        await waitFor(() => expect(document.querySelector('.byd-box-show')).toBeNull(), { timeout: 5000 })
       }
     }
     return out
