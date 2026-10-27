@@ -79,9 +79,14 @@ test('a mistyped address is corrected from the receipt, and the link is sent aga
   await expect(again).toBeFocused()
 
   // The corrected address has five of its own; the sixth is told in the receipt when the next can go.
+  // Each press waits for the answer to the one before: a press while a link is still on its way is
+  // one the button lets go by (`resending`), and counting the request as it leaves pressed again
+  // too early on a slow runner.
   for (let n = 4; n <= 6; n++) {
+    const answered = page.waitForResponse((res) => res.url().endsWith('/auth/login') && res.request().method() === 'POST')
     await page.keyboard.press('Enter')
     await expect.poll(() => asked.length).toBe(n)
+    await answered
   }
   await expect(sent.getByRole('alert')).toHaveCount(0)
   await page.keyboard.press('Enter')
