@@ -438,6 +438,9 @@ export const svEditor = {
   'wall.foot.found.one': '{shown} av {total} kort',
   'wall.foot.found.other': '{shown} av {total} kort',
   'wall.foot.checked': 'Inga anmärkningar',
+  // Lådan i foten (#1415): det den mäter före leken är spelbar, och vägen till fliken därefter.
+  'wall.foot.box': 'Lådan {w} × {h} × {d} mm',
+  'wall.foot.box.open': 'Låda {w} × {h} × {d} mm',
   'wall.empty.title': 'Inga kort ännu',
   'wall.empty.body': 'Lägg till kort i Tabell och rita mallen i Mall.',
   'wall.empty.drawn.title': 'Mallen är ritad, men det finns inga kort',

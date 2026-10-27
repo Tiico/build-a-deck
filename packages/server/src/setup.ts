@@ -68,3 +68,11 @@ export function setupFromProject(doc: Pick<ProjectDoc, 'rows' | 'setup'>): Setup
 export function copiesOf(fields: Record<string, unknown>): number {
   return Math.max(0, Math.floor(Number(fields['antal'] ?? 1)) || 0)
 }
+
+// Whether the game is playable (#1415, L91, beställarens beslut 2026-10-27): its deck holds at least
+// one card. A table without one has nothing to deal and nothing to draw (#751), so this is the one
+// condition «Starta bord» stands on, in the editor, on Mina spel and at the server's door; and the
+// box's tab comes with it (#1406, beslut 3).
+export function playable(doc: Pick<ProjectDoc, 'rows'>): boolean {
+  return doc.rows.some((row) => copiesOf(row.fields) > 0)
+}
