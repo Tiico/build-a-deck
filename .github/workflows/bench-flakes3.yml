@@ -1,0 +1,82 @@
+# Throwaway bench for #1395 and #1251 on CI's own runners. Never merged; the branch is deleted.
+name: bench-flakes3
+
+on:
+  pull_request:
+    paths: [".github/workflows/bench-flakes3.yml"]
+
+permissions:
+  contents: read
+
+jobs:
+  wheel-1251:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        job: [1, 2, 3, 4]
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: byd
+          POSTGRES_USER: byd
+          POSTGRES_PASSWORD: byd
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -h 127.0.0.1 -U byd -d byd"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://byd:byd@127.0.0.1:5432/byd
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+        with:
+          browser: true
+      - run: pnpm --filter @byd/e2e exec playwright test test/surfaces/table-sticky-focus.spec.ts -g "fastnålade" --repeat-each=25
+      - if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: wheel-1251-${{ matrix.job }}
+          path: |
+            packages/e2e/test-results
+            packages/e2e/.playwright-report.json
+          retention-days: 7
+
+  observe-1395:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        job: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+        with:
+          browser: true
+      - name: four copies of status-routes at once, round after round
+        working-directory: packages/web
+        run: |
+          for i in 1 2 3; do cp test/status-routes.test.tsx test/zz-status-routes-$i.test.tsx; done
+          mkdir -p /tmp/bench
+          fails=0
+          for r in $(seq 1 25); do
+            if ! pnpm exec vitest run test/status-routes.test.tsx test/zz-status-routes-1.test.tsx test/zz-status-routes-2.test.tsx test/zz-status-routes-3.test.tsx > /tmp/bench/round-$r.log 2>&1; then
+              fails=$((fails+1)); cp .vitest-report.json /tmp/bench/report-$r.json || true
+              echo "round $r red"
+            else
+              rm /tmp/bench/round-$r.log
+            fi
+          done
+          echo "red rounds: $fails of 25"
+          test $fails = 0
+      - if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: observe-1395-${{ matrix.job }}
+          path: /tmp/bench
+          retention-days: 7
