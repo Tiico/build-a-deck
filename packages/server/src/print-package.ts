@@ -2,7 +2,8 @@ import { strToU8, zipSync, type Zippable } from 'fflate'
 import type { PreparedOrder, PrintRequirements } from '@byd/print'
 import type { Issue } from '@byd/template'
 import type { ProjectCredit } from './projects.js'
-import { RULEBOOK_FILE } from './export.js'
+import { RULEBOOK_FILE, boxSaid } from './export.js'
+import type { BoxFacts } from './box-print.js'
 
 // The print package as a file to keep (#1208, beslut B 2026-10-23): what would be sent to a print
 // partner, in one zip that opens without the tool. Prepared by the provider the order would go to
@@ -12,6 +13,10 @@ import { RULEBOOK_FILE } from './export.js'
 //   manifest.json  — the order as the provider prepared it, its requirements and the print checks
 //   tryck/<file>   — a file per side of each card, named as the provider names them
 //   tryck/regelhafte.pdf — the rulebook as a booklet
+//
+// The box is part 3 (#1418, L91): the manifest says it as it is measured, and whether it is drawn,
+// but no file of it is sent. A printer's box files, with the die line and in CMYK, are the partner's
+// and come with a chosen one (F1, F2); `files` is empty until then.
 //
 // A version the physical checks (E5) stop has no card files, by the same rule as the export (G5): the
 // package is still handed over, and the findings stand in the manifest and are said in the readme.
@@ -41,7 +46,9 @@ export type PrintPackageManifest = {
   // Files the renderer could not draw, by the name the order gave them.
   failed: string[]
   credits: (ProjectCredit & { name: string })[]
+  box: PrintPackageBox
 }
+export type PrintPackageBox = BoxFacts & { files: string[] }
 
 export const printPathOf = (name: string): string => `${PRINT_FOLDER}${name}`
 
@@ -70,6 +77,7 @@ export function printPackageReadme(lang: 'sv' | 'en', m: PrintPackageManifest): 
   const when = m.createdAt.slice(0, 10)
   const card = m.requirements.find((r) => r.kind === 'printed')
   const stopped = m.errors.length
+  const box = boxSaid(lang, m.box, m.box.drawn.length, m.box.faces.length)
   if (lang === 'en') {
     const cut = card?.kind === 'printed' ? `\nThe knife goes along the trim, ${mm(card.trim.widthMm, lang)} × ${mm(card.trim.heightMm, lang)} mm. The background carries on ${mm(card.bleedMm, lang)} mm past it on every edge, the bleed, so that a knife that slips leaves no white edge. Text and important details keep ${mm(card.safeMm, lang)} mm inside the trim, the safe margin.\n` : ''
     return `# ${m.project.name} v${m.rev}, print package ${when}
@@ -80,7 +88,8 @@ No order has been placed. The files are made after the requirements of ${m.provi
 - \`manifest.json\` — what is to be made: every physical card with its files (\`order.cards\`), the stock parts the printer packs (\`order.hardware\`) and those it does not (\`order.omitted\`), and the requirements the files are made after (\`requirements\`).
 - \`tryck/\` — one PDF per side of each card, with bleed. Copies of a card share their files. And the rulebook, \`${RULEBOOK_FILE}\`, as an A5 booklet.${stopped > 0 ? `\n  The card files are left out: the print checks found ${stopped} errors in this version, listed in \`errors\`. Fix them in Deckster and download the package again.` : ''}
 ${cut}
-Not in the package yet: the print for the box, and files in printing colours (CMYK).
+The box is a tuckbox of ${box.size}${box.locked}. ${box.drawn}. Its measure, locks and net are in \`box\`.
+Not in the package yet: the box's print files, with the die line, and files in printing colours (CMYK). They come once a print partner is chosen.
 
 Format \`${m.format}\`, version ${m.formatVersion}.
 `
@@ -94,7 +103,8 @@ Ingen beställning är lagd. Filerna är gjorda efter kraven från ${m.provider.
 - \`manifest.json\` — vad som ska tillverkas: varje fysiskt kort med sina filer (\`order.cards\`), lagervarorna som tryckeriet packar (\`order.hardware\`) och de det inte packar (\`order.omitted\`), och kraven filerna är gjorda efter (\`requirements\`).
 - \`tryck/\` — en PDF per sida av varje kort, med utfall. Kopior av ett kort delar filer. Och regelhäftet, \`${RULEBOOK_FILE}\`, som häfte i A5.${stopped > 0 ? `\n  Kortfilerna är utelämnade: tryckkontrollen hittade ${stopped} fel i den här versionen, listade i \`errors\`. Rätta dem i Deckster och ladda ner paketet igen.` : ''}
 ${cut}
-Det här finns inte i paketet ännu: tryckbilden till lådan, och filer i tryckfärger (CMYK).
+Lådan är en tuckbox på ${box.size}${box.locked}. ${box.drawn}. Måtten, låsen och nätet står i \`box\`.
+Det här finns inte i paketet ännu: lådans tryckfiler, med stansform, och filer i tryckfärger (CMYK). De kommer när en tryckpartner är vald.
 
 Formatet \`${m.format}\`, version ${m.formatVersion}.
 `

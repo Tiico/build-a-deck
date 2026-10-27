@@ -523,9 +523,27 @@
    what refused is written in. Measured in `button-state-contrast.test.tsx`. */
 .byd-editor > header > button:not(.byd-primary):is(:disabled, [aria-disabled='true']) { color: var(--byd-editor-quiet); }
 .byd-editor > header > button:is(:disabled, [aria-disabled='true']) { cursor: default; }
+/* The band under the header while a table runs: the ticket (#1422, beställarens beslut B 2026-10-26
+   after docs/ux-audits/2026-10-26-bordsbandet). It was one sentence — «Bordet kör version 7 — öppna
+   bordet · rumskod UF6H2W [Ny kod] · vid bordet: [Ada ×] …» — a link in small letters in the middle of
+   it and the code a bold word. Now the code is a ticket at the left, the largest thing on the band
+   because it is what is read out to the room; the table's facts stand beside it on two lines — the
+   sentence, how you sit (L86) and «Kopiera länk», then the state or the seats — and the way in and
+   the ⋯ stand at the right. The seats always have a line of their own, so the band never breaks
+   in the middle of a chip (L60); what it holds decides where it breaks, never a word. */
 .byd-editor-table-link {
   flex: none;
   --byd-editor-table-bg: #1f2a1f;
+  /* The quiet register on the green: the ticket's word, the seat list's air. 9.4:1 on the green,
+     measured in `editor-contrast.test.ts`. */
+  --byd-editor-table-quiet: #a9d8b8;
+  /* The dark ground the code stands on, as the TV's `.byd-tv-join strong` stands it on its own. */
+  --byd-editor-table-tile: #16201a;
+  /* The line the ticket is set off with and the band's quiet buttons are drawn with. */
+  --byd-editor-table-line: #5f7f69;
+  --byd-editor-table-live: #7dd3a0;
+  /* The ink the code and the way in are read in: white, as #650 settled it. */
+  --byd-editor-table-ink: #ffffff;
   /* A card that could not be rendered wears the same colours here as it does on the table
      (texture.css), so one fact has one look wherever it is met. */
   --byd-editor-lost-bg: #3d2632;
@@ -533,33 +551,67 @@
   --byd-editor-lost-quiet: #f4b9c7;
   --byd-editor-lost-button-bg: #6d4356;
   --byd-editor-lost-button-line: #a2778a;
-  /* A row that wraps by what it holds rather than by the word (#621): the seats' chips go under
-     the link and the room code together when they do not fit beside them, and nothing runs out
-     of the window however many sit at the table. */
+  --byd-editor-lost-tile: #2a1a22;
+  position: relative;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--byd-s1) var(--byd-s2);
-  padding: 8px 16px;
+  gap: var(--byd-s2) var(--byd-s4);
+  /* 4 px above and below, not 8: with the seats on a line of their own the band is 75 px, and at
+     1024 × 768 the template's text panel has exactly that much room beside it (#736) — at 77 it
+     was 1 px under the fold. */
+  padding: var(--byd-s1) var(--byd-s4);
   background: var(--byd-editor-table-bg);
-  color: #7dd3a0;
+  color: var(--byd-editor-table-live);
   border-bottom: 1px solid #2f333d;
 }
-/* The link and the room code are the two things in the strip one acts on or reads out, so they
-   are white and the strip's sentence around them is its green (#650, as the prototype for #621). */
-.byd-editor-table-link :is(a, [data-room-code]) { color: #fff; }
+/* The code and the way in are the two things on the band one reads out or presses, so they are
+   white and the band's sentence around them is its green (#650, as the prototype for #621). */
+.byd-editor-table-link :is(a, [data-room-code]) { color: var(--byd-editor-table-ink); }
 /* A blocked update is not the good news this row otherwise carries, and must not be green. */
-.byd-editor-table-link[data-lost] { background: var(--byd-editor-lost-bg); color: var(--byd-editor-lost-quiet); }
+.byd-editor-table-link[data-lost] { background: var(--byd-editor-lost-bg); color: var(--byd-editor-lost-quiet); --byd-editor-table-quiet: var(--byd-editor-lost-quiet); --byd-editor-table-tile: var(--byd-editor-lost-tile); --byd-editor-table-line: var(--byd-editor-lost-button-line); --byd-editor-table-live: var(--byd-editor-lost-quiet); }
 .byd-editor-warning { color: var(--byd-editor-lost-ink); font-weight: 600; }
+
+/* The ticket: the word above, the code below, set off from the facts by a line that runs the
+   band's whole height. The code is the TV's form at the band's size — monospace, spaced, on a
+   dark tile — and it is not a target: it is read, and «Kopiera länk» beside the facts is what
+   is pressed about it. */
+.byd-editor-ticket { display: inline-grid; gap: 2px; justify-items: start; align-self: stretch; align-content: center; padding-right: var(--byd-s4); border-right: 1px solid var(--byd-editor-table-line); }
+.byd-editor-ticket > small { font-size: 10px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--byd-editor-table-quiet); }
+.byd-editor-ticket > [data-room-code] { font-family: ui-monospace, Menlo, monospace; font-size: 20px; line-height: 26px; font-weight: 700; letter-spacing: 5px; padding: 4px 8px 4px 12px; border-radius: 6px; background: var(--byd-editor-table-tile); }
+/* The facts: two lines, each a row that wraps by what it holds. The first is the sentence; the
+   second the state or the seats. */
+.byd-editor-table-facts { display: grid; gap: var(--byd-s1); flex: 1 1 320px; min-width: 0; }
+.byd-editor-table-line { display: flex; flex-wrap: wrap; align-items: center; gap: var(--byd-s2); min-width: 0; }
+.byd-editor-table-line:empty { display: none; }
+/* The table is live: a point that breathes, still for a reader who asked for no motion, and the
+   lost colour when cards are missing — a second telling of the band's colour, never the only one (L12). */
+.byd-editor-live { position: relative; display: inline-block; flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--byd-editor-table-live); }
+.byd-editor-live::after { content: ''; position: absolute; inset: -4px; border-radius: 50%; border: 2px solid var(--byd-editor-table-live); opacity: 0; animation: byd-editor-live 2.4s ease-out infinite; }
+@keyframes byd-editor-live { 0% { transform: scale(0.5); opacity: 0.8; } 70% { transform: scale(1.15); opacity: 0; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .byd-editor-live::after { animation: none; } }
+.byd-editor-table-link[data-lost] .byd-editor-live::after { animation: none; }
+/* «Kopiera länk»: a full target drawn as its glyph alone, in the line's own height — the target's
+   air hangs over the line as the help's «?» does. */
+.byd-editor-table-link button.byd-editor-copy { display: inline-grid; place-items: center; width: var(--byd-tap); height: var(--byd-tap); min-height: var(--byd-tap); padding: 0; border: 0; border-radius: 8px; background: transparent; color: var(--byd-editor-table-quiet); font-size: 16px; cursor: pointer; margin: calc((18px - var(--byd-tap)) / 2) 0; } /* undantag: radens 18 px mot träffytans 44 är inget avstånd på stegen. */
+.byd-editor-table-link button.byd-editor-copy:hover { background: #2a3a2c; color: #fff; }
+.byd-editor-table-link[data-lost] button.byd-editor-copy:hover { background: var(--byd-editor-lost-button-bg); }
+/* The way in and the ⋯, at the band's right end whatever the lines before them hold. */
+.byd-editor-table-ways { display: inline-flex; align-items: center; gap: var(--byd-s1); margin-left: auto; }
+.byd-editor-table-ways > a.byd-secondary { display: inline-flex; align-items: center; gap: var(--byd-s2); min-height: var(--byd-tap); padding: 0 var(--byd-s3); border-radius: 8px; font-weight: 700; text-decoration: none; white-space: nowrap; --byd-secondary-line: var(--byd-editor-table-quiet); --byd-secondary-ink: #fff; }
+.byd-editor-table-ways > a.byd-secondary > .byd-glyph { color: var(--byd-editor-table-quiet); }
+.byd-editor-table-ways > a.byd-secondary:hover { background: #2a3a2c; }
+.byd-editor-table-link .byd-tables-more { border-color: var(--byd-editor-table-line); background: transparent; color: #e3f3e8; }
+.byd-editor-table-link .byd-tables-more:hover { background: #2a3a2c; }
 /* The strip's buttons are the quiet outlined button of the button language (L13), and full
    targets. The pink below is a card that could not be rendered (texture.css) and belongs to the
-   strips that say so — lost and stalled — not to «Ny kod» on a table that is running well (#477).
+   strips that say so — lost and stalled — not to the band on a table that is running well (#477).
    A seat's × is the chip's and not one of these: the outlined box drew a second line inside the
    chip and corners out past its round end (#849), so the chip draws it from `buttons.css`. */
-.byd-editor-table-link button:not(.byd-chip > button) {
+.byd-editor-table-link button:not(.byd-chip > button, .byd-editor-copy) {
   min-height: var(--byd-tap);
   padding: 0 var(--byd-s3);
-  border: 1px solid #5f7f69;
+  border: 1px solid var(--byd-editor-table-line);
   border-radius: 8px;
   background: transparent;
   color: #e3f3e8;
@@ -567,8 +619,8 @@
   font-weight: 700;
   cursor: pointer;
 }
-.byd-editor-table-link button:not(.byd-chip > button):hover { border-color: #7dd3a0; }
-.byd-editor-table-link:is([data-lost], [data-stalled]) button:not(.byd-chip > button) {
+.byd-editor-table-link button:not(.byd-chip > button, .byd-editor-copy):hover { border-color: #7dd3a0; }
+.byd-editor-table-link:is([data-lost], [data-stalled]) button:not(.byd-chip > button, .byd-editor-copy) {
   border-color: var(--byd-editor-lost-button-line);
   background: var(--byd-editor-lost-button-bg);
   color: var(--byd-editor-lost-ink);
@@ -588,6 +640,10 @@
 .byd-editor-table-link { --byd-chip-line: #5f7f69; --byd-chip-ink: #e3f3e8; --byd-chip-mark: #a9d8b8; --byd-chip-hover: #2a3a2c; }
 .byd-editor-table-link:is([data-lost], [data-stalled]) { --byd-chip-line: var(--byd-editor-lost-button-line); --byd-chip-ink: var(--byd-editor-lost-ink); --byd-chip-mark: var(--byd-editor-lost-ink); --byd-chip-hover: var(--byd-editor-lost-button-bg); }
 .byd-editor-seats { display: flex; flex-wrap: wrap; gap: var(--byd-s2); margin: 0; padding: 0; list-style: none; }
+/* The face on a seat's chip (#1422): the first letter in the seat's own colour (K9, `seatColor`),
+   read in the seat's ink as the felt reads it. It stands where the chip's left air is, so the chip
+   grows by the face and not by the air as well. */
+.byd-editor-seats .byd-chip-face { display: inline-grid; place-items: center; width: 20px; height: 20px; margin-right: var(--byd-s1); border-radius: 50%; background: var(--seat); color: #0d0f14; font: 800 10px/1 system-ui, sans-serif; font-style: normal; }
 /* The strips above are usually absent; the open mode is the one thing that gives way, so the
    canvas reaches the bottom of the window however many of them are there.
 
@@ -4955,6 +5011,7 @@ label.byd-ai-rules { cursor: pointer; }
 .byd-box-flaps .byd-box-thumb::before { content: ''; width: 14px; height: 14px; border: 1px solid #5b6275; border-radius: 2px; }
 /* The net on the room's chequerboard, fitted whole into it (`useFitted`). */
 .byd-box-stage { min-height: 0; background: repeating-conic-gradient(#20232b 0 25%, #1b1d23 0 50%) 0 0 / 24px 24px; }
+/* The print package draws the same net under .byd-print-box (#1418); a change here goes there too. */
 .byd-box-net { position: relative; flex: none; }
 .byd-box-lines { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
 /* Flaps in board grey, the cut drawn whole and the folds dashed in a grey that reads on a dark face
@@ -4992,46 +5049,8 @@ label.byd-ai-rules { cursor: pointer; }
 .byd-canvas[data-surface='box'][data-showing] > .byd-canvas-props { opacity: 0; transform: translateX(24px); }
 .byd-box-net { transition: opacity 0.3s ease; }
 .byd-box-net[data-away] { opacity: 0; }
-.byd-box-show { position: absolute; inset: 0; z-index: 3; display: grid; grid-template-rows: auto minmax(0, 1fr) auto auto; overflow: hidden; color: #dce3f2; }
-.byd-box-show:not([data-look='show']) { pointer-events: none; }
-.byd-box-show[data-look='settling'] { opacity: 0; transition: opacity 0.25s ease; }
-.byd-box-show[data-unplaced] .byd-box-show-plane { visibility: hidden; }
-.byd-box-show[data-instant], .byd-box-show[data-instant] * { transition: none !important; }
-.byd-box-show-ground { position: absolute; inset: 0; background: radial-gradient(60% 70% at 50% 45%, #333845, #17191f 70%); transition: opacity 0.6s ease; }
-.byd-box-show-tip, .byd-box-show-name, .byd-box-show-foot { position: relative; transition: opacity 0.4s ease; }
-.byd-box-show[data-pose='net'] :is(.byd-box-show-ground, .byd-box-show-tip, .byd-box-show-name, .byd-box-show-foot) { opacity: 0; }
-.byd-box-show-tip { margin: 0; padding: var(--byd-s3) var(--byd-s4) 0; color: var(--byd-editor-hint-ink); font-size: 12px; }
-.byd-box-show-scene { position: relative; min-height: 0; cursor: grab; touch-action: none; outline: none; }
-.byd-box-show-scene:active { cursor: grabbing; }
-.byd-box-show-scene:focus-visible { box-shadow: inset 0 0 0 2px var(--byd-editor-primary-mark); }
-.byd-box-show-middle { position: absolute; left: 50%; top: 50%; width: 0; height: 0; perspective: 2400px; }
-.byd-box-show-fit, .byd-box-show-turn { position: absolute; left: 0; top: 0; transform-style: preserve-3d; transition: transform 0.9s cubic-bezier(0.6, 0, 0.25, 1); }
-.byd-box-show[data-look='show'] .byd-box-show-turn { transition: none; }
-.byd-box-show-plane { position: absolute; overflow: hidden; border-radius: 1px; backface-visibility: hidden; transition: transform 0.9s cubic-bezier(0.6, 0, 0.25, 1), opacity 0.35s ease; }
-.byd-box-show-plane[data-show-face] { cursor: pointer; }
-.byd-box-show-plane [data-card] { background: var(--byd-editor-blank-paper); }
-/* The deck stands beside the box once it is folded, and is gone on the net. */
-.byd-box-show-plane[data-deck] { transition-delay: 0s, 0.45s; }
-.byd-box-show[data-pose='net'] .byd-box-show-plane[data-deck] { opacity: 0; transition-delay: 0s; }
-/* The deck's sides are its cards' edges, one stripe a card. */
-.byd-box-show-plane:is([data-deck='right'], [data-deck='left']) { background: repeating-linear-gradient(90deg, #f4ecda 0 calc(var(--byd-edge) * 0.62), #cdbf9f calc(var(--byd-edge) * 0.62) var(--byd-edge)); }
-.byd-box-show-plane[data-deck='top'] { background: repeating-linear-gradient(0deg, #f4ecda 0 calc(var(--byd-edge) * 0.62), #cdbf9f calc(var(--byd-edge) * 0.62) var(--byd-edge)); }
-.byd-box-show-plane[data-deck='back']:not(:has([data-card])) { background: var(--byd-editor-blank-paper); }
-/* The light, baked in two layers a plane and lit as the fold ends: a shadow by the plane's normal,
-   and a band where the lacquer shines. The worn folds are the board showing at every edge. */
-.byd-box-show-lit { position: absolute; inset: 0; pointer-events: none; transition: opacity 0.5s ease 0.3s; }
-.byd-box-show[data-pose='net'] .byd-box-show-lit { opacity: 0; transition-delay: 0s; }
-.byd-box-show-shade, .byd-box-show-shine, .byd-box-show-wear { position: absolute; inset: 0; }
-.byd-box-show-shade { background: #000; opacity: 0; }
-.byd-box-show-shine { inset: -40%; opacity: 0; mix-blend-mode: screen; background: linear-gradient(115deg, transparent 38%, rgb(255 255 255 / 85%) 50%, transparent 62%); }
-.byd-box-show-wear { border-radius: inherit; box-shadow: inset 0 0 0 0.6px rgb(255 248 230 / 45%), inset 0 0 9px rgb(0 0 0 / 28%); }
-.byd-box-show-floor { position: absolute; pointer-events: none; background: radial-gradient(closest-side, rgb(0 0 0 / 60%), rgb(0 0 0 / 22%) 55%, transparent); transition: opacity 0.5s ease; }
-.byd-box-show[data-pose='net'] .byd-box-show-floor { opacity: 0; }
-.byd-box-show-name { display: flex; justify-content: center; align-items: baseline; flex-wrap: wrap; gap: var(--byd-s2) var(--byd-s4); margin: 0; padding: 0 var(--byd-s4) var(--byd-s4); color: #9aa3b8; font-size: 13px; font-variant-numeric: tabular-nums; }
-.byd-box-show-name b { font: 700 30px/1.15 Georgia, serif; color: #f3e7c9; }
-.byd-box-show-foot { background: var(--byd-editor-card-row-bg); }
 @media (prefers-reduced-motion: reduce) {
-  .byd-box-show, .byd-box-show *, .byd-box-net, .byd-canvas[data-surface='box'] > * { transition: none !important; }
+  .byd-box-net, .byd-canvas[data-surface='box'] > * { transition: none !important; }
 }
 /* The measures over the properties (#1406, beslut 4): a lock each, the formula, and the air. */
 .byd-box-measures > section { padding-bottom: var(--byd-s3); margin-bottom: var(--byd-s3); border-bottom: 1px solid #2f333d; }

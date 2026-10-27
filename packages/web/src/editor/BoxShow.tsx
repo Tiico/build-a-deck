@@ -10,7 +10,9 @@ import { previewIcons } from './assets.js'
 import { previewFonts } from './fonts.js'
 import { FootSaid } from './said.js'
 import { CopyGlyph, PencilGlyph } from '../glyphs.js'
-import { useLang, useT } from '../i18n/index.js'
+import { useT } from '../i18n/index.js'
+import { useMm } from './box-mm.js'
+import './box-show.css'
 import { DECK_GLOSS, FOLD_MS, GLOSS, REST, lit, netPose, poseTransform, showScene, swayed, turnedBy, type DeckPart, type Plane, type Pose } from './boxScene.js'
 
 // «Visa upp» (#1414, L91, #1406 runda 2, hybriden): nätet viker ihop sig till lådan på sin plats, och
@@ -66,14 +68,8 @@ export type BoxShowProps = {
   onShare?: (() => void) | undefined
 }
 
-// A measure as the reader writes it: «34,5» in Swedish, «34.5» in English.
-export function useMm(): (n: number) => string {
-  const { lang } = useLang()
-  return useMemo(() => {
-    const format = new Intl.NumberFormat(lang === 'sv' ? 'sv-SE' : 'en-GB', { maximumFractionDigits: 2 })
-    return (n: number) => format.format(n)
-  }, [lang])
-}
+// Its own chunk, with its stylesheet: nothing of it is fetched until the tab is opened.
+export default BoxShow
 
 export function BoxShow({ doc, fit, drawings, assetBase, motifs, look, net, onFolded, onUnfold, onUnfolded, onSettled, onShare }: BoxShowProps) {
   const t = useT()

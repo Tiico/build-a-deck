@@ -207,6 +207,16 @@ export function BookGlyph() {
   )
 }
 
+// A way that opens in a tab of its own (#1422): an arrow leaving a window by its corner, on the
+// band's «Öppna bordet», where the words «öppnas i bordets egen flik» are the screen reader's.
+export function OutGlyph() {
+  return (
+    <Glyph name="out">
+      <Line d="M9.5 3h3.5v3.5M13 3 7.5 8.5M11 9.5V12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h2.5" />
+    </Glyph>
+  )
+}
+
 export function PlayGlyph() {
   return (
     <Glyph name="play">

@@ -336,6 +336,25 @@ describe('the host', () => {
     expect((await post(run.http, `/sessions/${id}/kick`, { seat: 'Q' }, { authorization: `Bearer ${hostKey}` })).status).toBe(404)
     await tv.close()
   })
+
+  // The third control (#1422): ending the table from the editor's band, which looks at the table
+  // through a lobby and may send it nothing (DRIFT §9). The end goes the way the table itself ends
+  // (C9): the log is locked and every screen at it is told. A second end is nothing, not a fault.
+  it('ends the table with the host key: the screens are told, and the code opens nothing after', async () => {
+    const { id, code, hostKey } = await createRoom(run.http)
+    const tv = await run.connectTable(id, hostKey)
+    expect((await post(run.http, `/sessions/${id}/end`, {})).status).toBe(401)
+    expect((await post(run.http, `/sessions/${id}/end`, {}, { authorization: 'Bearer nope' })).status).toBe(403)
+    const ended = await post(run.http, `/sessions/${id}/end`, {}, { authorization: `Bearer ${hostKey}` })
+    expect(ended.status).toBe(200)
+    expect(await ended.json()).toEqual({ ok: true, ended: true })
+    await tv.waitFor((m) => m.t === 'patch' && m.patch.ops.some((op) => op.op === 'ended' && op.ended))
+    expect((await post(run.http, `/rooms/${code}/join`, { name: 'Bo', seat: 'A' })).status).toBe(404)
+    const again = await post(run.http, `/sessions/${id}/end`, {}, { authorization: `Bearer ${hostKey}` })
+    expect(again.status).toBe(200)
+    expect(await again.json()).toEqual({ ok: true, ended: false })
+    await tv.close()
+  })
 })
 
 describe('the owner', () => {

@@ -256,7 +256,8 @@ describe('which writes stay open to an account that has not accepted (#1272)', (
       'POST ^\\/guests\\/claim$',
       'POST ^\\/me\\/played\\/[^/]+\\/return$',
       'POST ^\\/sessions\\/[^/]+\\/survey$',
-      'POST ^\\/sessions\\/[^/]+\\/(?:code|kick)$',
+      // The host's third control, the end from the editor's band (#1422), beside the code and the kick.
+      'POST ^\\/sessions\\/[^/]+\\/(?:code|kick|end)$',
     ])
     expect(openToTheDue('GET', '/projects')).toBe(true)
     expect(openToTheDue('HEAD', '/projects/x')).toBe(true)
