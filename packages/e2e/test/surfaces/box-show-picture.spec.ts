@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test'
+import type { Browser, Page } from '@playwright/test'
 import { boxFaceSize, type BoxFace } from '@byd/engine'
 import { boxOf } from '@byd/server/doc'
 import type { ProjectDoc } from '@byd/server'
@@ -12,7 +12,7 @@ import { gameDoc } from '../../support/game.js'
 // renderaren (E2) och sätts på sitt plan, och färgen som målas på skärmen där planet står säger vilken
 // mall som hamnade på vilken sida. Ljuset är bakat ur planets normal, så samma sida målas mörkare
 // eller ljusare när lådan vrids. Och vridningen ändrar bara transform och opacitet: ingenting läggs ut
-// igen, och bildrutorna kommer i takt.
+// igen, ingen stil räknas om för hela sidan, och ingen bildruta blir lång för vridningens skull (#1446).
 
 const COLOURS: Record<BoxFace, string> = { front: '#d02020', right: '#2050d0', lid: '#20a030', back: '#d0c020', left: '#c020c0', bottom: '#20c0c0' }
 type Hue = 'red' | 'blue' | 'green' | 'yellow' | 'magenta' | 'cyan'
@@ -121,60 +121,103 @@ test.describe('the box shown off, still', () => {
   })
 })
 
+// What a turn costs, said in what the turn itself decides and not in the wall clock: a frame's length
+// on a shared runner is the runner's load as much as the picture's (#1446). Which styles it writes,
+// how many layouts and style passes it asks for, how many elements a style pass has to look at, and
+// whether its own code ever makes a frame long.
+type Turn = {
+  changed: string[]
+  frames: number
+  layouts: number
+  styles: number
+  // The elements each style pass looked at, from the trace, and the page's own count to hold them to.
+  passes: number[]
+  elements: number
+  // The long animation frames in which the app's own code ran long or forced styles and layout.
+  own: string[]
+}
+
+async function turnOf(page: Page, browser: Browser): Promise<Turn> {
+  const cdp = await page.context().newCDPSession(page)
+  await cdp.send('Performance.enable')
+  const metric = async (name: 'LayoutCount' | 'RecalcStyleCount') => (await cdp.send('Performance.getMetrics')).metrics.find((m) => m.name === name)?.value ?? 0
+  await page.evaluate(() => {
+    const w = window as unknown as { changed: Set<string>; frames: number; own: string[] }
+    w.changed = new Set()
+    w.frames = 0
+    w.own = []
+    // Every style the picture is given while it turns, by name.
+    new MutationObserver((records) => {
+      for (const r of records) {
+        const was = document.createElement('i')
+        was.setAttribute('style', r.oldValue ?? '')
+        const now = (r.target as HTMLElement).style
+        const names = new Set([...Array.from(was.style), ...Array.from(now)])
+        for (const name of names) if (was.style.getPropertyValue(name) !== now.getPropertyValue(name)) w.changed.add(name)
+      }
+    }).observe(document.querySelector('.byd-box-show')!, { attributes: true, attributeFilter: ['style'], attributeOldValue: true, subtree: true })
+    // A frame a loaded machine made long has no script of the app's in it, or a short one. One the turn
+    // made long has the app's own code in it, a long task by itself, or forcing the browser to work out
+    // styles and layout in the middle of it. The turn's own frame is under a millisecond of script; at
+    // twenty times slower it is seven.
+    type Script = { sourceURL: string; invoker: string; duration: number; forcedStyleAndLayoutDuration: number }
+    new PerformanceObserver((list) => {
+      for (const frame of list.getEntries() as unknown as { duration: number; scripts: Script[] }[]) {
+        for (const s of frame.scripts) {
+          if (!s.sourceURL.startsWith(location.origin)) continue
+          if (s.duration < 50 && s.forcedStyleAndLayoutDuration === 0) continue
+          w.own.push(`${s.invoker} in ${s.sourceURL.slice(location.origin.length)}: ${Math.round(s.duration)} ms, ${Math.round(s.forcedStyleAndLayoutDuration)} ms forced, in a ${Math.round(frame.duration)} ms frame`)
+        }
+      }
+    }).observe({ type: 'long-animation-frame' })
+    const tick = () => {
+      w.frames++
+      requestAnimationFrame(tick)
+    }
+    requestAnimationFrame(tick)
+  })
+  await browser.startTracing(page, { categories: ['devtools.timeline'] })
+  const before = { layouts: await metric('LayoutCount'), styles: await metric('RecalcStyleCount'), frames: await page.evaluate(() => (window as unknown as { frames: number }).frames) }
+  // Two seconds of its own calm turn, and then a turn by hand.
+  await page.waitForTimeout(2000)
+  const scene = (await page.locator('.byd-box-show-scene').boundingBox())!
+  await page.mouse.move(scene.x + 30, scene.y + 30)
+  await page.mouse.down()
+  await page.mouse.move(scene.x + 230, scene.y + 60, { steps: 30 })
+  await page.mouse.up()
+  await page.waitForTimeout(300)
+  const after = { layouts: await metric('LayoutCount'), styles: await metric('RecalcStyleCount') }
+  const seen = await page.evaluate(() => {
+    const w = window as unknown as { changed: Set<string>; frames: number; own: string[] }
+    return { changed: [...w.changed].sort(), frames: w.frames, own: w.own, elements: document.getElementsByTagName('*').length }
+  })
+  type Event = { name: string; args?: { elementCount?: number } }
+  const trace = JSON.parse((await browser.stopTracing()).toString()) as { traceEvents: Event[] }
+  const passes = trace.traceEvents.filter((e) => e.name === 'UpdateLayoutTree' && typeof e.args?.elementCount === 'number').map((e) => e.args!.elementCount!)
+  return { changed: seen.changed, frames: seen.frames - before.frames, layouts: after.layouts - before.layouts, styles: after.styles - before.styles, passes, elements: seen.elements, own: seen.own }
+}
+
 test.describe('the box turning', () => {
   test.use({ viewport: { width: 1440, height: 900 }, locale: 'sv-SE', reducedMotion: 'no-preference' })
 
-  test('turns by transform and opacity alone, and keeps its frames coming', async ({ page }) => {
+  test('turns by transform and opacity alone, and asks nothing more of a frame', async ({ page, browser }) => {
     await shownOff(page)
-    const cdp = await page.context().newCDPSession(page)
-    await cdp.send('Performance.enable')
-    const layouts = async () => ((await cdp.send('Performance.getMetrics')).metrics.find((m) => m.name === 'LayoutCount')?.value ?? 0)
-    // Every style the picture is given while it turns, by name, and every frame's time.
-    await page.evaluate(() => {
-      const w = window as unknown as { changed: Set<string>; frames: number[] }
-      w.changed = new Set()
-      w.frames = []
-      new MutationObserver((records) => {
-        for (const r of records) {
-          const was = document.createElement('i')
-          was.setAttribute('style', r.oldValue ?? '')
-          const now = (r.target as HTMLElement).style
-          const names = new Set([...Array.from(was.style), ...Array.from(now)])
-          for (const name of names) if (was.style.getPropertyValue(name) !== now.getPropertyValue(name)) w.changed.add(name)
-        }
-      }).observe(document.querySelector('.byd-box-show')!, { attributes: true, attributeFilter: ['style'], attributeOldValue: true, subtree: true })
-      let last = performance.now()
-      const tick = (t: number) => {
-        w.frames.push(t - last)
-        last = t
-        if (w.frames.length < 400) requestAnimationFrame(tick)
-      }
-      requestAnimationFrame(tick)
-    })
-    const before = await layouts()
-    // Two seconds of its own calm turn, and then a turn by hand.
-    await page.waitForTimeout(2000)
-    const scene = (await page.locator('.byd-box-show-scene').boundingBox())!
-    await page.mouse.move(scene.x + 30, scene.y + 30)
-    await page.mouse.down()
-    await page.mouse.move(scene.x + 230, scene.y + 60, { steps: 30 })
-    await page.mouse.up()
-    await page.waitForTimeout(300)
-    const after = await layouts()
-    const { changed, frames } = await page.evaluate(() => {
-      const w = window as unknown as { changed: Set<string>; frames: number[] }
-      return { changed: [...w.changed].sort(), frames: w.frames.slice(1) }
-    })
-    // It moved, so the measurement is of something.
-    expect(changed).toContain('transform')
-    expect(changed.filter((name) => name !== 'transform' && name !== 'opacity')).toEqual([])
+    const turn = await turnOf(page, browser)
+    test.info().annotations.push({ type: 'turn', description: `${turn.frames} frames, ${turn.layouts} layouts, ${turn.styles} style passes, the largest of ${Math.max(...turn.passes)} of ${turn.elements} elements` })
+    // It moved, and was watched while it did, so the measurement is of something.
+    expect(turn.changed).toContain('transform')
+    expect(turn.passes.length).toBeGreaterThan(10)
+    // Only what the compositor can move without the page.
+    expect(turn.changed.filter((name) => name !== 'transform' && name !== 'opacity')).toEqual([])
     // A layout a frame would be a hundred and more; what is left is the editor's own, not the turn's.
-    expect(after - before).toBeLessThan(5)
-    const sorted = [...frames].sort((a, b) => a - b)
-    const median = sorted[Math.floor(sorted.length / 2)]!
-    const slow = sorted[Math.floor(sorted.length * 0.95)]!
-    test.info().annotations.push({ type: 'frames', description: `${frames.length} frames, median ${median.toFixed(1)} ms, 95th ${slow.toFixed(1)} ms` })
-    expect(frames.length).toBeGreaterThan(90)
-    expect(median).toBeLessThan(25)
+    expect(turn.layouts).toBeLessThan(5)
+    // At most one style pass a frame: nothing reads a style back in the middle of one. The press and
+    // the release of the pointer are a pass of their own each.
+    expect(turn.styles).toBeLessThanOrEqual(turn.frames + 4)
+    // Each pass looks at the planes it changed, never at the whole page: a frame's pass is about a
+    // dozen elements and the pointer's about fifty, of some five hundred and fifty.
+    expect(Math.max(...turn.passes)).toBeLessThan(turn.elements / 4)
+    // No frame is long for the turn's own sake, however loaded the machine it runs on.
+    expect(turn.own).toEqual([])
   })
 })
