@@ -7,7 +7,7 @@ import { applyPatch } from '@byd/engine'
 import { TableHost, createServer, MemoryLogStore, MemoryProjectStore, MemorySurveyStore, MemoryAuthStore, MemoryMailer, MemoryAssetStore } from '../../src/index.js'
 import { MemoryRenderStore, Renderer, runWorker } from '@byd/render'
 import { spelkortDoc } from '../spelkort.js'
-import type { Intent } from '@byd/protocol'
+import { tableProtocols, type Intent } from '@byd/protocol'
 const http = 'http://localhost:8319'
 const web = 'http://localhost:5319'
 const out = process.argv[2] ?? '/tmp/byd-lasbarhet-links.json'
@@ -33,8 +33,8 @@ const guests: Record<string,{token:string}> = {}
 for (const [seat,name] of [['A','Ada'],['B','Bo'],['C','Cy'],['D','Di']] as const) guests[seat]=await post(`/rooms/${session.code}/join`,{seat,name})
 type Seen = { zones: { id: string; order?: string[] }[]; components: { id: string; zone: string }[] }
 let latest: Seen | null = null
-const connect = async (query:string) => {
-  const ws=new WebSocket(`${http.replace('http','ws')}/sessions/${session.id}?${query}`)
+const connect = async (query:string, protocols?:string[]) => {
+  const ws=new WebSocket(`${http.replace('http','ws')}/sessions/${session.id}?${query}`, protocols)
   await new Promise<void>((resolve,reject)=>{ws.addEventListener('message',e=>{const msg=JSON.parse(String(e.data));if(msg.t==='snapshot'){latest=msg.snapshot;resolve()}if(msg.t==='patch'&&latest)latest=applyPatch(latest as never,msg.patch) as unknown as Seen;if(msg.t==='refused')reject(new Error(msg.reason))});ws.addEventListener('error',()=>reject(new Error('Socket failed')))})
   return ws
 }
@@ -46,7 +46,7 @@ const send=(ws:WebSocket,seat:string|null,intents:Intent[])=>new Promise<void>((
   ws.send(JSON.stringify({t:'envelope',envelope:{id,seat,intents}}))
 })
 const snapshot = async (): Promise<Seen> => { await new Promise((r)=>setTimeout(r,30)); if(!latest) throw new Error('no snapshot'); return latest }
-const table=await connect(`host=${session.hostKey}`)
+const table=await connect('', tableProtocols({ host: session.hostKey }))
 for (const [seat,name] of [['A','Ada'],['B','Bo'],['C','Cy'],['D','Di']] as const) await send(table,null,[{v:'seat.claim',seat,name}])
 await send(table,null,[{v:'shuffle',pile:'draw'},{v:'deal',from:'draw',to:['hand:A','hand:B','hand:C','hand:D'],each:7}])
 await send(table,null,[{v:'draw',from:'draw',to:'market',count:4}])
@@ -71,11 +71,11 @@ const ws=encodeURIComponent(http.replace('http','ws'))
 const links={
   api:http, web, session:session.id, code:session.code, hostKey:session.hostKey, tokens:Object.fromEntries(Object.entries(guests).map(([s,g])=>[s,g.token])),
   editor:`${web}/editor?project=lasbarhet&server=${encodeURIComponent(http)}`,
-  table:`${web}/table?session=${session.id}&mode=table&host=${encodeURIComponent(session.hostKey)}&code=${session.code}&server=${ws}`,
-  tv:`${web}/table?session=${session.id}&mode=tv&host=${encodeURIComponent(session.hostKey)}&code=${session.code}&server=${ws}`,
+  table:`${web}/table?session=${session.id}&mode=table&code=${session.code}&server=${ws}#host=${encodeURIComponent(session.hostKey)}`,
+  tv:`${web}/table?session=${session.id}&mode=tv&code=${session.code}&server=${ws}#host=${encodeURIComponent(session.hostKey)}`,
   play:`${web}/play?session=${session.id}&seat=A&name=Ada&token=${guests['A']!.token}&code=${session.code}&server=${ws}`,
   online:`${web}/online?session=${session.id}&seat=B&name=Bo&token=${guests['B']!.token}&code=${session.code}&server=${ws}`,
-  observe:`${web}/observe?session=${session.id}&host=${encodeURIComponent(session.hostKey)}&code=${session.code}&server=${ws}`,
+  observe:`${web}/observe?session=${session.id}&code=${session.code}&server=${ws}`,
 }
 writeFileSync(out,JSON.stringify(links,null,2))
 const vite=spawn('pnpm',['--filter','@byd/web','dev'],{stdio:'inherit',env:{...process.env,PORT:'5319'}})

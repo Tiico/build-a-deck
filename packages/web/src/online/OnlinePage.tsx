@@ -20,7 +20,7 @@ import { useSeatTurned } from '../player/turned.js'
 import { useSitDown } from '../player/useSitDown.js'
 import { claimUrl } from '../account/session.js'
 import { takeGuestToken } from '../guestAddress.js'
-import { dropOwnerName, hostSeatAt } from '../hostSeat.js'
+import { hostSeatAt } from '../hostSeat.js'
 import { SeatLine } from './SeatLine.js'
 import { LastMove } from './LastMove.js'
 import { NOTES_OPEN_PX, NOTES_RAIL_PX, NotesColumn } from './NotesColumn.js'
@@ -50,7 +50,7 @@ import { WaitingRoom } from './WaitingRoom.js'
 import { BOARD_FLOOR, UPRIGHT_BOARD_FLOOR } from '../player/desk.js'
 
 // /online?session=…&seat=A&code=…&server=ws://…#token=…  — and the owner's own seat from the editor,
-// /online?session=…&seat=A&name=Bo&owner=1, which has no token and names itself.
+// /online?session=…&seat=A&owner=1, which has no token and no name (#1306).
 // Fully online (C2): both roles in one window. The table, the way round the window and the seat
 // agree on (#76, #77), playable as the table screen is; the seat's own hand beside it or under it,
 // depending on which way the window is; the phone's controls in the corner.
@@ -81,11 +81,8 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
   // owner's own seat has no token and no name in its address (#1306): she sits down under the name
   // she gave «Hur sitter ni?» in this browser (L77), else under her account's, which the table tells
   // her, else as the designer.
-  // A link from before that named her in its query, and the name is taken out of the address in
-  // the same history entry, as a guest's is (#1278).
   const [kept] = useState(() => {
     if (!owner) return null
-    dropOwnerName()
     return sessionId ? (hostSeatAt(sessionId)?.name ?? null) : null
   })
   const name = token === undefined ? (owner ? (kept ?? client?.admitted ?? (view ? t('online.designer') : null)) : null) : (client?.admitted ?? null)

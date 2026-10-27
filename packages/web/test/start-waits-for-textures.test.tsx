@@ -43,7 +43,7 @@ async function newTable(): Promise<{ id: string; code: string; hostKey: string }
 
 async function tvOfANewTable(renderStalledAfterMs: number): Promise<void> {
   const made = await newTable()
-  history.replaceState(null, '', `/table?session=${made.id}&host=${made.hostKey}&mode=tv&server=${encodeURIComponent(run.url)}`)
+  history.replaceState(null, '', `/table?session=${made.id}&mode=tv&server=${encodeURIComponent(run.url)}#host=${made.hostKey}`)
   render(<TablePage timing={{ ...DEFAULT_TIMING, renderStalledAfterMs }} />)
 }
 

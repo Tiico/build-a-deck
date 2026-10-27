@@ -63,9 +63,9 @@ test.describe('a new code takes the host key with it (#820)', () => {
 })
 
 // The suite opens the table the way the product hands it out (#1335): the editor puts the key in
-// the fragment since #1306, so a helper that built `?host=` tried only the old form, and every
+// the fragment since #1306, so a helper that put it in the query tried only the old form, and every
 // journey that opened a screen passed on a road no new link takes. `owner-address.spec.ts` is the
-// one that still tries the old form, on purpose.
+// one that tries the old form, on purpose, and is refused (#1341).
 test.describe('the suite’s own way to the table (#1335)', () => {
   test('carries the key in the fragment, and no request the screen makes says it', async ({ tableOf, open }) => {
     const table = await tableOf({ players: 2, counters: [], cards: 4 })

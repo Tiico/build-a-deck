@@ -391,17 +391,19 @@ export function createServer(given: ServerOptions): Server {
     }
     const sessionId = decodeURIComponent(match[1] ?? '')
     const q = url.searchParams
-    // The token rides in the protocol header (#1278), and the host key beside it (#1306); an address
-    // with either is a page loaded before that, which still gets in.
+    // The token rides in the protocol header (#1278), and the host key beside it (#1306). An address
+    // with a token is a guest's page loaded before that, which still gets in; one with the host key,
+    // or with the owner's own seat's name, is refused at the door since #1341 (`oldAddress`).
     const offered = req.headers['sec-websocket-protocol']
     const ask: Admission = {
       seat: q.get('seat'),
       role: q.get('role') === 'observer' ? 'observer' : q.get('role') === 'lobby' ? 'lobby' : null,
       name: q.get('name'),
       token: tokenOfProtocols(offered) ?? q.get('token'),
-      host: hostKeyOfProtocols(offered) ?? q.get('host'),
+      host: hostKeyOfProtocols(offered),
       owner: q.get('owner') === '1',
       fresh: offersTableProtocol(offered),
+      old: oldAddress(q),
     }
     wss.handleUpgrade(req, socket, head, (ws) => void attach(opts, req, ws, sessionId, ask))
   })
@@ -962,7 +964,20 @@ async function fileAt(path: string): Promise<string | null> {
 
 // What a connection asks to be (DRIFT §9), from its query string and the protocols it offers.
 // `fresh` is a client that offers the table's protocol, and so knows `admitted` (#1278, #1306).
-type Admission = { seat: string | null; role: 'observer' | 'lobby' | null; name: string | null; token: string | null; host: string | null; owner: boolean; fresh: boolean }
+// `old` is the refusal for an address in a form that was read only until #1341.
+type Admission = { seat: string | null; role: 'observer' | 'lobby' | null; name: string | null; token: string | null; host: string | null; owner: boolean; fresh: boolean; old: string | null }
+
+// The forms #1306 took out of the address, which were read for a while after it (DRIFT §9) and are
+// refused since #1341: the host key in the query (`host`), and the owner's own seat naming her in
+// `name` beside `owner=1`. The owner's own watch still says a word in `name`, the word for a watcher
+// in her language, which the table shows when her account has no name; that is not her name.
+// The words are for whoever reads the log, and say what a reload does: a page from after #1306
+// sends neither, and the screen keeps its key in the tab.
+function oldAddress(q: URLSearchParams): string | null {
+  if (q.has('host')) return 'the host key goes in the protocol header, not the address: reload the page'
+  if (q.get('owner') === '1' && q.has('name') && q.get('role') !== 'observer') return 'the owner’s seat is named by her account, not the address: reload the page'
+  return null
+}
 // Who it is allowed to be: the table (with the host key), a seat or an observer (with a token
 // bought for that), or a lobby that only looks. Anything else is refused.
 // `host` marks the project owner's own seat or watch (L77): not the table's screen, but hers.
@@ -971,6 +986,7 @@ type Admission = { seat: string | null; role: 'observer' | 'lobby' | null; name:
 // `admission` is the guest's, by the moment it was given, so the table can ask whether it is still hers (#1348).
 type Admitted = { seat: string | null; observer?: string; lobby?: true; host?: true; told?: string; admission?: { issuedAt: string } }
 async function admit(opts: ServerOptions, req: IncomingMessage, session: SessionRecord, ask: Admission): Promise<Admitted | { refused: string }> {
+  if (ask.old !== null) return { refused: ask.old }
   if (ask.role === 'lobby') return { seat: null, lobby: true }
   // An editor marks its project-owner connection explicitly. Accounts verify the cookie; when
   // accounts are disabled, projects are intentionally open and the same development flow works.

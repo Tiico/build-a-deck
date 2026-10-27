@@ -31,7 +31,7 @@ describe('the playing surfaces’ landmarks (#560 P-20)', () => {
 
   it('/table has its main content, around the felt', async () => {
     const id = await createSession(run)
-    history.replaceState(null, '', `/table?session=${id}&host=${encodeURIComponent(roomOf(id).hostKey)}&mode=table&server=${encodeURIComponent(run.url)}`)
+    history.replaceState(null, '', `/table?session=${id}&mode=table&server=${encodeURIComponent(run.url)}#host=${encodeURIComponent(roomOf(id).hostKey)}`)
     render(<TablePage />)
     const main = await screen.findByRole('main')
     expect(main.querySelector('.byd-table-frame')).toBeTruthy()

@@ -8,7 +8,7 @@ import { createNamedSession, startServer } from './fixture.js'
 import { onlineUrl, tvUrl } from '../src/editor/tableLinks.js'
 import { takeHostKey } from '../src/table/hostKey.js'
 import { TableClient, setWebSocketImplementation, type WebSocketCtor } from '../src/client.js'
-import { dropOwnerName, hostSeatAt, rememberHostSeat } from '../src/hostSeat.js'
+import { hostSeatAt, rememberHostSeat } from '../src/hostSeat.js'
 
 // The host key and the owner's name in no address (#1306, DRIFT §9), as the guest's token since
 // #1278. The table's screen is opened with its key in the fragment, which the browser sends nowhere,
@@ -50,10 +50,11 @@ describe('the television takes its key out of the address (#1306)', () => {
     expect(takeHostKey('s1')).toBe('K1')
   })
 
-  it('still takes a key from an old link’s query', () => {
-    history.replaceState(null, '', '/table?session=s1&host=K0&mode=tv')
-    expect(takeHostKey('s1')).toBe('K0')
-    expect(location.search).toBe('?session=s1&mode=tv')
+  // A key in the query was read for a while after #1306, and no longer is (#1341): the table's door
+  // refuses it, so the screen does not take one from there to hand over in the header either.
+  it('takes no key from the query', () => {
+    history.replaceState(null, '', `/table?${new URLSearchParams({ session: 's1', mode: 'tv', host: 'K0' })}`)
+    expect(takeHostKey('s1')).toBeUndefined()
   })
 })
 
@@ -91,15 +92,6 @@ describe('the table’s socket says no secret in its address (#1306)', () => {
 })
 
 describe('the owner’s own seat (#1306)', () => {
-  it('drops a name an old link carried, in the same history entry', () => {
-    history.replaceState({ kept: 1 }, '', '/online?session=s1&seat=A&name=Vera&owner=1&code=ABCDEF')
-    const before = history.length
-    dropOwnerName()
-    expect(new URLSearchParams(location.search).toString()).toBe('session=s1&seat=A&owner=1&code=ABCDEF')
-    expect(history.length).toBe(before)
-    expect(history.state).toEqual({ kept: 1 })
-  })
-
   it('remembers the name she sat down under, by table', () => {
     rememberHostSeat('s1', { seat: 'A', name: 'Vera' })
     expect(hostSeatAt('s1')).toEqual({ seat: 'A', name: 'Vera' })
@@ -109,20 +101,16 @@ describe('the owner’s own seat (#1306)', () => {
 
 // The owner's own watch (#1335). Nothing in the tool builds `/observe?…&name=…&owner=1` since
 // #1306, and the name she watches under is her account's, which the page asks the box for. A name
-// an old link carried is neither shown as hers nor kept in the address.
+// in the address is not shown as hers.
 describe('the owner’s own watch (#1335)', () => {
-  it('takes no name from the address, and drops the one an old link carried', async () => {
+  it('takes no name from the address', async () => {
     const run = await startServer()
     try {
       const id = await createNamedSession(run, 'Skogens herrar')
-      history.replaceState({ kept: 1 }, '', `/observe?session=${id}&name=Vera&owner=1&server=${encodeURIComponent(run.url)}`)
-      const before = history.length
+      history.replaceState(null, '', `/observe?session=${id}&name=Vera&owner=1&server=${encodeURIComponent(run.url)}`)
       render(<ObserverPage />)
       expect(await screen.findAllByText('observatör tittar på och ser alla kort')).not.toHaveLength(0)
       expect(screen.queryByText(/Vera/)).toBeNull()
-      expect(new URLSearchParams(location.search).has('name')).toBe(false)
-      expect(new URLSearchParams(location.search).get('owner')).toBe('1')
-      expect(history.length).toBe(before)
     } finally {
       await run.stop()
     }

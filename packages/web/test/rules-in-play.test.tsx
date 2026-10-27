@@ -43,7 +43,7 @@ describe('the rules where the game is played (B7)', () => {
   it('is one press away on the table screen, and shows the rules that table plays by', async () => {
     const id = await tableWithRules()
     const { host } = await asTable(run, id)
-    history.replaceState(null, '', `/table?session=${id}&mode=tv&host=${encodeURIComponent(host)}&server=${encodeURIComponent(run.url)}`)
+    history.replaceState(null, '', `/table?session=${id}&mode=tv&server=${encodeURIComponent(run.url)}#host=${encodeURIComponent(host)}`)
     render(<TablePage />)
     fireEvent.click(await screen.findByRole('button', { name: 'Regler' }))
     const panel = await screen.findByRole('dialog', { name: 'Regler' })
@@ -60,7 +60,7 @@ describe('the rules where the game is played (B7)', () => {
     const id = await tableWithRules()
     const { host } = await asTable(run, id)
     const open = (mode: string) => {
-      history.replaceState(null, '', `/table?session=${id}&mode=${mode}&host=${encodeURIComponent(host)}&server=${encodeURIComponent(run.url)}`)
+      history.replaceState(null, '', `/table?session=${id}&mode=${mode}&server=${encodeURIComponent(run.url)}#host=${encodeURIComponent(host)}`)
       return render(<TablePage />)
     }
 
@@ -96,7 +96,7 @@ describe('the rules where the game is played (B7)', () => {
   it('shows the living number beside a tagged zone and keeps it living while the drawer stays open', async () => {
     const id = await tableWithRules()
     const { host } = await asTable(run, id)
-    history.replaceState(null, '', `/table?session=${id}&mode=tv&host=${encodeURIComponent(host)}&server=${encodeURIComponent(run.url)}`)
+    history.replaceState(null, '', `/table?session=${id}&mode=tv&server=${encodeURIComponent(run.url)}#host=${encodeURIComponent(host)}`)
     render(<TablePage />)
     fireEvent.click(await screen.findByRole('button', { name: 'Regler' }))
     const panel = await screen.findByRole('dialog', { name: 'Regler' })
@@ -157,7 +157,7 @@ describe('the rules where the game is played (B7)', () => {
   it('offers nothing at all when the game has no rulebook', async () => {
     const id = await tableWithRules(false)
     const { host } = await asTable(run, id)
-    history.replaceState(null, '', `/table?session=${id}&mode=tv&host=${encodeURIComponent(host)}&server=${encodeURIComponent(run.url)}`)
+    history.replaceState(null, '', `/table?session=${id}&mode=tv&server=${encodeURIComponent(run.url)}#host=${encodeURIComponent(host)}`)
     render(<TablePage />)
     await screen.findByText(/Skogens herrar|Bordet/)
     await waitFor(() => expect(screen.queryByRole('button', { name: 'Regler' })).toBeNull())

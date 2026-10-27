@@ -1,4 +1,5 @@
 import type { BrowserContext, Page } from '@playwright/test'
+import { tableProtocols } from '@byd/protocol'
 import { logIn, makeProject, startTable } from '../support/api.js'
 import { DESK } from '../support/devices.js'
 import { watchRequests, type Seen } from '../support/requests.js'
@@ -147,39 +148,48 @@ test.describe('the host key and the owner’s name in no address (#1306)', () =>
     neverIn(requests.seen, 'her address', email)
   })
 
-  // A page that loaded before the box was updated still runs the old client: the table's screen
-  // says its key in the socket's address and offers no protocol, and the owner's seat says her name
-  // there. Both still get in, as they did, and the seat is told nothing its client does not know.
-  test('a page loaded before the deploy still connects the old way', async ({ open }) => {
+  // The old form was read for a while after #1306 and is refused since #1341: a page that still
+  // runs the old client — the table's screen saying its key in the socket's address, the owner's
+  // seat saying her name there — is turned away and told why, and the same sockets in today's form
+  // get in.
+  test('a page loaded before #1306 is turned away, and today’s form gets in', async ({ open }) => {
     const { page } = await open(DESK, 'about:blank')
     await logIn(page.request)
     const project = await makeProject(page.request, { name: 'Fredagskort', players: 2, cards: 3 })
     const table = await startTable(page.request, project.id)
     await page.goto('/')
     const origin = new URL(page.url()).origin.replace(/^http/, 'ws')
-    const at = (query: string) => `${origin}/sessions/${encodeURIComponent(table.session)}?${query}`
-    const screen = await page.evaluate(oldSocket, at(`host=${encodeURIComponent(table.hostKey)}`))
+    const at = (query: string) => `${origin}/sessions/${encodeURIComponent(table.session)}${query ? `?${query}` : ''}`
     const types = (frames: string[]) => frames.map((frame) => (JSON.parse(frame) as { t: string }).t)
-    expect(types(screen)).not.toContain('refused')
-    expect(screen.some((frame) => frame.includes(`"code":"${table.code}"`)), 'the old screen is the table’s and hears its code').toBe(true)
+    const refusal = (frames: string[]) => frames.map((frame) => JSON.parse(frame) as { t: string; reason?: string }).find((m) => m.t === 'refused')?.reason
 
-    const owner = await page.evaluate(oldSocket, at(`seat=A&name=${encodeURIComponent(NAME)}&owner=1`))
-    expect(types(owner)).not.toContain('refused')
-    expect(types(owner)).toContain('snapshot')
-    expect(types(owner), 'an old client is not told a message it does not know').not.toContain('admitted')
+    const oldScreen = await page.evaluate(socket, { address: at(`host=${encodeURIComponent(table.hostKey)}`), table: true })
+    expect(refusal(oldScreen), 'the old screen is told where the key goes').toBe('the host key goes in the protocol header, not the address: reload the page')
+    expect(types(oldScreen)).not.toContain('snapshot')
+    const oldSeat = await page.evaluate(socket, { address: at(`seat=A&name=${encodeURIComponent(NAME)}&owner=1`), table: false })
+    expect(refusal(oldSeat), 'the old seat is told where her name comes from').toBe('the owner’s seat is named by her account, not the address: reload the page')
+    expect(types(oldSeat)).not.toContain('snapshot')
+
+    const screen = await page.evaluate(socket, { address: at(''), protocols: tableProtocols({ host: table.hostKey }), table: true })
+    expect(types(screen)).not.toContain('refused')
+    expect(screen.some((frame) => frame.includes(`"code":"${table.code}"`)), 'today’s screen is the table’s and hears its code').toBe(true)
+    const seat = await page.evaluate(socket, { address: at('seat=A&owner=1'), protocols: tableProtocols(), table: false })
+    expect(types(seat)).not.toContain('refused')
+    expect(types(seat)).toContain('snapshot')
   })
 })
 
-// The old client's socket: an address, no protocol. Resolves with every frame once the table has let
-// it in (its snapshot, and for the table's screen also the room) or turned it away.
-function oldSocket(address: string): Promise<string[]> {
+// A raw socket, as a client opens one: an address, and the protocols it offers (none, for the old
+// client). Resolves with every frame once the table has let it in (its snapshot, and for the table's
+// screen also the room) or turned it away.
+function socket({ address, protocols, table }: { address: string; protocols?: string[]; table: boolean }): Promise<string[]> {
   return new Promise<string[]>((resolve, reject) => {
     const got: string[] = []
-    const ws = new WebSocket(address)
+    const ws = new WebSocket(address, protocols)
     ws.onmessage = (ev) => {
       got.push(String(ev.data))
       const types = got.map((frame) => (JSON.parse(frame) as { t: string }).t)
-      if (types.includes('refused') || (types.includes('snapshot') && (!address.includes('host=') || types.includes('room')))) {
+      if (types.includes('refused') || (types.includes('snapshot') && (!table || types.includes('room')))) {
         ws.close()
         resolve(got)
       }

@@ -1,13 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import WebSocket from 'ws'
 import { TABLE_PROTOCOL, tableProtocols } from '@byd/protocol'
-import { WireClient } from './client.js'
 import { start, twoSeatSetup, type Running } from './fixture.js'
 import { template } from './deck.js'
 
 // The host key and the owner's name in no address (#1306, DRIFT §9), as the guest's token since
 // #1278. The table's screen hands its key over in `Sec-WebSocket-Protocol` and not in `?host=`, and
 // the owner's own seat is told her name by the server, from her account, and not by its address.
+// The old form was read for a while after that and is refused since #1341, with these words, which
+// tell whoever reads the log what a reload of the page does about it.
+const OLD_HOST = 'the host key goes in the protocol header, not the address: reload the page'
+const OLD_NAME = 'the owner’s seat is named by her account, not the address: reload the page'
 let run: Running
 let cookie = ''
 beforeEach(async () => {
@@ -63,14 +66,19 @@ describe('the table’s screen hands its key over in a header (#1306)', () => {
     expect(messages.find((m) => m.t === 'refused')).toMatchObject({ reason: 'the table needs the host key' })
   })
 
-  // A screen that loaded the page before the box was updated reconnects the old way, with the key in
-  // its address and no protocol. It still gets in.
-  it('still lets in an old screen with the key in its address', async () => {
-    const { sessionId, code, hostKey } = await aTable()
-    const old = await WireClient.connect(run.base, sessionId, null, undefined, { host: hostKey })
-    expect(old.messages.some((m) => m.t === 'refused')).toBe(false)
-    expect(await old.waitFor((m) => m.t === 'room')).toMatchObject({ code })
-    await old.close()
+  // A screen that loaded the page before #1306 reconnects with the key in its address and no
+  // protocol. It is refused, even with the table's own key, and told why (#1341).
+  it('refuses a key in the address, and says where it goes', async () => {
+    const { sessionId, hostKey } = await aTable()
+    const { messages } = await knock(sessionId, `host=${encodeURIComponent(hostKey)}`, undefined)
+    expect(messages.find((m) => m.t === 'refused')).toEqual({ t: 'refused', reason: OLD_HOST })
+    expect(messages.some((m) => m.t === 'snapshot')).toBe(false)
+  })
+
+  it('refuses a key in the address beside the right one in the header', async () => {
+    const { sessionId, hostKey } = await aTable()
+    const { messages } = await knock(sessionId, `host=${encodeURIComponent(hostKey)}`, tableProtocols({ host: hostKey }))
+    expect(messages.find((m) => m.t === 'refused')).toEqual({ t: 'refused', reason: OLD_HOST })
   })
 })
 
@@ -95,12 +103,22 @@ describe('the owner’s own seat is told her name by the server (#1306)', () => 
     expect(JSON.stringify(messages)).not.toContain('ada@example.com')
   })
 
-  // A seat that loaded the page before #1306 offers no protocol, and does not know the message.
-  it('tells an old owner’s page nothing new', async () => {
+  // A seat that loaded the page before #1306 named her in its address. It is refused, with or
+  // without the protocol, and told why (#1341).
+  it('refuses an owner’s seat that names itself in its address', async () => {
     const { sessionId } = await aTable()
-    expect((await json('PUT', '/me/name', { name: 'Ada Lovelace' })).status).toBe(200)
-    const { messages } = await knock(sessionId, 'seat=A&owner=1', undefined, asOwner())
+    for (const protocols of [undefined, tableProtocols()]) {
+      const { messages } = await knock(sessionId, 'seat=A&name=Ada&owner=1', protocols, asOwner())
+      expect(messages.find((m) => m.t === 'refused')).toEqual({ t: 'refused', reason: OLD_NAME })
+      expect(messages.some((m) => m.t === 'snapshot')).toBe(false)
+    }
+  })
+
+  // The owner's own watch still says a word in `name`: the word for a watcher in her language,
+  // which the table shows when her account has no name. It is not her name, and is let in.
+  it('still lets the owner’s own watch in with the word for a watcher', async () => {
+    const { sessionId } = await aTable()
+    const { messages } = await knock(sessionId, 'role=observer&name=observatör&owner=1', tableProtocols(), asOwner())
     expect(messages.find((m) => m.t === 'refused')).toBeUndefined()
-    expect(told(messages)).toBeUndefined()
   })
 })

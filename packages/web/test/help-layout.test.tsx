@@ -268,7 +268,7 @@ describe('the same box on the phone, the distance view and the table screen (#30
   async function tv(): Promise<string> {
     atWidth(1280)
     const id = await createSession(run, 't1', undefined, seatSetup())
-    history.replaceState(null, '', `/table?session=${id}&mode=tv&code=${roomOf(id).code}&host=${roomOf(id).hostKey}&server=${encodeURIComponent(run.url)}`)
+    history.replaceState(null, '', `/table?session=${id}&mode=tv&code=${roomOf(id).code}&server=${encodeURIComponent(run.url)}#host=${roomOf(id).hostKey}`)
     const { unmount } = render(<TablePage />)
     try {
       await waitFor(() => expect(document.querySelector('.byd-tv-join')).not.toBeNull())

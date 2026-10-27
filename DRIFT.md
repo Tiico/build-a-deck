@@ -456,10 +456,12 @@ Varje klient erbjuder nu `deckster`, med eller utan hemlighet bredvid, och det �
 Nu står inget namn i adressen: platsen sätter sig under namnet hon gav i «Hur sitter ni?», som webbläsaren som startade bordet minns per bord (`packages/web/src/hostSeat.ts`), och annars under kontots visningsnamn (#1254), som servern säger hennes anslutning i `admitted` utifrån kontokakan, aldrig utifrån adressen.
 Har kontot inget namn heter hon «Designern», och hennes e-postadress sägs aldrig.
 Editorns egen WebSocket (`/projects/:id/edit`) bar hennes e-postadress i `?name=`; servern tog redan namnet ur kontot, så editorn säger nu bara ordet för någon där, vilket är allt ett spel från före konton har.
-Den gamla formen läses en övergångstid: en sida som laddades före ändringen ansluter med `?host=` och släpps in, och ägarens gamla plats ansluter med `?name=` utan protokoll och får inte `admitted`, som dess klient inte känner till.
-En gammal länk med `?host=` eller `?name=` öppnar samma vy, och sidan tar bort dem ur adressen i samma historikpost.
+Bordets dörr nekar den gamla formen (#1341): en anslutning med `?host=`, och en med `?name=` bredvid `owner=1`, får `refused` med en mening som säger var nyckeln eller namnet hör hemma och att sidan ska laddas om.
+Det gäller också en anslutning som har rätt nyckel i huvudet bredvid; adressen är det som loggas.
+Ägarens egen tittarplats säger fortfarande ett ord i `name`, ordet för en tittare på hennes språk, som bordet visar när kontot saknar namn; det är inte hennes namn och släpps in.
+Webben läser inte heller nyckeln ur frågan eller tar bort ett namn ur den: inget i verktyget bygger de adresserna.
 `packages/e2e/test/owner-address.spec.ts` läser varje anrops adress och `Referer` och varje WebSockets adress i editorns, bordsskärmens och platsens flikar, från starten i editorn till en omladdning, och hittar varken nyckeln, hennes namn eller hennes e-postadress, sedan den visat att sökningen hittar nyckeln i fragmentet fliken öppnades med, och namnet och adressen i kontots eget svar och namnet i bordets ramar.
-Samma spec visar att en sida från före ändringen ansluter med den gamla formen, och `packages/server/test/owner-address.test.ts` prövar dörren med nyckeln i huvudet och namnet från kontot.
+Samma spec visar att en sida med den gamla formen nekas och att samma anslutningar i dagens form släpps in, och `packages/server/test/owner-address.test.ts` prövar dörren med nyckeln i huvudet, namnet från kontot och den gamla formen.
 
 Byggt 2026-10-25 (#1277, DESIGN-BESLUT G6): ett inträde som aldrig öppnades rensas av sveparen när dess två minuter gått, med namnet det köptes under; ett öppnat, ett sparkat och ett claimat inträde står kvar, eftersom de är bordets historik, och tas bara av raderingen (#1279).
 
@@ -647,6 +649,7 @@ Byggt 2026-10-25 (#1278): varje HTML-svar bär också `Referrer-Policy: strict-o
 En sida säger då bara sitt origin som `Referer`, aldrig sökvägen eller frågan, till lådan, till objektlagrets signerade länkar och till Googles typsnitt, och ingenting alls från https till http.
 Bordets och platsens id i en telefons adress följer därmed inte med något anrop.
 Värdnyckeln står sedan #1306 i bordsskärmens fragment och aldrig i dess fråga (§9), så den följer inte heller med något anrop; policyn hade redan hållit den ur `Referer`, men inte ur sidans egen begäran.
+Sedan #1341 nekar bordets dörr en nyckel i adressen, så ingen klient kan fortsätta skicka den där.
 Som policyn reser huvudet med bygget och vilar inte på proxyn; `packages/server/test/guest-address.test.ts` kräver det på sidorna och E2E-resan i `guest-address.spec.ts` läser det på svaret, och resan i `owner-address.spec.ts` läser varje `Referer` från editorn, bordsskärmen och ägarens plats.
 Lådans middleware får gärna strama åt det (`no-referrer`) men inte lätta på det.
 

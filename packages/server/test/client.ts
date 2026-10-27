@@ -1,4 +1,4 @@
-import { ServerMessage, type Envelope, type Intent, type Snapshot } from '@byd/protocol'
+import { ServerMessage, tableProtocols, type Envelope, type Intent, type Snapshot } from '@byd/protocol'
 import { applyPatch } from '@byd/engine'
 
 // A test client that keeps every raw frame it received. The visibility assertions
@@ -14,8 +14,8 @@ export class WireClient {
   // must not number from the same one. The real client carries a nonce for exactly this.
   private readonly nonce = Math.random().toString(36).slice(2, 8)
 
-  private constructor(url: string) {
-    this.ws = new WebSocket(url)
+  private constructor(url: string, protocols?: string[]) {
+    this.ws = new WebSocket(url, protocols)
     this.ws.addEventListener('message', (ev) => {
       const raw = typeof ev.data === 'string' ? ev.data : String(ev.data)
       this.frames.push(raw)
@@ -47,10 +47,10 @@ export class WireClient {
       q.set('role', as.role)
       if ('name' in as) q.set('name', as.name)
     }
-    if (auth?.host) q.set('host', auth.host)
     if (auth?.token) q.set('token', auth.token)
     const url = `${base}/sessions/${sessionId}${q.size > 0 ? `?${q.toString()}` : ''}`
-    const c = new WireClient(url)
+    // The host key rides in the protocol header (#1306); the door refuses it in the address (#1341).
+    const c = new WireClient(url, auth?.host ? tableProtocols({ host: auth.host }) : undefined)
     await new Promise<void>((resolve, reject) => {
       c.ws.addEventListener('open', () => resolve(), { once: true })
       c.ws.addEventListener('error', () => reject(new Error('ws error')), { once: true })

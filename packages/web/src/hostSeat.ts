@@ -23,12 +23,3 @@ export function rememberHostSeat(session: string, seat: HostSeat): void {
   }
 }
 export const hostSeatAt = (session: string): HostSeat | null => hostSeats()[session] ?? null
-
-// A link from before #1306 named her in its query (`?name=`). The name is taken out of the address
-// in the same history entry, as a guest's is (#1278), so that neither a reload nor Back sends it.
-export function dropOwnerName(): void {
-  const q = new URLSearchParams(location.search)
-  if (!q.has('name')) return
-  q.delete('name')
-  history.replaceState(history.state, '', `${location.pathname}?${q}${location.hash}`)
-}
