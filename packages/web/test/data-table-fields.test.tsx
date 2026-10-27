@@ -253,14 +253,17 @@ describe('the door the head keeps for its columns (#46 on #32)', () => {
     expect(screen.queryByRole('button', { name: 'Ta bort fältet body' })).toBeNull()
     expect(document.querySelectorAll('thead .byd-data-dropfield')).toHaveLength(0)
     expect(document.querySelectorAll('thead .byd-data-system')).toHaveLength(0)
-    expect(heads().every((th) => th.querySelectorAll('button').length === 1)).toBe(true)
+    // The lock on a locked column's heading is the one control a heading carries besides its
+    // name (#1408), and it is the way out of the lock.
+    expect(heads().every((th) => th.querySelectorAll('button:not(.byd-data-lock)').length === 1)).toBe(true)
 
     // The door names the columns in the order the table shows them, the card's own id included:
     // it is a column of the table without being a field of a card, and the list is about the
     // table's columns.
     await user.click(screen.getByRole('button', { name: 'Kolumner' }))
     const panel = screen.getByRole('group', { name: 'Kolumner' })
-    expect(within(panel).getAllByRole('listitem').map((li) => li.getAttribute('data-col'))).toEqual(['id', 'title', 'body', 'antal'])
+    // The designer's own first, as the table draws them, and the tool's two after (#1408).
+    expect(within(panel).getAllByRole('listitem').map((li) => li.getAttribute('data-col'))).toEqual(['title', 'body', 'id', 'antal'])
 
     // The designer's own columns can go from here, and the two that are the tool's cannot — with
     // the reason written beside them rather than a hole where the × of the others is.

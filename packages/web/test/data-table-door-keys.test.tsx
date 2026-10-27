@@ -10,7 +10,7 @@
 // Talen till höger är mätningens egna, vid tio kolumner och två egna bredder. Inget ärende får bli
 // dyrare än i dagens dörr.
 import { useState } from 'react'
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { applyEdit } from '@byd/server/doc'
@@ -37,6 +37,9 @@ function tenColumns(): ProjectDoc {
 function twoOwnWidths() {
   localStorage.setItem('byd.widths', JSON.stringify({ [PROJECT]: { title: 96, 'fält3': 120 } }))
 }
+// And no lock left by an earlier errand (#1408): a locked column stands first in the door, as it
+// does in the table, and a lock is remembered per project as the widths are.
+beforeEach(() => localStorage.removeItem('byd.locks'))
 
 function Editing({ doc: initial = tenColumns() }: { doc?: ProjectDoc }) {
   const [doc, setDoc] = useState(initial)
@@ -103,10 +106,11 @@ describe('vad dörren kostar i tangenttryck (#388)', () => {
     twoOwnWidths()
     render(<Editing />)
 
-    // `End` går till listans sista rad — `antal` är ingen rad i ringen, den har varken namnknapp
-    // eller ×, så den sista är `fält6`. Fyra tryck är vad dagens dörr kostar för samma ärende, och
-    // inget ärende fick bli dyrare.
-    expect(await errand(user, ['Enter', 'bakTabb', 'End', 'Enter'])).toBe(4)
+    // `End` går till listans sista rad. Den var `fält6` — `antal` hade varken namnknapp eller ×
+    // och var ingen rad i ringen — men sedan #1408 har varje kolumn ett lås, och verktygets två
+    // står sist i listan: `End` står på antal:s lås, och två `↑` på `fält6`. Sex tryck mot fyra,
+    // det enda ärende som blev dyrare, för två rader som inte fanns.
+    expect(await errand(user, ['Enter', 'bakTabb', 'End', 'upp', 'upp', 'Enter'])).toBe(6)
     expect(document.activeElement).toBe(screen.getByLabelText('Namn på kolumnen fält6'))
   })
 
@@ -120,8 +124,10 @@ describe('vad dörren kostar i tangenttryck (#388)', () => {
     expect(await errand(user, ['Enter', 'bakTabb', 'ned', 'ned', 'ned', 'ned', 'höger'])).toBe(7)
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Låt fält3 följa innehållet igen' }))
 
-    // Och ×:et står ett steg till, som det gör i markupen: åtta, vilket är precis vad dagens dörr
-    // kostar för samma ärende.
+    // Och låset (#1408) och ×:et står ett steg till var, som de gör i markupen: nio till ×:et mot
+    // dagens åtta, ett tryck för ett lås som inte fanns.
+    await user.keyboard('{ArrowRight}')
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Lås fält3 så att den står still' }))
     await user.keyboard('{ArrowRight}')
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Ta bort fältet fält3' }))
   })
@@ -183,7 +189,8 @@ describe('dörren håller tangentbordet så länge den står (#388)', () => {
 
     // Frågan om en kolumn ställs utanför dörren och måste kunna ta fokus. En fälla som höll kvar
     // tangentbordet skulle ha ryckt tillbaka handen in i dörren innan frågan hann läsas.
-    await errand(user, ['Enter', 'bakTabb', 'ned', 'ned', 'ned', 'ned', 'höger', 'höger', 'Enter'])
+    // Över bredden och låset (#1408) till ×:et.
+    await errand(user, ['Enter', 'bakTabb', 'ned', 'ned', 'ned', 'ned', 'höger', 'höger', 'höger', 'Enter'])
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Avbryt' }))
     expect(screen.getByText('Ta bort fält3? Inget kort har ett värde i den.')).toBeTruthy()
 

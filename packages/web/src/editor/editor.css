@@ -2358,8 +2358,8 @@ button.byd-pill-value[aria-expanded='true'] { color: var(--byd-editor-primary-ma
    samma sätt en rullad låda tillbaka till början. Det fastnålade har ingen marginal och står därför
    alltid i bild; det som står klistrat mot rummets vänstra kant (rubrikens namn, den öppna
    body-cellen) står exakt i rummet. En låda som lyfts ur en cell (L55) är inte tabellens. */
-.byd-data :is(tbody td, thead th):not(.byd-data-check, [data-col='id'], [data-col='antal'], .byd-data-remove) :not([popover], [popover] *),
-.byd-data :is(tbody td, thead th):not(.byd-data-check, [data-col='id'], [data-col='antal'], .byd-data-remove) {
+.byd-data :is(tbody td, thead th):not(.byd-data-check, [data-pinned], .byd-data-remove) :not([popover], [popover] *),
+.byd-data :is(tbody td, thead th):not(.byd-data-check, [data-pinned], .byd-data-remove) {
   scroll-margin-left: var(--byd-data-lane, var(--byd-tap));
   scroll-margin-right: var(--byd-tap);
 }
@@ -2707,7 +2707,9 @@ button.byd-picture-tile[aria-expanded='true'] { box-shadow: 0 0 0 2px #9cc6ff; }
 /* The quiet things on a chosen row are read on its lighter ground (#557): the label over an open
    cell and its tools. The id stands on the rail now (#609) and is read in the rail's own ink. */
 .byd-data tr[aria-selected='true'] :is(.byd-data-bodyhead > b, .byd-data-bodytools button:not([aria-pressed='true'])) { color: var(--byd-editor-quiet-chosen); }
-.byd-data-id { padding: 8px !important; color: var(--byd-editor-quiet); font-family: ui-monospace, Menlo, monospace; font-size: 12px; }
+/* The key is read in the rail's ink wherever it stands (#1408): it stood on the rail in that ink
+   since #609, and in the row the quiet ink fell under AA on a compared row's tinted ground. */
+.byd-data-id { padding: 8px !important; color: var(--byd-editor-data-rail-ink); font-family: ui-monospace, Menlo, monospace; font-size: 12px; }
 .byd-data input { background: transparent; border: 0; color: #ddd; padding: 8px var(--byd-data-cell-pad); width: 100%; box-sizing: border-box; font-size: 12px; }
 .byd-data button { background: transparent; border: 0; color: var(--byd-editor-quiet); cursor: pointer; padding: 4px 8px; }
 .byd-data-add { margin-top: 8px; border: 1px dashed #2f333d; background: transparent; color: #9aa3b8; border-radius: 8px; padding: 8px 12px; cursor: pointer; }
@@ -2799,34 +2801,32 @@ button.byd-picture-tile[aria-expanded='true'] { box-shadow: 0 0 0 2px #9cc6ff; }
    row is given an opaque ground of its own so there is something to inherit. */
 .byd-data tbody tr { background: #1b1d23; }
 .byd-data tbody .byd-data-check { position: sticky; left: 0; z-index: 4; background: inherit; }
-.byd-data tbody .byd-data-id { position: sticky; left: var(--byd-tap); z-index: 4; background: inherit; }
-/* And the count beside them (#695, beställarens val D + A): `antal` stood last, and L46's ceiling
-   makes `body` exactly as wide as the room that shows, so a column after it could not begin on the
-   screen at any width. On the rail it is one Tab from the tick and stays while the hand writes far
-   out in `body`. Where it starts is `id`'s measured width past the tick, which only the
-   measurement knows and says in `--byd-data-at-antal`; before it the tick's width keeps the cell
-   pinned at all, which is what the measurement asks the sheet before it says anything. */
-.byd-data :is(tbody td, thead th)[data-col='antal'] { position: sticky; left: var(--byd-data-at-antal, var(--byd-tap)); }
-.byd-data tbody td[data-col='antal'] { z-index: 4; background: inherit; }
-.byd-data tbody td[data-col='antal'] input { color: var(--byd-editor-data-rail-ink); }
+/* Och det designern låst (#1408, beställarens val A): id och antal stod på listen (#145, #695) och
+   tog ~300 px av raden utan att vara det man orienterar sig efter — det är titeln. Nu står det på
+   listen som bär `data-pinned`, vilket tabellen sätter på varje cell i en låst kolumn, titeln från
+   start; var cellen står säger den själv som sitt `left`, ur det mätningen sagt per kolumn på
+   tabellen (`--byd-data-at-<n>`). Arket vet alltså inte vad som är låst, bara hur det ritas, och
+   kolumnens namn står inte i någon väljare. */
+.byd-data tbody td[data-pinned] { position: sticky; z-index: 4; background: inherit; }
+.byd-data tbody td[data-pinned] input { color: var(--byd-editor-data-rail-ink); }
 /* And they stand on a rail of their own (#609, beställarens beslut B): inheriting the row's ground,
    nothing but a shadow drawn once a value was already under them said they were standing still.
    The rail is a veil laid over the inherited ground rather than a colour instead of it, so every
    tint the row carries reaches the pinned cells too; under the pointer the row's own lift is laid
    over it (#400). The edge against what slides in is drawn at all times, not only once something
    has slid in, because it is what says the column stands still before anything has moved. */
-.byd-data tbody tr :is(.byd-data-check, .byd-data-id, td[data-col='antal']) { background-image: linear-gradient(var(--byd-editor-data-rail), var(--byd-editor-data-rail)), linear-gradient(var(--byd-data-tint, transparent), var(--byd-data-tint, transparent)); }
-.byd-data thead :is(.byd-data-check, th[data-col='id'], th[data-col='antal']) { background-image: linear-gradient(var(--byd-editor-data-rail), var(--byd-editor-data-rail)); }
-.byd-data tbody tr:hover :is(.byd-data-check, .byd-data-id, td[data-col='antal']) { background-image: linear-gradient(rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.03)), linear-gradient(var(--byd-editor-data-rail), var(--byd-editor-data-rail)), linear-gradient(var(--byd-data-tint, transparent), var(--byd-data-tint, transparent)); }
-/* The edge stands on the rail's last column, which is `antal` since #695: an edge between `id`
-   and `antal` would say the rail ends where it does not. */
-.byd-data :is(tbody td, thead th)[data-col='antal'] { box-shadow: inset -2px 0 0 var(--byd-editor-data-rail-edge); }
+.byd-data tbody tr :is(.byd-data-check, td[data-pinned]) { background-image: linear-gradient(var(--byd-editor-data-rail), var(--byd-editor-data-rail)), linear-gradient(var(--byd-data-tint, transparent), var(--byd-data-tint, transparent)); }
+.byd-data thead :is(.byd-data-check, th[data-pinned]) { background-image: linear-gradient(var(--byd-editor-data-rail), var(--byd-editor-data-rail)); }
+.byd-data tbody tr:hover :is(.byd-data-check, td[data-pinned]) { background-image: linear-gradient(rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.03)), linear-gradient(var(--byd-editor-data-rail), var(--byd-editor-data-rail)), linear-gradient(var(--byd-data-tint, transparent), var(--byd-data-tint, transparent)); }
+/* The edge stands on the rail's last column, which the table marks (#1408): an edge between two
+   locked columns would say the rail ends where it does not. */
+.byd-data :is(tbody td, thead th)[data-pinned-last] { box-shadow: inset -2px 0 0 var(--byd-editor-data-rail-edge); }
 /* The rail's headings are read on the head's rail in the same ink, save while one is what the
    table is sorted by, when it is the green every sorting heading is. */
-.byd-data thead :is(th[data-col='id'], th[data-col='antal']) > button:not([data-active='true'], :hover),
-.byd-data thead :is(th[data-col='id'], th[data-col='antal']) > button:not([data-active='true']) :is(span, .byd-glyph) { color: var(--byd-editor-data-rail-ink); }
+.byd-data thead th[data-pinned] > button:not([data-active='true'], :hover),
+.byd-data thead th[data-pinned] > button:not([data-active='true']) :is(span, .byd-glyph) { color: var(--byd-editor-data-rail-ink); }
 /* A marked row's id keeps its own ink, which is declared later and weighs the same. */
-.byd-data tbody tr .byd-data-id { color: var(--byd-editor-data-rail-ink); }
+.byd-data tbody tr .byd-data-id[data-pinned] { color: var(--byd-editor-data-rail-ink); }
 /* The head's own two, so the corner where the row that stands still upward crosses the columns
    that stand still sideways belongs to both. Above the body's, or a value would be drawn over the
    heading at the moment both are held. */
@@ -2839,14 +2839,26 @@ button.byd-picture-tile[aria-expanded='true'] { box-shadow: 0 0 0 2px #9cc6ff; }
 /* Utom `id` (#629): den är själv en del av det fastnålade som lanen mäter, så lanens slut är dess
    egen cells högerkant — och dit knuffades namnet, ~150 px från texten under det. */
 /* Och `antal` av samma skäl, sedan den står på listen (#695). */
-.byd-data thead th[data-col]:not([data-col='id'], [data-col='antal']) > button { position: sticky; left: var(--byd-data-lane, var(--byd-tap)); }
-.byd-data thead .byd-data-check { position: sticky; left: 0; z-index: 5; }
-.byd-data thead th[data-col='id'] { position: sticky; left: var(--byd-tap); z-index: 5; }
-.byd-data thead th[data-col='antal'] { z-index: 5; }
+/* Och varje låst kolumn, av samma skäl (#1408): den är själv listen. */
+.byd-data thead th[data-col]:not([data-pinned]) > button { position: sticky; left: var(--byd-data-lane, var(--byd-tap)); }
+.byd-data thead .byd-data-check { position: sticky; left: 0; z-index: 6; }
+.byd-data thead th[data-pinned] { position: sticky; z-index: 6; }
 /* The edge that says there is more to the left. It is a promise that something is there, so it is
    drawn only once something is: `data-under` is set on the box by the same frame that asks
    whether a value has run under the pin. */
-.byd-data-scroll[data-under] .byd-data :is(tbody td, thead th)[data-col='antal'] { box-shadow: inset -2px 0 0 var(--byd-editor-data-rail-edge), 8px 0 12px -8px rgb(0 0 0 / 80%); }
+.byd-data-scroll[data-under] .byd-data :is(tbody td, thead th)[data-pinned-last] { box-shadow: inset -2px 0 0 var(--byd-editor-data-rail-edge), 8px 0 12px -8px rgb(0 0 0 / 80%); }
+/* Kolumnens lås (#1408, beställarens val A), efter namnet på en låst kolumns rubrik: ett helt mål
+   i rubrikens flöde, så att mätningen räknar med det, med glyfen liten i mitten. Rubrikens egna
+   marginaler äts upp så att huvudet inte blir högre för det. Ritat på var och en av radens grunder
+   i listens bläck, aldrig först under pekaren (#140, #193). */
+.byd-data thead th > .byd-data-lock { display: inline-grid; place-items: center; vertical-align: middle; width: var(--byd-tap); height: var(--byd-tap); margin: calc(-1 * var(--byd-s2)) 0 calc(-1 * var(--byd-s2)) var(--byd-s1); padding: 0; border: 0; border-radius: 6px; background: transparent; color: var(--byd-editor-data-rail-ink); cursor: pointer; }
+.byd-data thead th > .byd-data-lock:hover { color: #fff; }
+.byd-data thead th > .byd-data-lock .byd-glyph { width: 14px; height: 14px; }
+/* Och cellen som arbetas i, när den står på listen: ikonfliken (#593) hänger över raden ovanför
+   eller under raden nedanför, och båda står på samma list med samma z. Cellen med fliken lyfts
+   därför ett steg över sina grannar på listen, och huvudet ett steg över den, så att huvudet står
+   över allt i raderna också medan de rullar under det. */
+.byd-data tbody td[data-pinned]:has(.byd-data-icon) { z-index: 5; }
 /* The tick keeps the size a tick has; what a thumb hits is the label around it. */
 .byd-data-tick { display: grid; place-items: center; min-width: var(--byd-tap); min-height: var(--byd-tap); cursor: pointer; }
 /* The column that removes a card is pinned to the right edge of the scrolling box: it is the
@@ -3080,9 +3092,10 @@ button.byd-picture-tile[aria-expanded='true'] { box-shadow: 0 0 0 2px #9cc6ff; }
   top: 100%;
   right: 0;
   z-index: 6;
-  /* Wide enough for a row to hold the name, the prose switch and the × side by side (#615): at
-     260 px the name was left 68 px between them. */
-  width: 340px;
+  /* Wide enough for a row to hold the name, the prose switch, the lock and the × side by side
+     (#615, #1408): at 260 px the name was left 68 px between them, and at 340 the lock pushed the
+     × 15 px out through the door's own edge. One target and one gap wider for the lock. */
+  width: 392px;
   padding: 8px 12px 12px;
   border: 1px solid #3b4358;
   border-radius: 10px;
@@ -3180,8 +3193,14 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
 /* Huvudets `.byd-data th button` skalar knappar till text; svaren är svar, som i foten. */
 .byd-data th .byd-columns-ask button { padding: var(--byd-s1) var(--byd-s3); border: 1px solid #3b414e; border-radius: 8px; color: var(--byd-editor-bulk-ink); font-weight: 700; white-space: nowrap; }
 .byd-data th .byd-columns-ask button[data-kind='danger'] { background: var(--byd-editor-bulk-danger-bg); border-color: var(--byd-editor-bulk-danger-bg); color: var(--byd-editor-bulk-danger-ink); }
-.byd-columns-system { flex: 0 0 var(--byd-tap); display: flex; align-items: center; justify-content: center; color: var(--byd-editor-quiet); }
-.byd-columns-system > .byd-glyph { width: 16px; height: 16px; }
+.byd-columns-system { flex: 0 0 var(--byd-tap); display: flex; align-items: center; justify-content: center; color: var(--byd-editor-quiet); font-size: 11px; font-weight: 400; }
+/* Dörrens lås (#1408): ett tryck per rad, nedtryckt medan kolumnen står på listen. */
+.byd-columns .byd-columns-lock { flex: 0 0 auto; display: grid; place-items: center; width: var(--byd-tap); min-height: var(--byd-tap); padding: 0; border: 0; border-radius: 8px; background: transparent; color: var(--byd-editor-count-ink); cursor: pointer; }
+.byd-columns .byd-columns-lock .byd-glyph { width: 16px; height: 16px; }
+.byd-columns .byd-columns-lock:hover { color: #fff; }
+/* Nedtryckt som varje valt (#232): en tyst pill med en bar under, aldrig en fyllning. */
+.byd-columns .byd-columns-lock[aria-pressed='true'] { color: #fff; border-radius: 6px 6px 0 0; box-shadow: inset 0 -3px 0 var(--byd-editor-primary-mark); }
+.byd-columns .byd-columns-lock:focus-visible { outline: 2px solid var(--byd-editor-primary-mark); outline-offset: -3px; }
 .byd-newfield {
   position: absolute;
   top: 100%;

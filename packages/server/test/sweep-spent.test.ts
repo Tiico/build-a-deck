@@ -187,7 +187,10 @@ for (const backend of backends) {
       expect(said).toHaveLength(1)
       expect(JSON.parse(said[0]!)).toEqual({ msg: 'swept', ...counts })
       expect(Object.values(counts).every((n) => Number.isInteger(n))).toBe(true)
-      for (const secret of [`secret-${backend.name}@example.com`, `said-${backend.name}@example.com`, 'Hemliga Hedda', hash('a-secret-link'), hash('a-secret-cookie'), hash('a-secret-guest'), owner.id, id]) expect(said[0]).not.toContain(secret)
+      for (const secret of [`secret-${backend.name}@example.com`, `said-${backend.name}@example.com`, 'Hemliga Hedda', hash('a-secret-link'), hash('a-secret-cookie'), hash('a-secret-guest'), id]) expect(said[0]).not.toContain(secret)
+      // An account's id in Postgres is a sequence number, and in a fresh schema it is "1", which any
+      // count of one contains (#1426): the id is looked for among the line's values, not its text.
+      expect(Object.values(JSON.parse(said[0]!) as Record<string, unknown>)).not.toContain(owner.id)
     })
   })
 }

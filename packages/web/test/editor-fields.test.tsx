@@ -156,6 +156,9 @@ describe('a field made in the editor is a field the game has (#32, B4)', () => {
   it('moves a column all the way down: the order is saved, read back, and taken back by one step', async () => {
     const user = userEvent.setup()
     await run.projects.create(run.projectId, projectDoc())
+    // Nothing locked (#1408): a locked column is not carried, and the title is locked from the
+    // start, so the rail is emptied for this project before the move is tried.
+    localStorage.setItem('byd.locks', JSON.stringify({ [run.projectId]: [] }))
     await openEditor()
     openTab('Tabell')
 

@@ -113,7 +113,8 @@ describe('huvudet bär ingen kontroll för prosavalet (#615)', () => {
     try {
       table()
       for (const field of ['title', 'body']) {
-        expect(head(field).querySelectorAll('button')).toHaveLength(1)
+        // Bar låset på en låst kolumns rubrik (#1408), som är dess väg ut ur låset.
+        expect(head(field).querySelectorAll('button:not(.byd-data-lock)')).toHaveLength(1)
         fireEvent.pointerEnter(head(field))
         act(() => vi.advanceTimersByTime(1000))
         expect(head(field).querySelector('[role="group"]')).toBeNull()
@@ -279,13 +280,16 @@ describe('växeln nås med tangentbordet i dörrens egen ordning (#388, #615)', 
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Prosa, body' }))
     await user.keyboard('{ArrowRight}')
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Bild, body' }))
+    // Låset står före × sedan #1408: × är fortfarande radens sista kontroll.
+    await user.keyboard('{ArrowRight}')
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Lås body så att den står still' }))
     await user.keyboard('{ArrowRight}')
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Ta bort fältet body' }))
   })
 
-  // Vägen tillbaka till höjden hör till växeln och står intill den, före × (#674): pilarna går i
-  // den ordning raden läses, och × är radens sista kontroll, i samma kolumn som låset.
-  it('går till vägen tillbaka mellan växeln och ×', async () => {
+  // Vägen tillbaka till höjden hör till växeln och står intill den, före låset och × (#674,
+  // #1408): pilarna går i den ordning raden läses, och × är radens sista kontroll.
+  it('går till vägen tillbaka mellan växeln och låset', async () => {
     const doc = projectDoc()
     doc.prose = { body: false }
     table(doc, { onRenameField: () => undefined })
@@ -294,6 +298,8 @@ describe('växeln nås med tangentbordet i dörrens egen ordning (#388, #615)', 
     act(() => screen.getByRole('button', { name: 'Bild, body' }).focus())
     await user.keyboard('{ArrowRight}')
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Följ mallen igen, body' }))
+    await user.keyboard('{ArrowRight}')
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Lås body så att den står still' }))
     await user.keyboard('{ArrowRight}')
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Ta bort fältet body' }))
   })

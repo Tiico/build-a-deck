@@ -77,7 +77,7 @@ describe('kolumnens namn byts i dörren (#384)', () => {
     // och ett sätt att sortera, ingenting annat.
     expect(door().getByRole('button', { name: 'Byt namn på kolumnen rubrik' })).toBeTruthy()
     const head = document.querySelector('thead th[data-col="rubrik"]') as HTMLElement
-    expect(head.querySelectorAll('button')).toHaveLength(1)
+    expect(head.querySelectorAll('button:not(.byd-data-lock)')).toHaveLength(1)
   })
 })
 
@@ -237,7 +237,7 @@ describe('vad som följer med namnet (#384)', () => {
     // Och ordningen är den tabellen ritar: rubriken står kvar sist av designerns egna, med
     // räknekolumnen på listen bredvid id (#695). Gruppen är ingen kolumn av sin egen längre: den
     // sägs i huvudet på den kolumn mallen grupperas av, och det följer med namnet.
-    expect(Array.from(document.querySelectorAll('thead th[data-col]')).map((th) => th.getAttribute('data-col'))).toEqual(['id', 'antal', 'title', 'rubrik'])
+    expect(Array.from(document.querySelectorAll('thead th[data-col]')).map((th) => th.getAttribute('data-col'))).toEqual(['title', 'id', 'antal', 'rubrik'])
     expect(document.querySelector('thead th[data-col="rubrik"] .byd-data-grouped')).not.toBeNull()
   })
 

@@ -58,7 +58,9 @@ describe('en Tabb ur en cell landar aldrig utanför dokumentet (#395)', () => {
     await user.click(screen.getByLabelText('dragon title'))
     await user.tab()
     await user.tab()
-    expect(at()).toBe('div.byd-data-body [body]')
+    // Nästa cell efter titeln är antal sedan #1408: titeln står först, på listen, och id emellan
+    // är ingen cell att skriva i.
+    expect(at()).toBe('input [antal]')
     // Knappen ritas bara i cellen som arbetas i (#33). En cell man gått ifrån arbetas inte i.
     expect(document.querySelectorAll('.byd-data-icon')).toHaveLength(0)
   })
