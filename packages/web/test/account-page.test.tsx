@@ -382,6 +382,25 @@ describe('a game on the home page (G1)', () => {
     expect(place.querySelector('.byd-preview')).toBeNull()
   })
 
+  // Spelbar är en lek med minst ett kort (#1415, L91): ett spel utan kort har inget bord att starta,
+  // varken i heron eller i radens meny, och servern vägrar ett ändå.
+  it('offers no table for a game with no cards, in the hero or in the menu (#1415)', async () => {
+    await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'ada@example.com' }) })
+    await followMailedLink()
+    await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: run.projectId, ...projectDoc(), name: 'Tomt spel', rows: [] }) })
+    await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: run.otherProjectId, ...projectDoc(), name: 'Tomt igen', rows: [] }) })
+    history.replaceState(null, '', `/?server=${encodeURIComponent(run.http)}`)
+    render(<HomePage />)
+    const hero = await screen.findByRole('region', { name: 'Fortsätt där du slutade' })
+    await within(hero).findByText('Tomt igen')
+    expect(within(hero).getByRole('link', { name: 'Öppna editorn' })).toBeTruthy()
+    expect(within(hero).queryByRole('button', { name: 'Starta bord' })).toBeNull()
+    fireEvent.click(within(card()).getByRole('button', { name: 'Fler val för Tomt spel' }))
+    const offered = await screen.findByRole('group', { name: 'Val för Tomt spel' })
+    expect(within(offered).queryByRole('button', { name: /^Starta/ })).toBeNull()
+    expect(within(offered).getByRole('button', { name: 'Byt namn…' })).toBeTruthy()
+  })
+
   it('draws the list on the list\'s own answer, and lands the card afterwards in a place already reserved (#231)', async () => {
     const real = globalThis.fetch
     let land = (): void => undefined

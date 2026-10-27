@@ -388,6 +388,8 @@ export const enEditor = {
   'wall.density.said': 'Cards {px} px wide',
   'wall.foot.cards.one': '{n} card',
   'wall.foot.cards.other': '{n} cards',
+  'wall.foot.box': 'The box {w} × {h} × {d} mm',
+  'wall.foot.box.open': 'Box {w} × {h} × {d} mm',
   'wall.foot.proposed.one': '{n} proposed',
   'wall.foot.proposed.other': '{n} proposed',
   'wall.foot.found.one': '{shown} of {total} card',

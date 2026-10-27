@@ -15,7 +15,7 @@ import { contentHash, contentTypeOf, type ObjectStore, type RenderKind, type Ren
 import type { Subscriber, TableActor, TableHost } from './actor.js'
 import type { Deck, LogStore, SessionRecord } from './store.js'
 import { ProjectDoc, deckFromProject, liftDoc, type Ceilings, type ProjectCredit, type ProjectRecord, type ProjectStore, type RuleDoc } from './projects.js'
-import { setupFromProject } from './setup.js'
+import { playable, setupFromProject } from './setup.js'
 import { changeOf, diffProjects, type DocDiff, type VersionChange } from './diff.js'
 import { ProjectHost, type EditorMessage, type Saved } from './project-actor.js'
 import { checkedName, type EditIntent } from './edits.js'
@@ -2651,6 +2651,12 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       return true
     }
     const rec = gate.rec
+    // A deck with no card is not a game yet (#1415, L91): the page does not offer the start, so a
+    // refusal here is a page that had not heard, and nothing is opened, borne or queued for it.
+    if (!playable(rec)) {
+      json(res, 409, { error: 'the deck has no cards' })
+      return true
+    }
     const raw = await readBody(req)
     const { seating } = StartBody.parse(raw.trim() === '' ? {} : JSON.parse(raw))
     const id = randomUUID()
