@@ -4932,7 +4932,8 @@ label.byd-ai-rules { cursor: pointer; }
   cursor: pointer;
 }
 .byd-box-faces button:hover { background: #232838; }
-.byd-box-faces button[aria-pressed='true'] { background: #2f3a55; color: #fff; }
+/* The face chosen speaks the button language's chosen (#1083, B): no fill, the mark's bar under it. */
+.byd-box-faces button[aria-pressed='true'] { color: #fff; font-weight: 600; box-shadow: inset 0 -3px 0 var(--byd-editor-primary-mark); }
 .byd-box-face-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .byd-box-faces small { color: var(--byd-editor-source-ink); font-size: 11px; font-variant-numeric: tabular-nums; }
 .byd-box-thumb { display: grid; place-items: center; width: 28px; height: 28px; overflow: hidden; }
