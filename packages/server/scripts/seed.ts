@@ -1,6 +1,6 @@
 // Creates a demo session on a running server from the seed game and plays a few moves, so a
 // table view has something to show. Usage: pnpm --filter @byd/server seed [http://localhost:8080] [sessionId]
-import type { Intent } from '@byd/protocol'
+import { tableProtocols, type Intent } from '@byd/protocol'
 import { applyPatch } from '@byd/engine'
 import { deckFromProject } from '../src/projects.js'
 import { setupFromProject } from '../src/setup.js'
@@ -30,10 +30,10 @@ if (res.status !== 201) {
   process.exit(1)
 }
 // The key the table is opened with (DRIFT §9). A seatless connection without it is refused, so
-// the script has to carry the one it was just handed.
+// the script has to carry the one it was just handed, in the protocol header (#1306, #1341).
 const { hostKey, code } = (await res.json()) as { hostKey: string; code: string }
 
-const ws = new WebSocket(`${base.replace(/^http/, 'ws')}/sessions/${id}?host=${encodeURIComponent(hostKey)}`)
+const ws = new WebSocket(`${base.replace(/^http/, 'ws')}/sessions/${id}`, tableProtocols({ host: hostKey }))
 await new Promise<void>((r) => ws.addEventListener('open', () => r()))
 // A refusal carries no envelope id, so waiting for an ack that matches would wait for ever. Say
 // what happened instead of hanging.
@@ -109,6 +109,6 @@ const host = encodeURIComponent(hostKey)
 console.log(`session ${id} ready`)
 console.log(`  code:     ${code}`)
 console.log(`  host key: ${hostKey}`)
-console.log(`  table:    ${web}/table?session=${id}&mode=table&host=${host}&code=${code}&server=${server}`)
-console.log(`  tv:       ${web}/table?session=${id}&mode=tv&host=${host}&code=${code}&server=${server}`)
+console.log(`  table:    ${web}/table?session=${id}&mode=table&code=${code}&server=${server}#host=${host}`)
+console.log(`  tv:       ${web}/table?session=${id}&mode=tv&code=${code}&server=${server}#host=${host}`)
 console.log(`  join:     ${web}/join?code=${code}&server=${server}`)

@@ -19,7 +19,6 @@ import { Survey } from '../player/Survey.js'
 import { submitSurvey, useSurveyStanding } from '../player/surveyApi.js'
 import { claimUrl, withCredentials } from '../account/session.js'
 import { takeGuestToken } from '../guestAddress.js'
-import { dropOwnerName } from '../hostSeat.js'
 import { DEFAULT_TIMING, type StatusTiming } from '../status/connection.js'
 import { useLiveStatus } from '../status/useLiveStatus.js'
 import { RouteStatus } from '../status/RouteStatus.js'
@@ -50,12 +49,8 @@ export function ObserverPage({ timing = DEFAULT_TIMING }: ObserverPageProps = {}
   const sessionId = params.get('session')
   const owner = params.get('owner') === '1'
   // A guest's token, from the fragment (#1278). The owner's own watch has none, and no name in its
-  // address either (#1335): one an old link carried is taken out of it, in the same history entry.
-  const token = useMemo(() => {
-    if (!owner) return takeGuestToken()
-    dropOwnerName()
-    return undefined
-  }, [owner])
+  // address either (#1335).
+  const token = useMemo(() => (owner ? undefined : takeGuestToken()), [owner])
   const url = params.get('server') ?? `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`
   const http = url.replace(/^ws/, 'http')
   const conn = useTableClient(sessionId ? { url, sessionId, seat: null, observer: t('observer.name'), ...(token ? { token } : {}), ...(owner ? { owner: true } : {}), connectTimeoutMs: timing.connectTimeoutMs, retryPlanMs: timing.retryPlanMs } : null)

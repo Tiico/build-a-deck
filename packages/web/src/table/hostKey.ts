@@ -6,7 +6,8 @@
 //
 // It comes in the fragment (#1306), `/table?session=…#host=…`, which the browser sends in no request
 // and no `Referer`: in the query, the page's own request carried it to the box and into the logs of
-// whatever stands in front of it. A link from before that, with `?host=`, still opens the table.
+// whatever stands in front of it. The query is not read for it: that form was read for a while
+// after #1306, and since #1341 the table's door refuses it.
 
 const STORE = 'byd.host.'
 
@@ -14,10 +15,9 @@ export function takeHostKey(sessionId: string | null): string | undefined {
   if (!sessionId) return undefined
   const url = new URL(location.href)
   const fragment = new URLSearchParams(url.hash.slice(1))
-  const given = fragment.get('host') ?? url.searchParams.get('host')
+  const given = fragment.get('host')
   if (given !== null) {
     keepHostKey(sessionId, given)
-    url.searchParams.delete('host')
     fragment.delete('host')
     history.replaceState(history.state, '', url.pathname + url.search + (fragment.size > 0 ? `#${fragment.toString()}` : ''))
     return given || undefined

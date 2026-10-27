@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import WebSocket from 'ws'
+import { tableProtocols } from '@byd/protocol'
 import { WireClient } from './client.js'
 import { start, twoSeatSetup, type Running } from './fixture.js'
 import { template } from './deck.js'
@@ -536,7 +537,7 @@ describe('the tables a project has (#19)', () => {
     }
 
     // A key that does not open it is not the last word for whoever may open it anyway.
-    const stale = new WebSocket(`${run.base}/sessions/${sessionId}?host=nope`, { headers: { cookie, origin: 'http://test.local' } })
+    const stale = new WebSocket(`${run.base}/sessions/${sessionId}`, tableProtocols({ host: 'nope' }), { headers: { cookie, origin: 'http://test.local' } })
     expect(await firstMessage(stale)).toMatchObject({ t: 'snapshot' })
     stale.close()
   })

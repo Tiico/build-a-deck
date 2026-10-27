@@ -523,7 +523,7 @@ const TABLE_CSS = ['src/table/table.css', 'src/table/texture.css', 'src/table/ke
 async function tableViews(): Promise<Record<string, string>> {
   atWidth(1280)
   const id = await createSession(run, 'felt', undefined, seatSetup())
-  history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=table&server=${encodeURIComponent(run.url)}`)
+  history.replaceState(null, '', `/table?session=${id}&mode=table&server=${encodeURIComponent(run.url)}#host=${roomOf(id).hostKey}`)
   const { container, unmount } = render(<TablePage />)
   try {
     const out: Record<string, string> = {}
@@ -788,7 +788,7 @@ function feltSetup(cards: 1 | 2 = 1): SetupDef {
 async function feltView(mode: 'table' | 'tv', width = 1280): Promise<Record<string, string>> {
   atWidth(width)
   const id = await createSession(run, `felt-${mode}-${width}`, undefined, feltSetup())
-  history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=${mode}&server=${encodeURIComponent(run.url)}`)
+  history.replaceState(null, '', `/table?session=${id}&mode=${mode}&server=${encodeURIComponent(run.url)}#host=${roomOf(id).hostKey}`)
   const { container, unmount } = render(<TablePage />)
   try {
     const chip = await screen.findByRole('button', { name: /^Liv i Räknare A/ })
@@ -808,7 +808,7 @@ async function feltView(mode: 'table' | 'tv', width = 1280): Promise<Record<stri
 async function feltCardView(mode: 'table' | 'tv', width = 1280): Promise<Record<string, string>> {
   atWidth(width)
   const id = await createSession(run, `felt-card-${mode}-${width}`, undefined, feltSetup(2))
-  history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=${mode}&server=${encodeURIComponent(run.url)}`)
+  history.replaceState(null, '', `/table?session=${id}&mode=${mode}&server=${encodeURIComponent(run.url)}#host=${roomOf(id).hostKey}`)
   const { container, unmount } = render(<TablePage />)
   try {
     const cards = await waitFor(() => {

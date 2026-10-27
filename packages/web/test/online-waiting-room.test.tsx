@@ -173,7 +173,7 @@ describe('väntrummet på /online (L77, #1130)', () => {
   it('visar värdens adress utan kod i URL:en, och den nya koden efter «Ny kod»', async () => {
     const made = await newTable()
     atWindow({ w: 1280, h: 800 })
-    history.replaceState(null, '', `/online?session=${made.id}&seat=A&name=Vera&owner=1&server=${encodeURIComponent(run.url)}`)
+    history.replaceState(null, '', `/online?session=${made.id}&seat=A&owner=1&server=${encodeURIComponent(run.url)}`)
     render(<OnlinePage />)
     const panel = await room()
     await waitFor(() => expect(panel.querySelector('[data-address]')?.textContent).toBe(`${location.host}/${made.code}`))

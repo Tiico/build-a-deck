@@ -90,7 +90,7 @@ describe('a masked name at the table and in the editor (#1349)', () => {
 
   it('is said on the TV and never drawn', async () => {
     const { id } = await erased(run)
-    history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=tv&server=${encodeURIComponent(run.url)}`)
+    history.replaceState(null, '', `/table?session=${id}&mode=tv&server=${encodeURIComponent(run.url)}#host=${roomOf(id).hostKey}`)
     render(<TablePage />)
     await saysMasked()
   })

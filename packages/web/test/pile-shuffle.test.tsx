@@ -408,7 +408,7 @@ describe('the screens that see the pile play the shuffle (L35)', () => {
 
   it('the TV fans the pile the host shuffled, once, and only then', async () => {
     const id = await createSession(run)
-    history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=tv&server=${encodeURIComponent(run.url)}`)
+    history.replaceState(null, '', `/table?session=${id}&mode=tv&server=${encodeURIComponent(run.url)}#host=${roomOf(id).hostKey}`)
     render(<TablePage />)
     await screen.findByText(roomOf(id).code)
     expect(document.querySelector('[data-shuffling]')).toBeNull()
@@ -437,7 +437,7 @@ describe('the screens that see the pile play the shuffle (L35)', () => {
     await host.send({ v: 'shuffle', pile: 'draw' })
     host.close()
 
-    history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=tv&server=${encodeURIComponent(run.url)}`)
+    history.replaceState(null, '', `/table?session=${id}&mode=tv&server=${encodeURIComponent(run.url)}#host=${roomOf(id).hostKey}`)
     render(<TablePage />)
     await waitFor(() => expect(document.querySelector('[data-zone="draw"]')).not.toBeNull())
     expect(document.querySelector('[data-shuffling]')).toBeNull()

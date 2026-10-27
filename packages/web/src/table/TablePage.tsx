@@ -33,7 +33,7 @@ import { rememberTableLang } from './tableLang.js'
 import { useSessionRecord } from '../status/sessionName.js'
 import { EditorWayBack } from './EditorWayBack.js'
 
-// /table?session=…&host=…&mode=table|tv&server=ws://…
+// /table?session=…&mode=table|tv&server=ws://…#host=…
 // The `table` role: no seat, sees only what is public, acts for the group (K14). It is the
 // host's screen (DRIFT §9): the host key opens it, and it is told the room code to show.
 export type TablePageProps = { timing?: StatusTiming & { renderStalledAfterMs?: number } }

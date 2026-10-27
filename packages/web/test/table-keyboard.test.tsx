@@ -39,7 +39,7 @@ async function tableWithTwoCards(setup = twoSeatSetup()) {
     { v: 'flip', component: ids[1]!, face: 'front' },
   )
   await other.synced(3)
-  history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=tv&server=${encodeURIComponent(run.url)}`)
+  history.replaceState(null, '', `/table?session=${id}&mode=tv&server=${encodeURIComponent(run.url)}#host=${roomOf(id).hostKey}`)
   render(
     <StatusLive>
       <TablePage />
@@ -276,7 +276,7 @@ describe('the felt a table opens on (#2)', () => {
   // the state every session starts in — and the one a keyboard has to be able to reach.
   it('holds one tab stop before a single card has been played onto it', async () => {
     const id = await createSession(run, 's1', undefined, seatSetup())
-    history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=tv&server=${encodeURIComponent(run.url)}`)
+    history.replaceState(null, '', `/table?session=${id}&mode=tv&server=${encodeURIComponent(run.url)}#host=${roomOf(id).hostKey}`)
     render(
       <StatusLive>
         <TablePage />
@@ -296,7 +296,7 @@ describe('the felt a table opens on (#2)', () => {
 describe('the panel a counter opens (C4, #73, #67)', () => {
   const openOnLiv = async () => {
     const id = await createSession(run, 's1', undefined, seatSetup())
-    history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=tv&server=${encodeURIComponent(run.url)}`)
+    history.replaceState(null, '', `/table?session=${id}&mode=tv&server=${encodeURIComponent(run.url)}#host=${roomOf(id).hostKey}`)
     render(
       <StatusLive>
         <TablePage />
@@ -453,7 +453,7 @@ describe('M on a die (#1169, K16)', () => {
     const d6 = DICE.find((d) => d.id === 'die.d6')!
     setup.components.push({ type: { id: d6.id, version: d6.version }, cardRef: 'd6', zone: 'table', face: 'front', counter: 4, x: 100, y: 0 })
     const id = await createSession(run, 's1', undefined, setup)
-    history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=tv&server=${encodeURIComponent(run.url)}`)
+    history.replaceState(null, '', `/table?session=${id}&mode=tv&server=${encodeURIComponent(run.url)}#host=${roomOf(id).hostKey}`)
     render(
       <StatusLive>
         <TablePage />

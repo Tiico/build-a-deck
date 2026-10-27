@@ -46,6 +46,8 @@ const LIVE: Live[] = [
 async function open(live: Live, opts: { session: string; url?: string; timing?: StatusTiming; real?: boolean; code?: boolean }) {
   const q = new URLSearchParams({ server: opts.url ?? run.url })
   const room = opts.real ? roomOf(opts.session) : null
+  // The host key in the fragment, where the editor puts it (#1306).
+  let fragment = ''
   if (live.route === 'join') {
     q.set('code', room?.code ?? 'NOSUCH')
   } else {
@@ -58,11 +60,11 @@ async function open(live: Live, opts: { session: string; url?: string; timing?: 
     if (room) {
       // The code travels with everyone the join page lets in, and is what names the room.
       if (opts.code !== false) q.set('code', room.code)
-      if (live.route === 'table') q.set('host', room.hostKey)
+      if (live.route === 'table') fragment = `#host=${room.hostKey}`
       else q.set('token', await admit(run, opts.session, live.seated ? 'A' : null, live.seated ? 'Ada' : 'Eva'))
     }
   }
-  history.replaceState(null, '', `${live.path}?${q.toString()}`)
+  history.replaceState(null, '', `${live.path}?${q.toString()}${fragment}`)
   return render(
     <DocumentTitle route={live.route}>
       <StatusLive>{live.page(opts.timing ?? FAST)}</StatusLive>

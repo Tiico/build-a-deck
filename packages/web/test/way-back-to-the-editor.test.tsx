@@ -28,7 +28,7 @@ const way = () => screen.findByRole('link', { name: 'Tillbaka till Skogens herra
 describe('the way back to the editor (#1217)', () => {
   it('stands on the TV the editor started, on the brand’s line, and names the editor’s tab', async () => {
     const id = await createNamedSession(run, 'Skogens herrar')
-    history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=tv&server=${encodeURIComponent(run.url)}`)
+    history.replaceState(null, '', `/table?session=${id}&mode=tv&server=${encodeURIComponent(run.url)}#host=${roomOf(id).hostKey}`)
     render(<TablePage />)
     const link = await way()
     expect(link.getAttribute('href')).toBe(editorAt())
@@ -47,7 +47,7 @@ describe('the way back to the editor (#1217)', () => {
   it('stands in the owner’s seat’s head, and giving the seat up leads to the editor rather than to Mina spel', async () => {
     const id = await createNamedSession(run, 'Skogens herrar')
     const left: string[] = []
-    history.replaceState(null, '', `/online?session=${id}&seat=A&name=Vera&owner=1&server=${encodeURIComponent(run.url)}`)
+    history.replaceState(null, '', `/online?session=${id}&seat=A&owner=1&server=${encodeURIComponent(run.url)}`)
     render(<OnlinePage onLeave={(url) => left.push(url)} />)
     const link = await way()
     expect(link.closest('header')).toBeTruthy()
@@ -64,7 +64,7 @@ describe('the way back to the editor (#1217)', () => {
 
   it('stands above the owner’s note when she watches', async () => {
     const id = await createNamedSession(run, 'Skogens herrar')
-    history.replaceState(null, '', `/observe?session=${id}&name=Vera&owner=1&server=${encodeURIComponent(run.url)}`)
+    history.replaceState(null, '', `/observe?session=${id}&owner=1&server=${encodeURIComponent(run.url)}`)
     render(<ObserverPage />)
     expect((await way()).closest('aside')).toBeTruthy()
   })

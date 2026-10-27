@@ -17,7 +17,7 @@ afterEach(async () => {
 describe('TablePage', () => {
   it('connects from the URL, renders the table with TV chrome, and follows the table live', async () => {
     const id = await createSession(run)
-    history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=tv&server=${encodeURIComponent(run.url)}`)
+    history.replaceState(null, '', `/table?session=${id}&mode=tv&server=${encodeURIComponent(run.url)}#host=${roomOf(id).hostKey}`)
     render(<TablePage />)
 
     expect(await screen.findByText(roomOf(id).code)).toBeTruthy()
@@ -38,7 +38,7 @@ describe('TablePage', () => {
 describe('the screen says which game it runs (C)', () => {
   it('titles the TV with the game name and version from the session record', async () => {
     const id = await createNamedSession(run, 'Skogens herrar')
-    history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=tv&server=${encodeURIComponent(run.url)}`)
+    history.replaceState(null, '', `/table?session=${id}&mode=tv&server=${encodeURIComponent(run.url)}#host=${roomOf(id).hostKey}`)
     render(<TablePage />)
     await waitFor(() => expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Skogens herrar version 1'))
   })
@@ -48,7 +48,7 @@ describe('the screen says which game it runs (C)', () => {
   // reload. The room's television keeps no feed since the stage (#1290), so the title is the word.
   it('follows a version change live, as the log line arrives', async () => {
     const id = await createNamedSession(run, 'Skogens herrar')
-    history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=tv&server=${encodeURIComponent(run.url)}`)
+    history.replaceState(null, '', `/table?session=${id}&mode=tv&server=${encodeURIComponent(run.url)}#host=${roomOf(id).hostKey}`)
     render(<TablePage />)
     await waitFor(() => expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Skogens herrar version 1'))
     const doc = (await run.projects.load('p-s1'))!
@@ -61,7 +61,7 @@ describe('the screen says which game it runs (C)', () => {
 describe('the table mode names the game too (B)', () => {
   it('writes the game, its version and the room’s address along the top of the felt', async () => {
     const id = await createNamedSession(run, 'Skogens herrar')
-    history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=table&server=${encodeURIComponent(run.url)}`)
+    history.replaceState(null, '', `/table?session=${id}&mode=table&server=${encodeURIComponent(run.url)}#host=${roomOf(id).hostKey}`)
     render(<TablePage />)
     await waitFor(() => expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Skogens herrar · version 1'))
     // The code is the address (#675, beslut C): the plate says where to go, and that is the way in.
@@ -85,7 +85,7 @@ describe('a screen that joins mid-game (#20)', () => {
     await played.send({ v: 'flip', component: card.id, face: 'front' })
     played.close()
 
-    history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=tv&server=${encodeURIComponent(run.url)}`)
+    history.replaceState(null, '', `/table?session=${id}&mode=tv&server=${encodeURIComponent(run.url)}#host=${roomOf(id).hostKey}`)
     render(<TablePage />)
     await screen.findByText(roomOf(id).code)
 
@@ -99,7 +99,7 @@ describe('a screen that joins mid-game (#20)', () => {
 describe('pointing at a card on the TV (C)', () => {
   it('fills the inspection panel from the table underneath it', async () => {
     const id = await createSession(run)
-    history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=tv&server=${encodeURIComponent(run.url)}`)
+    history.replaceState(null, '', `/table?session=${id}&mode=tv&server=${encodeURIComponent(run.url)}#host=${roomOf(id).hostKey}`)
     render(<TablePage />)
     await screen.findByText(roomOf(id).code)
 
@@ -122,7 +122,7 @@ describe('pointing at a card on the TV (C)', () => {
 describe('a proposed rewind on the table (C)', () => {
   it('shows the table as it was, says who is waited on, has no buttons, and returns to the present when it is settled', async () => {
     const id = await createSession(run)
-    history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=tv&server=${encodeURIComponent(run.url)}`)
+    history.replaceState(null, '', `/table?session=${id}&mode=tv&server=${encodeURIComponent(run.url)}#host=${roomOf(id).hostKey}`)
     render(<TablePage />)
     await screen.findByText(roomOf(id).code)
 
@@ -165,7 +165,7 @@ describe('a table that ends with a proposal still standing (C9, K13)', () => {
     // from have the survey in front of them, and the log is closed behind it. A screen that goes
     // on showing the past and naming who is waited on promises a decision nobody can make.
     const id = await createSession(run)
-    history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=tv&server=${encodeURIComponent(run.url)}`)
+    history.replaceState(null, '', `/table?session=${id}&mode=tv&server=${encodeURIComponent(run.url)}#host=${roomOf(id).hostKey}`)
     render(<TablePage />)
     await screen.findByText(roomOf(id).code)
 
@@ -192,7 +192,7 @@ describe('a table that ends with a proposal still standing (C9, K13)', () => {
 describe('playing on the table (K1, K2, C)', () => {
   it('a drag on the table screen becomes an envelope the server commits', async () => {
     const id = await createSession(run)
-    history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=tv&server=${encodeURIComponent(run.url)}`)
+    history.replaceState(null, '', `/table?session=${id}&mode=tv&server=${encodeURIComponent(run.url)}#host=${roomOf(id).hostKey}`)
     render(<TablePage />)
     await screen.findByText(/Draghög/)
     const other = TableClient.connect(await asTable(run, id))
@@ -217,7 +217,7 @@ describe('playing on the table (K1, K2, C)', () => {
 describe('presence on the table screen (K6)', () => {
   it('shows where the others are and what they carry, forgets them when they leave, and sends its own pointer', async () => {
     const id = await createSession(run)
-    history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=tv&server=${encodeURIComponent(run.url)}`)
+    history.replaceState(null, '', `/table?session=${id}&mode=tv&server=${encodeURIComponent(run.url)}#host=${roomOf(id).hostKey}`)
     render(<TablePage />)
     await screen.findByText(/Draghög/)
     const ada = TableClient.connect(await asSeat(run, id, 'A'))
@@ -247,7 +247,7 @@ describe('presence on the table screen (K6)', () => {
 
   it('a card that just moved carries the colour of the seat that moved it, for a moment', async () => {
     const id = await createSession(run)
-    history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=tv&server=${encodeURIComponent(run.url)}`)
+    history.replaceState(null, '', `/table?session=${id}&mode=tv&server=${encodeURIComponent(run.url)}#host=${roomOf(id).hostKey}`)
     render(<TablePage />)
     await screen.findByText(/Draghög/)
     const ada = TableClient.connect(await asSeat(run, id, 'A'))
@@ -263,7 +263,7 @@ describe('presence on the table screen (K6)', () => {
 describe('the end of a session on the table (C9)', () => {
   it('says the session is over, on which version, with a summary, and points to the phones', async () => {
     const id = await createSession(run)
-    history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=tv&server=${encodeURIComponent(run.url)}`)
+    history.replaceState(null, '', `/table?session=${id}&mode=tv&server=${encodeURIComponent(run.url)}#host=${roomOf(id).hostKey}`)
     render(<TablePage />)
     await screen.findByText(/Draghög/)
     const ada = TableClient.connect(await asSeat(run, id, 'A'))
@@ -314,7 +314,7 @@ describe('the host\'s screen (DRIFT §9)', () => {
     expect(document.querySelector('[data-table]')).toBeNull()
     unmount()
 
-    history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=tv&server=${encodeURIComponent(run.url)}`)
+    history.replaceState(null, '', `/table?session=${id}&mode=tv&server=${encodeURIComponent(run.url)}#host=${roomOf(id).hostKey}`)
     render(<TablePage />)
     expect(await screen.findByText(roomOf(id).code)).toBeTruthy()
     // The square carries the room's own address, the same one the words beside it say (#675).
@@ -327,7 +327,7 @@ describe('the host\'s screen (DRIFT §9)', () => {
   it('takes the host key out of the address, and opens again from the tab without it', async () => {
     const id = await createSession(run)
     const server = encodeURIComponent(run.url)
-    history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=tv&server=${server}`)
+    history.replaceState(null, '', `/table?session=${id}&mode=tv&server=${server}#host=${roomOf(id).hostKey}`)
     const { unmount } = render(<TablePage />)
     expect(await screen.findByText(roomOf(id).code)).toBeTruthy()
     expect(location.search).toBe(`?session=${id}&mode=tv&server=${server}`)
@@ -344,7 +344,7 @@ describe('the host\'s screen (DRIFT §9)', () => {
   it('keeps the key a rotation hands it, so a reload after «Ny kod» still opens the table', async () => {
     const id = await createSession(run)
     const old = roomOf(id).hostKey
-    history.replaceState(null, '', `/table?session=${id}&host=${old}&mode=tv&server=${encodeURIComponent(run.url)}`)
+    history.replaceState(null, '', `/table?session=${id}&mode=tv&server=${encodeURIComponent(run.url)}#host=${old}`)
     const { unmount } = render(<TablePage />)
     expect(await screen.findByText(roomOf(id).code)).toBeTruthy()
 
@@ -363,7 +363,7 @@ describe('the host\'s screen (DRIFT §9)', () => {
 
   it('keeps one table’s key to that table', async () => {
     const first = await createSession(run)
-    history.replaceState(null, '', `/table?session=${first}&host=${roomOf(first).hostKey}&mode=tv&server=${encodeURIComponent(run.url)}`)
+    history.replaceState(null, '', `/table?session=${first}&mode=tv&server=${encodeURIComponent(run.url)}#host=${roomOf(first).hostKey}`)
     const { unmount } = render(<TablePage />)
     expect(await screen.findByText(roomOf(first).code)).toBeTruthy()
     unmount()
@@ -380,7 +380,7 @@ describe('the host\'s screen (DRIFT §9)', () => {
 describe('a card a phone shows for everyone (#508)', () => {
   it('stands over the felt on the TV with the name of whoever showed it, and a hidden one does not', async () => {
     const id = await createSession(run)
-    history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=tv&server=${encodeURIComponent(run.url)}`)
+    history.replaceState(null, '', `/table?session=${id}&mode=tv&server=${encodeURIComponent(run.url)}#host=${roomOf(id).hostKey}`)
     render(<TablePage />)
     await screen.findByText(roomOf(id).code)
 
@@ -413,7 +413,7 @@ describe('a card a phone shows for everyone (#508)', () => {
 // back a wrong move, nor end the table when it was done.
 describe('the felt’s own screen says what happened, and can undo and end (#682)', () => {
   const openTable = async (id: string) => {
-    history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=table&server=${encodeURIComponent(run.url)}`)
+    history.replaceState(null, '', `/table?session=${id}&mode=table&server=${encodeURIComponent(run.url)}#host=${roomOf(id).hostKey}`)
     render(<TablePage />)
     await waitFor(() => expect(document.querySelector('[data-table]')).toBeTruthy())
   }
@@ -513,7 +513,7 @@ describe('the felt’s own screen says what happened, and can undo and end (#682
 
   it('has neither the corner line nor the menu on the room’s television', async () => {
     const id = await createSession(run)
-    history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=tv&server=${encodeURIComponent(run.url)}`)
+    history.replaceState(null, '', `/table?session=${id}&mode=tv&server=${encodeURIComponent(run.url)}#host=${roomOf(id).hostKey}`)
     render(<TablePage />)
     await screen.findByText(roomOf(id).code)
     expect(screen.queryByRole('button', { name: 'Mer' })).toBeNull()

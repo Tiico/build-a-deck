@@ -8,7 +8,7 @@ import { TypeRegistry, STANDARD_TYPES } from '@byd/engine'
 import { TableHost, createServer, MemoryLogStore, MemoryProjectStore, MemorySurveyStore, MemoryAuthStore, MemoryMailer, MemoryAssetStore } from '../../src/index.js'
 import { MemoryRenderStore, Renderer, runWorker } from '@byd/render'
 import { spelkortDoc } from '../spelkort.js'
-import type { Intent } from '@byd/protocol'
+import { tableProtocols, type Intent } from '@byd/protocol'
 const http = 'http://localhost:8317'
 const web = 'http://localhost:5317'
 const registry = new TypeRegistry(STANDARD_TYPES)
@@ -30,8 +30,8 @@ const doc=spelkortDoc()
 await post('/projects',{id:'ux-prototype',...doc})
 const session=await post('/projects/ux-prototype/sessions',{})
 const guest=await post(`/rooms/${session.code}/join`,{seat:'A',name:'Ada'})
-const connect = async (query:string) => {
-  const ws=new WebSocket(`${http.replace('http','ws')}/sessions/${session.id}?${query}`)
+const connect = async (query:string, protocols?:string[]) => {
+  const ws=new WebSocket(`${http.replace('http','ws')}/sessions/${session.id}?${query}`, protocols)
   await new Promise<void>((resolve,reject)=>{ws.addEventListener('message',e=>{const msg=JSON.parse(String(e.data));if(msg.t==='snapshot')resolve();if(msg.t==='refused')reject(new Error(msg.reason))});ws.addEventListener('error',()=>reject(new Error('Socket failed')))})
   return ws
 }
@@ -44,7 +44,7 @@ const send=(ws:WebSocket,seat:string|null,intents:Intent[])=>new Promise<void>((
 })
 const player=await connect(`seat=A&token=${guest.token}`)
 await send(player,'A',[{v:'seat.claim',seat:'A',name:'Ada'}])
-const table=await connect(`host=${session.hostKey}`)
+const table=await connect('', tableProtocols({ host: session.hostKey }))
 await send(table,null,[{v:'seat.claim',seat:'B',name:'Bo'},{v:'seat.claim',seat:'C',name:'Cy'}])
 await send(table,null,[{v:'shuffle',pile:'draw'},{v:'deal',from:'draw',to:['hand:A','hand:B','hand:C'],each:5}])
 const editorUrl=`${web}/editor?project=ux-prototype&server=${encodeURIComponent(http)}&variant=A`
