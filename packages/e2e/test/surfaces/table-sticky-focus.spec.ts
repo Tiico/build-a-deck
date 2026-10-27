@@ -1,3 +1,4 @@
+import { writeFile } from 'node:fs/promises'
 import type { Page } from '@playwright/test'
 import { expect, test } from '../../support/test.js'
 import { logIn, makeProjectOf } from '../../support/api.js'
@@ -73,11 +74,30 @@ async function tabbaTill(page: Page, där: string, key = 'Tab', max = 60) {
 
 // Rullad med pekaren, och färdigrullad: samma läge två bildrutor i rad, så att ett rullhjul som
 // glider inte läses mitt i glidningen.
+//
+// Hjulet nådde en gång inte lådan på tio sekunder i CI (#1251), och syntes 9,4 s för sent: pekaren
+// stod över lådan, sidans tråd svarade var 50:e ms, men ingen bildruta ritades på 9,7 s. Om det är
+// BeginFrame som uteblir eller hjulets kvittens i webbläsarprocessen går inte att se i Playwrights
+// trace. Så varje hjul spelas in med Chromiums egen trace, och den behålls bredvid testets när hjulet
+// tog mer än två sekunder att synas i `scrollLeft` (det tar en halv sekund på CI:s löpare).
 async function rullaMedPekaren(page: Page, dx: number) {
   const box = page.locator('.byd-data-scroll')
   const före = await box.evaluate((el) => el.scrollLeft)
-  await page.mouse.wheel(dx, 0)
-  await expect.poll(() => box.evaluate((el) => el.scrollLeft)).not.toBe(före)
+  const browser = page.context().browser()
+  await browser?.startTracing(page, { categories: HJULETS_SPÅR })
+  const började = Date.now()
+  try {
+    await page.mouse.wheel(dx, 0)
+    await expect.poll(() => box.evaluate((el) => el.scrollLeft)).not.toBe(före)
+  } finally {
+    const spår = await browser?.stopTracing()
+    const tog = Date.now() - började
+    if (spår && tog > 2_000) {
+      const fil = test.info().outputPath(`hjulet-${dx}-${tog}ms.chromium-trace.json`)
+      await writeFile(fil, spår)
+      await test.info().attach(`hjulet ${dx} tog ${tog} ms (Chromium-trace, öppnas i chrome://tracing eller Perfetto)`, { path: fil, contentType: 'application/json' })
+    }
+  }
   return box.evaluate(
     (el) =>
       new Promise<number>((done) => {
@@ -91,6 +111,10 @@ async function rullaMedPekaren(page: Page, dx: number) {
       }),
   )
 }
+
+// Det som säger var ett hjul fastnar: indata i webbläsaren och i sidan, kompositorns bildrutor och
+// viz som ritar dem, och sidans huvudtråd.
+const HJULETS_SPÅR = ['input', 'cc', 'viz', 'gpu', 'blink', 'benchmark', 'devtools.timeline', 'disabled-by-default-devtools.timeline.frame']
 
 const STORLEKAR = [
   [1024, 768],
