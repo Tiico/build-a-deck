@@ -1760,8 +1760,8 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
         // Whether the hero shows the game's box (#1416), said in the list so the hero's place is the
         // box's from the first screen and nothing changes shape when the drawing lands.
         const { boxOpened, ...game } = p
-        const cover = showsCover(live ?? { box: undefined }, boxOpened === true)
-        return { ...game, name: live?.name ?? p.name, ...about, savedAt, tables: sessions.length, lastPlayed: last.sort().at(-1) ?? null, cover }
+        const cover = showsCover(live ?? { box: undefined }, boxOpened === true) ? { cover: true } : {}
+        return { ...game, name: live?.name ?? p.name, ...about, savedAt, tables: sessions.length, lastPlayed: last.sort().at(-1) ?? null, ...cover }
       }),
     )
     json(res, 200, played)

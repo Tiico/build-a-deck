@@ -93,6 +93,8 @@ export const COLUMNS: Readonly<Record<string, Class>> = {
   'projects.doc': 'none',
   'projects.updated_at': 'none',
   'projects.owner': 'pseudonymous',
+  // When the game's box was first opened (#1416): a fact about the game, like its updated_at.
+  'projects.box_opened_at': 'none',
   'project_versions.project_id': 'pseudonymous',
   'project_versions.rev': 'none',
   'project_versions.doc': 'none',
