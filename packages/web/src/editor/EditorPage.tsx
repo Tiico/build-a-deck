@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react'
 import { fieldLabel, nextCardRef } from './fields.js'
 import { DeckWall, type WallView } from './DeckWall.js'
 import { EditorTabs, modesFor, panelId, tabId, type Mode } from './EditorTabs.js'
@@ -16,7 +16,7 @@ import type { BoxFace } from '@byd/engine'
 import { DataTable } from './DataTable.js'
 import { AiPanel, useAiKey } from './AiPanel.js'
 import { proposalView, rulesView, showsDeck, showsRules, showsTemplate, translated, type ProposalView, type ShownProposal } from './proposals.js'
-import { TableMenu } from './TablesTab.js'
+import { RowWays, TableMenu } from './TablesTab.js'
 import { BordTab } from './BordTab.js'
 import { revealThemeSection, ThemePanel } from './ThemePanel.js'
 import { MediaPanel } from './MediaPanel.js'
@@ -39,6 +39,9 @@ import { Arriving } from './AssetImage.js'
 import { WithheldPictures, drawnEmpty, type Withheld } from './withheld.js'
 import type { ProjectDoc } from '@byd/server'
 import { useTableClient } from '../table/useTableClient.js'
+import { seatColor } from '../table/seatColor.js'
+import { roomAddress } from '../table/roomAddress.js'
+import type { Snapshot } from '@byd/protocol'
 import { TableEnded, type ProjectClient, type SaveFailure } from './ProjectClient.js'
 import { RENDER_STALLED_AFTER_MS, stillRendering, useStalled, type Textures } from '../table/textures.js'
 import { loginUrl, myAccount, removeProject } from '../account/api.js'
@@ -55,7 +58,7 @@ import { DEFAULT_TIMING } from '../status/connection.js'
 import { usePageTitle } from '../status/DocumentTitle.js'
 import { useLang, useT, type Key, type T } from '../i18n/index.js'
 import { saidOr } from '../i18n/said.js'
-import { ArrowGlyph, BookGlyph, CheckGlyph, CloseGlyph, HookGlyph } from '../glyphs.js'
+import { ArrowGlyph, BookGlyph, CheckGlyph, CloseGlyph, CopyGlyph, HookGlyph, OutGlyph } from '../glyphs.js'
 import type { CatalogFamily } from './font-catalog.js'
 import './editor.css'
 import { versionWord } from '../i18n/version.js'
@@ -276,13 +279,26 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   const revRef = useRef<HTMLButtonElement>(null)
   const hereRef = useRef<HTMLButtonElement>(null)
   // «Ny kod», where the focus goes when the last seat it stood beside is kicked (#621).
-  const newCodeRef = useRef<HTMLButtonElement>(null)
+  // The band's ⋯, which its questions hand the focus back to (#1422): «Ny kod» and «Avsluta bordet» live in it.
+  const bandMoreRef = useRef<HTMLButtonElement>(null)
+  const [askingEnd, setAskingEnd] = useState(false)
+  const [copied, setCopied] = useState(false)
   // An older version the table is held against (B4), fetched once when the comparison starts.
   const [compare, setCompare] = useState<{ rev: number; label?: string | undefined; doc: ProjectDoc } | null>(null)
   // A running table (L5) with what admits people to it (DRIFT §9): the code and the host key.
   // A table picked up after a reload (`running`) has no key in the page; the account is the
   // authority for it instead.
   const [table, setTable] = useState<{ id: string; version: string; code: string; hostKey?: string; seating?: Seating; kind: 'new' | 'refreshed' | 'running' | 'already'; saved?: boolean } | null>(null)
+  // The band's own line to the table (#1422): the seats and whether it has ended (#705) come over
+  // it, through a lobby, which only looks (DRIFT §9) and costs the table nothing; the end itself
+  // goes over HTTP as the kick does. A hook, so it stands here with the state and never after the
+  // page's early returns.
+  const live = useTableClient(table ? { url: (params.get('server') ?? location.origin).replace(/^http/, 'ws'), sessionId: table.id, seat: null, lobby: true } : null)
+  const tableEndedRef = useRef<() => void>(() => undefined)
+  const liveEnded = live.view?.ended === true
+  useEffect(() => {
+    if (liveEnded) tableEndedRef.current()
+  }, [liveEnded])
   // The table outlives the page (#477). Without this a reload put «Starta bord» back in the header
   // while the table was still running, and the press that followed started a second table with a
   // new code — the guests at the first never saw the update. The newest table that still runs and
@@ -592,6 +608,8 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
     setTable(null)
     setLost(null)
     setTextures(null)
+    setAskingEnd(false)
+    setCopied(false)
     confirmation.confirm(t('editor.table.ended'))
   }
   // Once a table exists, the primary button pushes the current rev to it (C7, L5) — but only
@@ -831,7 +849,13 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
     tables: () => <BordTab doc={doc} client={client} assetBase={http} motifs={deckMotifs} server={params.get('server')} started={table?.kind === 'new' ? table.id : null} results={results} />,
   }
 
-  const wsUrl = (params.get('server') ?? location.origin).replace(/^http/, 'ws')
+  tableEndedRef.current = tableEnded
+  // The room's address to send (L77), as the row copies it: the host and the code, never the code alone.
+  const copyLink = () => {
+    if (!table) return
+    const server = params.get('server')
+    void navigator.clipboard?.writeText(roomAddress(table.code, server ? server.replace(/^http/, 'ws') : null).url).then(() => setCopied(true), () => undefined)
+  }
   const rotate = async () => {
     if (!table) return
     setAskingCode(false)
@@ -1045,71 +1069,130 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
       )}
       {table && (
         <div className="byd-editor-table-link" role="status" {...(lost !== null ? { 'data-lost': '' } : {})} {...(stalled ? { 'data-stalled': '' } : {})}>
-          {t(table.kind === 'new' ? (table.saved ? 'editor.table.savedAndStarted' : 'editor.table.started') : table.kind === 'running' ? 'editor.table.running' : table.kind === 'already' ? 'editor.table.already' : 'editor.table.refreshed', { version: versionWord(table.version, t) })}
-          {/* The lead's dash points at what follows it; before the first answer about the textures
-              nothing does, and the band says nothing about rendering rather than «0/…» (#765). */}
-          {(lost !== null || preparing || textures) && ' — '}
-          {lost !== null ? (
-            <>
-              <span className="byd-editor-warning">{t(lost === 1 ? 'editor.table.lost.one' : 'editor.table.lost.other', { n: lost })}</span>{' '}
-              <button type="button" onClick={() => void updateTable(true)}>
-                {t('editor.table.retry')}
-              </button>
-            </>
-          ) : preparing ? (
-            <span className="byd-editor-rendering">{t('editor.table.rendering', { done: preparing.done, total: preparing.total })}</span>
-          ) : textures && textures.done + textures.failed.length >= textures.total ? (
-            <a {...bandWay(table)}>{t('editor.table.open')}</a>
-          ) : textures ? (
-            <span className="byd-editor-rendering">{t('editor.table.rendering', { done: textures.done, total: textures.total })}</span>
-          ) : null}
-          {stalled && (
-            <>
-              {' '}· <span className="byd-editor-warning">{t('editor.table.stalled')}</span>{' '}
-              <button type="button" onClick={() => void retryRender()}>
-                {t('editor.table.retry')}
-              </button>
-            </>
-          )}
-          {textures && textures.failed.length > 0 && <span className="byd-editor-warning"> · {t(textures.failed.length === 1 ? 'editor.table.failed.one' : 'editor.table.failed.other', { n: textures.failed.length })}</span>}
-          {unreadable > 0 && (
-            <>
-              {' '}· <span className="byd-editor-warning" data-unreadable>{t(unreadable === 1 ? 'editor.table.unreadable.one' : 'editor.table.unreadable.other', { n: unreadable, pt: minPtIn(phone).toLocaleString(lang, { minimumFractionDigits: 1, maximumFractionDigits: 1 }), width: phone.window.w, floor: SCREENS[phone.screen].floorPx })}</span>{' '}
-              <button type="button" onClick={showOnWall}>{t('editor.table.unreadable.show')}</button>
-            </>
-          )}
-          {unopened && (
-            <span data-unopened>
-              {' '}· <span className="byd-editor-warning">{t('editor.start.blocked')}</span>{' '}
-              <a href={unopened.href} target={unopened.target}>
-                {t(unopened.seating === 'computer' ? 'editor.start.blocked.computer' : 'editor.start.blocked.screen')}
-              </a>
-            </span>
-          )}
-          <span className="byd-editor-room">
-            {' '}· {t('editor.table.roomCode')} <strong data-room-code>{table.code}</strong>{' '}
-            <button type="button" ref={newCodeRef} aria-expanded={askingCode} onClick={() => setAskingCode(true)}>{t('editor.table.newCode')}</button>
+          {/* The ticket (#1422, beställarens beslut B): the code is what is read out to the room, so it
+              is the largest thing on the band, under the word the phone types it under (K12), and drawn
+              as the Bord row and the TV draw it. */}
+          <span className="byd-editor-ticket">
+            <small>{t('editor.table.roomCode')}</small>
+            <strong data-room-code>{table.code}</strong>
           </span>
-          <HostSeats client={client} sessionId={table.id} hostKey={table.hostKey} ws={wsUrl} onNotice={say} onEnded={tableEnded} lastStop={newCodeRef} onRotate={rotate} />
-          {askingCode && (
-            <Question
-              className="byd-editor-table-ask"
-              label={t('editor.table.newCode.ask')}
-              confirm={t('editor.table.newCode.ask.yes')}
-              onConfirm={() => void rotate()}
-              onCancel={() => {
-                setAskingCode(false)
-                newCodeRef.current?.focus()
-              }}
-            >
-              <b>{t('editor.table.newCode.ask')}</b> {t('editor.table.newCode.ask.body', { code: table.code })}
-            </Question>
-          )}
-          {codeSaid !== null && !askingCode && (
-            <p className="byd-editor-table-said" role="status" data-code-said>
-              {codeSaid}
-            </p>
-          )}
+          <span className="byd-editor-table-facts">
+            <span className="byd-editor-table-line">
+              <i className="byd-editor-live" aria-hidden="true" />
+              <span>
+                {t(table.kind === 'new' ? (table.saved ? 'editor.table.savedAndStarted' : 'editor.table.started') : table.kind === 'running' ? 'editor.table.running' : table.kind === 'already' ? 'editor.table.already' : 'editor.table.refreshed', { version: versionWord(table.version, t) })}
+                {/* How you sit, in the start's own words (L86): a table from before the question has no answer and says none. */}
+                {table.seating && (
+                  <>
+                    {' · '}
+                    <span className="byd-editor-seating" data-seating={table.seating}>
+                      {t(table.seating === 'computer' ? 'editor.start.computer' : 'editor.start.screen')}
+                    </span>
+                  </>
+                )}
+              </span>
+              {/* The room's address to send (L77), as the row's menu copies it; here beside the code it is the address of. */}
+              <button type="button" className="byd-editor-copy" aria-label={t('tables.copy')} title={t('tables.copy')} onClick={copyLink}>
+                <CopyGlyph />
+              </button>
+            </span>
+            {/* The second line is the table's state while it has one — the cards still loading, the ones
+                that could not — and otherwise who sits at it. Nothing here moves the first line. */}
+            <span className="byd-editor-table-line" data-table-state>
+              {lost !== null ? (
+                <>
+                  <span className="byd-editor-warning">{t(lost === 1 ? 'editor.table.lost.one' : 'editor.table.lost.other', { n: lost })}</span>
+                  <button type="button" onClick={() => void updateTable(true)}>
+                    {t('editor.table.retry')}
+                  </button>
+                </>
+              ) : preparing ? (
+                <span className="byd-editor-rendering">{t('editor.table.rendering', { done: preparing.done, total: preparing.total })}</span>
+              ) : textures && textures.done + textures.failed.length < textures.total ? (
+                <span className="byd-editor-rendering">{t('editor.table.rendering', { done: textures.done, total: textures.total })}</span>
+              ) : null}
+              {stalled && (
+                <>
+                  <span className="byd-editor-warning">{t('editor.table.stalled')}</span>
+                  <button type="button" onClick={() => void retryRender()}>
+                    {t('editor.table.retry')}
+                  </button>
+                </>
+              )}
+              {textures && textures.failed.length > 0 && <span className="byd-editor-warning">{t(textures.failed.length === 1 ? 'editor.table.failed.one' : 'editor.table.failed.other', { n: textures.failed.length })}</span>}
+              {unreadable > 0 && (
+                <>
+                  <span className="byd-editor-warning" data-unreadable>{t(unreadable === 1 ? 'editor.table.unreadable.one' : 'editor.table.unreadable.other', { n: unreadable, pt: minPtIn(phone).toLocaleString(lang, { minimumFractionDigits: 1, maximumFractionDigits: 1 }), width: phone.window.w, floor: SCREENS[phone.screen].floorPx })}</span>
+                  <button type="button" onClick={showOnWall}>{t('editor.table.unreadable.show')}</button>
+                </>
+              )}
+              {unopened && (
+                <span data-unopened>
+                  <span className="byd-editor-warning">{t('editor.start.blocked')}</span>{' '}
+                  <a href={unopened.href} target={unopened.target}>
+                    {t(unopened.seating === 'computer' ? 'editor.start.blocked.computer' : 'editor.start.blocked.screen')}
+                  </a>
+                </span>
+              )}
+              <HostSeats client={client} sessionId={table.id} hostKey={table.hostKey} view={live.view} onNotice={say} lastStop={bandMoreRef} onRotate={rotate} />
+            </span>
+            {/* The band's questions and what it says after them stand here, under the seats, where the
+                seats' own question already stands (#679): one place for every question the band asks. */}
+            {askingCode && (
+              <Question
+                className="byd-editor-table-ask"
+                label={t('editor.table.newCode.ask')}
+                confirm={t('editor.table.newCode.ask.yes')}
+                onConfirm={() => void rotate()}
+                onCancel={() => {
+                  setAskingCode(false)
+                  bandMoreRef.current?.focus()
+                }}
+              >
+                <b>{t('editor.table.newCode.ask')}</b> {t('editor.table.newCode.ask.body', { code: table.code })}
+              </Question>
+            )}
+            {askingEnd && (
+              <Question
+                className="byd-editor-table-ask"
+                label={t('tables.end.of', { table: table.code })}
+                confirm={t('tables.end.yes')}
+                onConfirm={() => {
+                  setAskingEnd(false)
+                  // The host's third control (DRIFT §9), beside the code and the kick: the table ends as
+                  // it ends itself (C9), and the band goes once it has.
+                  void client.endTable(table.id, table.hostKey).then(() => tableEnded(), () => say(t('tables.end.failed')))
+                }}
+                onCancel={() => {
+                  setAskingEnd(false)
+                  bandMoreRef.current?.focus()
+                }}
+              >
+                {t('tables.end.question', { table: table.code })}
+              </Question>
+            )}
+            {codeSaid !== null && !askingCode && (
+              <p className="byd-editor-table-said" role="status" data-code-said>
+                {codeSaid}
+              </p>
+            )}
+            {copied && (
+              <p className="byd-editor-table-said" data-copied>
+                {t('tables.copied')}
+              </p>
+            )}
+          </span>
+          {/* The way in and the rest (L86): «Öppna bordet» as the row has it, once the cards are
+              loaded (#765), and the row's own menu with what the host does to the table. */}
+          <span className="byd-editor-table-ways">
+            {lost === null && !preparing && textures && textures.done + textures.failed.length >= textures.total && (
+              <a {...bandWay(table)} className="byd-secondary" aria-label={t('tables.way.open.aria', { table: table.code })}>
+                {t('editor.table.open')}
+                <OutGlyph />
+              </a>
+            )}
+            <RowWays table={table.code} button={bandMoreRef} mark="more" ways={[{ id: 'code', label: 'editor.table.newCode', press: () => setAskingCode(true) }, { id: 'end', label: 'tables.end', apart: true, press: () => setAskingEnd(true) }]} />
+          </span>
         </div>
       )}
       {/* The line to the project, in D5's own states (#485, fynd 8): gone, with how old the
@@ -1385,18 +1468,8 @@ function profileUrl(project: string, server: string | null): string {
 // where the next Tab starts over from the top (#477, fynd 6). So it is handed on: to the seat
 // that took the kicked one's place, the one before it at the end of the row, and «Ny kod» when
 // nobody is left.
-function HostSeats({ client, sessionId, hostKey, ws, onNotice, onEnded, lastStop, onRotate }: { client: ProjectClient; sessionId: string; hostKey: string | undefined; ws: string; onNotice(text: string): void; onEnded(): void; lastStop: RefObject<HTMLButtonElement | null>; onRotate(): Promise<void> }) {
+function HostSeats({ client, sessionId, hostKey, view, onNotice, lastStop, onRotate }: { client: ProjectClient; sessionId: string; hostKey: string | undefined; view: Snapshot | null; onNotice(text: string): void; lastStop: RefObject<HTMLButtonElement | null>; onRotate(): Promise<void> }) {
   const t = useT()
-  const labelId = useId()
-  const { view } = useTableClient({ url: ws, sessionId, seat: null, lobby: true })
-  // The table says so itself the moment it is ended (#705), whoever ended it; this is the line the
-  // header already has open to it.
-  const ended = view?.ended === true
-  const latestEnded = useRef(onEnded)
-  latestEnded.current = onEnded
-  useEffect(() => {
-    if (ended) latestEnded.current()
-  }, [ended])
   const list = useRef<HTMLUListElement>(null)
   const kicked = useRef<{ seat: string; at: number } | null>(null)
   // The seat × is asking about (#679, beställarens beslut C): a kick costs a player's hand mid-game,
@@ -1414,7 +1487,8 @@ function HostSeats({ client, sessionId, hostKey, ws, onNotice, onEnded, lastStop
         onNotice(t('editor.table.error.kick', { name }))
       })
   }
-  const taken = view ? view.seats.filter((s) => s.name !== null) : []
+  // Each seat with its place in the table's order, so the face wears the colour the felt gives it (K9).
+  const taken = view ? view.seats.map((s, index) => ({ ...s, index })).filter((s) => s.name !== null) : []
   const seated = taken.map((s) => s.id).join(' ')
   useEffect(() => {
     const was = kicked.current
@@ -1429,14 +1503,15 @@ function HostSeats({ client, sessionId, hostKey, ws, onNotice, onEnded, lastStop
   if (taken.length === 0) return null
   return (
     <>
-      <span className="byd-editor-seats-at">
-        · <span id={labelId}>{t('editor.seats.at')}</span>
-      </span>
-      <ul className="byd-editor-seats" ref={list} aria-labelledby={labelId}>
+      <ul className="byd-editor-seats" ref={list} aria-label={t('editor.seats.at')}>
         {taken.map((s, at) => {
           const name = t('editor.seats.kick', { name: s.name ?? '' })
           return (
             <li key={s.id} className="byd-chip" data-host-seat={s.id}>
+              {/* The face in the seat's own colour (#1422): a second telling of which seat, never the only one (L12). */}
+              <i className="byd-chip-face" aria-hidden="true" style={{ '--seat': seatColor(s.index) } as CSSProperties}>
+                {(s.name ?? '').slice(0, 1).toUpperCase()}
+              </i>
               {s.name}
               <button
                 type="button"

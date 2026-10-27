@@ -73,7 +73,7 @@ export const OPEN_WRITES: readonly (readonly [string, RegExp])[] = [
   ['POST', /^\/guests\/claim$/],
   ['POST', /^\/me\/played\/[^/]+\/return$/],
   ['POST', /^\/sessions\/[^/]+\/survey$/],
-  ['POST', /^\/sessions\/[^/]+\/(?:code|kick)$/],
+  ['POST', /^\/sessions\/[^/]+\/(?:code|kick|end)$/],
 ]
 const READS = new Set(['GET', 'HEAD', 'OPTIONS'])
 export function openToTheDue(method: string, path: string): boolean {

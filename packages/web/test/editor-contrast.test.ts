@@ -19,11 +19,23 @@ const token = (name: string) => {
 }
 
 describe('the palette a blocked table update is drawn in', () => {
+  // The line the ticket is set off with, and the band's quiet buttons are drawn with, is a graphic
+  // and carries 3:1 on the green.
+  it('sets the ticket off with a line a graphic can be read by', () => {
+    expect(contrastRatio(token('--byd-editor-table-line'), token('--byd-editor-table-bg'))).toBeGreaterThanOrEqual(3)
+  })
+
   it.each([
     { what: 'the sentence that says what happened', ink: '--byd-editor-lost-ink', on: '--byd-editor-lost-bg' },
     { what: 'the version line beside it', ink: '--byd-editor-lost-quiet', on: '--byd-editor-lost-bg' },
     { what: 'the retry label', ink: '--byd-editor-lost-ink', on: '--byd-editor-lost-button-bg' },
     { what: 'a warning on the green banner', ink: '--byd-editor-lost-ink', on: '--byd-editor-table-bg' },
+    // The ticket (#1422): the word over the code and the seat list's quiet register on the green,
+    // the code itself on its tile, and the same two when cards are missing.
+    { what: 'the ticket’s word on the green', ink: '--byd-editor-table-quiet', on: '--byd-editor-table-bg' },
+    { what: 'the code on its tile', ink: '--byd-editor-table-ink', on: '--byd-editor-table-tile' },
+    { what: 'the ticket’s word when cards are missing', ink: '--byd-editor-lost-quiet', on: '--byd-editor-lost-bg' },
+    { what: 'the code on its tile when cards are missing', ink: '--byd-editor-table-ink', on: '--byd-editor-lost-tile' },
   ])('gives $what AA contrast', ({ ink, on }) => {
     expect(contrastRatio(token(ink), token(on))).toBeGreaterThanOrEqual(4.5)
   })
