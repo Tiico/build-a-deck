@@ -1,5 +1,6 @@
 import { join, withQuery } from '../support/api.js'
 import type { Device } from '../support/devices.js'
+import { pointerLog } from '../support/pointer-log.js'
 import { expect, test } from '../support/test.js'
 
 // Reading a card in the hand on the distance view (K26, #510 beslut B). The column's card is 112 px
@@ -16,6 +17,13 @@ for (const device of [
 ] satisfies Device[]) {
   test.describe(`the hand on the distance view at ${device.viewport.width} × ${device.viewport.height} (#510)`, () => {
     test.use({ viewport: device.viewport })
+    // The lift once stayed up after the mouse had gone, in CI only (#1325): a red run keeps what the
+    // pointer did beside its trace, so the next one says which boundary event React never heard.
+    let pointer: Awaited<ReturnType<typeof pointerLog>> | null = null
+    test.afterEach(async () => {
+      await pointer?.keepIfFailed(test.info())
+      pointer = null
+    })
 
     test('a hover reads a card beside the column, a click turns it and opens nothing, and a drag plays it face down', async ({ tableOf, open, host, request }) => {
       const table = await tableOf({ players: 2, counters: [], cards: 6, copies: 1 })
@@ -23,6 +31,7 @@ for (const device of [
       await dealer.send([{ v: 'draw', from: 'draw', to: 'hand:A', count: 4 }])
       const seat = await join(request, table, { name: 'Ada', seat: 'A' })
       const { page } = await open(device, withQuery(seat.onlineUrl, `lang=sv`))
+      pointer = await pointerLog(page)
       const cards = page.locator('[data-hand-card]')
       await expect(cards).toHaveCount(4)
       const card = cards.nth(1)
