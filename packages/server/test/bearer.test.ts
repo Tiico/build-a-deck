@@ -149,6 +149,8 @@ describe.skipIf(!url)('bakåtfyllnaden av sessions.account_id (#1194)', () => {
     const sql = postgres(url!, { max: 1, onnotice: () => undefined, connection: { search_path: before } })
     try {
       await sql`alter table sessions drop column account_id`
+      // Och dess schema fördes upp till ett äldre skript, så nästa start kör det här (#1442).
+      await sql`delete from schema_migrations where name = 'server/001-init.sql'`
       const setup = sql.json(twoSeatSetup() as never)
       await sql`insert into sessions (id, version, setup, project) values ('s-agd', 'rev-1', ${setup}, 'p-agd'), ('s-gammal', 'rev-1', ${setup}, 'p-gammal'), ('s-borta', 'rev-1', ${setup}, 'p-borta'), ('s-raa', 'v1', ${setup}, null)`
     } finally {

@@ -436,7 +436,7 @@ for (const backend of backends) {
 
 // The box keeps a derived table so the measure is not a walk over every version at every upload
 // (#1197). It must equal what the versions say, and it must be rebuilt out of them: dropped and
-// migrated again, it is the same. The memory store keeps nothing beside the versions, so there is
+// migrated again by a start that runs the script, it is the same. The memory store keeps nothing beside the versions, so there is
 // nothing there to hold to them.
 describe.skipIf(!url)('the derived table of the hashes each game names, in Postgres (#1197)', () => {
   const own = `test_storage_cache_${process.pid}_${Date.now()}`
@@ -482,7 +482,10 @@ describe.skipIf(!url)('the derived table of the hashes each game names, in Postg
     expect(await projects.stored('7')).toBe(await derived('7'))
     expect(await projects.stored('8')).toBe(await derived('8'))
 
+    // A box from before the table: its schema was brought up to an earlier script, so the next start
+    // runs this one (#1442).
     await sql`drop table project_assets`
+    await sql`delete from schema_migrations where name = 'server/001-init.sql'`
     await pg.migrate()
     expect(await projects.stored('7')).toBe(40 + 60 + 100 + 500)
     expect(await projects.stored('8')).toBe(300)

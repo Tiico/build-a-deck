@@ -26,11 +26,33 @@ COPY packages ./packages
 COPY test-support ./test-support
 RUN pnpm --filter @byd/web build
 
+# What runs (#1442): the server's own dependencies, and none of what the web is built with or the
+# suites are run with. The build stage above keeps its full install for `vite build` and nothing more.
+FROM node:26-alpine AS deps
+RUN npm install -g pnpm@11.24.0
+WORKDIR /app
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+COPY packages/protocol/package.json packages/protocol/
+COPY packages/engine/package.json packages/engine/
+COPY packages/print/package.json packages/print/
+COPY packages/template/package.json packages/template/
+COPY packages/render/package.json packages/render/
+COPY packages/screening/package.json packages/screening/
+COPY packages/server/package.json packages/server/
+COPY packages/web/package.json packages/web/
+RUN pnpm install --frozen-lockfile --prod --filter @byd/server...
+RUN set -eu; arch=$(node -p process.arch); for d in node_modules/.pnpm/onnxruntime-node@*/node_modules/onnxruntime-node/bin/napi-v*; do \
+      rm -rf "$d/darwin" "$d/win32"; find "$d/linux" -mindepth 1 -maxdepth 1 ! -name "$arch" -exec rm -rf {} +; \
+    done
+
 FROM node:26-alpine
 ENV NODE_ENV=production
 ENV STATIC_DIR=/app/packages/web/dist
 WORKDIR /app
-COPY --from=build /app /app
+COPY --from=deps /app /app
+COPY tsconfig.base.json ./
+COPY packages ./packages
+COPY --from=build /app/packages/web/dist packages/web/dist
 USER node
 EXPOSE 8080
 HEALTHCHECK --interval=15s --timeout=5s --retries=3 CMD wget -qO- http://127.0.0.1:8080/health || exit 1

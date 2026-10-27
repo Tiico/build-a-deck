@@ -12,7 +12,8 @@ COPY packages/render/package.json packages/render/
 COPY packages/screening/package.json packages/screening/
 COPY packages/server/package.json packages/server/
 COPY packages/web/package.json packages/web/
-RUN pnpm install --frozen-lockfile --filter @byd/render...
+# Only what runs (#1442): a devDependency such as pdfjs-dist is for the suites, not the worker.
+RUN pnpm install --frozen-lockfile --prod --filter @byd/render...
 # onnxruntime-node (#1273) carries its binaries for every platform, ~290 MB; the image keeps its own.
 RUN set -eu; arch=$(node -p process.arch); for d in node_modules/.pnpm/onnxruntime-node@*/node_modules/onnxruntime-node/bin/napi-v*; do \
       rm -rf "$d/darwin" "$d/win32"; find "$d/linux" -mindepth 1 -maxdepth 1 ! -name "$arch" -exec rm -rf {} +; \

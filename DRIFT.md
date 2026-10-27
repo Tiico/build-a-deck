@@ -324,6 +324,11 @@ CI har ingen väg in i huset.
 
 Migrering är två olika saker:
 Databasschema migreras med vanligt verktyg innan appen startar.
+I dag är det appens och renderarbetarens egna start som för upp schemat, med skripten `packages/server/sql/001-init.sql` och `packages/render/sql/001-render.sql` (#1442).
+Skripten är idempotenta, men deras `alter table` och `create index if not exists` låser tabellerna de nämner vid varje körning, och en start bredvid pågående skrivningar dog i ett dödläge (40P01).
+Därför håller `schema_migrations` en rad per skript med dess sha256: en start vars skript redan står där rör ingen annan tabell, ett ändrat skript körs helt i en transaktion och skrivs in i samma, och ett advisory lock per schema låter app och arbetare som startar samtidigt turas om.
+Ett ändrat skript som ändå möter en skrivning åt andra hållet och blir dödlägets offer rullas tillbaka och körs igen.
+Imagerna installerar bara det som körs, med `--prod`; appens byggsteg har kvar sin fulla installation för `vite build` men ger slutsteget bara den byggda webben.
 Händelseschemat migreras aldrig på disk; varje `Applied` bär `schemaVersion` och motorn har upcasters som lyfter gamla rader vid inläsning.
 
 Ett undantag, beslutat av beställaren 2026-10-24 (#1269, F7, G6): **maskningen av personfälten är den enda skrivning som någonsin rör en befintlig rad i loggen.**

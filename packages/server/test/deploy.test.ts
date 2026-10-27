@@ -266,6 +266,51 @@ describe('the app image carries everything the web build reads', () => {
   })
 })
 
+// The images install only what runs (#1442). Both installed every devDependency, so `pdfjs-dist`,
+// which only the suites read (#1431), went to the box in the app and the worker alike. A stage that
+// runs an install for the image to keep says `--prod`, and the app's final stage takes its
+// node_modules from such a stage and never the whole build stage, whose install `vite build` needs.
+// What the images run with, tsx, is then a dependency of the package whose copy they start.
+describe('the images install only what runs (#1442)', () => {
+  const read = (path: string) => readFileSync(new URL(`../../../${path}`, import.meta.url), 'utf8')
+  const stages = (dockerfile: string) =>
+    dockerfile
+      .split(/^(?=FROM )/m)
+      .filter((stage) => stage.startsWith('FROM '))
+      .map((stage) => ({ name: /^FROM \S+(?: AS (\S+))?/.exec(stage)![1], text: stage }))
+  const installs = (text: string) => text.split('\n').filter((line) => /^RUN pnpm install\b/.test(line))
+
+  it('installs the worker without its devDependencies', () => {
+    const lines = installs(read('Dockerfile.render'))
+    expect(lines.length).toBeGreaterThan(0)
+    for (const line of lines) expect(line).toContain('--prod')
+  })
+
+  it('gives the app its node_modules from a production install, not from the build stage', () => {
+    const all = stages(read('Dockerfile'))
+    const final = all.at(-1)!
+    const from = [...final.text.matchAll(/^COPY --from=(\S+) (\S+)/gm)].map((m) => ({ stage: m[1]!, path: m[2]! }))
+    const whole = from.filter((copy) => copy.path === '/app' || copy.path === '/app/')
+    expect(whole).toHaveLength(1)
+    const source = all.find((stage) => stage.name === whole[0]!.stage)!
+    expect(installs(source.text).length).toBeGreaterThan(0)
+    for (const line of installs(source.text)) expect(line).toContain('--prod')
+    // The build stage gives the final one only the web it built.
+    for (const copy of from.filter((c) => c !== whole[0])) expect(copy.path).toMatch(/\/dist$/)
+  })
+
+  it('lists tsx as a dependency of every package an image or the restore test starts it from', () => {
+    const starts = [read('Dockerfile'), read('Dockerfile.render'), read('ops/restore-test.sh')].flatMap((text) =>
+      [...text.matchAll(/packages\/(\w+)\/node_modules\/tsx\//g)].map((m) => m[1]!),
+    )
+    expect(new Set(starts)).toEqual(new Set(['server', 'render']))
+    for (const pkg of new Set(starts)) {
+      const json = JSON.parse(read(`packages/${pkg}/package.json`)) as { dependencies?: Record<string, string> }
+      expect(json.dependencies?.['tsx'], `packages/${pkg} starts under tsx in production but keeps it among its devDependencies`).toBeDefined()
+    }
+  })
+})
+
 // The HTML part reaches the provider (#1098): Resend takes `html` beside `text`, and a mail without
 // one is sent as text alone, as every mail was before.
 describe('the Resend mailer sends the HTML part (#1098)', () => {

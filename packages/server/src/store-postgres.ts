@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import postgres from 'postgres'
-import { assetKey, outputKey, type ObjectStore } from '@byd/render/queue'
+import { assetKey, migrate, outputKey, type ObjectStore } from '@byd/render/queue'
 import { PHYSICAL_VERBS, REDACTED, type Applied, type Seating } from '@byd/protocol'
 import { liftLine, type SetupDef } from '@byd/engine'
 import { ACCOUNT_SWEEP_DAYS, NOTHING_ERASED, changesAt, maskedIntent, type Erased, type ErasureStore, type LedgerEntry } from './erase.js'
@@ -210,11 +210,11 @@ export class PostgresLogStore implements LogStore {
     return new PostgresAssetStore(this.sql, objects)
   }
 
-  // Idempotent schema for the slice. DRIFT §7 moves this into a migration step before start.
+  // Idempotent schema for the slice, run once per change to the script (#1442): a start against a
+  // current schema touches none of its tables. DRIFT §7 moves this into a migration step before start.
   async migrate(): Promise<void> {
-    if (this.schema) await this.sql.unsafe(`create schema if not exists "${this.schema.replace(/"/g, '')}"`)
     const path = fileURLToPath(new URL('../sql/001-init.sql', import.meta.url))
-    await this.sql.unsafe(await readFile(path, 'utf8'))
+    await migrate(this.sql, 'server/001-init.sql', await readFile(path, 'utf8'), this.schema)
   }
 
   async close(): Promise<void> {
