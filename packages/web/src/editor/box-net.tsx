@@ -1,4 +1,5 @@
 import type { BoxNet, NetFlap } from '@byd/engine'
+import './box-net.css'
 
 // The tuckbox's net as lines (#1413, #1418): what the Låda tab draws round the faces it edits, and
 // what the print package draws round the faces it shows. Its own module, so the print package's page
