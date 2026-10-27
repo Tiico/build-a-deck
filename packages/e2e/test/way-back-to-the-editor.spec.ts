@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test'
 import { logIn, makeProject } from '../support/api.js'
 import { DESK } from '../support/devices.js'
+import { renderWorker } from '../support/render.js'
 import { expect, test } from '../support/test.js'
 
 // Vägen tillbaka (#1217, L80), i den byggda appen: ett bord öppnas bredvid editorn, och bordets
@@ -35,9 +36,14 @@ test('the TV started from the editor leads back to the editor tab, and a way in 
   expect(page.context().pages(), 'no tab was opened for the way back').toHaveLength(tabs)
   expect(await kept(page), 'the editor was not loaded again').toBe(1)
 
-  // «Öppna bordet» in the Bord tab opens the table in the tab it already has: the TV's.
+  // «Öppna bordet» in the Bord tab opens the table in the tab it already has: the TV's, as its owner.
+  // It is the row's link that is pressed: the band's own appears beside it once the cards are
+  // rendered, and goes to the same tab by another address (below).
+  const session = new URL(tv.url()).searchParams.get('session')
   await page.getByRole('tab', { name: /^(Bord|Tables)$/ }).click()
-  await Promise.all([tv.waitForEvent('load'), page.getByRole('link', { name: /^(Öppna bordet|Open the table)/ }).first().click()])
+  await page.locator(`.byd-table-row[data-session="${session}"]`).getByRole('link', { name: /^(Öppna bordet|Open the table)/ }).click()
+  await expect.poll(() => new URL(tv.url()).searchParams.get('owner'), 'the row’s way in is the TV’s address now').toBe('1')
+  await expect(tv.locator('.byd-pile').first()).toBeVisible()
   expect(page.context().pages(), 'the table that has a tab opens in it').toHaveLength(tabs)
 
   // A table of computers seats the host beside the editor (#1286), and its «Öppna bordet» is that
@@ -75,4 +81,45 @@ test('the TV started from the editor leads back to the editor tab, and a way in 
   expect(page.context().pages()).toHaveLength(withSeat)
   expect(await kept(page)).toBe(1)
   await expect(online.locator('.byd-seat-name[data-me="true"]')).toBeAttached()
+})
+
+// The band's «Öppna bordet» (#1438). It appears once the cards are rendered (#765), so a render worker
+// runs beside the app, as on the box. Its address carries the host key in the fragment (#1306),
+// and the TV's tab already stands at the same address without it, since the screen took the key
+// out on arrival (#758). The browser therefore moves only the tab's fragment and loads nothing, and
+// the screen has to take the key out again: an address bar that keeps it hands the table's own
+// controls to a screen share or a photo of the television.
+test.describe('the band’s way into a TV that already has a tab', () => {
+  test.skip(process.env['BYD_E2E_STORE'] !== 'postgres', 'the renderer shares the Postgres queue; a memory run has none')
+  let worker: { stop: () => Promise<void> } | null = null
+  test.beforeAll(async () => {
+    worker = await renderWorker()
+  })
+  test.afterAll(async () => {
+    await worker?.stop()
+  })
+
+  test('brings the tab out without leaving the host key in its address', async ({ page }) => {
+    await logIn(page.request)
+    const project = await makeProject(page.request, { name: 'Fredagskort', players: 2, cards: 3 })
+    await page.goto(project.editorUrl)
+    await expect(page.getByText('Fredagskort').first()).toBeVisible()
+
+    await page.locator('header').getByRole('button', { name: /^(Starta bord|Start a table)$/ }).click()
+    const opened = page.context().waitForEvent('page')
+    await page.getByRole('dialog', { name: /^(Starta ett bord|Start a table)$/ }).getByRole('button', { name: /^(Starta|Start)$/ }).click()
+    const tv = await opened
+    await tv.waitForURL(/\/table\?/)
+    await expect(tv.locator('.byd-pile').first()).toBeVisible()
+    await expect.poll(() => tv.url(), 'the screen took the key out on arrival').not.toContain('host=')
+    const tabs = page.context().pages().length
+
+    // Without this the check below would pass before the press had reached the tab at all.
+    const reached = new Promise<void>((resolve) => tv.on('framenavigated', (frame) => frame === tv.mainFrame() && resolve()))
+    await page.locator('.byd-editor-table-ways').getByRole('link', { name: /^(Öppna bordet|Open the table)/ }).click()
+    await reached
+    await expect.poll(() => tv.url(), 'the key does not stay in the TV’s address').not.toContain('host=')
+    expect(page.context().pages(), 'the table that has a tab opens in it').toHaveLength(tabs)
+    await expect(tv.locator('.byd-pile').first()).toBeVisible()
+  })
 })

@@ -47,6 +47,16 @@ export function TablePage({ timing = DEFAULT_TIMING }: TablePageProps = {}) {
   const mode: TableMode = params.get('mode') === 'tv' ? 'tv' : 'table'
   // Read once and out of the address at once (#758): the key never stands in the address bar.
   const [host] = useState(() => takeHostKey(sessionId))
+  // A way in that carries the key into the tab that already shows this table — the editor band's
+  // «Öppna bordet» — differs from this address only in its fragment, so the browser loads nothing
+  // and the key would stand in the address bar after all (#1438). It is taken out the same way.
+  useEffect(() => {
+    const heard = () => {
+      if (new URLSearchParams(location.hash.slice(1)).has('host')) takeHostKey(sessionId)
+    }
+    addEventListener('hashchange', heard)
+    return () => removeEventListener('hashchange', heard)
+  }, [sessionId])
   const owner = params.get('owner') === '1'
   const url = params.get('server') ?? `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`
   const conn = useTableClient(sessionId ? { url, sessionId, seat: null, ...(host ? { host } : {}), ...(owner ? { owner: true } : {}), connectTimeoutMs: timing.connectTimeoutMs, retryPlanMs: timing.retryPlanMs, keepTryingMs: timing.keepTryingMs ?? KEEP_TRYING_MS } : null)
