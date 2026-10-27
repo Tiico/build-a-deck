@@ -58,6 +58,27 @@ const save = async () => {
   await waitFor(async () => expect((await stored()).rev).toBeGreaterThan(1))
 }
 
+
+// The print package's «Rita lådan ›» (#1418) opens the editor on the Låda tab, read once and taken out
+// of the address, as «Väntar på dig» opens Resultat (#1225).
+describe('the way to the box from the print package', () => {
+  it('opens on the Låda tab with open=box, and leaves the address the game\'s own', async () => {
+    await run.projects.create(run.projectId, deck())
+    history.replaceState(null, '', `/editor?project=${run.projectId}&open=box&server=${encodeURIComponent(run.http)}`)
+    render(
+      <Language lang="sv">
+        <StatusLive>
+          <EditorPage />
+        </StatusLive>
+      </Language>,
+    )
+    await waitFor(() => expect(screen.getByRole('tab', { name: 'Låda' }).getAttribute('aria-selected')).toBe('true'))
+    expect(document.querySelector('.byd-box-net')).not.toBeNull()
+    expect(new URLSearchParams(location.search).has('open')).toBe(false)
+    expect(new URLSearchParams(location.search).get('project')).toBe(run.projectId)
+  })
+})
+
 describe('fliken «Låda» syns när «Starta bord» går att använda (#1413, #1406 beslut 3)', () => {
   it('står efter Mall när bordet går att starta, och den växande lådan har ingen egen regel', async () => {
     await open()

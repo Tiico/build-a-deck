@@ -5011,6 +5011,7 @@ label.byd-ai-rules { cursor: pointer; }
 .byd-box-flaps .byd-box-thumb::before { content: ''; width: 14px; height: 14px; border: 1px solid #5b6275; border-radius: 2px; }
 /* The net on the room's chequerboard, fitted whole into it (`useFitted`). */
 .byd-box-stage { min-height: 0; background: repeating-conic-gradient(#20232b 0 25%, #1b1d23 0 50%) 0 0 / 24px 24px; }
+/* The print package draws the same net under .byd-print-box (#1418); a change here goes there too. */
 .byd-box-net { position: relative; flex: none; }
 .byd-box-lines { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
 /* Flaps in board grey, the cut drawn whole and the folds dashed in a grey that reads on a dark face

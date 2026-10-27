@@ -144,7 +144,9 @@ describe('exporting a whole game (G5, #527)', () => {
     expect(manifest.print.errors.map((e) => e.code)).toContain('text-too-small')
     // The data is the designer's whether or not it can go to a printer (G5).
     expect(manifest.versions).toHaveLength(3)
-    expect(Object.keys(files).filter((f) => f.startsWith('tryck/') && f !== manifest.print.rulebook)).toEqual([])
+    expect(Object.keys(files).filter((f) => f.startsWith('tryck/') && f !== manifest.print.rulebook && !f.startsWith('tryck/lada/'))).toEqual([])
+    // The checks read the cards: the box's faces go all the same (#1418).
+    expect(Object.keys(files).filter((f) => f.startsWith('tryck/lada/'))).toHaveLength(6)
     // The window that hands the zip over says what LASMIG says (#1356): which version, and how many
     // findings stopped its print files, read by a page on another origin too.
     expect(JSON.parse(res.headers.get('x-byd-export') ?? 'null')).toEqual({ rev: 3, errors: manifest.print.errors.length, failed: 0 })

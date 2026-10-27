@@ -6,7 +6,7 @@ import { DESK } from '../support/devices.js'
 import { renderWorker } from '../support/render.js'
 import { expect, test } from '../support/test.js'
 
-// The print package from «Mina spel» (#1208, beslut B 2026-10-23): the page with its five parts and
+// The print package from «Mina spel» (#1208, beslut B 2026-10-23): the page with its six parts and
 // its packing slip, prepared by Testtryckeriet as the box registers it, and the zip it hands over
 // once the renderer has drawn every file. The worker runs beside the app as it does on the box.
 // In Swedish all the way: `?lang=sv` on Mina spel is not carried to the page the menu opens, so the
@@ -39,7 +39,12 @@ test.describe('the print package', () => {
     await expect(page).toHaveURL(new RegExp(`/print-package\\?project=${id}`))
     await expect(page.getByRole('heading', { level: 1, name: /^Tryckpaketet/ })).toBeVisible()
     await expect(page).toHaveTitle('Skogens herrar · Tryckpaketet · Deckster')
-    for (const name of ['Så skärs ett kort', 'Leken: 3 kort', 'Det som inte trycks', 'Testtryckeriets krav', 'Paketet']) await expect(page.getByRole('region', { name })).toBeVisible()
+    for (const name of ['Så skärs ett kort', 'Leken: 3 kort', 'Lådan', 'Det som inte trycks', 'Testtryckeriets krav', 'Paketet']) await expect(page.getByRole('region', { name })).toBeVisible()
+    // Del 3 (#1418): the box, neutral, its net with every face drawn by the one renderer, and no file of it.
+    const box = page.getByRole('region', { name: 'Lådan' })
+    await expect(box).toContainText('Neutral: spelets namn och lekens färg.')
+    await expect(box.getByRole('img', { name: 'Lådans nät' }).locator('.byd-box-panel [data-card]')).toHaveCount(6)
+    await expect(box).toContainText('kommer när en tryckpartner är vald')
     const slip = page.getByRole('complementary', { name: 'Följesedel' })
     await expect(slip).toContainText('Exempel · inget riktigt pris')
     await expect(slip).toContainText('Testtryckeriet låtsas trycka i Sverige, inom EU.')
