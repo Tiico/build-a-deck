@@ -1005,7 +1005,7 @@ function FootBox({ doc, proposed, onOpen }: { doc: ProjectDoc; proposed: Readonl
   ) : (
     <span className="byd-wall-box" style={style}>
       {symbol}
-      {t('wall.foot.box', size)}
+      <span className="byd-wall-box-words">{t('wall.foot.box', size)}</span>
     </span>
   )
 }
