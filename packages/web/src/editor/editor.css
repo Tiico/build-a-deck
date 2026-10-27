@@ -178,7 +178,7 @@
      Linux) still cut a game called «Sal's Saloon» by 8–11 px at 6 and 12. */
   /* 2 px between the row's parts and none round the tabs since the eighth tab, «Låda» (#1413): with a
      table running the game's name was 36 px short on CI's DejaVu. */
-  .byd-editor > header { gap: 2px; padding: 0 var(--byd-s2); }
+  .byd-editor > header { --byd-head-gap: 2px; gap: var(--byd-head-gap); padding: 0 var(--byd-s2); }
   .byd-editor > header [role='tablist'] { margin-left: 0; padding: 0; }
   .byd-editor > header > .byd-editor-saved { font-size: 12px; }
   .byd-editor > header > .byd-editor-rev { padding: 4px 2px; } /* undantag: halva steget, mätt med DejaVu (#477) */
@@ -189,7 +189,7 @@
   /* The game's own ⋯ (#542) leans on the name beside it rather than on the row: its 44 px are a
      target and mostly air, the name is no control, and at 1024 in English with DejaVu the name was
      1 px short once the ⋯ and its gap were in the row. */
-  .byd-editor > header > .byd-editor-more { margin-left: -4px; }
+  .byd-editor > header > .byd-editor-more { margin-left: calc(-1 * var(--byd-head-gap)); }
 }
 /* Below 1440 on the desk the step buttons (#566) took the room the row had left (beslut 2026-09-30):
    measured on CI's DejaVu with a table running, the game's name and «Uppdatera bordet» were 19 to
@@ -210,7 +210,7 @@
   .byd-editor > header > .byd-editor-saved[data-unsaved='true'] > .byd-editor-saved-mark { width: 9px; height: 9px; border-radius: 50%; background: currentColor; }
   .byd-editor-primary-long { display: none; }
   .byd-editor-primary-short { display: inline; }
-  /* What the row has left goes to the tabs' air, and only up to the 12 px a side they have at 1440.
+  /* What the row has left goes to the tabs' air, and only up to the 8 px a side they have at 1440.
      A tab's own padding is the least it has; beside its word stand two empty columns that are
      nothing at its smallest and `--byd-tab-air` at its widest. So the tab list asks for its
      smallest as its start and its widest as its ceiling, grows into the row's rest before the
@@ -223,8 +223,9 @@
   .byd-editor > header [role='tab']::before,
   .byd-editor > header [role='tab']::after { content: ''; }
 }
+/* Never past the 8 px a side the tabs have at 1440 since the eighth tab, «Låda» (#1413). */
 @media (min-width: 1024px) and (max-width: 1279px) {
-  .byd-editor > header { --byd-tab-air: var(--byd-s2); }
+  .byd-editor > header { --byd-tab-air: var(--byd-s1); }
 }
 /* The same air, given more gently, where the desk is wide but not wide: at 1280 in English the row
    had 4 px left with DejaVu (#477). */
@@ -390,7 +391,9 @@
    button is exactly one target wide: the face, and pressing it opens the list that says the rest.
    A width and not a ceiling (#1250): the ceiling held only where it met every button's floor. */
 @media (min-width: 1024px) and (max-width: 1279px) {
-  .byd-editor > header > .byd-editor-here { width: var(--byd-tap); margin-left: 0; padding: 0; }
+  /* It keeps the 4 px it had from the tabs since the header's gap became 2 (#1413): the faces that
+     hang under it are wider than the door, and stand clear of the last tab only with them. */
+  .byd-editor > header > .byd-editor-here { width: var(--byd-tap); margin-left: calc(var(--byd-s1) - var(--byd-head-gap)); padding: 0; }
   .byd-editor > header > .byd-editor-here .byd-editor-here-word { display: none; }
 }
 .byd-editor-here:hover, .byd-editor-here[aria-expanded='true'] { background: #1b1d23; }
@@ -3497,9 +3500,9 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
 .byd-editor > header > .byd-editor-primary:has(+ .byd-editor-split) { border-radius: 8px 0 0 8px; }
 .byd-editor-split > .byd-editor-caret { border-radius: 0 8px 8px 0; margin-left: 0; padding: 8px 12px; font: inherit; cursor: pointer; }
 @media (min-width: 1024px) and (max-width: 1279px) {
-  /* The header's gap is 4 px in this band, so the caret takes back 4 and not 12: taking 12 laid
-     it over the last letters of the primary (#477). */
-  .byd-editor-split { margin-left: calc(-1 * var(--byd-s1)); }
+  /* The header's gap is its own in this band, so the caret takes back that and not 12: taking 12
+     laid it over the last letters of the primary (#477). */
+  .byd-editor-split { margin-left: calc(-1 * var(--byd-head-gap)); }
 }
 .byd-editor-ways {
   position: absolute;
