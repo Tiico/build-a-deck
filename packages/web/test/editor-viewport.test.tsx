@@ -9,7 +9,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { chromium, type Browser, type Page } from 'playwright'
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { projectDoc } from './project-doc.js'
@@ -207,7 +207,9 @@ async function tablesTab(width: number): Promise<Record<string, string>> {
     await screen.findByText('ingen sitter än')
     // The rest is in the row's menu, and a menu that is shut is targets nobody has ever measured —
     // which is exactly how `.byd-tables-ways` shipped at 32 px (#133).
-    fireEvent.click(screen.getByRole('button', { name: /^Fler val för bordet / }))
+    // The row's ⋯, not the band's: since #1422 the band under the header has one with the same name
+    // for the same table, so the press is scoped to the tab's own column.
+    fireEvent.click(within(document.querySelector<HTMLElement>('.byd-tables')!).getByRole('button', { name: /^Fler val för bordet / }))
     return { Bord: document.querySelector('.byd-editor')!.outerHTML }
   } finally {
     unmount()

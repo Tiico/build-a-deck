@@ -4,6 +4,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { userEvent } from '@testing-library/user-event'
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { TableClient } from '../src/client.js'
+import { seatColor } from '../src/table/seatColor.js'
 import { projectDoc } from './project-doc.js'
 import { buildBlankProject } from '../src/wizard/build.js'
 import { asSeat, asTable, registerRoom, startServer, type Running } from './fixture.js'
@@ -589,8 +590,88 @@ describe('the order of the layers (#18)', () => {
 // The host key rides in the link's fragment, which the browser sends in no request (#1306).
 const hostKeyOf = (href: string): string | null => new URLSearchParams(new URL(href).hash.slice(1)).get('host')
 
+// The band as the ticket (#1422, beställarens beslut B 2026-10-26 after the prototype in
+// docs/ux-audits/2026-10-26-bordsbandet): the code as a ticket at the left, the table's facts beside
+// it — the sentence, how you sit (L86), «Kopiera länk» — the seats on a row of their own, and
+// «Öppna bordet» and the ⋯ at the right. Every fact is read, not inferred from a place.
+describe('the table band as the ticket (#1422)', () => {
+  it('says how you sit, in the words the start asked with (L86)', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
+    render(<EditorPage />)
+    await screen.findByText('Skogens herrar')
+    fireEvent.click(screen.getByRole('button', { name: /starta bord/i }))
+    await answerStart()
+    await screen.findByText(/^[A-Z2-9]{6}$/, { selector: '[data-room-code]' })
+    const band = document.querySelector<HTMLElement>('.byd-editor-table-link')!
+    expect(within(band).getByText('Runt en skärm')).toBeTruthy()
+  })
+
+  it('has the way in the Bord row has — «Öppna bordet», named with its code and its own tab — and copies the room’s address', async () => {
+    const user = userEvent.setup()
+    await run.projects.create(run.projectId, projectDoc())
+    history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
+    render(<EditorPage />)
+    await screen.findByText('Skogens herrar')
+    fireEvent.click(screen.getByRole('button', { name: /starta bord/i }))
+    await answerStart()
+    const code = (await screen.findByText(/^[A-Z2-9]{6}$/, { selector: '[data-room-code]' })).textContent ?? ''
+    const band = document.querySelector<HTMLElement>('.byd-editor-table-link')!
+    // The ticket says what the code is, in the word the phone types it under (K12).
+    expect(within(band).getByText('rumskod')).toBeTruthy()
+    await run.completeRenders()
+    // The way in is the row's: the same word, the same name for a screen reader, and the same
+    // outlined form (L86) — a button to press, not a word in a sentence.
+    const way = await within(band).findByRole('link', { name: `Öppna bordet ${code} (öppnas i bordets egen flik)` })
+    expect(way.textContent).toBe('Öppna bordet')
+    expect(way.classList.contains('byd-secondary')).toBe(true)
+    // «Kopiera länk» stands beside the code and copies the room's address, as the row's does (L77).
+    await user.click(within(band).getByRole('button', { name: 'Kopiera länk' }))
+    expect(await within(band).findByText('Länken är kopierad. Skicka den till dem som ska spela.')).toBeTruthy()
+    expect(new URL(await navigator.clipboard.readText()).pathname).toBe(`/${code}`)
+  })
+
+  it('gives each seat a face in the seat’s own colour, for the eye only, and ends the table from its ⋯ after asking', async () => {
+    const user = userEvent.setup()
+    await run.projects.create(run.projectId, projectDoc())
+    history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
+    render(<EditorPage />)
+    await screen.findByText('Skogens herrar')
+    fireEvent.click(screen.getByRole('button', { name: /starta bord/i }))
+    await answerStart()
+    const code = (await screen.findByText(/^[A-Z2-9]{6}$/, { selector: '[data-room-code]' })).textContent ?? ''
+    await run.completeRenders()
+    const link = (await screen.findByRole('link', { name: /öppna bordet/i })) as HTMLAnchorElement
+    const sessionId = new URL(link.href).searchParams.get('session') ?? ''
+    registerRoom(sessionId, { code, hostKey: hostKeyOf(link.href) ?? '' })
+    const bo = TableClient.connect(await asSeat(run, sessionId, 'B', 'Bo'))
+    await bo.ready()
+    await bo.send({ v: 'seat.claim', seat: 'B', name: 'Bo' })
+    const chip = (await screen.findByRole('button', { name: 'Ta bort Bo' })).closest('[data-host-seat]')!
+    // The face: the first letter, in the colour the felt gives seat B (K9), and not read aloud —
+    // the chip's name is the seat's name, as before (L60).
+    const face = chip.querySelector<HTMLElement>('.byd-chip-face')!
+    expect(face.textContent).toBe('B')
+    expect(face.getAttribute('aria-hidden')).toBe('true')
+    expect(face.style.getPropertyValue('--seat')).toBe(seatColor(1))
+    expect(within(chip as HTMLElement).getByRole('button').textContent).toBe('')
+
+    // «Avsluta bordet» is the row's second choice (L86), now in the band's ⋯: it asks first (C9),
+    // and the band goes when the table has.
+    await user.click(screen.getByRole('button', { name: /^Fler val för bordet / }))
+    await user.click(await screen.findByRole('menuitem', { name: /^Avsluta bordet/ }))
+    const ask = await screen.findByRole('alertdialog', { name: `Avsluta bordet ${code}` })
+    expect(document.activeElement).toBe(within(ask).getByRole('button', { name: 'Avbryt' }))
+    await user.click(within(ask).getByRole('button', { name: 'Ja, avsluta' }))
+    await waitFor(() => expect(document.querySelector('.byd-editor-table-link')).toBeNull())
+    expect(screen.getByRole('button', { name: /starta bord/i })).toBeTruthy()
+    bo.close()
+  })
+})
+
 describe('the host\'s controls (DRIFT §9)', () => {
   it('shows the room code with "Ny kod", and each seated guest with a kick that frees the seat', async () => {
+    const user = userEvent.setup()
     await run.projects.create(run.projectId, projectDoc())
     history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
     render(<EditorPage />)
@@ -622,8 +703,11 @@ describe('the host\'s controls (DRIFT §9)', () => {
     // The code stays: a plain kick does not close the door, and the question said so by offering both.
     expect(screen.getByText(/^[A-Z2-9]{6}$/, { selector: '[data-room-code]' }).textContent).toBe(first)
 
-    // «Ny kod» asks too, and says what stops working; the answer is said in the band.
-    fireEvent.click(screen.getByRole('button', { name: 'Ny kod' }))
+    // «Ny kod» stands in the band's ⋯ since #1422. It asks too, and says what stops working; the
+    // answer is said in the band.
+    // The ⋯ is a real menu (APG), opened and taken with a pointer as a person would.
+    await user.click(screen.getByRole('button', { name: /^Fler val för bordet / }))
+    await user.click(await screen.findByRole('menuitem', { name: /^Ny kod/ }))
     const swap = await screen.findByRole('alertdialog', { name: 'Byt rumskod?' })
     expect(swap.textContent).toContain(`Koden ${first} slutar gälla på TV:n och i länkar du skickat`)
     fireEvent.click(within(swap).getByRole('button', { name: 'Byt kod' }))
@@ -657,6 +741,7 @@ describe('the host\'s controls (DRIFT §9)', () => {
   // «Ny kod» changes the host key too (#820): the editor's own link to the table and its kick go on
   // with the new key, since the one the table was started with opens nothing any more.
   it('carries the new host key after «Ny kod», in the link to the table and in a kick', async () => {
+    const user = userEvent.setup()
     await run.projects.create(run.projectId, projectDoc())
     history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
     render(<EditorPage />)
@@ -669,7 +754,9 @@ describe('the host\'s controls (DRIFT §9)', () => {
     const sessionId = new URL(link.href).searchParams.get('session') ?? ''
     const old = hostKeyOf(link.href) ?? ''
 
-    fireEvent.click(screen.getByRole('button', { name: 'Ny kod' }))
+    // The ⋯ is a real menu (APG), opened and taken with a pointer as a person would.
+    await user.click(screen.getByRole('button', { name: /^Fler val för bordet / }))
+    await user.click(await screen.findByRole('menuitem', { name: /^Ny kod/ }))
     fireEvent.click(within(await screen.findByRole('alertdialog', { name: 'Byt rumskod?' })).getByRole('button', { name: 'Byt kod' }))
     const code = await waitFor(() => {
       const shown = screen.getByText(/^[A-Z2-9]{6}$/, { selector: '[data-room-code]' }).textContent ?? ''

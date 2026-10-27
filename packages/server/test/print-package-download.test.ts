@@ -144,6 +144,29 @@ describe('the print package to download', () => {
     expect(strFromU8(files['LASMIG.md']!)).toMatch(/utelämnade: tryckkontrollen hittade \d+ fel/)
   }, 120_000)
 
+  // Del 3 (#1418, L91): the box stands in the package with its measure and whether it is drawn, and no
+  // file of it is sent: a printer's box files, with the die line and in CMYK, come with a chosen partner.
+  it('says the box as part 3, drawn or neutral, with its measure and net, and sends no file of it', async () => {
+    const front = { base: [{ kind: 'shape', id: 'ground', x: 0, y: 0, w: 65, h: 90, shape: 'rect', fill: '#7a2e1f' }], variants: {} }
+    await call('POST', '/projects', { id: 'p1', ...game(4), box: { type: { id: 'box.tuck', version: 1 }, locked: { depth: 20 }, faces: { front } } })
+    const summary = (await (await call('GET', '/projects/p1/print-package?to=SE')).json()) as Summary & { box: unknown }
+    const box = { type: { id: 'box.tuck', version: 1 }, size: { width: 65, height: 90, depth: 20 }, locked: { width: false, height: false, depth: true }, clearance: { around: 1, depth: 2 }, faces: ['front', 'back', 'left', 'right', 'lid', 'bottom'], drawn: ['front'], files: [] }
+    expect(summary.box).toMatchObject(box)
+    const res = await zipOf('/projects/p1/print-package/zip?provider=testtryckeriet&lang=sv')
+    const files = unzipSync(new Uint8Array(await res.arrayBuffer()))
+    expect(Object.keys(files).filter((f) => f.includes('lada'))).toEqual([])
+    const manifest = JSON.parse(strFromU8(files['manifest.json']!)) as { box: { net: { width: number; height: number } } }
+    expect(manifest.box).toMatchObject(box)
+    expect(manifest.box.net.width).toBeGreaterThan(130)
+    const sv = strFromU8(files['LASMIG.md']!)
+    expect(sv).toMatch(/Lådan är en tuckbox på 65 × 90 × 20 mm/)
+    expect(sv).toMatch(/1 av 6 ytor är ritad/)
+    expect(sv).toMatch(/kommer när en tryckpartner är vald/)
+    const en = strFromU8(unzipSync(new Uint8Array(await (await zipOf('/projects/p1/print-package/zip?provider=testtryckeriet&lang=en')).arrayBuffer()))['LASMIG.md']!)
+    expect(en).toMatch(/The box is a tuckbox of 65 × 90 × 20 mm/)
+    expect(en).toMatch(/come once a print partner is chosen/)
+  }, 120_000)
+
   it('speaks the reader\'s language in the readme and the name, and keeps the file names', async () => {
     await call('POST', '/projects', { id: 'p1', ...game(4) })
     const res = await zipOf('/projects/p1/print-package/zip?provider=testtryckeriet&lang=en')

@@ -142,7 +142,7 @@ export const svEditor = {
   'editor.table.retry': 'Försök igen',
   'editor.table.rendering': 'laddar kort {done}/{total}',
   'editor.table.stalled': 'laddningen har stannat. Korten på bordet visar sin text tills den fortsätter',
-  'editor.table.open': 'öppna bordet',
+  'editor.table.open': 'Öppna bordet',
   // Starta frågar hur ni sitter (L77, #1130): en gång, innan bordet finns. Svaret väljer vilken
   // skärm värden får, inte ett läge för bordet (C2).
   'editor.start.title': 'Starta ett bord',
@@ -183,7 +183,7 @@ export const svEditor = {
   'editor.reading.ask': 'Be ägaren om rätt att ändra. Sökning, zoom, visning, historik och jämförelse fungerar som vanligt.',
   'editor.reading.nothing': 'Läsläge: inget att spara.',
   'editor.readonly.refused': 'Läsläge: du kan läsa spelet men inte ändra det.',
-  'editor.seats.at': 'vid bordet:',
+  'editor.seats.at': 'vid bordet',
   'editor.seats.kick': 'Ta bort {name}',
   // × frågar först, och erbjuder att stänga dörren i samma andetag (#679, beslut C). Bandets vy är
   // lobbyns och bär inga zoner, så högen heter «leken» här.
@@ -1811,6 +1811,7 @@ export const svEditor = {
   'tables.update.of': 'Uppdatera bordet {table} till version {rev}',
   'tables.update.busy': 'Uppdaterar…',
   'tables.update.failed': 'Bordet kunde inte uppdateras. Försök igen om en stund.',
+  'tables.end.failed': 'Bordet kunde inte avslutas. Försök igen om en stund.',
   'tables.ended': 'avslutat',
   'tables.connecting': 'ansluter…',
   'tables.nobody': 'ingen sitter än',
