@@ -75,6 +75,22 @@ describe('fliken «Låda» syns när «Starta bord» går att använda (#1413, #
   })
 })
 
+// Heron i Mina spel visar lådan först när designern själv har öppnat den (#1416, L91). Att fliken
+// öppnas är ingen ändring av spelet: ingen redigering i loggen, ingen version och inget steg tillbaka.
+describe('att öppna fliken lägger lådan i heron (#1416)', () => {
+  it('säger till servern när fliken öppnas, och inte förr', async () => {
+    await open()
+    fireEvent.click(screen.getByRole('tab', { name: 'Mall' }))
+    await new Promise((r) => setTimeout(r, 50))
+    expect(await run.projects.boxOpened(run.projectId)).toBe(false)
+    await openBox()
+    await waitFor(async () => expect(await run.projects.boxOpened(run.projectId)).toBe(true))
+    expect((await stored()).rev).toBe(1)
+    expect(await run.projects.readEdits(run.projectId, 0)).toEqual([])
+    expect(screen.getByRole('button', { name: /^Ångra/ }).getAttribute('aria-disabled')).toBe('true')
+  })
+})
+
 describe('nätet (#1413)', () => {
   it('ritar sex ytor, flikar och linjer i lådans uträknade mått, och mäter som typen', async () => {
     await open()

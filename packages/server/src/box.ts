@@ -35,6 +35,40 @@ export function boxFaceOf(doc: Pick<ProjectDoc, 'rows' | 'box' | 'name' | 'templ
   return { drawn: false, template: { base: neutralFace(face, boxFaceSize(face, boxOf(doc).size), doc.name, deckColour(doc)), variants: {} } }
 }
 
+// Omslaget i heron i Mina spel (#1416, L91): lådan i C:s stilla form, framsidan och högra sidan, de
+// ytor en låda snett framifrån i ögonhöjd visar. Locket står inte med: lutad så lite som C:s form
+// lutar den blir lockets text några pixlar hög och läses som smuts. Varje yta som `boxFaceOf` ger den, så att heron
+// ritar samma låda som nätet och «Visa upp» (E2). Typen och måtten följer med, eftersom en yta ritas
+// i sitt eget mått, och lekens ikoner, typsnitt och palett, eftersom en ritad yta kan skriva dem.
+export const COVER_FACES = ['front', 'right'] as const satisfies readonly BoxFace[]
+export type CoverFace = (typeof COVER_FACES)[number]
+export type GameCover = {
+  type: { id: string; version: number }
+  size: GameBox['size']
+  faces: Record<CoverFace, BoxFaceDrawing>
+  icons: ProjectDoc['icons']
+  fonts?: ProjectDoc['fonts']
+  palette?: ProjectDoc['palette']
+}
+export function coverOf(doc: Pick<ProjectDoc, 'rows' | 'box' | 'name' | 'template' | 'icons' | 'fonts' | 'palette'>): GameCover {
+  const { type, size } = boxOf(doc)
+  return {
+    type: { id: type.id, version: type.version },
+    size,
+    faces: Object.fromEntries(COVER_FACES.map((face) => [face, boxFaceOf(doc, face)])) as Record<CoverFace, BoxFaceDrawing>,
+    icons: doc.icons,
+    ...(doc.fonts ? { fonts: doc.fonts } : {}),
+    ...(doc.palette ? { palette: doc.palette } : {}),
+  }
+}
+
+// Om heron visar omslaget (#1416): när designern har öppnat lådan, och när någon yta är ritad, för
+// att rita den är att ha öppnat den. Ett spel som kom med en import eller som en kopia bär sin ritade
+// låda men inte att fliken öppnades.
+export function showsCover(doc: Pick<ProjectDoc, 'box'>, opened: boolean): boolean {
+  return opened || Object.keys(doc.box?.faces ?? {}).length > 0
+}
+
 // Lekens färg: det kortets baksida, och annars framsidan, målas i över hela kortet. En lek som inte
 // målar något har en mörk kartong, så att namnet står ljust på den som på en ritad låda.
 const BOARD = '#2b3a4a'

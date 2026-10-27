@@ -1,6 +1,7 @@
 import { maskedWord, maskedWords } from '../masked.js'
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
-import { canDelete, canEdit, canStartTables, type CardFace, type Role } from '@byd/server/doc'
+import { canDelete, canEdit, canStartTables, type CardFace, type GameCover, type Role } from '@byd/server/doc'
+import { HOME_COVER_CARD_H, HeroBox } from './HeroBox.js'
 import { LandingPage } from './LandingPage.js'
 import { Help } from '../editor/HelpDrawer.js'
 import { Question } from '../editor/Question.js'
@@ -8,7 +9,7 @@ import { CardPreview } from '../editor/CardPreview.js'
 import { CARD_PX } from '../editor/corner.js'
 import { previewIcons } from '../editor/assets.js'
 import { previewFonts } from '../editor/fonts.js'
-import { dismissGone, duplicateProject, gameFan, logout, myAccount, myCards, myGone, myPlayed, myProjects, myUsage, myWaiting, removeProject, renameProject, returnToTable, runningTables, startTable, type GameWaiting, type GoneGame, type Played, type ProjectSummary, type RunningTable, type TermsStanding } from './api.js'
+import { dismissGone, duplicateProject, gameCover, gameFan, logout, myAccount, myCards, myGone, myPlayed, myProjects, myUsage, myWaiting, removeProject, renameProject, returnToTable, runningTables, startTable, type GameWaiting, type GoneGame, type Played, type ProjectSummary, type RunningTable, type TermsStanding } from './api.js'
 import { TermsDue, laterFor, putOff } from './terms-due.js'
 import { TermsOffer } from './TermsOffer.js'
 import { QuotaReached } from './quota.js'
@@ -224,17 +225,27 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
   // The hero's fan (#1204, beslut B): three of its cards, asked for once the list has said which game
   // leads, and held with the game it is for, so a fan never stands behind another game's card.
   const [fan, setFan] = useState<{ project: string; faces: CardFace[] } | null>(null)
-  const leading = projects?.reduce<ProjectSummary | null>((a, b) => (a && (a.savedAt ?? '') >= (b.savedAt ?? '') ? a : b), null)?.id
+  // Or its box (#1416, L91), once its designer has opened it: the box stands behind the first card
+  // in the fan's place, and the fan is not asked for.
+  const [cover, setCover] = useState<{ project: string; cover: GameCover } | null>(null)
+  const lead = projects?.reduce<ProjectSummary | null>((a, b) => (a && (a.savedAt ?? '') >= (b.savedAt ?? '') ? a : b), null)
+  const leading = lead?.id
+  const boxed = lead?.cover === true
   useEffect(() => {
     if (!leading) return
     let live = true
-    void gameFan(http, leading).then((faces) => {
-      if (live) setFan({ project: leading, faces })
-    }, () => undefined)
+    if (boxed)
+      void gameCover(http, leading).then((got) => {
+        if (live) setCover({ project: leading, cover: got })
+      }, () => undefined)
+    else
+      void gameFan(http, leading).then((faces) => {
+        if (live) setFan({ project: leading, faces })
+      }, () => undefined)
     return () => {
       live = false
     }
-  }, [leading, http])
+  }, [leading, boxed, http])
   useEffect(() => {
     setOffline(false)
     void myAccount(http)
@@ -657,17 +668,28 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
           {hero && (
             <section className="byd-home-hero" aria-labelledby="byd-home-hero">
               <div className="byd-home-game" data-project={hero.id} data-hero="">
-                {/* The fan opens the editor under the pointer; the keyboard has «Öppna editorn» beside it,
-                    so the fan is not a second stop on the way through the page. */}
+                {/* The fan, or the box once its designer has opened it (#1416), opens the editor under the
+                    pointer; the keyboard has «Öppna editorn» beside it, so it is not a second stop on the
+                    way through the page. */}
                 <a className="byd-home-open" aria-labelledby={`home-${hero.id}-name home-${hero.id}-line home-${hero.id}-card`} href={editorOf(hero)} onClick={toEditor(hero)} tabIndex={-1}>
-                  <span className="byd-home-fan">
-                    {(fan?.project === hero.id ? fan.faces.slice(1) : []).map((face, i) => (
-                      <span key={face.id} className="byd-home-fan-back" data-back={i}>
-                        <CardFaceDrawing project={`${hero.id}-fan-${i}`} face={face} assetBase={http} h={HOME_HERO_H} />
-                      </span>
-                    ))}
-                    <GameCard project={hero.id} peek={hero.card ?? null} face={cards?.[hero.id] ?? null} lost={cardsLost} assetBase={http} t={t} h={HOME_HERO_H} />
-                  </span>
+                  {hero.cover ? (
+                    <HeroBox
+                      project={hero.id}
+                      cover={cover?.project === hero.id ? cover.cover : null}
+                      assetBase={http}
+                      label={t('home.card.box', { name: hero.name })}
+                      card={<GameCard project={hero.id} peek={hero.card ?? null} face={cards?.[hero.id] ?? null} lost={cardsLost} assetBase={http} t={t} h={HOME_COVER_CARD_H} />}
+                    />
+                  ) : (
+                    <span className="byd-home-fan">
+                      {(fan?.project === hero.id ? fan.faces.slice(1) : []).map((face, i) => (
+                        <span key={face.id} className="byd-home-fan-back" data-back={i}>
+                          <CardFaceDrawing project={`${hero.id}-fan-${i}`} face={face} assetBase={http} h={HOME_HERO_H} />
+                        </span>
+                      ))}
+                      <GameCard project={hero.id} peek={hero.card ?? null} face={cards?.[hero.id] ?? null} lost={cardsLost} assetBase={http} t={t} h={HOME_HERO_H} />
+                    </span>
+                  )}
                 </a>
                 <div className="byd-home-hero-text">
                   <h2 id="byd-home-hero" className="byd-home-h2">{t('home.hero.title')}</h2>

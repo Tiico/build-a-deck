@@ -117,6 +117,10 @@ create unique index if not exists guest_tokens_live_seat
 alter table projects add column if not exists owner text;
 create index if not exists projects_owner on projects (owner);
 
+-- When a designer first opened the game's box (#1416, L91): the hero in Mina spel shows the box from
+-- then on. On the game and not in its document, since opening a tab is no change to the game.
+alter table projects add column if not exists box_opened_at timestamptz;
+
 -- The account a table is borne by (A2, #1194): the one its cost is counted against. Set when the
 -- table is started, to the game's owner (never the test leader who pressed) or to the account at
 -- the raw door, and kept when the game is taken away. Text, as `projects.owner` is.

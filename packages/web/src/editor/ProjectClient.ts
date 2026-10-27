@@ -1623,6 +1623,24 @@ export class ProjectClient {
     return { ok: true, rev }
   }
 
+  // The designer has opened the game's box (#1416, L91): the hero in Mina spel shows it from then on.
+  // Asked once per editor, and only by whoever may edit, since a tester looking is not the designer.
+  // No edit and no version, so it never reaches the undo stack; a request that fails is asked again
+  // the next time the tab opens.
+  private boxSaid = false
+  openedBox(): void {
+    if (this.boxSaid || !this.mayEdit) return
+    this.boxSaid = true
+    void fetch(`${this.http}/projects/${encodeURIComponent(this.id)}/box/opened`, withCredentials({ method: 'POST' })).then(
+      (res) => {
+        if (!res.ok) this.boxSaid = false
+      },
+      () => {
+        this.boxSaid = false
+      },
+    )
+  }
+
   // The tables started from this game (#19), newest first. The editor keeps no list of its own:
   // a table is a session that names the project, and the server is the one that knows.
   async tables(): Promise<TableSummary[]> {

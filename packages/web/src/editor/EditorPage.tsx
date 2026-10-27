@@ -249,6 +249,10 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         : (document.querySelector<HTMLElement>(`[data-layer="${CSS.escape(focusNext.layer)}"] .byd-layer-pick`) ?? document.getElementById(panelId('template')))
     target?.focus()
   }, [focusNext])
+  // The box's tab open is the box opened (#1416): the hero in Mina spel shows it from then on.
+  useEffect(() => {
+    if (mode === 'box') client?.openedBox()
+  }, [mode, client])
   // Set the moment the designer has answered the question herself. Every way out of the editor is
   // a page load, so without this the browser would ask her the same thing a second time.
   const answered = useRef(false)

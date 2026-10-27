@@ -9206,7 +9206,17 @@ Lådans text vid skapandet skrivs på designerns språk och blir hennes (A4).
 Byggt 2026-10-26 (#1412): typen, måtten, låsen, luften och raden i Fysisk kontroll.
 Byggt 2026-10-27 (#1413): fliken «Låda» och nätet, där en yta redigeras av Malls egen duk med kortets redigeringar märkta `on: 'box'`, och en yta som inte är ritad är den neutrala (`boxFaceOf`) tills designern först ändrar den.
 Fliken följer knappen «Starta bord», som i dag står för varje roll som får starta bord, också med en tom lek.
-«Visa upp» (#1414), lådan i foten (#1415), heron (#1416), länkbilden (#1417) och exporten (#1418) är egna skivor.
+Byggt 2026-10-27 (#1416): heron i Mina spel visar lådan i C:s stilla form, framsidan och högra sidan vridna 24° bakom lekens första kort, när designern har öppnat fliken «Låda».
+Att hon har öppnat den sparas på spelet, i `projects.box_opened_at` (`openBox` och `boxOpened` i `ProjectStore`), och inte i dokumentet eller på kontot.
+I dokumentet hade öppnandet varit en redigering, med en version och ett steg att ångra, och en äldre version som togs tillbaka hade tagit det med sig.
+På kontot hade heron sett olika ut för ägaren och en medredigerare, och länkbilden, som också den som inte har loggat in ser, hade inte haft något konto att fråga.
+Den som får redigera spelet markerar det (`POST /projects/:id/box/opened`), när fliken öppnas i editorn; en testare eller läsare som tittar ritar ingen låda åt designern.
+Heron visar lådan också när någon yta är ritad, eftersom att rita den är att ha öppnat den och en import eller en kopia bär den ritade lådan men inte att fliken öppnades (`showsCover`).
+`GET /projects` säger `cover`, så att herons plats är lådans från första skärmen, och `GET /projects/:id/cover` bär ytorna efter listan, som solfjädern.
+Locket står inte med: lutad så lite som prototypen lutar den blir lockets text några pixlar hög och läses som smuts.
+Kortet täcker sidan och framsidans nedre hörn och inte mer, så att spelets namn på en låda som inte är ritad står helt.
+Länkbilden (#1417) följer heron genom samma två frågor, `boxOpened` och `showsCover`.
+«Visa upp» (#1414), lådan i foten (#1415), länkbilden (#1417) och exporten (#1418) är egna skivor.
 
 ### L92. Designern låser vilken kolumn som står still i Tabell, och titeln är låst från start (prototypat och beslutat 2026-10-26, #1408)
 
