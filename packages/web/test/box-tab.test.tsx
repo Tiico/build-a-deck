@@ -405,14 +405,35 @@ describe('«Visa upp» (#1414)', () => {
     expect(panel('lid').hasAttribute('data-chosen')).toBe(true)
   })
 
+  // Direkt betyder att vikningen aldrig ritas (#1441): bilden står i `show` i första commit den finns i,
+  // och Escape tar bort den i samma tryck, utan `unfolding` eller `settling` emellan. Ingen väggklocka:
+  // varje läge bilden någonsin ritas i samlas av en MutationObserver.
   it('byter läge direkt vid prefers-reduced-motion', async () => {
     still(true)
     await open()
     await openBox()
-    fireEvent.click(screen.getByRole('button', { name: 'Visa upp' }))
-    await waitFor(() => expect(shown()?.dataset['look']).toBe('show'), { timeout: 200 })
-    fireEvent.keyDown(window, { key: 'Escape' })
-    await waitFor(() => expect(shown()).toBeNull(), { timeout: 200 })
+    const looks: string[] = []
+    const seen = () => {
+      // Nätet räknas först när bilden har funnits: före den står fliken på nätet som alltid.
+      const look = shown()?.dataset['look'] ?? (looks.length > 0 ? 'net' : null)
+      if (look && looks.at(-1) !== look) looks.push(look)
+    }
+    const watch = new MutationObserver(seen)
+    watch.observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['data-look'] })
+    try {
+      fireEvent.click(screen.getByRole('button', { name: 'Visa upp' }))
+      // Bildens eget kodstycke kan behöva hämtas första gången; det är ingen rörelse.
+      await waitFor(() => expect(shown()).not.toBeNull())
+      seen()
+      expect(looks).toEqual(['show'])
+      fireEvent.keyDown(window, { key: 'Escape' })
+      expect(shown()).toBeNull()
+      seen()
+      expect(looks).toEqual(['show', 'net'])
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Visa upp' }))
+    } finally {
+      watch.disconnect()
+    }
   })
 
   it('öppnar på produktbilden från Mina spel, och adressen blir spelets egen', async () => {
