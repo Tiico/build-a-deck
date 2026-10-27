@@ -30,6 +30,7 @@ import { inviteMail } from './invite-mail.js'
 import { NAME_MAX, nameOf } from './account-name.js'
 import { printExportOf, queueFaces } from './faces.js'
 import { printFileJobsOf, printManifestOf, type PrintFileJob } from './print-files.js'
+import { boxFactsOf, boxPrintOf } from './box-print.js'
 import { Country, routeOrder, widestBleedMm, type PrintManifest, type PrintProvider, type Route } from '@byd/print'
 import { PRINT_PACKAGE_FORMAT, PRINT_PACKAGE_FORMAT_VERSION, packPrintPackage, printPackageDisposition, printPackageReadme, printPathOf, type PrintPackageManifest } from './print-package.js'
 import { EXPORT_FORMAT, EXPORT_FORMAT_VERSION, EXPORT_SUMMARY_HEADER, ProjectExport, RULEBOOK_FILE, assetFileOf, assetHashesOf, duplicatedName, exportDisposition, exportSummaryOf, importedName, packExport, printFileOf, readExport, readmeOf, type ImportProblem } from './export.js'
@@ -1463,7 +1464,12 @@ async function printPlanOf(opts: ServerOptions, rec: ProjectRecord, lang: Return
   }
   const rulebook = rec.rules ? RULEBOOK_FILE : undefined
   if (rec.rules) jobs.push({ file: RULEBOOK_FILE, job: await bookletJobOf(opts, rec, rec.rules, lang) })
-  return { cards, rulebook, warnings, errors, jobs }
+  // The box's faces (#1418), drawn or neutral, whatever the checks say of the cards: the checks read
+  // the cards, and the box is the designer's data as much as they are (G5).
+  const assets = opts.assets
+  const box = await boxPrintOf(rec, await deckOf(opts, rec), clock(opts).getTime(), assets ? (template) => resolveTemplate(template, assets, rec.pictures ?? {}) : undefined)
+  jobs.push(...box.jobs)
+  return { cards, rulebook, warnings, errors, jobs, box: box.box }
 }
 
 // The print package of a version for one provider (F1, F2, #1207): the order it would get, prepared
@@ -2526,7 +2532,7 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       assets,
       absent,
       ...(blocked.length > 0 ? { blocked: blocked.map((b) => ({ hash: b.hash, since: b.at })) } : {}),
-      print: { rev: rec.rev, cards: plan.cards, ...(plan.rulebook && prints.has(plan.rulebook) ? { rulebook: plan.rulebook } : {}), credits: creditsOf(rec), warnings: plan.warnings, errors: plan.errors, failed },
+      print: { rev: rec.rev, cards: plan.cards, ...(plan.rulebook && prints.has(plan.rulebook) ? { rulebook: plan.rulebook } : {}), credits: creditsOf(rec), warnings: plan.warnings, errors: plan.errors, failed, box: plan.box },
     })
     const zip = packExport({ manifest, readme: readmeOf(lang, manifest), assets: assetFiles, prints })
     res.writeHead(200, { 'content-type': 'application/zip', 'content-length': String(zip.length), 'content-disposition': exportDisposition(rec.name, rec.rev), [EXPORT_SUMMARY_HEADER]: exportSummaryOf(manifest), 'cache-control': 'no-store' })
