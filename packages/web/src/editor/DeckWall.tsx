@@ -1,9 +1,9 @@
 import type { ChangedCell } from '@byd/server/proposal'
 import { cellLine } from './proposals.js'
-import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import type { ProjectDoc } from '@byd/server'
 import { oversetOf, type FitReport, type Motif, type Warning } from '@byd/template'
-import { boxOf, titleOfRow, type GameBox } from '@byd/server/doc'
+import { boxFaceOf, boxOf, titleOfRow, type GameBox } from '@byd/server/doc'
 import { CardPreview } from './CardPreview.js'
 import { OversetMarks } from './OversetMarks.js'
 import { overflowing, oversetWords } from './overset.js'
@@ -25,6 +25,7 @@ import { useLang, useT, type Key, type T } from '../i18n/index.js'
 import { READING_VIEWS, SCREENS, textPxOnCard, type ReadingView } from '../legibility.js'
 import { Help } from './HelpDrawer.js'
 import { FootSaid } from './said.js'
+import { ChevronGlyph } from '../glyphs.js'
 import { useDoor } from '../doors.js'
 
 export type DeckWallProps = {
@@ -72,6 +73,11 @@ export type DeckWallProps = {
   // The way to the print package (#1208, beslut B): what would be sent to a printer, with these
   // checks applied. Only for those who may take the package.
   printPackage?: { href: string; onGo(from: HTMLElement): void } | undefined
+  // The box in the foot (#1415, L91, introduktion 2): asked for by the editor where the box is
+  // anything to it, which is everywhere but a phone (L10). From the first card it stands at the
+  // foot's far end with its measures and grows with the deck; `onOpen` is there once the deck is
+  // playable, and then the line is the way to the tab «Låda».
+  box?: { onOpen?: (() => void) | undefined } | undefined
 }
 
 // What the wall is read at (L81): the width it is drawn in, and the eye it is seen with, are two
@@ -123,7 +129,7 @@ export type Panel = 'view' | 'checks'
 // The deck as a wall (C as the home view): every row as a card, copies and faults on each, the
 // whole deck visible at once — a balance change on forty cards is seen as one thing. Beside it
 // the physical checks (E5), gathered by kind, and the eyes to read the deck with.
-export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement, assetBase, motifs, onFixChecks, onAddCard, onOpenTemplate, onOpenFonts, onOpenRow, view, onView, readOnly = false, proposed, changed, redrawn, printPackage }: DeckWallProps) {
+export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement, assetBase, motifs, onFixChecks, onAddCard, onOpenTemplate, onOpenFonts, onOpenRow, view, onView, readOnly = false, proposed, changed, redrawn, printPackage, box: footBox }: DeckWallProps) {
   const t = useT()
   // What was mended is said out loud: an edit that changes the template under a deck of forty
   // cards and says nothing is the silence #32 forbids.
@@ -835,6 +841,7 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
         )}
         {/* What just happened, after what the wall adds up to (#698, beslut B). */}
         <FootSaid />
+        {footBox && <FootBox doc={doc} proposed={proposed} onOpen={footBox.onOpen} />}
       </CrownFoot>
     </div>
   )
@@ -969,6 +976,63 @@ function Checks({
     </div>
   )
 }
+
+// Lådan i foten (#1415, L91, introduktion 2): en liten neutral låda längst ut i kortväggens fot, från
+// första kortet, med måtten `boxOf` räknar för nätet och kontrollen, och lika djup som leken. Den tar
+// en rad i foten och inget mer: ingen ruta, ingen notis och ingen rörelse, så den står aldrig i vägen
+// för den som bara gör kort. När leken är spelbar är raden en knapp till fliken «Låda».
+// Symbolen är ett tecken för måtten och ritar ingen av lådans ytor; ytorna ritas av renderaren (E2).
+// Ett förslags kort är inte lekens än (#1002), så lådan räknar dem inte.
+function FootBox({ doc, proposed, onOpen }: { doc: ProjectDoc; proposed: ReadonlySet<string> | undefined; onOpen: (() => void) | undefined }) {
+  const t = useT()
+  const { lang } = useLang()
+  const own = useMemo(() => (proposed && proposed.size > 0 ? { ...doc, rows: doc.rows.filter((row) => !proposed.has(row.id)) } : doc), [doc, proposed])
+  const fit = useMemo(() => boxOf(own), [own])
+  if (fit.deckMm <= 0) return null
+  const mm = (n: number) => n.toLocaleString(lang, { maximumFractionDigits: 2 })
+  const size = { w: mm(fit.size.width), h: mm(fit.size.height), d: mm(fit.size.depth) }
+  const style = { '--byd-wall-box-colour': deckColourOf(own) } as CSSProperties
+  // How deep the symbol is drawn: the box's depth against its height, as the box stands on a shelf.
+  const symbol = <BoxSymbol depth={fit.size.depth / fit.size.height} />
+  return onOpen ? (
+    <button type="button" className="byd-wall-box" data-open style={style} onClick={onOpen}>
+      {symbol}
+      <span className="byd-wall-box-words">{t('wall.foot.box.open', size)}</span>
+      <span className="byd-wall-box-way" aria-hidden="true">
+        <ChevronGlyph to="right" />
+      </span>
+    </button>
+  ) : (
+    <span className="byd-wall-box" style={style}>
+      {symbol}
+      {t('wall.foot.box', size)}
+    </span>
+  )
+}
+
+// The box's colour is the neutral box's, the deck's own (#1406, beslut 5): the ground of its front.
+function deckColourOf(doc: ProjectDoc): string {
+  const ground = boxFaceOf(doc, 'front').template.base[0]
+  return ground?.kind === 'shape' && typeof ground.fill === 'string' ? ground.fill : 'currentColor'
+}
+
+// A box standing three-quarters on, as the prototype draws it (#1406 runda 2): its front, and the top
+// and the side as deep as the deck against the box's height. A sign for the measure and not a face.
+function BoxSymbol({ depth }: { depth: number }) {
+  const [x, y, w, h] = [6, 8, 14, 20]
+  // A line's width more than the measure, so it can be seen at the first card and still grows with every
+  // card after it; and never out of its square however large the deck.
+  const d = Math.min(12, 1 + depth * h)
+  const [dx, dy] = [round(d * 0.7), round(d * 0.5)]
+  return (
+    <svg className="byd-wall-box-symbol" viewBox="0 0 30 30" aria-hidden="true" focusable="false">
+      <polygon className="byd-wall-box-top" points={`${x},${y} ${x + w},${y} ${x + w + dx},${y - dy} ${x + dx},${y - dy}`} />
+      <polygon className="byd-wall-box-side" points={`${x + w},${y} ${x + w + dx},${y - dy} ${x + w + dx},${y + h - dy} ${x + w},${y + h}`} />
+      <rect className="byd-wall-box-front" x={x} y={y} width={w} height={h} />
+    </svg>
+  )
+}
+const round = (n: number) => Math.round(n * 100) / 100
 
 // Lådan som inte rymmer leken (#1412, #1406): hur många kort som inte får plats, och det låsta mått
 // som håller dem ute, i läsarens ord (A4). En varning och inget fel: leken trycks som förut, och

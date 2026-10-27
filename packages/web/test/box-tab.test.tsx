@@ -65,6 +65,23 @@ describe('fliken «Låda» syns när «Starta bord» går att använda (#1413, #
     expect(tabs()).toEqual(['Kortvägg', 'Mall', 'Låda', 'Tabell', 'Speltema', 'Media', 'Regler', 'Bord'])
   })
 
+  // Spelbar är en lek med minst ett kort (#1415, beställarens beslut 2026-10-27): ett tomt spel har varken
+  // «Starta bord» eller fliken, och lådan växer bara i foten tills det första kortet gör leken spelbar.
+  it('saknas med «Starta bord» i ett tomt spel, och kommer med första kortet', async () => {
+    await open({ ...projectDoc(), rows: [] })
+    expect(screen.queryByRole('button', { name: /starta bord/i })).toBeNull()
+    expect(tabs()).toEqual(['Kortvägg', 'Mall', 'Tabell', 'Speltema', 'Media', 'Regler', 'Bord'])
+    expect(document.querySelector('.byd-wall-box')).toBeNull()
+    fireEvent.click(await screen.findByRole('button', { name: '+ Nytt kort' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: /starta bord/i })).toBeTruthy())
+    expect(tabs()).toEqual(['Kortvägg', 'Mall', 'Låda', 'Tabell', 'Speltema', 'Media', 'Regler', 'Bord'])
+    fireEvent.click(screen.getByRole('tab', { name: 'Kortvägg' }))
+    const box = await screen.findByRole('button', { name: 'Låda 65 × 90 × 2,5 mm' })
+    fireEvent.click(box)
+    await waitFor(() => expect(document.querySelector('.byd-box-net')).not.toBeNull())
+    expect(screen.getByRole('tab', { name: 'Låda' }).getAttribute('aria-selected')).toBe('true')
+  })
+
   it('finns inte förrän då, varken bland flikarna eller bland stegen under skrivbordet', () => {
     expect(modesFor(false)).toEqual(MODES)
     expect(modesFor(true).map(([m]) => m)).toEqual(['wall', 'template', 'box', 'table', 'theme', 'media', 'rules', 'tables'])

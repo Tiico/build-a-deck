@@ -8,7 +8,7 @@ import { BOX_SIDES, type BoxClearance, type BoxFace, type BoxSide } from '@byd/e
 import { Unauthorized, withCredentials } from '../account/api.js'
 import { QuotaReached, quotaIn, quotaOf, type Quota } from '../account/quota.js'
 import { QuotaSaid, quotaWords, type QuotaDoing } from '../account/quota-words.js'
-import { applyEdit, boxFaceOf, cellColumn, changeOf, copiesOf, decideEdit, joined, plainEdits, recipeOf, revertOf, type Change, type Clearable, type ColumnKind, type Die, type EditIntent, type Recipe, type RecipeWords, type SeatRole, type Zone, type ZonePatch } from '@byd/server/doc'
+import { applyEdit, boxFaceOf, cellColumn, changeOf, copiesOf, decideEdit, joined, plainEdits, playable, recipeOf, revertOf, type Change, type Clearable, type ColumnKind, type Die, type EditIntent, type Recipe, type RecipeWords, type SeatRole, type Zone, type ZonePatch } from '@byd/server/doc'
 import { ASSET_PREFIX, assetBytesUrl, assetRef, assetRefOf } from './assets.js'
 import { measureAsset } from './motifs.js'
 import type { Motif } from '@byd/template'
@@ -547,6 +547,14 @@ export class ProjectClient {
   // Whether this account may start and run tables (D3): a tester may, a viewer may not (#489).
   get mayStartTables(): boolean {
     return this.role === null || canStartTables(this.role)
+  }
+
+  // Whether a table can be started from this game now (#1415, L91, beställarens beslut 2026-10-27):
+  // the role may, and the deck is playable, which is a deck with at least one card. «Starta bord»
+  // stands exactly when this is true, and the box's tab comes with it (#1406, beslut 3); the server
+  // refuses the rest. The tables a game already has are the role's alone (`mayStartTables`).
+  get startable(): boolean {
+    return this.mayStartTables && playable(this.doc)
   }
 
   // The door for everything that sends bytes before it edits (#489): a file chosen by a role that
