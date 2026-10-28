@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { CARD_STANDARD_63x88 } from '@byd/engine'
 import { contrastRatio, distance, remedyFor, simulate, validateCard, type Issue } from '../src/validate.js'
+import { textFloorPt } from '../src/fit.js'
 import type { FitReport } from '../src/dom-fit.js'
 import type { Element, FaceTemplate } from '../src/model.js'
 
@@ -105,6 +106,23 @@ describe('physical validation (E5): what looks fine on a screen and fails in the
 // A coloured icon layer (#1087) is graphics, and WCAG holds graphics to 3:1 against what is behind
 // them — the same floor as text's error, with no second rung, since an icon is not read letter by
 // letter. A layer without a colour is the file's own ink and is not something this check can see.
+describe('the text floor (E5) is one reading of the type and the script', () => {
+  it('reads the floor for the script of the words, and the Latin one for a script the type does not name', () => {
+    const print = { minPtByScript: { Latn: 6, Hani: 8 } }
+    expect(textFloorPt(print, 'Skogens råd')).toBe(6)
+    expect(textFloorPt(print, '森の評議会')).toBe(8)
+    expect(textFloorPt(print, 'مجلس الغابة')).toBe(6)
+    expect(textFloorPt({ minPtByScript: {} }, 'Skogens råd')).toBe(6)
+  })
+
+  it('is the floor the check holds a text to', () => {
+    const at = (sizePt: number, literal: string) => codes(check([bg(), text({ bind: { literal }, font: { family: 'system-ui', sizePt } })]))
+    const floor = textFloorPt(CARD_STANDARD_63x88.print, '森の評議会')
+    expect(at(floor - 0.5, '森の評議会')).toContain('text-too-small:error')
+    expect(at(floor, '森の評議会')).not.toContain('text-too-small:error')
+  })
+})
+
 describe('an icon layer in a colour of its own is read against what lies behind it (E5, #1087)', () => {
   const icon = (over: Partial<Extract<Element, { kind: 'icons' }>> = {}): Element => ({ kind: 'icons', id: 'typ', x: 50, y: 6, w: 8, h: 8, bind: { literal: 'svard' }, iconMm: 8, ...over })
 

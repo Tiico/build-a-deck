@@ -1,5 +1,5 @@
 import { BOX_TYPES, CARD_STANDARD_63x88, TUCKBOX, TypeRegistry, boxFaceSize, boxFit, type BoxCard, type BoxFace, type BoxFit, type BoxTypeDef } from '@byd/engine'
-import type { Element, FaceTemplate } from '@byd/template'
+import { textFloorPt, type Element, type FaceTemplate } from '@byd/template'
 import type { ProjectBox, ProjectDoc } from './projects.js'
 import { copiesOf } from './setup.js'
 
@@ -32,7 +32,8 @@ export type BoxFaceDrawing = { drawn: boolean; template: FaceTemplate }
 export function boxFaceOf(doc: Pick<ProjectDoc, 'rows' | 'box' | 'name' | 'template'>, face: BoxFace): BoxFaceDrawing {
   const own = doc.box?.faces?.[face]
   if (own) return { drawn: true, template: own }
-  return { drawn: false, template: { base: neutralFace(face, boxFaceSize(face, boxOf(doc).size), doc.name, deckColour(doc)), variants: {} } }
+  const { type, size } = boxOf(doc)
+  return { drawn: false, template: { base: neutralFace(face, boxFaceSize(face, size), doc.name, deckColour(doc), textFloorPt(type.print, doc.name)), variants: {} } }
 }
 
 // Omslaget i heron i Mina spel (#1416, L91): lådan i C:s stilla form, framsidan och högra sidan, de
@@ -91,12 +92,19 @@ function inkOn(colour: string): string {
   return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.35 ? '#1b1d23' : '#f3ecdc'
 }
 const PT_PER_MM = 72 / 25.4
-function neutralFace(face: BoxFace, { widthMm: w, heightMm: h }: { widthMm: number; heightMm: number }, name: string, fill: string): Element[] {
-  const ink = inkOn(fill)
-  const ground: Element = { kind: 'shape', id: 'ground', x: 0, y: 0, w, h, shape: 'rect', fill }
+function neutralFace(face: BoxFace, size: { widthMm: number; heightMm: number }, name: string, fill: string, floorPt: number): Element[] {
+  const ground: Element = { kind: 'shape', id: 'ground', x: 0, y: 0, w: size.widthMm, h: size.heightMm, shape: 'rect', fill }
   // Namnet bärs av framsidan, locket och sidorna, där en låda i en hylla läses; baksidan och botten
   // är bara färg.
   if (face === 'back' || face === 'bottom') return [ground]
+  // Och bara där det blir minst så stort som E5:s textgolv för tryck i namnets skrift (#1458): på en
+  // tunn låda blev namnet längs ryggen och på locket knappt en millimeter högt. Där är ytan bara
+  // lekens färg, och designern lägger en text där själv om hon vill.
+  const title = nameOn(face, size, name, inkOn(fill))
+  return title.font.sizePt >= floorPt ? [ground, title] : [ground]
+}
+type NameElement = Extract<Element, { kind: 'text' }>
+function nameOn(face: 'front' | 'left' | 'right' | 'lid', { widthMm: w, heightMm: h }: { widthMm: number; heightMm: number }, name: string, ink: string): NameElement {
   // Luften runt namnet är 3 mm, men aldrig mer än en fjärdedel av ytans mått på den ledden (#1448):
   // en lek på högst 13 kort ger en rygg och ett lock under 6 mm, och där gav 3 mm från båda kanterna
   // en ruta med negativ bredd, en mall ingen redigering kunde lägga in. Rutan är alltså alltid minst
@@ -111,27 +119,24 @@ function neutralFace(face: BoxFace, { widthMm: w, heightMm: h }: { widthMm: numb
   // bokstavens höjd tas ur ryggens bredd, lådans djup; ett namn som är för långt krymper (E6).
   if (face === 'left' || face === 'right') {
     const across = round(w - 2 * airX)
-    return [
-      ground,
-      {
-        kind: 'text',
-        id: 'title',
-        x: round(airX),
-        y: round(airY),
-        w: across,
-        h: round(h - 2 * airY),
-        bind: { literal: name },
-        font: { family: 'sans-serif', sizePt: pt(Math.min(9, across * 0.32)), weight: 700, align: 'center' },
-        color: ink,
-        fit: 'shrink',
-        valign: 'middle',
-        rotationDeg: face === 'left' ? 90 : -90,
-      },
-    ]
+    return {
+      kind: 'text',
+      id: 'title',
+      x: round(airX),
+      y: round(airY),
+      w: across,
+      h: round(h - 2 * airY),
+      bind: { literal: name },
+      font: { family: 'sans-serif', sizePt: pt(Math.min(9, across * 0.32)), weight: 700, align: 'center' },
+      color: ink,
+      fit: 'shrink',
+      valign: 'middle',
+      rotationDeg: face === 'left' ? 90 : -90,
+    }
   }
   const sizeMm = face === 'front' ? w * 0.11 : Math.min(5, h * 0.16)
   const boxH = face === 'front' ? Math.min(h - 2 * airY, sizeMm * 3) : h - 2 * airY
-  const text: Element = {
+  return {
     kind: 'text',
     id: 'title',
     x: round(airX),
@@ -144,7 +149,6 @@ function neutralFace(face: BoxFace, { widthMm: w, heightMm: h }: { widthMm: numb
     fit: 'shrink',
     valign: 'middle',
   }
-  return [ground, text]
 }
 const AIR = 3
 const inset = (mm: number) => Math.min(AIR, mm / 4)
