@@ -29,25 +29,25 @@ async function thinBox(page: Page): Promise<void> {
 const panel = (page: Page, face: string) => page.locator(`.byd-box-panel[data-face="${face}"]`)
 const layers = (page: Page) => page.locator('[data-layer]').evaluateAll((rows) => rows.map((row) => row.getAttribute('data-layer')))
 
-test('skriver om namnet längs ryggen på en tunn låda, och det står kvar', async ({ page }) => {
+// #1458: på en så tunn låda skulle namnet längs ryggen bli knappt en millimeter högt, under E5:s
+// textgolv, så den neutrala ryggen är bara lekens färg. Designern lägger en egen text där.
+test('lägger en egen text längs ryggen på en tunn låda, och den står kvar', async ({ page }) => {
   const thrown = errors(page)
   await thinBox(page)
   await page.locator('button[data-box-face="left"]').click()
   await expect(panel(page, 'left')).toHaveAttribute('data-chosen', '')
-  // Texten går att ta på duken, där den syns, och inte bara i lagerlistan.
-  const spine = (await panel(page, 'left').boundingBox())!
-  await page.mouse.click(spine.x + spine.width / 2, spine.y + spine.height / 2)
-  await expect(page.locator('[data-layer="title"]')).toHaveAttribute('aria-selected', 'true')
+  await expect.poll(() => layers(page)).toEqual(['ground'])
+  await expect(panel(page, 'left')).not.toContainText('Skogens råd')
+  await page.getByRole('button', { name: /^Text/ }).click()
+  await expect.poll(() => layers(page)).toHaveLength(2)
   const words = page.getByRole('textbox', { name: 'Text' })
-  await words.click()
-  await page.keyboard.press('End')
-  await page.keyboard.type(' II')
-  await expect(words).toHaveValue('Skogens råd II')
-  await expect(panel(page, 'left')).toContainText('Skogens råd II')
+  await words.fill('SR')
+  await expect(words).toHaveValue('SR')
+  await expect(panel(page, 'left')).toContainText('SR')
   // Det landade: efter en omladdning står det kvar.
   await page.reload()
   await page.locator('#byd-editor-tab-box').click()
-  await expect(panel(page, 'left')).toContainText('Skogens råd II')
+  await expect(panel(page, 'left')).toContainText('SR')
   expect(thrown).toEqual([])
 })
 
@@ -56,8 +56,9 @@ test('lägger en form på locket och byter färg på en tunn låda', async ({ pa
   await thinBox(page)
   await page.locator('button[data-box-face="lid"]').click()
   await expect(panel(page, 'lid')).toHaveAttribute('data-chosen', '')
+  await expect.poll(() => layers(page)).toEqual(['ground'])
   await page.getByRole('button', { name: /^Form/ }).click()
-  await expect.poll(() => layers(page)).toHaveLength(3)
+  await expect.poll(() => layers(page)).toHaveLength(2)
   await page.locator('[data-layer="ground"] .byd-layer-pick').click()
   await page.locator('.byd-props-sec-head').getByRole('button', { name: /^Fyllning/ }).click()
   const colour = page.getByLabel('Fyllning', { exact: true }).and(page.locator('input'))

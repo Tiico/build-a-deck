@@ -74,6 +74,13 @@ export function detectScript(text: string): 'Latn' | 'Hani' | 'Arab' {
   return 'Latn'
 }
 
+// The smallest text the type lets be printed in the script of these words (E5): what Fysisk kontroll
+// holds a text to, what E6 never shrinks below, and what the neutral box asks before it writes the
+// game's name on a face (#1458). The Latin floor stands in for a script the type does not name.
+export function textFloorPt(print: { minPtByScript: Readonly<Record<string, number>> }, text: string): number {
+  return print.minPtByScript[detectScript(text)] ?? print.minPtByScript['Latn'] ?? 6
+}
+
 export type FitResult = { sizePt: number; overflow: boolean }
 
 // Steps the size down until the text fits the box, never below `minPt`.

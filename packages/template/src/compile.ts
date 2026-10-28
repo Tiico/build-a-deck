@@ -1,6 +1,6 @@
 import type { ComponentTypeDef } from '@byd/engine'
 import { REF_WORD, parseBody, parseInline, type InlineNode } from './inline.js'
-import { BLOCK_GAP_EM, DEFAULT_LINE_HEIGHT, INDENT_EM, ITEM_GAP_EM, detectScript, estimateHeight, fitText, type Measure } from './fit.js'
+import { BLOCK_GAP_EM, DEFAULT_LINE_HEIGHT, INDENT_EM, ITEM_GAP_EM, estimateHeight, fitText, textFloorPt, type Measure } from './fit.js'
 import { paintOf, shadowCss, type Condition, type Element, type FaceTemplate, type Pattern, type Row, type Template } from './model.js'
 import type { Motif } from './motif.js'
 import { frameWindow, type Frame } from './frame.js'
@@ -227,7 +227,7 @@ function render(el: Element, dx: number, dy: number, input: CompileInput, html: 
       const value = resolve(el.bind, input.row)
       const f = el.font
       const mfont = { family: f.family, sizePt: f.sizePt, weight: f.weight ?? 400, lineHeight: f.lineHeight ?? DEFAULT_LINE_HEIGHT, ...(f.letterSpacing === undefined ? {} : { letterSpacing: f.letterSpacing }) }
-      const minPt = input.type.print.minPtByScript[detectScript(value)] ?? input.type.print.minPtByScript['Latn'] ?? 6
+      const minPt = textFloorPt(input.type.print, value)
       const measure = input.measure ?? estimateHeight
       // A turned text's lines run along the box's length (#1431), so that is the line it is fitted to.
       const turn = turnOf(el)

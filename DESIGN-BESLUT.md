@@ -9223,6 +9223,12 @@ I editorn är vridningen valet «Riktning» bakom «Finjustering» i textens ege
 Rättat 2026-10-28 (#1448): luften runt namnet på den neutrala lådan är 3 mm men aldrig mer än en fjärdedel av ytans mått på den ledden, så att rutan alltid är minst halva ytan.
 En lek på högst 13 kort ger en rygg och ett lock under 6 mm, och där gav 3 mm från båda kanterna en ruta med negativ bredd, som ingen redigering kunde lägga in i dokumentet; sidorna och locket var då låsta.
 `packages/e2e/test/box-thin-faces.spec.ts` är grinden.
+Beslutat och byggt 2026-10-28 (#1458, beställarens beslut genom techleaden): den neutrala lådan skriver spelets namn på en yta bara när det blir minst så stort som E5:s textgolv för tryck, och annars är ytan bara lekens färg.
+Golvet läses ur lådtypens `print` i namnets skrift med `textFloorPt`, samma läsning som Fysisk kontroll och E6 gör, så det finns ingen egen gräns för lådan.
+Med tuckboxens 6 pt får ryggen och locket namnet från en lek på 34 kort (12,5 mm djup), och den guidade startens lek på sex kort har namnet bara på framsidan.
+Ytan går att redigera som förut, och designern kan lägga en egen text där.
+Fysisk kontroll mäter ännu inte lådans ytor, så en sådan text varnas inte för (#1459).
+`packages/server/test/box-name-floor.test.ts` är grinden, med lekar på 0–108 kort.
 Byggt 2026-10-27 (#1418): exporten bär lådan och tryckpaketet visar den som del 3.
 Dokumentets `box` står i varje version, och manifestets `print.box` säger typen, måtten, låsen, luften, nätets mått och vilken PDF som är vilken yta.
 Lådans sex ytor ligger som tryck-PDF:er med typens utfall under `tryck/lada/`, ritade eller neutrala, kompilerade och ritade som korten (`box-print.ts`); de följer med även när tryckkontrollen stoppar kortfilerna, eftersom kontrollen läser korten.

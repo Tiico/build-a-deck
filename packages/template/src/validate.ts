@@ -1,6 +1,6 @@
 import type { ComponentTypeDef } from '@byd/engine'
 import { elementsFor, iconsOf } from './compile.js'
-import { detectScript } from './fit.js'
+import { textFloorPt } from './fit.js'
 import type { FitReport } from './dom-fit.js'
 import { paintOf, type Element, type FaceTemplate, type Row } from './model.js'
 
@@ -50,13 +50,13 @@ export function validateCard({ type, face, row, fonts, fitted, bleedMm = type.pr
   const issues: Issue[] = []
   const boxes = flatten(elementsFor(face, row), 0, 0, row)
   const { widthMm, heightMm } = type.physical
-  const { safeMm, minPtByScript } = type.print
+  const { safeMm } = type.print
 
   for (const box of boxes) {
     const el = box.el
     if (el.kind === 'text') {
       const value = 'literal' in el.bind ? el.bind.literal : String(row[el.bind.field] ?? '')
-      const floor = minPtByScript[detectScript(value)] ?? minPtByScript['Latn'] ?? 6
+      const floor = textFloorPt(type.print, value)
       if (el.font.sizePt < floor) issues.push({ element: el.id, code: 'text-too-small', severity: 'error', values: { sizePt: el.font.sizePt, floor } })
       else if (el.font.sizePt < floor * SMALL_TEXT_FACTOR) issues.push({ element: el.id, code: 'text-too-small', severity: 'warning', values: { sizePt: el.font.sizePt, floor } })
 
@@ -310,13 +310,13 @@ export function remedyFor(issue: Issue, input: ValidateInput): Remedy | null {
   if (!('x' in el)) return null
   const off = { x: box.x - el.x, y: box.y - el.y }
   const { widthMm, heightMm } = input.type.physical
-  const { safeMm, minPtByScript } = input.type.print
+  const { safeMm } = input.type.print
   const bleedMm = input.bleedMm ?? input.type.print.bleedMm
   switch (issue.code) {
     case 'text-too-small': {
       if (el.kind !== 'text') return null
       const value = 'literal' in el.bind ? el.bind.literal : String(input.row[el.bind.field] ?? '')
-      const floor = minPtByScript[detectScript(value)] ?? minPtByScript['Latn'] ?? 6
+      const floor = textFloorPt(input.type.print, value)
       // Clear of the *warning* and not merely over the error's line. A remedy that turns red into
       // orange has handed the designer the same decision a second time, which is not a remedy.
       // Rounded up to a tenth, because a size a hand would type is a size a hand can read back.
