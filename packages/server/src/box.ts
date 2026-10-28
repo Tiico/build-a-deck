@@ -54,6 +54,40 @@ export function boxIssues(doc: Pick<ProjectDoc, 'rows' | 'box' | 'fonts'>): BoxF
   return found
 }
 
+// Den gamla neutrala grunden (#1463), lyft när dokumentet läses (DRIFT §7). Före #1459 slutade den
+// neutrala ytans grund vid snittet, och en yta designern tog över då (#1413) bär den grunden i
+// dokumentet. Sedan Fysisk kontroll prövar lådans ytor fick den ytan ett utfallsfel och en beställning
+// vägrades, fast designern inte gjort något. En version skrivs aldrig om (B4), så grunden lyfts här, i
+// samma dörr som mallens andra uppkastare (`liftDoc`), till den grund en ny yta får.
+//
+// Bara den grund den neutrala ytan lade, orörd: ytans första lager, `ground`, en rektangel från hörnet
+// i ytans fulla mått som den står i dag, med en fyllning och inget annat. Det designern har flyttat,
+// krympt, fått en kant eller döpt om är hennes och prövas som hon lämnade det. En låda som har växt
+// sedan ytan togs över har en grund i det gamla måttet, och den prövas också som den står.
+const OLD_GROUND_KEYS = ['fill', 'h', 'id', 'kind', 'shape', 'w', 'x', 'y'].join()
+export function liftBoxGrounds<T>(doc: T): T {
+  if (typeof doc !== 'object' || doc === null) return doc
+  const { rows, box } = doc as { rows?: unknown; box?: ProjectBox }
+  if (!Array.isArray(rows) || !box?.faces) return doc
+  let fit: GameBox
+  try {
+    fit = boxOf({ rows, box } as Pick<ProjectDoc, 'rows' | 'box'>)
+  } catch {
+    return doc
+  }
+  const bleed = fit.type.print.bleedMm
+  let faces: NonNullable<ProjectBox['faces']> | undefined
+  for (const [face, template] of Object.entries(box.faces) as [BoxFace, FaceTemplate][]) {
+    const first = template?.base?.[0]
+    const { widthMm, heightMm } = boxFaceSize(face, fit.size)
+    const untouched = first?.kind === 'shape' && first.id === 'ground' && first.shape === 'rect' && typeof first.fill === 'string' && Object.keys(first).sort().join() === OLD_GROUND_KEYS && first.x === 0 && first.y === 0 && first.w === widthMm && first.h === heightMm
+    if (!untouched) continue
+    faces ??= { ...box.faces }
+    faces[face] = { ...template, base: [{ ...first, x: -bleed, y: -bleed, w: widthMm + 2 * bleed, h: heightMm + 2 * bleed }, ...template.base.slice(1)] }
+  }
+  return faces ? ({ ...doc, box: { ...box, faces } } as T) : doc
+}
+
 // Omslaget i heron i Mina spel (#1416, L91): lådan i C:s stilla form, framsidan och högra sidan, de
 // ytor en låda snett framifrån i ögonhöjd visar. Locket står inte med: lutad så lite som C:s form
 // lutar den blir lockets text några pixlar hög och läses som smuts. Varje yta som `boxFaceOf` ger den, så att heron

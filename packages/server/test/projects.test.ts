@@ -847,6 +847,17 @@ describe('physical validation at the order (E5)', () => {
     expect(body.errors).toEqual([{ face: 'box.front', element: 'egen', code: 'text-too-small', severity: 'error', values: { sizePt: 2, floor: 6 } }])
   })
 
+  // #1463: a face taken over before #1459 carries the old neutral ground, which stops at the trim.
+  // The designer did nothing, so the order goes through.
+  it('lets an order through for a face of the box taken over before its ground reached the bleed', async () => {
+    const old = { ...withText(9), box: { type: { id: 'box.tuck', version: 1 }, faces: { front: { base: [{ kind: 'shape', id: 'ground', x: 0, y: 0, w: 65, h: 90, shape: 'rect', fill: '#2b3a4a' }], variants: {} } } } }
+    expect((await json('POST', '/projects', { id: 'p-box-old', ...old })).status).toBe(201)
+    const res = await json('POST', '/projects/p-box-old/print')
+    expect(res.status).toBe(202)
+    const body = (await res.json()) as { warnings: { face: string; code: string }[] }
+    expect(body.warnings.filter((w) => w.face.startsWith('box.'))).toEqual([])
+  })
+
   it('lets an order through with a readable box, and leaves the neutral box unchecked', async () => {
     expect((await json('POST', '/projects', { id: 'p-box-ok', ...withBox(9) })).status).toBe(201)
     const ok = (await (await json('POST', '/projects/p-box-ok/print')).json()) as { warnings: { face: string }[] }
