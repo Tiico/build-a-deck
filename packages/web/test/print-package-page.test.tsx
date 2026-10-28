@@ -222,6 +222,22 @@ describe('the print package page', () => {
     expect(part('Paketet').textContent).toContain('kortfilerna följer inte med förrän felen är rättade')
     expect(part('Paketet').textContent).not.toContain('dragon-front.pdf')
   })
+
+  // #1459: lådans ritade ytor prövas som korten, och ett fel där står bland felen med lådans yta.
+  it('names the face of the box a finding is on', async () => {
+    const front = {
+      base: [
+        { kind: 'shape', id: 'ground', x: -3, y: -3, w: 71, h: 96, shape: 'rect', fill: '#2b3a4a' },
+        { kind: 'text', id: 'egen', x: 5, y: 40, w: 55, h: 6, bind: { literal: 'SR' }, font: { family: 'sans-serif', sizePt: 2 }, color: '#f3ecdc' },
+      ],
+      variants: {},
+    }
+    await made({ ...printable(), box: { type: { id: 'box.tuck', version: 1 }, faces: { front } } } as ProjectDoc)
+    open()
+    const deck = await screen.findByRole('region', { name: /^Leken/ })
+    expect(within(deck).getByText('Ett fel skulle stoppa leken hos ett tryckeri.')).toBeTruthy()
+    expect(within(deck).getByText('Lådan, framsidan: för liten text.')).toBeTruthy()
+  })
 })
 
 describe('the ways to the print package', () => {

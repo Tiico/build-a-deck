@@ -469,6 +469,13 @@ function DeckPart({ deck, fronts, errors, chosen, onChoose, drawing, editor, go 
   const backFaulty = (file: string) => deck.cards.some((c) => c.files['back'] === file && faulty.has(`${c.cardRef}:back`))
   const files = deck.cards.reduce((n, c) => n + Object.keys(c.files).filter((f) => f !== 'back').length, 0) + deck.backs.length
   const titleOf = (cardRef: string) => deck.cards.find((c) => c.cardRef === cardRef)?.title ?? cardRef
+  // A finding names a card and its side, or a face of the box the designer has drawn (#1459), which
+  // the server names `box.<face>` as the canvas does.
+  const placeOf = (e: PrintFinding) => {
+    const box = /^box\.(front|back|left|right|lid|bottom)$/.exec(e.face)?.[1]
+    if (box) return { card: t('print.checks.box'), face: t(`print.box.face.${box}` as Key) }
+    return { card: titleOf(e.cardRef ?? ''), face: t(e.face === 'back' ? 'print.face.back' : 'print.face.front') }
+  }
   return (
     <>
       <p className="byd-print-sums">
@@ -486,7 +493,7 @@ function DeckPart({ deck, fronts, errors, chosen, onChoose, drawing, editor, go 
         <div className="byd-print-findings" role="note">
           <b>{t(errors.length === 1 ? 'print.checks.stop.one' : 'print.checks.stop.other', { n: errors.length })}</b>
           {errors.slice(0, FINDINGS_SHOWN).map((e, i) => (
-            <span key={i}>{t('print.checks.line', { card: titleOf(e.cardRef), face: t(e.face === 'back' ? 'print.face.back' : 'print.face.front'), issue: t(`wall.issue.${e.code}` as Key) })}</span>
+            <span key={i}>{t('print.checks.line', { ...placeOf(e), issue: t(`wall.issue.${e.code}` as Key) })}</span>
           ))}
           {errors.length > FINDINGS_SHOWN && <span>{t('print.checks.more', { n: errors.length - FINDINGS_SHOWN })}</span>}
           <span>{t('print.checks.left')}</span>

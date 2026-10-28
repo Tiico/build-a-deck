@@ -819,6 +819,42 @@ describe('physical validation at the order (E5)', () => {
     expect(body.cards.length).toBeGreaterThan(0)
     expect(body.warnings.map((w) => w.code)).toContain('text-too-small')
   })
+
+  // #1459: lådans ritade ytor prövas som korten, med lådtypens print och ytans eget mått, och ett
+  // fel där stoppar ordern som ett fel på ett kort gör. Anmärkningen säger lådans yta (`box.<yta>`,
+  // som duken namnger den) och inget kort.
+  const withBox = (sizePt: number) => ({
+    ...withText(9),
+    box: {
+      type: { id: 'box.tuck', version: 1 },
+      faces: {
+        front: {
+          base: [
+            { kind: 'shape', id: 'ground', x: -3, y: -3, w: 71, h: 96, shape: 'rect', fill: '#2b3a4a' },
+            { kind: 'text', id: 'egen', x: 5, y: 40, w: 55, h: 6, bind: { literal: 'SR' }, font: { family: 'system-ui', sizePt }, color: '#f3ecdc' },
+          ],
+          variants: {},
+        },
+      },
+    },
+  })
+
+  it('refuses a print order while a face of the drawn box would come back unreadable, and says which face', async () => {
+    expect((await json('POST', '/projects', { id: 'p-box', ...withBox(2) })).status).toBe(201)
+    const res = await json('POST', '/projects/p-box/print')
+    expect(res.status).toBe(422)
+    const body = (await res.json()) as { errors: { cardRef?: string; face: string; element: string; code: string; values: Record<string, string | number> }[] }
+    expect(body.errors).toEqual([{ face: 'box.front', element: 'egen', code: 'text-too-small', severity: 'error', values: { sizePt: 2, floor: 6 } }])
+  })
+
+  it('lets an order through with a readable box, and leaves the neutral box unchecked', async () => {
+    expect((await json('POST', '/projects', { id: 'p-box-ok', ...withBox(9) })).status).toBe(201)
+    const ok = (await (await json('POST', '/projects/p-box-ok/print')).json()) as { warnings: { face: string }[] }
+    expect(ok.warnings.filter((w) => w.face.startsWith('box.')).map((w) => w.face)).toEqual(['box.front'])
+    expect((await json('POST', '/projects', { id: 'p-box-neutral', ...withText(9) })).status).toBe(201)
+    const neutral = (await (await json('POST', '/projects/p-box-neutral/print')).json()) as { warnings: { face: string }[] }
+    expect(neutral.warnings.filter((w) => w.face.startsWith('box.'))).toEqual([])
+  })
 })
 
 describe('the rulebook in the project (B7)', () => {

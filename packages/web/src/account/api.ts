@@ -277,7 +277,8 @@ export async function readExport(http: string, project: string): Promise<ExportS
 // as the order to an address would be routed (F2), so the page shows what the routing chooses. The
 // same question again says how far the files have come, and asks for any not yet drawn. A finding
 // of the print checks names the card and the side, and the code the editor says in words (E5).
-export type PrintFinding = { code: string; severity: 'error' | 'warning'; element: string; cardRef: string; face: string; values: Record<string, unknown> }
+// A finding on a drawn face of the box (#1459) names no card, and its face is `box.<face>`.
+export type PrintFinding = { code: string; severity: 'error' | 'warning'; element: string; cardRef?: string; face: string; values: Record<string, unknown> }
 export type PrintPackage = {
   project: string
   rev: number

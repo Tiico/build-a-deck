@@ -26,7 +26,9 @@ export const PRINT_PACKAGE_FORMAT = 'byd-print-package'
 export const PRINT_PACKAGE_FORMAT_VERSION = 1
 export const PRINT_FOLDER = 'tryck/'
 
-export type Finding = Issue & { cardRef: string; face: string }
+// A remark of the print checks (E5): on a card's side, or on a drawn face of the box (#1459), which
+// names no card and whose face is `box.<face>`.
+export type Finding = Issue & { cardRef?: string; face: string }
 
 export type PrintPackageManifest = {
   format: typeof PRINT_PACKAGE_FORMAT

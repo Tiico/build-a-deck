@@ -3,7 +3,8 @@ import { cellLine } from './proposals.js'
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import type { ProjectDoc } from '@byd/server'
 import { oversetOf, type FitReport, type Motif, type Warning } from '@byd/template'
-import { boxFaceOf, boxOf, titleOfRow, type GameBox } from '@byd/server/doc'
+import { boxFaceOf, boxIssues, boxOf, titleOfRow, type BoxFound, type GameBox } from '@byd/server/doc'
+import type { BoxFace } from '@byd/engine'
 import { CardPreview } from './CardPreview.js'
 import { OversetMarks } from './OversetMarks.js'
 import { overflowing, oversetWords } from './overset.js'
@@ -78,6 +79,10 @@ export type DeckWallProps = {
   // foot's far end with its measures and grows with the deck; `onOpen` is there once the deck is
   // playable, and then the line is the way to the tab «Låda».
   box?: { onOpen?: (() => void) | undefined } | undefined
+  // The way to a face of the box a remark is on (#1459), with the layer it is about: the tab «Låda»
+  // with that face and layer chosen. Absent where there is no tab to go to (a phone, L10, or a deck
+  // not yet playable), and the remark then says the face without a way there.
+  onOpenBoxFace?: ((face: BoxFace, element: string) => void) | undefined
 }
 
 // What the wall is read at (L81): the width it is drawn in, and the eye it is seen with, are two
@@ -129,7 +134,7 @@ export type Panel = 'view' | 'checks'
 // The deck as a wall (C as the home view): every row as a card, copies and faults on each, the
 // whole deck visible at once — a balance change on forty cards is seen as one thing. Beside it
 // the physical checks (E5), gathered by kind, and the eyes to read the deck with.
-export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement, assetBase, motifs, onFixChecks, onAddCard, onOpenTemplate, onOpenFonts, onOpenRow, view, onView, readOnly = false, proposed, changed, redrawn, printPackage, box: footBox }: DeckWallProps) {
+export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement, assetBase, motifs, onFixChecks, onAddCard, onOpenTemplate, onOpenFonts, onOpenRow, view, onView, readOnly = false, proposed, changed, redrawn, printPackage, box: footBox, onOpenBoxFace }: DeckWallProps) {
   const t = useT()
   // What was mended is said out loud: an edit that changes the template under a deck of forty
   // cards and says nothing is the silence #32 forbids.
@@ -275,7 +280,11 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
   // ett kort, så den står utanför grupperna och räknas med dem.
   const box = boxOf(doc)
   const boxShort = box.over > 0 ? box : null
-  const remarks = groups.length + (boxShort ? 1 : 0)
+  // The faces of the box the designer has drawn, under the same checks as a card (#1459, E5): one
+  // row for the box among the groups, since a remark there is about the box and not about a card.
+  const boxFound = boxIssues(doc)
+  const boxErrors = boxFound.some((f) => f.severity === 'error') ? 1 : 0
+  const remarks = groups.length + (boxShort ? 1 : 0) + (boxFound.length > 0 ? 1 : 0)
   const open = groups.find((g) => g.code === openGroup)
   const marked = new Set(open?.cards ?? [])
   const words = issueWords(t)
@@ -790,8 +799,10 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
             ) : (
               <Checks
                 groups={groups}
-                errors={errors.length}
+                errors={errors.length + boxErrors}
                 box={boxShort}
+                boxFound={boxFound}
+                onOpenBoxFace={onOpenBoxFace}
                 words={words}
                 openGroup={openGroup}
                 onOpenGroup={setOpenGroup}
@@ -854,6 +865,8 @@ function Checks({
   groups,
   errors,
   box,
+  boxFound,
+  onOpenBoxFace,
   words,
   openGroup,
   onOpenGroup,
@@ -870,6 +883,8 @@ function Checks({
   groups: ReturnType<typeof groupIssues>
   errors: number
   box: GameBox | null
+  boxFound: readonly BoxFound[]
+  onOpenBoxFace: ((face: BoxFace, element: string) => void) | undefined
   words: Record<string, string>
   openGroup: string | null
   onOpenGroup(code: string | null): void
@@ -886,7 +901,7 @@ function Checks({
   const { lang } = useLang()
   return (
     <div className="byd-wall-checks">
-      {groups.length === 0 && !box ? (
+      {groups.length === 0 && !box && boxFound.length === 0 ? (
         <p className="byd-wall-ok">{t('wall.checks.ok')}</p>
       ) : (
         <>
@@ -956,6 +971,7 @@ function Checks({
                 )}
               </li>
             ))}
+            {boxFound.length > 0 && <BoxFacesRemark found={boxFound} words={words} open={openGroup === BOX_FACES_GROUP} onOpen={(open) => onOpenGroup(open ? BOX_FACES_GROUP : null)} onOpenFace={onOpenBoxFace} t={t} />}
             {box && <BoxRemark box={box} t={t} />}
           </ul>
         </>
@@ -1056,6 +1072,45 @@ function BoxRemark({ box, t }: { box: GameBox; t: T }) {
           {t(box.over === 1 ? 'wall.box.over.one' : 'wall.box.over.other', { n: box.over })} {why}
         </p>
       </div>
+    </li>
+  )
+}
+
+// Lådans ritade ytor i Fysisk kontroll (#1459, E5): en rad för lådan i samma form som kortens, med
+// hur många ytor den gäller i stället för hur många kort, och under den en rad per anmärkning som
+// säger ytan och leder till den i fliken «Låda», som en text som inte ryms leder till sin rad (E6).
+// Den öppnas och stängs som kortens rader, och bara en av dem står öppen åt gången.
+const BOX_FACES_GROUP = 'box-faces'
+function BoxFacesRemark({ found, words, open, onOpen, onOpenFace, t }: { found: readonly BoxFound[]; words: Record<string, string>; open: boolean; onOpen(open: boolean): void; onOpenFace: ((face: BoxFace, element: string) => void) | undefined; t: T }) {
+  const faces = new Set(found.map((f) => f.face)).size
+  const severity = found.some((f) => f.severity === 'error') ? 'error' : 'warning'
+  return (
+    <li data-severity={severity} data-check={BOX_FACES_GROUP}>
+      <button type="button" aria-expanded={open} onClick={() => onOpen(!open)}>
+        <b>{t('wall.boxFaces.title')}</b>
+        <span>{t(faces === 1 ? 'wall.boxFaces.one' : 'wall.boxFaces.other', { n: faces })}</span>
+        <small>{t(severity === 'error' ? 'wall.severity.error' : 'wall.severity.warning')}</small>
+      </button>
+      {open && (
+        <div className="byd-wall-check-detail">
+          <ul className="byd-wall-check-rows" aria-label={t('wall.boxFaces.rows')}>
+            {found.map((f) => {
+              const said = { face: t(`box.face.${f.face}` as Key), issue: words[f.code] ?? f.code, detail: issueDetail(f, t) }
+              return (
+                <li key={`${f.face}/${f.element}/${f.code}`}>
+                  {onOpenFace ? (
+                    <button type="button" className="byd-secondary" onClick={() => onOpenFace(f.face, f.element)}>
+                      {t('wall.boxFaces.row', said)}
+                    </button>
+                  ) : (
+                    <small>{t('wall.boxFaces.row.read', said)}</small>
+                  )}
+                </li>
+              )
+            })}
+          </ul>
+        </div>
+      )}
     </li>
   )
 }

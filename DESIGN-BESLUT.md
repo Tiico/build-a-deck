@@ -9227,11 +9227,17 @@ Beslutat och byggt 2026-10-28 (#1458, beställarens beslut genom techleaden): de
 Golvet läses ur lådtypens `print` i namnets skrift med `textFloorPt`, samma läsning som Fysisk kontroll och E6 gör, så det finns ingen egen gräns för lådan.
 Med tuckboxens 6 pt får ryggen och locket namnet från en lek på 34 kort (12,5 mm djup), och den guidade startens lek på sex kort har namnet bara på framsidan.
 Ytan går att redigera som förut, och designern kan lägga en egen text där.
-Fysisk kontroll mäter ännu inte lådans ytor, så en sådan text varnas inte för (#1459).
+Fysisk kontroll mäter också lådans ytor sedan #1459, så en sådan text som blir för liten varnas för.
 `packages/server/test/box-name-floor.test.ts` är grinden, med lekar på 0–108 kort.
+Byggt 2026-10-28 (#1459): Fysisk kontroll prövar varje yta designern har ritat med samma regler som ett kort (E5), med lådtypens `print` och i ytans eget mått, genom `boxIssues` i `packages/server/src/box.ts`, som editorn och servern båda frågar.
+Neutrala ytor och tomma ytor prövas inte: den neutrala ytan är verktygets, och en tom yta har inget att pröva.
+I editorn står anmärkningarna under en rad för lådan, «Lådans ytor», i samma form som kortens rader, med hur många ytor den gäller; varje anmärkning säger ytan och leder till den i fliken «Låda», med lagret valt.
+Vid tryck följer anmärkningarna kortens: ett fel på en yta stoppar en order (`POST /projects/:id/print` svarar 422), och anmärkningen namnger ytan som `box.<yta>` och inget kort.
+Den neutrala ytans grund går därför ut i lådtypens utfall, som ett korts bakgrund, så att en yta designern just tagit över inte i samma stund blir ett fel.
+`packages/server/test/box-checks.test.ts` och `packages/e2e/test/box-faces-check.spec.ts` är grindarna.
 Byggt 2026-10-27 (#1418): exporten bär lådan och tryckpaketet visar den som del 3.
 Dokumentets `box` står i varje version, och manifestets `print.box` säger typen, måtten, låsen, luften, nätets mått och vilken PDF som är vilken yta.
-Lådans sex ytor ligger som tryck-PDF:er med typens utfall under `tryck/lada/`, ritade eller neutrala, kompilerade och ritade som korten (`box-print.ts`); de följer med även när tryckkontrollen stoppar kortfilerna, eftersom kontrollen läser korten.
+Lådans sex ytor ligger som tryck-PDF:er med typens utfall under `tryck/lada/`, ritade eller neutrala, kompilerade och ritade som korten (`box-print.ts`); de följer med även när tryckkontrollen stoppar kortfilerna, eftersom lådan ännu inte går till någon partner (F1).
 Importen tar tillbaka lådan med dokumentet, och rundturen ger samma `spel.json`; `print.box` läses inte in, eftersom den kan härledas.
 Tryckpaketets del 3 visar nätet med varje yta ur den enda renderaren, måtten, om lådan är ritad eller neutral och vilka mått som är låsta, med «Rita lådan ›» till fliken Låda (`open=box`).
 Paketets `manifest.json` bär lådan som den mäts, utan filer, och sidan och båda `LASMIG.md` säger att lådans tryckfiler, med stansform och i CMYK, kommer när en tryckpartner är vald (F1, F2).

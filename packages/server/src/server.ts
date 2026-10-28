@@ -9,7 +9,7 @@ import { WebSocketServer, type WebSocket } from 'ws'
 import { z } from 'zod'
 import { ASSET_MAX_BYTES, assetFormatsNamed, assetKindDeclared, ClientMessage, PHYSICAL_VERBS, codeOfAddress, REDACTED, SEATINGS, TABLE_PROTOCOL, hostKeyOfProtocols, offersTableProtocol, sniffAsset, tokenOfProtocols, type Applied, type Seating, type ServerMessage } from '@byd/protocol'
 import { CARD_STANDARD_63x88, validateSetup, type DeckFacts, type SetupDef, type TypeRegistry } from '@byd/engine'
-import { renderRules, Template, validateCard, type Issue } from '@byd/template'
+import { renderRules, Template, validateCard } from '@byd/template'
 import { A5, bookletOf } from './booklet.js'
 import { contentHash, contentTypeOf, type ObjectStore, type RenderKind, type RenderRequest, type RenderStore } from '@byd/render/queue'
 import type { Subscriber, TableActor, TableHost } from './actor.js'
@@ -20,7 +20,7 @@ import { changeOf, diffProjects, type DocDiff, type VersionChange } from './diff
 import { ProjectHost, type EditorMessage, type Saved } from './project-actor.js'
 import { checkedName, type EditIntent } from './edits.js'
 import { arrangementOf, fanFaces, namesOfProject, peekFace, type CardFace } from './names.js'
-import { coverOf, showsCover } from './box.js'
+import { boxIssues, coverOf, showsCover } from './box.js'
 import { SurveyAsk, SurveyBody, sameSender, type SurveyAnswer, type SurveyStanding, type SurveyStore } from './surveys.js'
 import { playtestOf, type PlaytestSource } from './playtest.js'
 import { playtestWaiting, WAITING_VERBS, type GameWaiting, type Waiting, type WaitingTable } from './waiting.js'
@@ -34,7 +34,7 @@ import { printFileJobsOf, printManifestOf, type PrintFileJob } from './print-fil
 import { boxFactsOf, boxPrintOf } from './box-print.js'
 import { boxStillJobOf } from './box-still.js'
 import { Country, routeOrder, widestBleedMm, type PrintManifest, type PrintProvider, type Route } from '@byd/print'
-import { PRINT_PACKAGE_FORMAT, PRINT_PACKAGE_FORMAT_VERSION, packPrintPackage, printPackageDisposition, printPackageReadme, printPathOf, type PrintPackageBox, type PrintPackageManifest } from './print-package.js'
+import { PRINT_PACKAGE_FORMAT, PRINT_PACKAGE_FORMAT_VERSION, packPrintPackage, printPackageDisposition, printPackageReadme, printPathOf, type Finding, type PrintPackageBox, type PrintPackageManifest } from './print-package.js'
 import { EXPORT_FORMAT, EXPORT_FORMAT_VERSION, EXPORT_SUMMARY_HEADER, ProjectExport, RULEBOOK_FILE, assetFileOf, assetHashesOf, duplicatedName, exportDisposition, exportSummaryOf, importedName, packExport, printFileOf, readExport, readmeOf, type ImportProblem } from './export.js'
 import { BlockedAsset, ReportBody, type ReportStore } from './reports.js'
 import { REPORT_SECTION, operatorMail, receiptMail } from './report-mail.js'
@@ -1480,16 +1480,21 @@ async function flaggedDecksOf(opts: ServerOptions, id: string, session: SessionR
 // The bleed is the one that will be printed (#1207): the provider's when one is asked, and when none
 // is, the widest any registered provider asks for, so a game that passes passes every one of them;
 // the type's own where no provider prints it.
-function checkedCards(rec: ProjectRecord, opts: Pick<ServerOptions, 'registry' | 'printProviders'>, provider?: PrintProvider): (Issue & { cardRef: string; face: string })[] {
+// What the physical checks (E5) say of a version: every face of every card, at the bleed that will
+// be printed, and every face of the box the designer has drawn (#1459), at the box type's own print,
+// since no partner prints the box yet (F1). A remark on the box names its face as the canvas does,
+// `box.<face>`, and no card (`Finding`). An error on either stops an order.
+function checkedCards(rec: ProjectRecord, opts: Pick<ServerOptions, 'registry' | 'printProviders'>, provider?: PrintProvider): Finding[] {
   const ref = { id: CARD_STANDARD_63x88.id, version: CARD_STANDARD_63x88.version }
   const type = opts.registry.get(ref)
   const bleedMm = widestBleedMm(provider ? [provider] : (opts.printProviders ?? []), ref) ?? type.print.bleedMm
-  const out: (Issue & { cardRef: string; face: string })[] = []
+  const out: Finding[] = []
   for (const row of rec.rows) {
     for (const [face, template] of Object.entries(rec.template.faces)) {
       for (const issue of validateCard({ type, face: template, row: row.fields, bleedMm, ...(rec.fonts ? { fonts: rec.fonts } : {}) })) out.push({ ...issue, cardRef: row.id, face })
     }
   }
+  for (const { face, ...issue } of boxIssues(rec)) out.push({ ...issue, face: `box.${face}` })
   return out
 }
 
@@ -1546,8 +1551,8 @@ async function printPlanOf(opts: ServerOptions, rec: ProjectRecord, lang: Return
   }
   const rulebook = rec.rules ? RULEBOOK_FILE : undefined
   if (rec.rules) jobs.push({ file: RULEBOOK_FILE, job: await bookletJobOf(opts, rec, rec.rules, lang) })
-  // The box's faces (#1418), drawn or neutral, whatever the checks say of the cards: the checks read
-  // the cards, and the box is the designer's data as much as they are (G5).
+  // The box's faces (#1418), drawn or neutral, whatever the checks say: the box is the designer's
+  // data as much as the cards are (G5), and its files go to no partner yet (F1).
   const assets = opts.assets
   const box = await boxPrintOf(rec, await deckOf(opts, rec), clock(opts).getTime(), assets ? (template) => resolveTemplate(template, assets, rec.pictures ?? {}) : undefined)
   jobs.push(...box.jobs)
