@@ -112,9 +112,27 @@ function watchLine(): () => string {
     }
   }
   setWebSocketImplementation(Recording as unknown as WebSocketCtor)
+  // Every write of the tab too, with who wrote it: two writes in one task are one change to the
+  // observer above, and the second of them is the one the tab is left with.
+  const title = Object.getOwnPropertyDescriptor(Document.prototype, 'title')!
+  Object.defineProperty(document, 'title', {
+    configurable: true,
+    get: () => title.get!.call(document) as string,
+    set: (value: string) => {
+      const by = (new Error().stack ?? '')
+        .split('\n')
+        .filter((frame) => frame.includes('/src/'))
+        .slice(0, 3)
+        .map((frame) => frame.replace(/.*\/src\//, '').replace(/\)$/, ''))
+        .join(' ← ')
+      lines.push(`${at()} tab written «${value}» ${by}`)
+      title.set!.call(document, value)
+    },
+  })
   onTestFinished(() => {
     watch.disconnect()
     setWebSocketImplementation(WsClient as unknown as WebSocketCtor)
+    delete (document as { title?: string }).title
   })
   return () => {
     look()
