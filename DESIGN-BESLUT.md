@@ -2080,8 +2080,19 @@ Reviderat 2026-10-23 (#1199, beställarens beslut): **i betan, innan någon rikt
   Det tas fram av samma `PrintProvider`-väg som en riktig order (F2), med en fake-provider i partnerns ställe, så att det designern ser är det en partner skulle få.
 - När en riktig partner finns går tryck via plattformens partner, eller så kostar det att få ut tryckunderlaget (#1209).
   «Ingen separat exportväg» gäller då igen, med avgiften som enda undantag.
-- Formen av avgiften beslutas med abonnemangen (A2).
-- Förhållandet till G5, vars export i dag bär tryck-PDF:er med utfall även på gratisnivån, avgörs i samma beslut; G5 ändras inte av det här.
+- ~~Formen av avgiften beslutas med abonnemangen (A2).~~ — **avgjort 2026-10-28 (#1209), se nedan.**
+- ~~Förhållandet till G5, vars export i dag bär tryck-PDF:er med utfall även på gratisnivån, avgörs i samma beslut; G5 ändras inte av det här.~~ — **avgjort 2026-10-28 (#1209): G5 revideras, se nedan och G5.**
+
+Reviderat 2026-10-28 (#1209, beställarens beslut): **när en riktig partner finns ingår nedladdningen av tryckpaketet i en betald abonnemangsnivå.**
+- Avgiften är en nivå i abonnemanget (A2), inte en egen kassa för nedladdningen: varken per nedladdning eller per spel.
+- G5 revideras med samma beslut: tryck-PDF:erna tas ur gratisexporten, så att exporten inte blir en avgiftsfri väg till samma underlag. JSON, bilder och mallar förblir fria att ta med sig.
+- Trycket väntar till efter betan. Under betan, och tills en riktig partner finns, är allt som i dag: tryckpaketet är en gratis nedladdning och exporten bär tryck-PDF:erna på alla nivåer.
+- Koden ändras först när partnern (F2) och betalnivåerna (A2) finns, och då som ett vanligt issue ur #1209.
+
+Motivering:
+Tryckpaketet är det partnern annars skulle få, och avgiften är det enda undantaget från «ingen separat exportväg».
+Att ta betalt i den nivå designern redan abonnerar på håller betalningen på ett ställe; en egen kassa för en nedladdning vore en tredje betalväg bredvid abonnemanget och tryckorderns kassa (F3).
+Ett tryckunderlag som fortsatte att följa med gratisexporten skulle göra avgiften till en formalitet, så de två besluten måste fattas tillsammans.
 
 Byggt 2026-10-24 (#1208, beställarens beslut B efter [prototypen](https://github.com/Tiico/build-a-deck/blob/484cf3f48538f1895ae3041c21061b4aff19e003/docs/ux-audits/2026-10-23-tryckpaketet/README.md)): **tryckpaketet är en egen sida med en följesedel.**
 - `/print-package?project=<id>` nås ur spelets ⋯ i Mina spel och i editorn, «Tryckpaketet…» efter «Exportera…», och ur Fysisk kontroll, «Se tryckpaketet ›». Den visas för ägare och medredigerare, som exporten.
@@ -2527,6 +2538,7 @@ Loggen har ett hål i mitten, direkt efter det steg ni tar betalt för.
 
 Komplett export när som helst i dokumenterat JSON-format med alla assets, mallar, hela historiken och tryckfärdiga filer, även på gratisnivån.
 Utgånget abonnemang ger läsläge, aldrig radering.
+De tryckfärdiga filerna tas ur gratisexporten när en riktig tryckpartner finns: **reviderat 2026-10-28 (#1209), se sist i avsnittet.**
 
 Motivering:
 Målgruppen investerar två till fyra år i ett spel innan det når Kickstarter.
@@ -2577,6 +2589,17 @@ Tillägg 2026-10-06 (#909, beställarens beslut C, efter #738):
 - **Mina spel läser namnet ur det levande dokumentet** (D3: loggen är sanningen): aktörens dokument om spelet är öppet, annars den sparade versionen med loggens svans efter den uppspelad. Listan stämmer alltså direkt, och även efter en omstart av servern.
 - **«Dubblera» kopierar samma levande dokument** genom `POST /projects/:id/duplicate`, och listan läses om med korten så att kopians ruta ritas direkt.
 - Grindarna är `packages/server/test/rename-from-home.test.ts` och `packages/web/test/account-page.test.tsx`.
+
+Reviderat 2026-10-28 (#1209, beställarens beslut, samma beslut som F1:s revidering): **när en riktig tryckpartner finns tas tryck-PDF:erna ur gratisexporten.**
+- `spel.json` med hela historiken, `schema.json`, `LASMIG.md` och `assets/` med bilderna och typsnitten förblir fria att ta med sig på varje nivå, också gratisnivån. Dokumentet, bilderna och mallarna är dataägandet G5 lovar, och det står kvar.
+- Tryck-PDF:erna under `tryck/` följer med exporten bara i den betalda abonnemangsnivå där tryckpaketet ingår (F1, A2).
+- Under betan, och tills partnern finns, är allt som i dag: exporten bär tryck-PDF:erna på alla nivåer.
+- Koden ändras först när partnern (F2) och betalnivåerna (A2) finns; `packages/server/src/export.ts` och dess grind ändras då i samma issue som avgiften.
+
+Motivering:
+Tryck-PDF:erna är samma underlag som tryckpaketet, och ett gratis underlag i exporten vore en väg runt avgiften F1 sätter på det.
+Dataägandet gäller spelet och inte trycket: tryck-PDF:erna går att härleda ur dokumentet och läses inte in vid import (#528), så den som tar med sig sitt spel förlorar ingenting som inte kan ritas igen.
+Svaret på frågan om vad som händer om bolaget läggs ner är därmed oförändrat.
 
 ### G6. Personuppgifter: Deckster är ansvarig, och loggen maskas på plats (beslutat 2026-10-24, #1269)
 
