@@ -90,8 +90,8 @@ async function rullaMedPekaren(page: Page, dx: number) {
     await page.mouse.wheel(dx, 0)
     await expect.poll(() => box.evaluate((el) => el.scrollLeft)).not.toBe(före)
   } finally {
-    const spår = await browser?.stopTracing()
     const tog = Date.now() - började
+    const spår = await browser?.stopTracing()
     if (spår && tog > 2_000) {
       const fil = test.info().outputPath(`hjulet-${dx}-${tog}ms.chromium-trace.json`)
       await writeFile(fil, spår)
@@ -112,9 +112,11 @@ async function rullaMedPekaren(page: Page, dx: number) {
   )
 }
 
-// Det som säger var ett hjul fastnar: indata i webbläsaren och i sidan, kompositorns bildrutor och
-// viz som ritar dem, och sidans huvudtråd.
-const HJULETS_SPÅR = ['input', 'cc', 'viz', 'gpu', 'blink', 'benchmark', 'devtools.timeline', 'disabled-by-default-devtools.timeline.frame']
+// Det som säger var ett hjul fastnar: indata i webbläsaren och i sidan, kompositorns bildrutor, viz
+// och GPU-processen som ritar dem, och varje tråds uppgifter. Inte `blink` eller tidslinjens
+// bildrutor: med dem tog hjulet tre gånger så lång tid (1,4 s mot 0,4 i en Linux-container), med de
+// här en halv gång till.
+const HJULETS_SPÅR = ['input', 'cc', 'viz', 'gpu', 'benchmark', 'toplevel']
 
 const STORLEKAR = [
   [1024, 768],
