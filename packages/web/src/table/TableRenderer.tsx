@@ -32,6 +32,7 @@ import { RING_AIR, RING_REACH, ringCentre } from './ring.js'
 import { liftBox, type Edges } from './lift.js'
 import { useSmallestPt } from './smallest.js'
 import { Lifted } from './Lifted.js'
+import { useLetGoWhereMouseArrives, type Pointing } from './arrival.js'
 import { FAN_MAX, HAND_CARD_BOX, HAND_COUNT_ABOVE_MM, HAND_COUNT_MM, countSide, edgeRotation, fanPlace, feltWithHands, handAt, handBand, handCountAt, handRoom, handRotation, type TableMode } from './hand.js'
 import { gapAbove, nameAt } from './labels.js'
 import { placeNames, placePlates, type PlateAt } from './freeSide.js'
@@ -924,24 +925,33 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   }
   const handlers = (target: DragTarget) => ({ onPointerDown: (e: RPointerEvent) => down(e, target), onPointerMove: move, onPointerUp: up, onPointerCancel: cancel })
   // Pointing at a card is not touching it: it only says what the screen should show large.
-  const inspects = (c: VisibleComponentState | undefined) =>
-    onInspect && c ? { onPointerEnter: () => onInspect(c), onPointerLeave: () => onInspect(null), ...(onPick ? { onClick: () => onPick(c) } : {}) } : undefined
+  // What a mouse rests on is let go of where the mouse arrives next, as well as on React's leave:
+  // the leave goes astray when the node under a mouse at rest is taken away, as the words «Laddar
+  // kortet…» are when the face arrives, and the lift, what is shown large and the address `F` turns
+  // stayed with a card the mouse had left (#1450, as the hand's in #1325).
+  const untilArrival = useLetGoWhereMouseArrives()
+  const inspects = (c: VisibleComponentState | undefined) => {
+    const pointing = untilArrival(onInspect && c ? { onPointerEnter: () => onInspect(c), onPointerLeave: () => onInspect(null) } : undefined)
+    return pointing && { ...pointing, ...(onPick && c ? { onClick: () => onPick(c) } : {}) }
+  }
   // A mouse resting on a card reads it (K26), for as long as it rests there. A finger has no
   // resting: its enter is the start of a press, and the press is what reads.
   const reads = (target: DragTarget): Pointing | undefined =>
-    lifts && (onAct || watch)
-      ? {
-          onPointerEnter: (e) => {
-            if (!e || e.pointerType !== 'mouse' || live.current) return
-            const from = letGo.current
-            if (from && Math.hypot(e.clientX - from.x, e.clientY - from.y) < DRAG_PX) return
-            letGo.current = null
-            const c = readableOf(target)
-            if (c) setPointed({ c, target, at: edgesOf(e.currentTarget as HTMLElement), standIn: false })
-          },
-          onPointerLeave: () => setPointed(null),
-        }
-      : undefined
+    untilArrival(
+      lifts && (onAct || watch)
+        ? {
+            onPointerEnter: (e) => {
+              if (!e || e.pointerType !== 'mouse' || live.current) return
+              const from = letGo.current
+              if (from && Math.hypot(e.clientX - from.x, e.clientY - from.y) < DRAG_PX) return
+              letGo.current = null
+              const c = readableOf(target)
+              if (c) setPointed({ c, target, at: edgesOf(e.currentTarget as HTMLElement), standIn: false })
+            },
+            onPointerLeave: () => setPointed(null),
+          }
+        : undefined,
+    )
   // A press on a screen that watches only reads (#511): it lifts a card whose face the screen sees,
   // and does nothing else — there is no drag to start and no ring to ask.
   const watches = (target: DragTarget): Handlers | undefined =>
@@ -965,7 +975,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   // reads it about.
   const points = (target: DragTarget): Pointing | undefined => {
     const say = keyboard?.onPoint
-    return say ? { onPointerEnter: () => say(target), onPointerLeave: () => say(null) } : undefined
+    return untilArrival(say ? { onPointerEnter: () => say(target), onPointerLeave: () => say(null) } : undefined)
   }
   // A card answers the pointer twice over: what to show large, and what `F` turns over (#258).
   // Two pairs of handlers on one node would be the second silently dropped, so they are one pair.
@@ -2098,7 +2108,6 @@ type FeltNodeProps = {
   onFocus(): void
   onKeyDown(e: RKeyboardEvent): void
 }
-type Pointing = { onPointerEnter(e?: RPointerEvent): void; onPointerLeave(e?: RPointerEvent): void }
 
 function Card({ c, left, top, px, dragging, hiding = false, carried, by, faces, back, handlers, points, keys }: { c: VisibleComponentState; left: number; top: number; px: (mm: number) => number; dragging: boolean; hiding?: boolean; carried?: boolean; by?: { seat: string | null; colour: string } | undefined; faces?: string | undefined; back?: ReactNode | undefined; handlers?: Handlers | undefined; points?: Pointing | undefined; keys?: FeltNodeProps | undefined }) {
   // A card on its way into a hand is drawn as the card it is about to be (#444, K24): face down,

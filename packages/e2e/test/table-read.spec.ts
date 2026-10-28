@@ -1,6 +1,7 @@
 import type { Device } from '../support/devices.js'
 import { DESK } from '../support/devices.js'
 import { join, withQuery } from '../support/api.js'
+import { pointerLog } from '../support/pointer-log.js'
 import { standing } from '../support/surface.js'
 import { expect, test } from '../support/test.js'
 
@@ -130,6 +131,14 @@ test.describe('the felt under the distance view’s header (#509)', () => {
 test.describe('a card read at the top of the felt (#509)', () => {
   const LAPTOP: Device = { name: 'laptop', viewport: { width: 1280, height: 800 } }
   test.use({ viewport: LAPTOP.viewport })
+  // A lift a mouse rests on is let go of where the mouse arrives as well as on React's leave, which
+  // can go astray when the card's face arrives under a mouse at rest (#1325, #1450): a red run keeps
+  // what the pointer did beside its trace.
+  let pointer: Awaited<ReturnType<typeof pointerLog>> | null = null
+  test.afterEach(async () => {
+    await pointer?.keepIfFailed(test.info())
+    pointer = null
+  })
 
   for (const where of ['online', 'table'] as const) {
     test(`is lifted whole and on top of everything on ${where === 'online' ? 'the distance view' : 'the table screen'}`, async ({ tableOf, open, host, request }) => {
@@ -138,6 +147,7 @@ test.describe('a card read at the top of the felt (#509)', () => {
       await dealer.send([{ v: 'draw', from: 'draw', to: 'table', count: 1 }])
       const seat = await join(request, table, { name: 'Ada', seat: 'A' })
       const { page } = await open(LAPTOP, withQuery(where === 'online' ? seat.onlineUrl : table.tableUrl, `lang=sv`))
+      pointer = await pointerLog(page)
       const card = page.locator(`${where === 'online' ? '.byd-online-felt ' : ''}.byd-card[data-component]`).first()
       await expect(card).toHaveAttribute('data-face', 'back')
       await card.click()

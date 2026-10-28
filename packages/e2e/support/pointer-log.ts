@@ -11,10 +11,11 @@ import type { Page, TestInfo } from '@playwright/test'
  *
  * Every pointer boundary event and move is written down at the window, in the capture phase, with
  * its target and related target and whether each is still connected; so is every time a lift
- * (`[data-lift]`) appears or goes, and every time a card's face is swapped under the pointer. Each
- * line also goes to the page's console, which is in the trace. When the test fails the whole log is
- * written beside the trace as `pointer-events.txt` and attached to the result; `keepIfFailed` is
- * for an `afterEach`, which runs while the test's page is still open.
+ * (`[data-lift]`) appears or goes, and every time a card's face is swapped under the pointer, in the
+ * hand (`data-hand-card`) and on the felt (`data-component`, #1450). Each line also goes to the
+ * page's console, which is in the trace. When the test fails the whole log is written beside the
+ * trace as `pointer-events.txt` and attached to the result; `keepIfFailed` is for an `afterEach`,
+ * which runs while the test's page is still open.
  */
 export async function pointerLog(page: Page): Promise<{ keepIfFailed: (info: TestInfo) => Promise<void> }> {
   // Installed into the page as it stands: the journeys that use it have opened theirs already, and
@@ -25,7 +26,8 @@ export async function pointerLog(page: Page): Promise<{ keepIfFailed: (info: Tes
     ;(window as unknown as { __bydPointerLog: string[] }).__bydPointerLog = log
     const name = (node: EventTarget | null): string => {
       if (!(node instanceof Element)) return node === null ? 'null' : String(node)
-      const card = node.closest('[data-hand-card]')?.getAttribute('data-hand-card')
+      const held = node.closest('[data-hand-card], [data-component]')
+      const card = held?.getAttribute('data-hand-card') ?? held?.getAttribute('data-component')
       const own = `${node.localName}${node.id ? `#${node.id}` : ''}${node.classList.length > 0 ? `.${[...node.classList].join('.')}` : ''}`
       return `${own}${card ? `@${card}` : ''}${node.isConnected ? '' : ' (detached)'}`
     }
@@ -55,7 +57,7 @@ export async function pointerLog(page: Page): Promise<{ keepIfFailed: (info: Tes
       if (now !== lifted) say(`lift ${lifted ?? 'none'} → ${now ?? 'none'}`)
       lifted = now
       for (const record of records) {
-        if (record.type !== 'childList' || !(record.target instanceof Element) || !record.target.closest('[data-hand-card]')) continue
+        if (record.type !== 'childList' || !(record.target instanceof Element) || !record.target.closest('[data-hand-card], [data-component]')) continue
         if (record.removedNodes.length === 0 && record.addedNodes.length === 0) continue
         say(`card face swapped in ${name(record.target)}: -${[...record.removedNodes].map((n) => (n instanceof Element ? n.localName : '#text')).join(',')} +${[...record.addedNodes].map((n) => (n instanceof Element ? n.localName : '#text')).join(',')}`)
       }
