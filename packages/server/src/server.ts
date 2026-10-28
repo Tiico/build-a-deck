@@ -34,7 +34,7 @@ import { printFileJobsOf, printManifestOf, type PrintFileJob } from './print-fil
 import { boxFactsOf, boxPrintOf } from './box-print.js'
 import { boxStillJobOf } from './box-still.js'
 import { Country, routeOrder, widestBleedMm, type PrintManifest, type PrintProvider, type Route } from '@byd/print'
-import { PRINT_PACKAGE_FORMAT, PRINT_PACKAGE_FORMAT_VERSION, packPrintPackage, printPackageDisposition, printPackageReadme, printPathOf, type PrintPackageBox, type PrintPackageManifest } from './print-package.js'
+import { PRINT_PACKAGE_FORMAT, PRINT_PACKAGE_FORMAT_VERSION, packPrintPackage, printPackageDisposition, printPackageReadme, printPathOf, type Finding, type PrintPackageBox, type PrintPackageManifest } from './print-package.js'
 import { EXPORT_FORMAT, EXPORT_FORMAT_VERSION, EXPORT_SUMMARY_HEADER, ProjectExport, RULEBOOK_FILE, assetFileOf, assetHashesOf, duplicatedName, exportDisposition, exportSummaryOf, importedName, packExport, printFileOf, readExport, readmeOf, type ImportProblem } from './export.js'
 import { BlockedAsset, ReportBody, type ReportStore } from './reports.js'
 import { REPORT_SECTION, operatorMail, receiptMail } from './report-mail.js'
@@ -1483,8 +1483,7 @@ async function flaggedDecksOf(opts: ServerOptions, id: string, session: SessionR
 // What the physical checks (E5) say of a version: every face of every card, at the bleed that will
 // be printed, and every face of the box the designer has drawn (#1459), at the box type's own print,
 // since no partner prints the box yet (F1). A remark on the box names its face as the canvas does,
-// `box.<face>`, and no card. An error on either stops an order.
-type Finding = Issue & { cardRef?: string; face: string }
+// `box.<face>`, and no card (`Finding`). An error on either stops an order.
 function checkedCards(rec: ProjectRecord, opts: Pick<ServerOptions, 'registry' | 'printProviders'>, provider?: PrintProvider): Finding[] {
   const ref = { id: CARD_STANDARD_63x88.id, version: CARD_STANDARD_63x88.version }
   const type = opts.registry.get(ref)

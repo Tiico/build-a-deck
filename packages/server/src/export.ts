@@ -30,7 +30,8 @@ const Hash = z.string().regex(/^[0-9a-f]{64}$/)
 const Motif = z.object({ w: z.number(), h: z.number(), trim: z.object({ left: z.number(), top: z.number(), right: z.number(), bottom: z.number() }) }).loose()
 // A finding of the physical checks (E5), as the print route says it: which card, which face, which
 // element, what code, and what was measured. The sentence is written where it is read.
-const Finding = z.object({ cardRef: z.string(), face: z.string(), element: z.string(), code: z.string(), severity: z.enum(['error', 'warning']), values: z.record(z.string(), z.union([z.string(), z.number()])) })
+// A remark on a drawn face of the box names no card (#1459).
+const Finding = z.object({ cardRef: z.string().optional(), face: z.string(), element: z.string(), code: z.string(), severity: z.enum(['error', 'warning']), values: z.record(z.string(), z.union([z.string(), z.number()])) })
 
 export const ExportVersion = z.object({
   rev: z.number().int().positive(),

@@ -88,6 +88,9 @@ describe('lådan i exporten (G5, #1418)', () => {
       locked: { width: false, height: false, depth: true },
       clearance: { around: 2, depth: 2 },
     })
+    // Fysisk kontroll prövar den ritade framsidan (#1459): kartongen slutar vid snittet, och fyndet
+    // namnger lådans yta och inget kort. Lådans filer följer med ändå.
+    expect(manifest.print.errors).toContainEqual({ face: 'box.front', element: 'ground', code: 'short-of-bleed', severity: 'error', values: { bleedMm: 3 } })
     // Nätet arket är vikt ur, i millimeter.
     expect(manifest.print.box!.net.width).toBeGreaterThan(2 * 67)
     // En PDF per yta, där designerns yta är ritad och resten neutrala.
