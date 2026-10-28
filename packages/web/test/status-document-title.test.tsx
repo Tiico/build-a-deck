@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { describe, expect, it } from 'vitest'
-import { render, waitFor } from '@testing-library/react'
+import { act, render, waitFor } from '@testing-library/react'
 import { DocumentTitle, usePageTitle } from '../src/status/DocumentTitle.js'
 import type { StatusKey } from '../src/status/notice.js'
 
@@ -40,5 +40,44 @@ describe('the tab beside the page', () => {
     await waitFor(() => expect(seen.length).toBeGreaterThan(0))
     watch.disconnect()
     expect(seen[0]).toBe('dropped · Frånkopplad · Deckster')
+  })
+
+  // A live page reads its state off the clock while it renders (`useLiveStatus`: how long the line
+  // has been down), so a render can see a state no update asked for. When nothing it holds has
+  // changed — the observer measures itself after every commit and sets the same height again —
+  // React throws that render away, keeps the page as it was, and keeps the effect's new dependencies
+  // without running it. The next render that does commit the state then has nothing to report, and
+  // the tab said «Tittar på rum …» over a page that said «Frånkopplad» for as long as anyone waited
+  // (#1395). It was caught once in about 150 runs of status-routes under load, with every write of
+  // the tab logged: the page rendered `dropped` five times and reported it none.
+  it('says the state the page shows, even when a render React threw away saw it first (#1395)', async () => {
+    let clock: StatusKey | null = null
+    let bump: () => void = () => undefined
+    function Page() {
+      const [n, setN] = useState(0)
+      const [, setSame] = useState(0)
+      bump = () => setN((x) => x + 1)
+      // Read off something outside React, as the clock is.
+      const state = clock
+      usePageTitle({ state, room: '4RMGQ4' })
+      // As the observer measures itself after every commit and sets the height it already has.
+      const measure = () => setSame(0)
+      useEffect(() => {
+        // Time passes between a commit and the render the next update asks for.
+        if (n === 1) clock = 'dropped'
+        measure()
+      })
+      return <p data-state={state ?? 'none'} />
+    }
+    render(
+      <DocumentTitle route="observe">
+        <Page />
+      </DocumentTitle>,
+    )
+    await act(async () => bump())
+    await act(async () => new Promise((done) => setTimeout(done, 20)))
+    await act(async () => bump())
+    expect(document.querySelector('p')!.dataset['state']).toBe('dropped')
+    expect(document.title).toBe('Frånkopplad · Deckster')
   })
 })

@@ -20,8 +20,11 @@ export function DocumentTitle({ route = routeOf(location.pathname), children }: 
   // first and writes with the previous route; the effect below writes again, so the commit ends
   // with both halves current.
   const own = useRef({ route, t })
+  // Written only when it says something else, so a page that reports on every commit (below)
+  // never rewrites the tab with what it already says.
   const write = useCallback(() => {
-    document.title = documentTitle(own.current.route, ctx.current, own.current.t)
+    const title = documentTitle(own.current.route, ctx.current, own.current.t)
+    if (document.title !== title) document.title = title
   }, [])
   useLayoutEffect(() => {
     own.current = { route, t }
@@ -37,13 +40,20 @@ export function DocumentTitle({ route = routeOf(location.pathname), children }: 
   return <Report.Provider value={report}>{children}</Report.Provider>
 }
 
-// What this page is about, and what is wrong with it. Reported as primitives so that a page
-// re-rendering for any other reason does not rewrite the tab, and from a layout effect so that
-// the tab changes in the same commit as the page.
+// What this page is about, and what is wrong with it, from a layout effect so that the tab
+// changes in the same commit as the page.
+//
+// On every commit, and not only when what is reported changes (#1395). A live page reads its state
+// off the clock while it renders, so a render can see a state that no update asked for; when
+// nothing the page holds has changed, React throws that render away and keeps the effect's new
+// dependencies without running it. The render that then puts the state on the page found nothing
+// changed and reported nothing, and the tab said «Tittar på rum …» over «Frånkopplad» for as long
+// as anyone waited. What a commit shows is what it reports; `write` leaves a tab that already
+// says it alone.
 export function usePageTitle(ctx: TitleContext): void {
   const report = useContext(Report)
   const { state = null, room = null, game = null, route = null, part = null, turn = null } = ctx
   useLayoutEffect(() => {
     report?.({ state, room, game, route, part, turn })
-  }, [report, state, room, game, route, part, turn])
+  })
 }
