@@ -80,3 +80,36 @@ test('the template\'s card groups say they are open and close on a press in the 
   await openTemplate(page)
   await opensSaysItAndCloses(page, page.locator('.byd-canvas-group-open'), page.locator('.byd-canvas-groups'))
 })
+
+// The ways hang in the page's top layer, fixed to the window, so nothing carries them when the row
+// above their button grows: the release gate of v0.44.0 saw «laddar kort 0/92» arrive under the
+// row's name while the menu stood open, and the menu stayed where the button had been, over the
+// button's lower half, catching the press meant to close it (#1465).
+test('the ways under a table\'s row follow their button when the row above it grows', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 })
+  await openTemplate(page)
+  await page.locator('.byd-editor-caret').click()
+  const button = page.locator('.byd-editor-ways .byd-tables-more')
+  const menu = page.locator('.byd-editor-ways .byd-tables-menu')
+  await button.click()
+  await expect(menu).toBeVisible()
+  const before = (await button.boundingBox())!
+
+  // The row's words grow, as they do when the table starts loading its cards: no scroll and no
+  // resize, only the layout moving under an open menu.
+  await page.locator('.byd-editor-ways li p').first().evaluate((el: HTMLElement) => {
+    el.style.paddingTop = '40px'
+  })
+  await expect.poll(async () => (await button.boundingBox())!.y).toBeGreaterThan(before.y + 30)
+
+  // The menu still hangs under its button, and a press on the button is the button's.
+  await expect
+    .poll(async () => {
+      const b = (await button.boundingBox())!
+      const m = (await menu.boundingBox())!
+      return m.y >= b.y + b.height
+    })
+    .toBe(true)
+  await button.click()
+  await expect(menu).toBeHidden()
+})

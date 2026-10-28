@@ -194,9 +194,30 @@ export function usePlacement(open: boolean, box: RefObject<HTMLElement | null>, 
     // very often some box inside the page rather than the page itself.
     window.addEventListener('resize', measure)
     window.addEventListener('scroll', measure, true)
+    // A lifted box is fixed to the window, so it is also carried by nothing when the page moves its
+    // anchor without a scroll or a resize: a row above the button that grows a line pushed the
+    // button down under an open menu, and the menu stayed where the button had been, over it,
+    // taking the press meant to close it (#1465). No event says that an element moved, so the
+    // anchor is read once a frame while the box is lifted, and the box placed again when it moved.
+    // A box standing in place is carried by its own parent and needs none of this.
+    let frame = 0
+    const from = hangs.current
+    if (b?.matches(':popover-open') && from) {
+      let was = from.getBoundingClientRect()
+      const follow = () => {
+        const now = from.getBoundingClientRect()
+        if (now.x !== was.x || now.y !== was.y || now.width !== was.width || now.height !== was.height) {
+          was = now
+          measure()
+        }
+        frame = requestAnimationFrame(follow)
+      }
+      frame = requestAnimationFrame(follow)
+    }
     return () => {
       window.removeEventListener('resize', measure)
       window.removeEventListener('scroll', measure, true)
+      cancelAnimationFrame(frame)
     }
   }, [open, measure, box])
   return place
