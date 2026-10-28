@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest'
 import { act, render, screen, waitFor, within } from '@testing-library/react'
-import { TableClient } from '../src/client.js'
+import { WebSocket as WsClient } from 'ws'
+import { TableClient, setWebSocketImplementation, type WebSocketCtor } from '../src/client.js'
 import { DocumentTitle } from '../src/status/DocumentTitle.js'
 import { StatusLive } from '../src/status/StatusLive.js'
 import type { StatusTiming } from '../src/status/connection.js'
@@ -74,6 +75,72 @@ async function open(live: Live, opts: { session: string; url?: string; timing?: 
 
 const notice = () => document.querySelector('[data-status-notice]')
 const noticeState = () => notice()?.getAttribute('data-status-notice') ?? null
+
+// What a line that dies went through, for the message of a wait that fails (#1395). The /observe
+// tab once read «Tittar på rum …» four seconds after the notice had said `dropped`, under load and
+// never on its own. The title is written in the commit that draws the notice, so a tab that says
+// the route's name again means the page's state went back to null or `resumed`: a socket that
+// opened again, or a client that was closed. The story says which, in the order it happened: every
+// change of the notice and the tab, and every socket the page opened, with the port it knocked on,
+// whether it opened, the first thing it was told and how it closed.
+function watchLine(): () => string {
+  const began = performance.now()
+  const lines: string[] = []
+  const at = () => `${Math.round(performance.now() - began)}ms`
+  let last = ''
+  const look = () => {
+    const now = `notice=${noticeState()} title=${document.title}`
+    if (now !== last) lines.push(`${at()} ${now}`)
+    last = now
+  }
+  look()
+  const watch = new MutationObserver(look)
+  watch.observe(document, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['data-status-notice'] })
+  let sockets = 0
+  class Recording extends WsClient {
+    constructor(url: string, protocols?: string | string[]) {
+      super(url, protocols)
+      const n = (sockets += 1)
+      const port = new URL(url).port
+      lines.push(`${at()} socket ${n} → :${port}`)
+      this.addEventListener('open', () => lines.push(`${at()} socket ${n} open`))
+      let told = false
+      this.addEventListener('message', (ev) => {
+        if (told) return
+        told = true
+        lines.push(`${at()} socket ${n} first message ${String(ev.data).slice(0, 60)}`)
+      })
+      this.addEventListener('close', (ev) => lines.push(`${at()} socket ${n} closed ${ev.code}`))
+    }
+  }
+  setWebSocketImplementation(Recording as unknown as WebSocketCtor)
+  // Every write of the tab too, with who wrote it: two writes in one task are one change to the
+  // observer above, and the second of them is the one the tab is left with.
+  const title = Object.getOwnPropertyDescriptor(Document.prototype, 'title')!
+  Object.defineProperty(document, 'title', {
+    configurable: true,
+    get: () => title.get!.call(document) as string,
+    set: (value: string) => {
+      const by = (new Error().stack ?? '')
+        .split('\n')
+        .filter((frame) => frame.includes('/src/'))
+        .slice(0, 3)
+        .map((frame) => frame.replace(/.*\/src\//, '').replace(/\)$/, ''))
+        .join(' ← ')
+      lines.push(`${at()} tab written «${value}» ${by}`)
+      title.set!.call(document, value)
+    },
+  })
+  onTestFinished(() => {
+    watch.disconnect()
+    setWebSocketImplementation(WsClient as unknown as WebSocketCtor)
+    delete (document as { title?: string }).title
+  })
+  return () => {
+    look()
+    return `what the line went through:\n${lines.join('\n')}`
+  }
+}
 
 // `/join` asks for the code again instead (#675), and is held to the same three things below.
 describe.each(LIVE.filter((live) => live.route !== 'join'))('$path when the room does not exist', (live) => {
@@ -196,16 +263,17 @@ describe.each(LIVE)('$path when the line dies mid-game', (live) => {
   })
 
   it('marks the old picture as old and takes it out of reach', async () => {
+    const story = watchLine()
     const id = await createSession(run)
     await open(live, { session: id, real: true })
-    await waitFor(() => expect(noticeState()).toBeNull())
+    await waitFor(() => expect(noticeState(), story()).toBeNull())
     await run.stop()
-    await waitFor(() => expect(noticeState()).toBe('dropped'))
+    await waitFor(() => expect(noticeState(), story()).toBe('dropped'))
     const stale = document.querySelector('.byd-status-stale')
-    expect(stale).toBeTruthy()
+    expect(stale, story()).toBeTruthy()
     expect(stale!.hasAttribute('inert')).toBe(true)
     expect(notice()!.textContent).toMatch(/Det du ser är från \d\d:\d\d/)
-    await waitFor(() => expect(document.title).toBe('Frånkopplad · Deckster'))
+    await waitFor(() => expect(document.title, story()).toBe('Frånkopplad · Deckster'))
   })
 
   // «Försök nu» takes its own message away once the line is back, and the focus went with it, to
