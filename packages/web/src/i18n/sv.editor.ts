@@ -101,7 +101,7 @@ export const svEditor = {
   'editor.notice.close': 'Stäng meddelandet',
   // En ändring som aktören avvisade tas bort ur editorn igen (#993), och det sägs: den försvann
   // annars utan ett ord. Den andra meningen förklarar varför skärmen ändrades under formgivaren.
-  'editor.edit.refused': 'En ändring gick inte att göra och har tagits bort. Spelet visar nu samma sak för alla.',
+  'editor.edit.refused': 'En ändring gick inte att göra och har tagits bort. Försök igen, eller gör ändringen på ett annat sätt.',
   'editor.rev': 'v{n}',
   // Dörren säger «Dela» (#727), och ordet står först i namnet, som det står på knappen.
   'editor.here.name': 'Dela: vilka som har spelet, {n} online',

@@ -85,7 +85,7 @@ export const enEditor = {
   'editor.save.terms': 'Not saved. Accept the beta’s terms to save.',
   'editor.save.failed': 'It could not be saved. Your changes are still here, so try again.',
   'editor.notice.close': 'Close the message',
-  'editor.edit.refused': 'A change could not be made and has been removed. The game now shows the same thing to everyone.',
+  'editor.edit.refused': 'A change could not be made and has been removed. Try again, or make the change another way.',
   'editor.rev': 'v{n}',
   'editor.here.name': 'Share: who has the game, {n} online',
   'editor.here.someone': 'Someone',

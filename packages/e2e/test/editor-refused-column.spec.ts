@@ -71,7 +71,7 @@ test('a column refused because a colleague named it first is taken off the edito
   for (const send of asked.splice(0)) send()
   await expect.poll(() => refusals).toBe(1)
 
-  await expect(page.getByRole('alert').filter({ hasText: 'En ändring' })).toHaveText('En ändring gick inte att göra och har tagits bort. Spelet visar nu samma sak för alla.')
+  await expect(page.getByRole('alert').filter({ hasText: 'En ändring' })).toHaveText('En ändring gick inte att göra och har tagits bort. Försök igen, eller gör ändringen på ett annat sätt.')
   await expect(column('Kraft')).toHaveCount(0)
   await expect(column('kraft')).toBeVisible()
   // What Bo holds is Ada's saved version, so nothing of his is unsaved.
