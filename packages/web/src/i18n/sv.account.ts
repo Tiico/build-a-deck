@@ -767,6 +767,13 @@ export const svAccount = {
   'print.checks.more': 'och {n} till.',
   'print.checks.left': 'Kortfilerna följer inte med i nedladdningen förrän felen är rättade, som i exporten. Manifestet och regelhäftet gör det.',
   'print.checks.fix': 'Rätta i editorn ›',
+  'print.checks.box': 'Lådan',
+  'print.box.face.front': 'framsidan',
+  'print.box.face.back': 'baksidan',
+  'print.box.face.left': 'vänster sida',
+  'print.box.face.right': 'höger sida',
+  'print.box.face.lid': 'locket',
+  'print.box.face.bottom': 'botten',
   'print.face.front': 'framsidan',
   'print.face.back': 'baksidan',
 

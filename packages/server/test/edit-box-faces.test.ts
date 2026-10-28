@@ -74,7 +74,8 @@ describe('en yta som inte är ritad (#1406, beslut 5)', () => {
     const shapes = face.template.base.filter((e) => e.kind === 'shape')
     const texts = face.template.base.filter((e) => e.kind === 'text')
     expect(shapes).toHaveLength(1)
-    expect(shapes[0]).toMatchObject({ x: 0, y: 0, w: 65, h: 90, fill: '#1d4a31' })
+    // Färgen går ut i lådtypens utfall på 3 mm, som ett korts bakgrund (#1459, E5).
+    expect(shapes[0]).toMatchObject({ x: -3, y: -3, w: 71, h: 96, fill: '#1d4a31' })
     expect(texts).toHaveLength(1)
     expect(texts[0]).toMatchObject({ bind: { literal: 'Skogens råd' } })
   })
@@ -88,7 +89,7 @@ describe('en yta som inte är ritad (#1406, beslut 5)', () => {
 
   it('står i ytans eget mått, som följer leken', () => {
     const side = boxFaceOf(game(), 'left').template.base.find((e) => e.kind === 'shape')
-    expect(side).toMatchObject({ w: boxOf(game()).size.depth, h: 90 })
+    expect(side).toMatchObject({ w: boxOf(game()).size.depth + 6, h: 96 })
   })
 
   it('har en färg också för en lek utan bakgrund', () => {
@@ -108,6 +109,11 @@ describe('en yta som inte är ritad (#1406, beslut 5)', () => {
         for (const el of boxFaceOf(doc, face).template.base) {
           if (!('w' in el)) continue
           const where = `${face} på en lek med ${cards} kort`
+          // Grunden går ut i utfallet (#1459) och täcker ytan; allt annat står på ytan.
+          if (el.id === 'ground') {
+            expect({ x: el.x, y: el.y, w: el.w, h: el.h }, where).toEqual({ x: -3, y: -3, w: widthMm + 6, h: heightMm + 6 })
+            continue
+          }
           expect(el.w, where).toBeGreaterThan(0)
           expect(el.h, where).toBeGreaterThan(0)
           expect(el.x, where).toBeGreaterThanOrEqual(0)

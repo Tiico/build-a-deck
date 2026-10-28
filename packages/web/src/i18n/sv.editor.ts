@@ -461,6 +461,12 @@ export const svEditor = {
   'wall.checks.print': 'Se tryckpaketet ›',
   // Spelets låda (#1412): när ett låst mått inte rymmer leken, med korten som inte får plats och
   // måtten i ord.
+  'wall.boxFaces.title': 'Lådans ytor',
+  'wall.boxFaces.one': '{n} yta',
+  'wall.boxFaces.other': '{n} ytor',
+  'wall.boxFaces.rows': 'Ytorna den gäller',
+  'wall.boxFaces.row': '{face}: {issue}, {detail}. Till ytan i Låda ›',
+  'wall.boxFaces.row.read': '{face}: {issue}, {detail}.',
   'wall.box.title': 'Lådan rymmer inte leken',
   'wall.box.over.one': 'Ett kort får inte plats i lådan.',
   'wall.box.over.other': '{n} kort får inte plats i lådan.',

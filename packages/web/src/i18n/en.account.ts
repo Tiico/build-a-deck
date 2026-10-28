@@ -698,6 +698,13 @@ export const enAccount = {
   'print.checks.more': 'and {n} more.',
   'print.checks.left': 'The card files are left out of the download until the errors are fixed, as in the export. The manifest and the rulebook come along.',
   'print.checks.fix': 'Fix them in the editor ›',
+  'print.checks.box': 'The box',
+  'print.box.face.front': 'the front',
+  'print.box.face.back': 'the back',
+  'print.box.face.left': 'the left side',
+  'print.box.face.right': 'the right side',
+  'print.box.face.lid': 'the lid',
+  'print.box.face.bottom': 'the bottom',
   'print.face.front': 'the front',
   'print.face.back': 'the back',
 

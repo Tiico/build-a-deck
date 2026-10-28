@@ -725,6 +725,16 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         // The box grows in the foot from the first card, and is the way to its tab once the deck is
         // playable (#1415, L91). A phone lays nothing out in millimetres (L10), and has no tab to go to.
         box={room === 'phone' ? undefined : { onOpen: startable ? () => setStage('box') : undefined }}
+        // A remark on a drawn face of the box goes to that face and layer in the tab (#1459).
+        {...(room !== 'phone' && startable
+          ? {
+              onOpenBoxFace: (face: BoxFace, element: string) => {
+                setBoxFace(face)
+                setBoxElement(element)
+                setStage('box')
+              },
+            }
+          : {})}
         onFixChecks={(fixes) => {
           const gesture = `fix-check-${Date.now()}`
           for (const fix of fixes) client?.patchElement(fix.face, fix.element, fix.patch, undefined, gesture)
