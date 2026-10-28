@@ -9235,6 +9235,10 @@ I editorn står anmärkningarna under en rad för lådan, «Lådans ytor», i sa
 Vid tryck följer anmärkningarna kortens: ett fel på en yta stoppar en order (`POST /projects/:id/print` svarar 422), och anmärkningen namnger ytan som `box.<yta>` och inget kort.
 Den neutrala ytans grund går därför ut i lådtypens utfall, som ett korts bakgrund, så att en yta designern just tagit över inte i samma stund blir ett fel.
 `packages/server/test/box-checks.test.ts` och `packages/e2e/test/box-faces-check.spec.ts` är grindarna.
+Byggt 2026-10-28 (#1463): en yta som togs över före #1459 bär den gamla neutrala grunden, som slutar vid snittet, och fick ett utfallsfel som stoppade en order fast designern inte gjort något.
+Den grunden lyfts därför när dokumentet läses, i `liftDoc` med `liftBoxGrounds`, som mallens andra uppkastare (DRIFT §7), till den grund en ny yta får; historiken skrivs aldrig om (B4).
+Bara ytans första lager `ground`, en rektangel från hörnet i ytans fulla mått med en fyllning och inget annat, lyfts; en grund designern har flyttat, krympt, gett en kant eller döpt om prövas som hon lämnade den.
+`packages/server/test/box-old-ground.test.ts` är grinden.
 Byggt 2026-10-27 (#1418): exporten bär lådan och tryckpaketet visar den som del 3.
 Dokumentets `box` står i varje version, och manifestets `print.box` säger typen, måtten, låsen, luften, nätets mått och vilken PDF som är vilken yta.
 Lådans sex ytor ligger som tryck-PDF:er med typens utfall under `tryck/lada/`, ritade eller neutrala, kompilerade och ritade som korten (`box-print.ts`); de följer med även när tryckkontrollen stoppar kortfilerna, eftersom lådan ännu inte går till någon partner (F1).

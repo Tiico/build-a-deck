@@ -26,10 +26,11 @@ const login = async (email: string): Promise<string> => {
 const as = (cookie: string) => (method: string, path: string, body?: unknown) =>
   fetch(`${run.http}${path}`, { method, headers: { 'content-type': 'application/json', cookie }, body: body === undefined ? null : JSON.stringify(body) })
 
-// Designerns framsida: en röd kartong och spelets namn. Resten av ytorna är neutrala.
+// Designerns framsida: en röd kartong och spelets namn. Resten av ytorna är neutrala. Kartongen är
+// hennes eget lager och inte den neutrala grunden, så den lyfts inte (#1463) och prövas som den står.
 const FRONT = {
   base: [
-    { kind: 'shape', id: 'ground', x: 0, y: 0, w: 67, h: 92, shape: 'rect', fill: '#7a2e1f' },
+    { kind: 'shape', id: 'kartong', x: 0, y: 0, w: 67, h: 92, shape: 'rect', fill: '#7a2e1f' },
     { kind: 'text', id: 'title', x: 4, y: 30, w: 59, h: 20, bind: { literal: 'Skogens herrar' }, font: { family: 'sans-serif', sizePt: 16, weight: 700, align: 'center' }, color: '#f3ecdc' },
   ],
   variants: {},
@@ -90,7 +91,7 @@ describe('lådan i exporten (G5, #1418)', () => {
     })
     // Fysisk kontroll prövar den ritade framsidan (#1459): kartongen slutar vid snittet, och fyndet
     // namnger lådans yta och inget kort. Lådans filer följer med ändå.
-    expect(manifest.print.errors).toContainEqual({ face: 'box.front', element: 'ground', code: 'short-of-bleed', severity: 'error', values: { bleedMm: 3 } })
+    expect(manifest.print.errors).toContainEqual({ face: 'box.front', element: 'kartong', code: 'short-of-bleed', severity: 'error', values: { bleedMm: 3 } })
     // Nätet arket är vikt ur, i millimeter.
     expect(manifest.print.box!.net.width).toBeGreaterThan(2 * 67)
     // En PDF per yta, där designerns yta är ritad och resten neutrala.

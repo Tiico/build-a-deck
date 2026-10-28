@@ -9,6 +9,7 @@ import { peekCard, type CardPeek } from './names.js'
 import { QuotaReached, growth, type Limit } from './quotas.js'
 import type { AssetStore } from './assets.js'
 import { assetHashesOf } from './asset-refs.js'
+import { liftBoxGrounds } from './box.js'
 
 // A project is what the editor edits: the template, the rows keyed by cardRef, the icon set and
 // the table setup without its components — those come from the rows and their `antal` (L4).
@@ -226,7 +227,10 @@ export type ProjectRecord = ProjectDoc & { id: string; rev: number; owner?: stri
 // set only from «Bildernas mått» on the wall, and once a picture carried its own crop (L22) that
 // surface had nothing left to say. A stored one is taken off here rather than left to crop cards
 // nobody can uncrop, and a card that wants another cut uses a picture cropped for it.
-export const liftDoc = <T>(doc: T): T => withoutFraming(liftTemplate(doc))
+//
+// A face of the box taken over before #1459 keeps the neutral ground of its day, which stopped at the
+// trim; it is lifted here to the ground a face gets today (#1463, `liftBoxGrounds`).
+export const liftDoc = <T>(doc: T): T => liftBoxGrounds(withoutFraming(liftTemplate(doc)))
 const withoutFraming = <T>(doc: T): T => {
   if (typeof doc !== 'object' || doc === null || !('framing' in doc)) return doc
   const { framing: _framing, ...rest } = doc as Record<string, unknown>
