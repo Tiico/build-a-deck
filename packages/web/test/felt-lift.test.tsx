@@ -202,6 +202,31 @@ describe('pointing reads, and a drag does not (K26, #509)', () => {
     expect(lifted()).toBeNull()
   })
 
+  // What Chromium sends when the node under a mouse at rest is taken away (#1325, #1450): the words
+  // «Laddar kortet…» stand over the card until its face arrives. If Chromium has not looked again at
+  // what is under the mouse before the next move, the `pointerout` goes to the words that are gone,
+  // where React's listener never hears it, and the `pointerover` on what the mouse went to names the
+  // card as where it came from. React leaves a card on the `pointerout` alone, so it never left.
+  it('puts the card down when the mouse arrives elsewhere, even when the leaving went to a node that is gone (#1450)', () => {
+    const { card, faceUp } = felt()
+    act(() => void fireEvent.pointerOver(card(faceUp), { ...at(200, 200), relatedTarget: document.body }))
+    expect(lifted()?.getAttribute('data-lift')).toBe(faceUp)
+    act(() => void fireEvent.pointerOut(document.createElement('span'), { ...at(200, 200), relatedTarget: document.body }))
+    const elsewhere = document.body.appendChild(document.createElement('aside'))
+    act(() => void fireEvent.pointerOver(elsewhere, { ...at(4, 4), relatedTarget: card(faceUp) }))
+    expect(lifted()).toBeNull()
+    elsewhere.remove()
+  })
+
+  it('keeps the card lifted while the mouse arrives on what the card itself is drawn with (#1450)', () => {
+    const { card, faceUp } = felt()
+    act(() => void fireEvent.pointerOver(card(faceUp), { ...at(200, 200), relatedTarget: document.body }))
+    const inside = card(faceUp).appendChild(document.createElement('img'))
+    act(() => void fireEvent.pointerOver(inside, { ...at(201, 201), relatedTarget: card(faceUp) }))
+    expect(lifted()?.getAttribute('data-lift')).toBe(faceUp)
+    inside.remove()
+  })
+
   it('a card clicked stays lifted when the mouse moves on', () => {
     const { card, faceUp } = felt()
     fireEvent.pointerEnter(card(faceUp), at(200, 200))

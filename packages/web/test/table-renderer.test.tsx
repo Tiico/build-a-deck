@@ -1032,6 +1032,28 @@ describe('what the screen is pointed at (C)', () => {
     fireEvent.pointerEnter(top)
     expect(onInspect).toHaveBeenLastCalledWith(expect.objectContaining({ zone: 'discard' }))
   })
+
+  // The leaving can go to a node that is gone (#1325, #1450): the words «Laddar kortet…» are taken
+  // away from under a mouse at rest when the face arrives, Chromium sends the `pointerout` to them,
+  // and the `pointerover` where the mouse arrives names the card as where it came from. React hears
+  // no leave from that; what is shown large and what `F` turns over must still let go.
+  it('lets go of the card, for what is shown and for what F turns, when the mouse arrives elsewhere after a leaving it never heard (#1450)', () => {
+    const { view, faceUp } = buildScene()
+    const onInspect = vi.fn()
+    const onPoint = vi.fn()
+    render(<TableRenderer view={view(null)} mode="tv" scale={2} onInspect={onInspect} keyboard={{ ...oneStop(`card:${faceUp}`, []), onPoint }} />)
+    const card = document.querySelector(`[data-component="${faceUp}"]`)!
+    const mouse = { pointerType: 'mouse', pointerId: 1 }
+    act(() => void fireEvent.pointerOver(card, { ...mouse, relatedTarget: document.body }))
+    expect(onInspect).toHaveBeenLastCalledWith(expect.objectContaining({ id: faceUp }))
+    expect(onPoint).toHaveBeenLastCalledWith({ kind: 'card', id: faceUp })
+    act(() => void fireEvent.pointerOut(document.createElement('span'), { ...mouse, relatedTarget: document.body }))
+    const elsewhere = document.body.appendChild(document.createElement('aside'))
+    act(() => void fireEvent.pointerOver(elsewhere, { ...mouse, relatedTarget: card }))
+    expect(onInspect).toHaveBeenLastCalledWith(null)
+    expect(onPoint).toHaveBeenLastCalledWith(null)
+    elsewhere.remove()
+  })
 })
 
 describe('how a pile says what it is', () => {

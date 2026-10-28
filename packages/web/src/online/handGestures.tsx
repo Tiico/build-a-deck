@@ -3,6 +3,7 @@ import type { VisibleComponentState } from '@byd/protocol'
 import { hue } from '../table/hue.js'
 import { TURNED_GROUND } from '../player/HandFace.js'
 import { Lifted } from '../table/Lifted.js'
+import { whenMouseArrivesOutside } from '../table/arrival.js'
 import { LIFT_GAP, liftBox, liftOver, type Box } from '../table/lift.js'
 import { useSmallestPt } from '../table/smallest.js'
 import { useRoving } from '../editor/roving.js'
@@ -75,23 +76,16 @@ export function useHandGestures({ cards, faces, onPlay, locked = false, onCarry,
     if (dragging) putDown()
   }, [dragging])
   // A mouse that has gone elsewhere puts its card down, read off where the pointer arrives and not
-  // only off React's leave (#1325). React leaves a card on the browser's `pointerout`, which goes to
-  // whatever the pointer was last known to be over. When that node has since been taken away — the
-  // words «Laddar kortet…» once the face arrives, a front swapped for a back — and the browser has
-  // not looked again before the next move, the `pointerout` goes to the node that is gone, React's
-  // listener never hears it, and the lift stayed up with the mouse at the other end of the window.
-  // Where the pointer arrives is always said, on a node that is there.
+  // only off React's leave (#1325): the leave goes astray when the node under a mouse at rest is
+  // taken away, and the felt's lift lets go the same way (`arrival.ts`, #1450). The card is known by
+  // its id rather than its node, since its face may be swapped while the mouse rests on it.
   const mouseOn = pointed?.by === 'mouse' ? pointed.id : null
   useEffect(() => {
     if (mouseOn === null) return
-    const arrived = (e: PointerEvent) => {
-      if (e.pointerType !== 'mouse') return
-      const on = e.target instanceof Element ? e.target.closest('[data-hand-card]') : null
-      if (on?.getAttribute('data-hand-card') === mouseOn) return
-      setPointed((p) => (p?.id === mouseOn && p.by === 'mouse' ? null : p))
-    }
-    window.addEventListener('pointerover', arrived, true)
-    return () => window.removeEventListener('pointerover', arrived, true)
+    return whenMouseArrivesOutside(
+      (target) => target?.closest('[data-hand-card]')?.getAttribute('data-hand-card') === mouseOn,
+      () => setPointed((p) => (p?.id === mouseOn && p.by === 'mouse' ? null : p)),
+    )
   }, [mouseOn])
   const reading = drag ? null : pointed ?? read
   const readCard = reading ? cards.find((c) => c.id === reading.id) : undefined
