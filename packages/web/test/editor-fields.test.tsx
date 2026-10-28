@@ -202,7 +202,7 @@ describe('a field made in the editor is a field the game has (#32, B4)', () => {
 describe('a column the actor refuses because a colleague named it first (#993)', () => {
   afterEach(() => setEditSocketImplementation(EditSocket as unknown as EditSocketCtor))
 
-  const REFUSED = 'En ändring gick inte att göra och har tagits bort. Spelet visar nu samma sak för alla.'
+  const REFUSED = 'En ändring gick inte att göra och har tagits bort. Försök igen, eller gör ändringen på ett annat sätt.'
 
   // Bo's requests are held on their way out while he makes «Kraft», and presses `pressed` if he
   // presses something; Ada names «kraft» and saves; and Bo's requests leave after hers. Every

@@ -83,5 +83,5 @@ test('a save sent behind a refused column says «Sparat» over the version it ma
   await expect(page.locator('.byd-editor-save')).toHaveAttribute('aria-disabled', 'true')
   // And the column did not go without a word (#996): the save was answered after the refusal, and
   // a save puts away only what stood when it was pressed.
-  await expect(page.getByRole('alert').filter({ hasText: 'En ändring gick inte att göra och har tagits bort.' })).toHaveText('En ändring gick inte att göra och har tagits bort. Spelet visar nu samma sak för alla.')
+  await expect(page.getByRole('alert').filter({ hasText: 'En ändring gick inte att göra och har tagits bort.' })).toHaveText('En ändring gick inte att göra och har tagits bort. Försök igen, eller gör ändringen på ett annat sätt.')
 })

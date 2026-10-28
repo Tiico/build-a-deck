@@ -441,8 +441,7 @@ export class ProjectClient {
           this.refuseStep({ dir: step.dir, what: step.what })
           return
         }
-        this.refusedEdits += 1
-        this.notify()
+        this.refuseEdit()
         return
       }
     }
@@ -571,7 +570,36 @@ export class ProjectClient {
   // step, as it always was.
   // `what` is the word the step back says, when the edit's own part of the game is not the word a
   // designer would recognise it by: an accepted AI proposal is «det godtagna förslaget» (#1002).
+  //
+  // An edit the document refuses here, before anything is sent, is refused the way the actor
+  // refuses one (#1454): counted in `refusedEdits`, and so said in the same notice and the same
+  // words. It used to be thrown into the control that asked for it, where nothing caught it: the
+  // field went back without a word, the console held a ZodError, and the control read as dead
+  // (#1448). Nothing is thrown from here, because no press may end in an error nobody catches.
   edit(asked: EditIntent, gesture?: string, what?: Key): void {
+    try {
+      this.make(asked, gesture, what)
+    } catch {
+      this.refuseHere()
+    }
+  }
+
+  // An edit of this editor's own that did not happen, whichever of the two refused it (#993, #1454).
+  private refuseEdit(): void {
+    this.refusedEdits += 1
+    this.notify()
+  }
+
+  // Refused by the document here, which is never a ceiling: only the actor counts those.
+  private refuseHere(): void {
+    this.refusedQuota = null
+    this.refuseEdit()
+  }
+
+  // The edit itself, which throws when the document refuses it, with the stack untouched and
+  // nothing sent. Only a doing that already says its own failure calls it directly: a write that
+  // sends bytes first, or a version brought back, whose caller turns the rejection into a notice.
+  private make(asked: EditIntent, gesture?: string, what?: Key): void {
     // A role that may not change the game changes nothing here either (#489; läsläge, decided in
     // #477): the actor would refuse the save, so an edit is never applied, never sent and never a
     // step back — and «Osparat» can never stand for something this reader cannot keep.
@@ -733,7 +761,15 @@ export class ProjectClient {
       this.notify()
       return step.what
     }
-    const next = applyEdit(this.doc, back.edit)
+    // A step the document refuses is refused as any edit is (#1454), and stays off the stack: on
+    // top, every later press would be the same refusal.
+    let next: ProjectDoc
+    try {
+      next = applyEdit(this.doc, back.edit)
+    } catch {
+      this.refuseHere()
+      return null
+    }
     const taken: Step = { change: changeOf(this.doc, next), what: step.what }
     to.push(taken)
     this.send(back.edit, next, { dir, what: step.what, taken })
@@ -1022,7 +1058,7 @@ export class ProjectClient {
     this.mustBeAbleToEdit(t)
     if (this.termsHeld) await this.termsCleared()
     // The one edit from the editor that writes the whole book: what the file makes of it is the book.
-    this.edit({ v: 'setRules', rules: { ...rules, source: { file, at: new Date().toISOString() } } })
+    this.make({ v: 'setRules', rules: { ...rules, source: { file, at: new Date().toISOString() } } })
     const saved = await this.save()
     // `conflict` is the protocol's word for a collision and nobody can act on it, so what is said
     // is the state the designer is in and the one way out of it (#131); any other refusal is said
@@ -1087,7 +1123,7 @@ export class ProjectClient {
   async restore(rev: number): Promise<void> {
     const old = await this.at(rev)
     if (!old) throw new Error(`no version ${rev}`)
-    this.edit({ v: 'restore', doc: old })
+    this.make({ v: 'restore', doc: old })
   }
 
   // A symbol from the library taken into the game (E4): its bytes become one of the project's
@@ -1145,7 +1181,7 @@ export class ProjectClient {
     const name = freeIconName(wanted, this.doc.icons)
     const taking = gesture ?? this.newGesture('symbol')
     this.onTheirWay(ref)
-    this.edit({ v: 'setIcon', name, url: ref, ...(credit ? { credit } : {}) }, taking)
+    this.make({ v: 'setIcon', name, url: ref, ...(credit ? { credit } : {}) }, taking)
     const stored = this.storeAsset(blobOf(file), 'vector', ref, taking, { said: 'upload.undone.symbol', name, intents: [{ v: 'removeIcon', name }] }, t, gesture !== undefined)
     return { name, stored }
   }
@@ -1355,7 +1391,7 @@ export class ProjectClient {
     const family = freeFamily(familyFromFile(file.name), this.doc.fonts ?? {})
     const taking = this.newGesture('font')
     this.onTheirWay(ref)
-    this.edit({ v: 'setFont', family, font: { stack: `"${family}", sans-serif`, asset: ref } }, taking)
+    this.make({ v: 'setFont', family, font: { stack: `"${family}", sans-serif`, asset: ref } }, taking)
     await this.storeAsset(file, 'font', ref, taking, { said: 'upload.undone.font', name: family, intents: [{ v: 'removeFont', family }] }, t)
     return family
   }
@@ -1382,7 +1418,7 @@ export class ProjectClient {
     // catalog knows the answer, and a family that arrived knowing it must never stand in the
     // list with two empty boxes (L27).
     this.onTheirWay(ref)
-    this.edit({ v: 'setFont', family: name, font: catalogFont(family, ref, name) }, taking)
+    this.make({ v: 'setFont', family: name, font: catalogFont(family, ref, name) }, taking)
     await this.storeAsset(blob, 'font', ref, taking, { said: 'upload.undone.font', name, intents: [{ v: 'removeFont', family: name }] }, t)
     return name
   }
@@ -1410,7 +1446,7 @@ export class ProjectClient {
     const starters = starterSet(this.doc, theme, t, symbols)
     const icons = iconsOf(starters)
     const taking = this.newGesture('theme')
-    this.edit(themeIntent(this.doc, theme, fonts, t, icons), taking)
+    this.make(themeIntent(this.doc, theme, fonts, t, icons), taking)
     const uploads = [
       ...fetched.filter(({ family }) => fonts[family.family]).map(({ family, file, ref }) => ({ file: file as Blob, kind: 'font' as const, ref, undoing: { said: 'upload.undone.font' as const, name: family.family, intents: [{ v: 'removeFont' as const, family: family.family }] } })),
       ...starters.map(({ name, file, ref }) => ({ file: blobOf(file), kind: 'vector' as const, ref, undoing: { said: 'upload.undone.symbol' as const, name, intents: [{ v: 'removeIcon' as const, name }] } })),
@@ -1485,16 +1521,16 @@ export class ProjectClient {
     // used to be written over the first without a word (#481, L22 beslut 6).
     const placing: EditIntent | null = onto ? { v: 'setCell', cardRef: onto.cardRef, field: onto.field, value: ref } : null
     if (this.doc.pictures?.[hash] !== undefined) {
-      if (placing) this.edit(placing)
+      if (placing) this.make(placing)
       return hash
     }
     const name = pictureNameOf(file.name)
     const adding = this.newGesture('picture')
     this.onTheirWay(ref)
-    this.edit({ v: 'addPicture', hash, ...(name === undefined ? {} : { name }) }, adding)
+    this.make({ v: 'addPicture', hash, ...(name === undefined ? {} : { name }) }, adding)
     // Under the same gesture, so the step back takes both; and taking the picture back if its
     // bytes never arrive empties the cell with it (#318), so the correction needs nothing more.
-    if (placing) this.edit(placing, adding)
+    if (placing) this.make(placing, adding)
     await this.storeAsset(file, 'image', ref, adding, { said: 'upload.undone.picture', name: name ?? file.name, intents: [{ v: 'removePicture', hash }] }, t)
     return hash
   }

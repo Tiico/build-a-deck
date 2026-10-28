@@ -137,7 +137,8 @@ describe('two editors on the same project (D3)', () => {
     // Bo takes a card away; Ada, still holding it, writes to it.
     bo.removeRow('dragon')
     await eventually(() => expect(ada.doc.rows.some((r) => r.id === 'dragon')).toBe(false))
-    expect(() => ada.setCell('dragon', 'title', 'Drakhona')).toThrow()
+    ada.setCell('dragon', 'title', 'Drakhona')
+    expect(ada.refusedEdits).toBe(1)
     expect(ada.doc.rows.some((r) => r.id === 'dragon')).toBe(false)
     ada.close()
     bo.close()

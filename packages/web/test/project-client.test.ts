@@ -346,8 +346,11 @@ describe('editing the template on the canvas (#18)', () => {
     expect(await client.save()).toEqual({ ok: true, rev: 2 })
     expect(client.dirty).toBe(false)
 
-    expect(() => client.addElement('front', { ...added, id: 'title' })).toThrow(/title/)
-    expect(() => client.addElement('sida', added)).toThrow(/sida/)
+    // Refused here, before anything is sent, and said the way the actor's refusal is (#1454):
+    // counted, and never thrown into the control that asked for it.
+    client.addElement('front', { ...added, id: 'title' })
+    client.addElement('sida', added)
+    expect(client.refusedEdits).toBe(2)
     expect(client.dirty).toBe(false)
 
     // And the step back is still the one the designer took, not a refusal that took a turn on the
@@ -364,7 +367,8 @@ describe('editing the template on the canvas (#18)', () => {
     const created = await run.projects.create(run.projectId, projectDoc())
     const client = await openClient(created.id)
 
-    expect(() => client.patchElement('front', 'ingen', { x: 9 })).toThrow(/ingen/)
+    client.patchElement('front', 'ingen', { x: 9 })
+    expect(client.refusedEdits).toBe(1)
     expect(client.dirty).toBe(false)
     expect(client.canUndo).toBe(false)
 
@@ -426,7 +430,8 @@ describe('editing the template on the canvas (#18)', () => {
     expect(client.undo()).toBe('undo.what.template')
     expect(client.canRedo).toBe(true)
 
-    expect(() => client.patchElement('front', 'ingen', { x: 9 })).toThrow(/ingen/)
+    client.patchElement('front', 'ingen', { x: 9 })
+    expect(client.refusedEdits).toBe(1)
     expect(client.canRedo).toBe(true)
 
     // And it is the same step forward, not merely a stack with something on it.
@@ -664,9 +669,11 @@ describe('the setup in the editor (B5, K2)', () => {
     client.removeZone(bag)
     expect(client.doc.setup.zones.some((z) => z.id === bag)).toBe(false)
     // Filten, händerna och lekens hög står fast; leken flyttar, och då går draghögen att ta bort.
-    expect(() => client.removeZone('table')).toThrow()
-    expect(() => client.removeZone('hand:A')).toThrow()
-    expect(() => client.removeZone('draw')).toThrow()
+    client.removeZone('table')
+    client.removeZone('hand:A')
+    client.removeZone('draw')
+    expect(client.refusedEdits).toBe(3)
+    expect(['table', 'hand:A', 'draw'].every((id) => client.doc.setup.zones.some((z) => z.id === id))).toBe(true)
     const deck = client.addZone('pile')
     client.setDeck(deck)
     client.removeZone('draw')
