@@ -127,8 +127,8 @@ const ALLOWED: Allowed[] = [
   ]),
   ...(
     [
-      ['src/i18n/sv.editor.ts', ['typsnittet i Speltema ›', 'i Tabell ›', '({n}) ›', 'biblioteket ›', '‹ Spelets', 'finns i Speltema ›', 'tryckpaketet ›']],
-      ['src/i18n/en.editor.ts', ['font under Theme ›', 'in Data ›', '({n}) ›', 'library ›', '‹ The game', 'are under Theme ›', 'print package ›']],
+      ['src/i18n/sv.editor.ts', ['typsnittet i Speltema ›', 'i Tabell ›', '({n}) ›', 'biblioteket ›', '‹ Spelets', 'finns i Speltema ›', 'tryckpaketet ›', 'i Låda ›']],
+      ['src/i18n/en.editor.ts', ['font under Theme ›', 'in Data ›', '({n}) ›', 'library ›', '‹ The game', 'are under Theme ›', 'print package ›', 'in Box ›']],
       ['src/i18n/sv.account.ts', ['i editorn ›', 'lådan ›']],
       ['src/i18n/en.account.ts', ['in the editor ›', 'the box ›']],
     ] as const
