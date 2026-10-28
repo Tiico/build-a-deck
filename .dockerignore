@@ -3,4 +3,14 @@
 **/node_modules
 **/dist
 .git
-.stack
+# No image copies the documents, and the audits' screenshots are 400 MB of context to send for nothing.
+docs
+# What a run leaves in a package (#1465): the E2E suite's stack and bucket, its traces and its load
+# runs, every suite's report, and a browser test's build. deploy.test.ts holds this list to .gitignore.
+**/.stack
+**/.load
+**/test-results
+**/playwright-report
+**/.vitest-report.json
+**/.playwright-report.json
+packages/web/dist-*

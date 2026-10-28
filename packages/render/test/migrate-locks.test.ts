@@ -105,7 +105,12 @@ describe.skipIf(!url)('the render schema at a start (#1442)', () => {
     let holding!: () => void
     const holds = new Promise<void>((resolve) => (holding = resolve))
     // A write that holds b and then wants a: the other way round from the script.
+    // Postgres aborts whichever waiter's deadlock check runs first, and with both on the default
+    // second the start's lead was only the ~10 ms of the poll below; a release gate under load saw
+    // the write's check run first and the write die (#1465). The write waits ten seconds before it
+    // checks, so the start's check is the one that finds the cycle.
     const write = sql.begin(async (tx) => {
+      await tx`set local deadlock_timeout = '10s'`
       await tx`lock table victim_b in row exclusive mode`
       holding()
       await go

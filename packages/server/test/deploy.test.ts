@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
+import { matchesGlob } from 'node:path'
 import { ConsoleMailer, ResendMailer, mailerFromEnv } from '../src/auth.js'
 import { corpusFromEnv } from '../src/corpus.js'
 
@@ -297,6 +298,28 @@ describe('the images install only what runs (#1442)', () => {
     for (const line of installs(source.text)) expect(line).toContain('--prod')
     // The build stage gives the final one only the web it built.
     for (const copy of from.filter((c) => c !== whole[0])) expect(copy.path).toMatch(/\/dist$/)
+  })
+
+  // What a run leaves in a package is kept out of the checkout by .gitignore, and must be kept out
+  // of the build context the same way: `COPY packages` takes the whole tree, so the 8 MB bucket
+  // the E2E suite leaves in packages/e2e/.stack and every suite's report went into an image built
+  // from a checkout that had run the gate (#1465).
+  it('keeps out of the build context everything a run leaves in a package', () => {
+    const patterns = (text: string) =>
+      text
+        .split('\n')
+        .map((line) => line.trim())
+        .filter((line) => line && !line.startsWith('#'))
+        .map((line) => line.replace(/\/$/, ''))
+    const ignored = patterns(read('.dockerignore'))
+    // Each of .gitignore's paths in packages/, made concrete: a wildcard stands for some package.
+    const leftovers = patterns(read('.gitignore'))
+      .filter((line) => line.startsWith('packages/'))
+      .map((line) => line.replaceAll('*', 'x'))
+    expect(leftovers.length).toBeGreaterThan(0)
+    for (const path of leftovers) {
+      expect(ignored.some((glob) => matchesGlob(path, glob)), `${path} is ignored by git but goes into the build context`).toBe(true)
+    }
   })
 
   it('lists tsx as a dependency of every package an image or the restore test starts it from', () => {
