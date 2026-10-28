@@ -124,8 +124,8 @@ Målet är att en grupp kan spela vilket kortspel som helst utan att sakna någo
 - ✅ Vägen tillbaka mellan editorn och borden (L80, #1217): varje bordsyta leder ägaren till editorns egen flik, ett bord öppnas i sin egen flik i stället för en ny, ägaren som lämnar `/online` landar i spelet, och Mina spel, `/join` och `/login` har en väg vidare.
 - ✅ Materialets plats (K31, #1292): tärningar och räknare dras i fliken Bords filt dit de ska ligga, och en punkt i en yta vid platserna vänds mot varje plats kant.
 - ✅ Vägen in till ett bord (L86, #1286): två sätt att sitta, runt en TV eller vid varsin dator. Varje start frågar vilket och bordet minns svaret, så ett bord har en väg in, «Öppna bordet», och anslutningssidan ett enda «Gå med» på varje skärm. Genvägarna där designern hoppade in själv är borta ur editorn.
-- ❓ Fler komponenttyper än standardkortet och tärningen — bricka, meeple, bräde (B1, B2, B3).
-  Frågan är om release är "kortspel" eller "kort- och brädspel"; A1 talar för kort först.
+- ⬜ Fler komponenttyper än standardkortet och tärningen — bricka, meeple, bräde (B1, B2, B3).
+  Beställaren beslutade 2026-10-28 att release är "kort- och brädspel": typerna byggs nu, parallellt med betan, med en PRD och en prototyp per synlig yta.
 
 ## Fas 2 — Editorn färdig ✅
 
@@ -254,7 +254,7 @@ Från DESIGN-BESLUT I och DRIFT:
 - ~~GDPR för gästdeltagare (fas 3).~~ Besvarad 2026-10-24 (#1269): se G6.
 - Fontlicensiering mot kravet att bevara fontfiler (fas 2 och 5).
 - Prisnivåernas tak (fas 3 och 6).
-- Om release omfattar fler komponenttyper än kort (fas 1).
+- ~~Om release omfattar fler komponenttyper än kort (fas 1).~~ Besvarad 2026-10-28: ja, kort- och brädspel.
 
 ## Öppna frågor som inte blockerar release
 
