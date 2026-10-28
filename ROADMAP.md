@@ -157,8 +157,8 @@ Klar 2026-09-08: varje punkt nedan är byggd, och besluten bakom dem står i DES
 Målet är att kunna ta betalt och lämna ifrån sig allt.
 
 - ✅ Kvoter och mätning: nivåer som konfiguration, kontots nivå, tak på projekt, kort, bord och lagring, och förbrukningen läsbar för designern och operatören (A2, DRIFT §12, #1192). Nivåerna i `BYD_PLANS`, kontots nivå och spel som första mått (#1193), bordets bärare (#1194), kort per spel som rader och exemplar (#1195), bord som mått, öppna och startade under rullande 30 dygn (#1196), lagring och renderingar (#1197), och hur ett nått tak och förbrukningen sägs, där designern tryckte och i Profil (#1198, variant A).
-- ⬜ Abonnemang via Stripe: betalnivåerna och kassan, som skriver kontots nivå i `account_plans` (A2, DRIFT §12).
-- 🔶 Full export i dokumenterat JSON med assets, mallar, historik och tryckfiler; läsläge vid utgånget abonnemang (G5). Exporten och importen är byggda, på servern och i Mina spel (#527, #528, #529); läsläget vid utgånget abonnemang återstår och väntar på abonnemangen. G5 reviderades 2026-10-28 (#1209): när en riktig tryckpartner finns tas tryck-PDF:erna ur gratisexporten och följer bara med i den betalda nivå där tryckpaketet ingår, medan JSON, bilder och mallar förblir fria; under betan är exporten som i dag.
+- ⬜ Abonnemang via Stripe: betalnivåerna och kassan, som skriver kontots nivå i `account_plans` (A2, DRIFT §12). Nivåerna beslutades 2026-10-28 (#1469, A2 reviderad): Gratis och Pro, där Pro kostar 99 kr / 9 € i månaden eller 990 kr / 90 € om året; Resultat är gratis, och tryckpaketet följer med Pro när en partner finns.
+- 🔶 Full export i dokumenterat JSON med assets, mallar, historik och tryckfiler; läsläge vid utgånget abonnemang (G5). Exporten och importen är byggda, på servern och i Mina spel (#527, #528, #529); läsläget vid utgånget abonnemang återstår och väntar på abonnemangen. Läsläget preciserades 2026-10-28 (#1469, form L2): det som ryms i gratisnivåns tak fungerar som vanligt, och det som ligger över taken går att läsa och exportera men inte ändra. G5 reviderades 2026-10-28 (#1209): när en riktig tryckpartner finns tas tryck-PDF:erna ur gratisexporten och följer bara med i den betalda nivå där tryckpaketet ingår, medan JSON, bilder och mallar förblir fria; under betan är exporten som i dag.
 - ✅ Att claima en gästsession till ett konto efteråt: telefonen erbjuder det när sessionen är slut, claim-sidan knyter gästens admission till kontot, och startsidan visar "Bord du spelat vid" med plats, namn, utfall och vägen tillbaka (G1).
 - 🔶 Passkeys och OAuth som bekvämlighet; passkey-återställning som UX (DRIFT §11). Passkeys är byggda (#1180, L78): bandet på Mina spel efter länken, knappen och förslaget på inloggningskortet och kortet på profilen, med mejlet som återställning; OAuth återstår.
 - ✅ Kontots eget namn: ett välkomststeg efter första inloggningen med förslaget ur adressen, ett band på Mina spel för konton som fanns före det, kortet «Namn» i Profil, och namnet i Dela, i editorns huvud, för ägaren som tittar på vid bordet, i inbjudningsmejlet och i kvotraden med «spelets ägare» som reserv (#1254, L85).
@@ -241,7 +241,7 @@ Innan första betalande användaren:
 - ⬜ Replay-korpusen innehåller deras sessioner och spelar upp identiskt på varje commit (D4).
 - ⬜ Återställningsprovet har körts mot en riktig backup (DRIFT §5).
 - ✅ Tillgänglighet i verktyget självt på en grundnivå: tangentbord, kontrast, skärmläsarnamn (I). Granskningen 2026-09-29 (#549) fann 84 fynd, och alla är rättade eller beslutade och byggda (#550–#560, #569, #570, #575, #579–#581).
-- ⬜ Prisnivåernas tak och gratisnivåns gränser beslutade (I, A2).
+- 🔶 Prisnivåernas tak och gratisnivåns gränser beslutade (I, A2). Strukturen, priset, Resultat och läsläget beslutades 2026-10-28 (#1469): Gratis och Pro, Resultat gratis, läsläge L2, och inget tak för hela lådan före release, utan lasten mäts i betan. Öppet är gratisnivåns siffror, medredigerare i Pro, Pro:s tak på kort och om kortens tak blir ett tak på komponenter (frågorna 3, 5, 7 och 9 i #1469).
 - ⬜ Villkor, integritetspolicy och GDPR-rutiner på plats (F4, G6, #1268, #1269): releaseversionen av villkoren skriven på aktiebolaget och läst av en jurist; integritetspolicyn (#1281); biträdesavtal med Cloudflare och Resend, och Resend prövad mot Data Privacy Framework eller standardavtalsklausuler; gallringen och raderingsliggaren i drift (#1279).
 - ⬜ En sista genomgång av mönstret i avsnitt J: att de fyra besluten som skär bort kopplingarna mellan pelarna fortfarande är rätt.
 
@@ -253,7 +253,7 @@ Från DESIGN-BESLUT I och DRIFT:
 - Moms, tull och leveransvillkor för fysiska varor (fas 5).
 - ~~GDPR för gästdeltagare (fas 3).~~ Besvarad 2026-10-24 (#1269): se G6.
 - Fontlicensiering mot kravet att bevara fontfiler (fas 2 och 5).
-- Prisnivåernas tak (fas 3 och 6).
+- Prisnivåernas tak (fas 3 och 6). Delvis besvarad 2026-10-28 (#1469): nivåerna, priset och läsläget är beslutade, siffrorna i gratisnivån och Pro:s tak på kort är det inte.
 - ~~Om release omfattar fler komponenttyper än kort (fas 1).~~ Besvarad 2026-10-28: ja, kort- och brädspel.
 
 ## Öppna frågor som inte blockerar release
