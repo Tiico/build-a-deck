@@ -14,7 +14,7 @@ import { dismissGone, duplicateProject, gameCover, gameFan, logout, myAccount, m
 import { TermsDue, laterFor, putOff } from './terms-due.js'
 import { TermsOffer } from './TermsOffer.js'
 import { QuotaReached, type Quota } from './quota.js'
-import { proCardUrl, useProOffer } from './pro.js'
+import { proCardUrl, useProOffer, useRenewOffer } from './pro.js'
 import { quotaWords, type QuotaWords } from './quota-words.js'
 import { startInTab, tableWay } from '../startWay.js'
 import type { StartAnswer } from '../editor/startAnswer.js'
@@ -167,6 +167,8 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
   // leaves read-only, each with the free tier's ceiling it lies over, and those ceilings. Asked with
   // the list, and again when the list changes, since a game removed can let the next one fit.
   const [held, setHeld] = useState<{ games: Map<string, ReadOnlyWhy>; usage: Usage; at: string } | null>(null)
+  // The band offers the owner Pro again, with its price (#1532).
+  const renew = useRenewOffer(http, held !== null)
   const [heldClosed, setHeldClosed] = useState<string | null>(() => readOnlyClosed())
   const heldWhy = (p: ProjectSummary): ReadOnlyWhy | undefined => held?.games.get(p.id)
   // What the game uses of the measure it lies over, as the server counted it: unique cards, not copies.
@@ -646,6 +648,7 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
           ) : held && heldClosed !== held.at ? (
             <ReadOnlyOffer
               count={held.games.size}
+              renew={renew ? { text: renew, href: proCardUrl(), onGo: goPro } : null}
               onClose={() => {
                 closeReadOnly(held.at)
                 setHeldClosed(held.at)

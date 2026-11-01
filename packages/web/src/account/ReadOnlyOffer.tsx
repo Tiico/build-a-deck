@@ -1,3 +1,4 @@
+import type { MouseEvent } from 'react'
 import { useT } from '../i18n/index.js'
 import { BookGlyph } from '../glyphs.js'
 
@@ -6,7 +7,8 @@ import { BookGlyph } from '../glyphs.js'
 // exported but not changed. Said once, in the band under the heading, second in its queue after the
 // terms (#1272) and before the name (#1254) and the passkey (L78); each game says its own reason on
 // its row. «Stäng» closes it for this lapse in this browser; the marks on the games remain.
-export function ReadOnlyOffer({ count, onClose }: { count: number; onClose(): void }) {
+// `renew` is Pro offered again to the owner, with its price and the way to Profil's card (#1532).
+export function ReadOnlyOffer({ count, onClose, renew }: { count: number; onClose(): void; renew?: { text: string; href: string; onGo(e: MouseEvent<HTMLAnchorElement>): void } | null }) {
   const t = useT()
   return (
     <section className="byd-passkey-offer byd-read-only-offer" aria-label={t('home.readOnly.label')}>
@@ -14,8 +16,14 @@ export function ReadOnlyOffer({ count, onClose }: { count: number; onClose(): vo
       <p>
         <b>{t(count === 1 ? 'home.readOnly.title.one' : 'home.readOnly.title.other', { n: count })}</b> {t('home.readOnly.body')}
         <small>{t('home.readOnly.way')}</small>
+        {renew && <small>{renew.text}</small>}
       </p>
       <div className="byd-passkey-offer-answers">
+        {renew && (
+          <a className="byd-read-only-pro" href={renew.href} onClick={renew.onGo}>
+            {t('readOnly.pro.go')}
+          </a>
+        )}
         <button type="button" className="byd-secondary" onClick={onClose}>
           {t('home.readOnly.close')}
         </button>
