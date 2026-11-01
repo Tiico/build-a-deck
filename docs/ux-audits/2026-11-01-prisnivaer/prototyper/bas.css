@@ -1,0 +1,127 @@
+  body { display: flex; flex-direction: column; min-height: 100vh; overflow: auto; }
+  .protorad { position: relative; z-index: 20; }
+  .protorad .flikar { display: flex; gap: 4px; flex-wrap: wrap; }
+  .protorad .flikar button[aria-pressed='true'] { background: #ffd98a; color: #2a2417; }
+  .protorad .grupp { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .protorad .grupp > span { color: #c8b98d; }
+  main.scen { flex: 1 1 auto; display: grid; justify-content: safe center; align-content: start; padding: 20px 16px 60px; background: #15171c; }
+  .etikett { color: var(--quiet-2); font-size: 11px; margin-bottom: 6px; }
+  .etikett b { color: #e6ecfa; }
+  .sida { position: relative; outline: 1px solid #3a3f4b; box-shadow: 0 10px 40px rgb(0 0 0 / 45%); overflow: hidden; }
+  .g { width: 16px; height: 16px; flex: none; }
+  .off { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  :focus-visible { outline: 3px solid #9cc6ff; outline-offset: 2px; }
+  button { font: inherit; cursor: pointer; }
+  [aria-disabled='true'] { cursor: default; }
+
+  /* ── Kontot: Mina spel och Profil (account.css, game-dialogs.css, game-menu.css) ───────────── */
+  .acc { --card: #171a23; --edge: #262a35; --muted: #9aa3b8; --ok: #7dd3a0; --sec-line: #6f7a90; --sec-ink: #dce3f2;
+    height: 100%; overflow: auto; background: #0f1117; color: #e6e6e6; font: 14px system-ui, sans-serif; padding: 40px 20px; box-sizing: border-box; display: grid; justify-content: center; align-content: start; }
+  .home { width: 920px; max-width: 100%; display: grid; gap: 18px; }
+  .home > header { display: flex; flex-wrap: wrap; align-items: center; gap: 0 16px; }
+  .home h1 { margin: 0; font-size: 28px; flex: 1 1 auto; }
+  .vem { color: var(--muted); font-size: 13px; display: inline-flex; align-items: center; gap: 4px; }
+  .ikon { display: inline-grid; place-items: center; min-width: 44px; min-height: 44px; color: var(--muted); border: 0; background: none; padding: 0; }
+  .ikon .g { width: 18px; height: 18px; }
+  .importknapp { position: relative; min-width: 44px; min-height: 44px; display: inline-grid; place-items: center; border: 1px solid var(--sec-line); border-radius: 12px; background: transparent; color: var(--sec-ink); padding: 0; }
+  .importknapp .g { width: 18px; height: 18px; }
+  .notice { margin: 0; padding: 10px 14px; border-radius: 10px; background: #2a1b1b; color: #ffd8d8; line-height: 1.5; }
+  .notice b { color: #fff; }
+  .h2 { margin: 12px 0 0; font-size: 13px; text-transform: uppercase; letter-spacing: 2px; color: #7d8597; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; grid-auto-rows: 1fr; }
+  .spel { position: relative; background: var(--card); border: 1px solid var(--edge); border-radius: 16px; display: grid; align-content: start; color: #fff; }
+  .spel .oppna { display: grid; gap: 8px; padding: 16px; }
+  .spel i.kortbild { display: block; height: 120px; aspect-ratio: 63 / 88; border-radius: 4px; background: var(--c); }
+  .spel strong { font-size: 17px; }
+  .spel .rad2 { color: var(--muted); font-size: 13px; }
+  .spel .mer { position: absolute; right: 4px; top: 4px; min-width: 44px; min-height: 44px; border: 0; border-radius: 8px; background: transparent; color: var(--muted); font-size: 16px; }
+  .spel .mer[aria-expanded='true'] { background: #262a35; color: #fff; }
+  .spel[data-new] { border-style: dashed; place-items: center; align-content: center; text-align: center; color: var(--muted); padding: 16px; min-height: 230px; font-size: 15px; border-width: 1px; }
+  .spel[data-new][aria-disabled='true'] { color: #7d8597; }
+  .spel[data-new] small { display: block; max-width: 24ch; margin-top: 6px; font-size: 13px; line-height: 1.45; color: #e8c06a; }
+  .meny { position: absolute; z-index: 5; right: 8px; top: 48px; display: grid; padding: 6px; border-radius: 10px; background: #1b1f2a; border: 1px solid #3b4358; box-shadow: 0 12px 28px rgb(0 0 0 / 50%); min-width: 220px; }
+  .meny button { min-height: 44px; border: 0; border-radius: 7px; padding: 8px 12px; background: transparent; color: #e6ecfa; text-align: left; display: grid; }
+  .meny button:hover { background: #262a35; }
+  .meny button[aria-disabled='true'] { color: #9aa3b8; }
+  .meny button small { color: #e8c06a; font-size: 12px; line-height: 1.4; white-space: normal; }
+  .meny hr { width: 100%; border: 0; border-top: 1px solid #262a35; margin: 4px 0; }
+  .skymning { position: absolute; inset: 0; z-index: 8; display: grid; place-items: center; padding: 16px; background: rgb(5 7 12 / 70%); }
+  .dialog { font-size: 16px; width: min(520px, 100%); box-sizing: border-box; padding: 24px; border-radius: 16px; background: #1b1f2a; border: 1px solid #3b4358; color: #e6ecfa; box-shadow: 0 24px 60px rgb(0 0 0 / 50%); font-family: system-ui, sans-serif; }
+  .dialog h2 { margin: 0 0 12px; font-size: 20px; }
+  .dialog p { margin: 8px 0; line-height: 1.45; }
+  .dialog .muted { color: #9aa3b8; font-size: 14px; line-height: 1.5; }
+  .dialog .fel { color: #ffd8d8; background: #2a1b1b; border-radius: 10px; padding: 10px 14px; font-size: 15px; }
+  .dialog .fel b { color: #fff; }
+  .dialog .knappar { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 12px; margin-top: 16px; }
+  .prim { min-height: 44px; padding: 0 18px; border: 0; border-radius: 12px; background: #7dd3a0; color: #0b2a18; font-weight: 700; }
+  .sek { min-height: 44px; padding: 0 16px; border: 1px solid #6f7a90; border-radius: 12px; background: transparent; color: #dce3f2; font-weight: 600; }
+  .sek[aria-disabled='true'] { color: #7d8597; border-color: #3b414e; }
+  /* Variant C:s utrymme på Mina spel, i Pågår nu:s form */
+  .utrymme { display: grid; gap: 8px; }
+  .utrymme > .h2 { margin: 0; }
+  .matare { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; }
+  .matt { display: grid; gap: 6px; padding: 12px 14px; border-radius: 12px; background: #171a23; border: 1px solid #262a35; }
+  .matt b { font-weight: 650; color: #e6ecfa; font-size: 13px; }
+  .matt span { color: #9aa3b8; font-size: 13px; font-variant-numeric: tabular-nums; }
+  .matt[data-fullt] { border-color: #6b5a2e; }
+  .matt[data-fullt] span { color: #f0d48a; }
+  .bar { height: 6px; border-radius: 3px; background: #262a35; overflow: hidden; }
+  .bar > i { display: block; height: 100%; width: var(--p); background: #7dd3a0; border-radius: 3px; }
+  .bar[data-nara] > i { background: #e8c06a; }
+  .bar[data-fullt] > i { background: #f0b64a; }
+  .tak-rad { color: #9aa3b8; font-size: 13px; font-variant-numeric: tabular-nums; }
+  .tak-rad[data-fullt] { color: #f0d48a; }
+  /* Profilen (profile.css) */
+  .profil { width: 640px; max-width: 100%; display: grid; gap: 16px; }
+  .tillbaka { display: inline-flex; align-items: center; gap: 6px; justify-self: start; min-height: 44px; color: var(--muted); font-size: 14px; }
+  .profil h1 { margin: 0; font-size: 28px; }
+  .pkort { display: grid; gap: 12px; padding: 24px; border-radius: 16px; border: 1px solid var(--edge); background: var(--card); color: #e6ecfa; font-size: 14px; }
+  .pkort h2 { margin: 0; font-size: 18px; font-weight: 750; }
+  .liten { margin: 0; font-size: 13px; line-height: 1.5; color: var(--muted); }
+  .forbr { margin: 0; display: grid; grid-template-columns: minmax(0, 1fr) 150px auto; gap: 10px 16px; align-items: center; }
+  .forbr dt { color: #dce3f2; }
+  .forbr dt small { display: block; color: var(--muted); font-size: 12px; }
+  .forbr dd { margin: 0; font-variant-numeric: tabular-nums; color: var(--muted); text-align: right; white-space: nowrap; }
+  .forbr dd[data-fullt] { color: #f0d48a; }
+  .forbr .bar { margin: 0; }
+  .forbr .spelrad dt { padding-left: 14px; color: #c3cbdd; font-size: 13px; }
+
+  /* ── Editorn (editor.css) ──────────────────────────────────────────────────────────────────── */
+  .ed { height: 100%; display: flex; flex-direction: column; background: var(--chrome); color: #dce3f2; font: 13px system-ui, sans-serif; }
+  .ed > .ed-huvud { flex: none; height: 57px; gap: 10px; }
+  .ed-huvud .namn { color: #fff; font-size: 15px; font-weight: 800; }
+  .ed-huvud .dorr { min-width: 44px; min-height: 44px; border: 0; border-radius: 8px; background: transparent; color: var(--quiet-2); }
+  .ed-huvud .ver { color: var(--quiet-2); padding: 0 6px; }
+  .ed-huvud .bock { color: var(--quiet-2); width: 24px; text-align: center; }
+  .ed-huvud .angra { display: flex; gap: 4px; }
+  .ed-huvud .angra button { width: 42px; height: 44px; border: 0; border-radius: 8px; background: #15171c; color: #dce3f2; display: grid; place-items: center; }
+  .ed-huvud .dela { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 6px; color: #fff; font-weight: 700; }
+  .ed-huvud .dela i { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: #4a6fd4; color: #fff; font: 700 11px system-ui; font-style: normal; }
+  .ed-huvud .starta { display: inline-flex; padding: 0; overflow: hidden; }
+  .ed-huvud .starta span { padding: 0 18px 0 14px; display: grid; place-items: center; }
+  .ed-huvud .starta em { font-style: normal; display: grid; place-items: center; width: 40px; border-left: 1px solid rgb(255 255 255 / 25%); }
+  .sida[data-bredd='1024'] .ed-huvud { gap: 4px; padding: 0 10px; }
+  .sida[data-bredd='1024'] .ed-flikar button { padding: 0 8px; }
+  .sida[data-bredd='1024'] .ed-huvud .dela span { display: none; }
+  .ed-flikar button { min-height: 44px; }
+  /* Bandet under huvudet (#1073) och rollens band (#489): amber mark, ett tecken, ljus text. */
+  .notisband { flex: none; display: flex; align-items: center; gap: 12px; padding: 0 4px 0 16px; background: #2a2418; border-bottom: 1px solid #4a4230; color: #ffe4b0; font-size: 13px; line-height: 1.45; }
+  .notisband > .g { width: 18px; height: 18px; color: #ffd98a; }
+  .notisband p { flex: 1; margin: 0; padding: 8px 0; }
+  .notisband p b { color: #fff; }
+  .notisband .stang { flex: none; width: 44px; height: 44px; border: 0; border-radius: 6px; background: transparent; color: #ffd98a; font-size: 20px; }
+  .rollband { flex: none; margin: 0; padding: 12px 16px; background: #2a2418; border-bottom: 1px solid #4a4230; color: #ffe4b0; font-size: 13px; line-height: 1.4; }
+  .arbete { position: relative; flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
+  .fot { flex: none; display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; min-height: 20px; margin: 0 16px; padding: 10px 0 12px; border-top: 1px solid var(--line); color: #c3cbdd; font-size: 12px; font-variant-numeric: tabular-nums; }
+  .fot .tyst { color: var(--quiet); }
+  .fot .tak { color: #9aa3b8; }
+  .fot .tak[data-fullt] { color: #f0d48a; }
+  .fot .sagt { color: #f0d48a; flex: 1 1 100%; line-height: 1.5; }
+  .fot .sagt b { color: #ffe4b0; }
+  /* Tabell */
+  .ed .t-vy { padding-top: 0; }
+  .ed .t-data td { height: 41px; }
+  .t-ny { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 14px; }
+  .t-ny[aria-disabled='true'] { color: #7d8597; border-color: #3b414e; }
+  .t-ny small { color: #e8c06a; font-size: 12px; }
+  .t-data tr[data-ny] td { background: rgb(125 211 160 / 10%); }

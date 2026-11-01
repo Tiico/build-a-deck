@@ -3,6 +3,7 @@ import { liftDoc, stamp, type Ceilings, type ProjectDoc, type ProjectStore } fro
 import type { Role } from './roles.js'
 import { cardGrowth, type CardMeasure } from './quota-cards.js'
 import { QuotaReached, type Bearer, type Limit, type QuotaMet } from './quotas.js'
+import { ReadOnlyGame, type ReadOnlyCheck } from './read-only.js'
 
 // One actor owns one project (D3). A project is structurally the same as a table — shared state
 // several people change at once, which belongs in the history — so it gets the table's shape: a
@@ -72,7 +73,14 @@ export class ProjectActor {
     // before accounts — and a server without accounts hold no ceiling.
     private readonly owner: string | undefined,
     private readonly ceilings: CardCeilings | undefined,
+    // Whether the game is read-only now (#1491, G5, L2): its owner's tier has lapsed and the game lies
+    // over the free tier's ceilings. Asked of every edit and version as it is decided.
+    private readonly readOnly: ReadOnlyCheck | undefined = undefined,
   ) {}
+
+  private async held(): Promise<boolean> {
+    return this.owner !== undefined && this.readOnly !== undefined && (await this.readOnly(this.owner, this.id))
+  }
 
   // The saved version, then everything that has happened since it.
   //
@@ -96,9 +104,9 @@ export class ProjectActor {
   //
   // Replay asks no ceiling either (#1195): a ceiling is the live door's question, like every other
   // check here, so a log over a ceiling set since it was written reads exactly as it was written.
-  static async load(id: string, store: ProjectStore, ceilings?: CardCeilings): Promise<ProjectActor | null> {
+  static async load(id: string, store: ProjectStore, ceilings?: CardCeilings, readOnly?: ReadOnlyCheck): Promise<ProjectActor | null> {
     const got = await replayed(id, store)
-    return got && new ProjectActor(id, got.doc, got.saved, got.rev, got.seq, store, got.owner, ceilings)
+    return got && new ProjectActor(id, got.doc, got.saved, got.rev, got.seq, store, got.owner, ceilings, readOnly)
   }
 
   get doc(): ProjectDoc {
@@ -158,6 +166,8 @@ export class ProjectActor {
   // What an edit comes to, decided against what stands and held to the ceilings, before anything
   // is committed: the entry the log would gain, and the document it makes.
   private async decide(asked: EditIntent, by?: string, from?: string): Promise<{ entry: AppliedEdit; next: ProjectDoc }> {
+    // A read-only game changes not at all (#1491), an edit that only shrinks it included.
+    if (await this.held()) throw new ReadOnlyGame()
     // Decided first, so what is committed is the answer and not the question (#894).
     const intent = decideEdit(this.current, asked)
     // What may be made now is asked here as well as by the verb (#694); the log's replay asks
@@ -197,6 +207,8 @@ export class ProjectActor {
   // `by` is the account the version is saved by (#1225).
   private async makeVersion(from?: string, storage?: OwnerCeilings, edit?: { entry: AppliedEdit; next: ProjectDoc }, by?: string): Promise<Saved> {
     let result: Awaited<ReturnType<ProjectStore['replace']>>
+    // A read-only game gains no version (#1491).
+    if (!edit && (await this.held())) return { ok: false as const, reason: 'read-only' }
     try {
       const ceilings = storage ? await storage() : undefined
       result = edit
@@ -230,6 +242,7 @@ export class ProjectActor {
   async put(expectedRev: number, doc: ProjectDoc, by?: string, storage?: OwnerCeilings): Promise<Saved> {
     return this.serial(async () => {
       if (expectedRev !== this.rev) return { ok: false as const, reason: 'conflict' }
+      if (await this.held()) return { ok: false as const, reason: 'read-only' }
       if (stamp(doc) === stamp(this.current)) return this.makeVersion(undefined, storage, undefined, by)
       return this.makeVersion(undefined, storage, await this.decide({ v: 'restore', doc }, by), by)
     })
@@ -296,9 +309,11 @@ function stripped(rec: ProjectDoc & { id: string; rev: number; owner?: string })
 export class ProjectHost {
   private readonly actors = new Map<string, Promise<ProjectActor | null>>()
   // `ceilings`: what each owner's tier allows of a game's cards (#1195); without it nothing is held.
+  // `readOnly`: whether an owner's game is read-only now (#1491); without it nothing is.
   constructor(
     private readonly store: ProjectStore,
     private readonly ceilings?: CardCeilings,
+    private readonly readOnly?: ReadOnlyCheck,
   ) {}
 
   async get(id: string): Promise<ProjectActor | null> {
@@ -313,7 +328,7 @@ export class ProjectHost {
     // be handed to every later asker — one unreachable moment would close the project until the
     // process was restarted — and the asker that made the entry cannot clear it itself, because
     // it never comes back from the `await` to do so.
-    const loading = ProjectActor.load(id, this.store, this.ceilings).catch((err: unknown) => {
+    const loading = ProjectActor.load(id, this.store, this.ceilings, this.readOnly).catch((err: unknown) => {
       this.actors.delete(id)
       throw err
     })
