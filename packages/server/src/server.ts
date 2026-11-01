@@ -48,7 +48,8 @@ import { AI_CAPS, ASK_MAX_BYTES, AiFlight, AskBody, answerQuestion, type AiCaps 
 import { PasskeyChallenges, login as passkeyLogin, loginOptions, register, registrationOptions, siteOf, viewOf, type Answer, type Ceremonies } from './passkeys.js'
 import { REFERRER_POLICY, UPLOAD_POLICY, pageNonce, pagePolicy, scriptHashesOf, socketOrigin } from './csp.js'
 import { DEFAULT_PLANS, QuotaReached, YOU, growth, limitOf, tableWindowFrom, type Bearer, type Limit, type Measure, type Plans, type QuotaMet, type TableCeilings } from './quotas.js'
-import { planOf, usageOf, type AccountPlanStore } from './account-plans.js'
+import { planOf, readOnlyOf, usageOf, type AccountPlanStore } from './account-plans.js'
+import { ReadOnlyGame, gameWritten, type ReadOnlyCheck } from './read-only.js'
 import { NO_CARDS, cardGrowth, cardsUsed, type CardMeasure } from './quota-cards.js'
 import { checkRegister, openToTheDue, termsInForce, termsStanding, type TermsRegister, type TermsStanding } from './terms.js'
 import { entry, isMasked, type ErasureStore } from './erase.js'
@@ -483,6 +484,12 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
       const current = await termsDueFor(opts, req)
       if (current) return json(res, 403, { error: 'terms', current })
     }
+    // The read-only mode (#1491, G5, L2): a game of a lapsed owner's that lies over the free tier's
+    // ceilings is changed by no way but what `READ_ONLY_OPEN` leaves open, a way added later included.
+    // Asked before any body is read, so a refusal writes nothing; and only of somebody with a part in
+    // the game, so a stranger learns nothing of it and is answered by the way itself.
+    const written = gameWritten(req.method ?? 'GET', url.pathname, url.searchParams)
+    if (written && (await readOnlyFor(opts, req, written))) return json(res, 402, READ_ONLY)
     if (req.method === 'GET' && url.pathname === '/health') {
       // Health means the store answers (DRIFT §2), not just that the process is up.
       const loaded = await opts.host.loaded()
@@ -1243,6 +1250,7 @@ async function openEditorDoor(opts: ServerOptions, req: IncomingMessage, ws: Web
         // ceiling's numbers beside it. It is the owner's whoever edits, and only the owner is
         // told it is their own.
         if (err instanceof QuotaReached) refuse('quota', err.quota)
+        else if (err instanceof ReadOnlyGame) refuse('read-only')
         else refuse(err instanceof Error ? err.message : String(err))
         actor.resync(editor)
       }
@@ -1269,12 +1277,33 @@ function cardCeilings(opts: ServerOptions): ((owner: string, measure: CardMeasur
   return async (owner, measure) => limitOf(plans, await planOf(opts.accountPlans, plans, owner), measure)
 }
 
+// Whether an owner's game is read-only now (#1491): asked only with accounts and their tiers on,
+// since without them nobody lapses. Counted out of the games as they stand, the open ones included.
+function readOnlyCheck(opts: ServerOptions, projects: ProjectStore): ReadOnlyCheck | undefined {
+  const accountPlans = opts.accountPlans
+  if (!opts.auth || !accountPlans) return undefined
+  const plans = opts.plans ?? DEFAULT_PLANS
+  return async (owner, id) => (await readOnlyOf({ projects, accountPlans, live: (game) => editors(opts, projects).live(game) }, plans, owner)).has(id)
+}
+const READ_ONLY = { error: 'read-only' }
+// Whether the request's account has a part in a game that is read-only now: its owner's tier has
+// lapsed and the game lies over the free tier's ceilings.
+async function readOnlyFor(opts: ServerOptions, req: IncomingMessage, id: string): Promise<boolean> {
+  const projects = opts.projects
+  const check = projects ? readOnlyCheck(opts, projects) : undefined
+  if (!projects || !check || !opts.auth) return false
+  const account = await accountOf(opts.auth, req)
+  const rec = account ? await projects.load(id) : null
+  if (!account || rec?.owner === undefined || !(await projects.roleOf(id, account.id))) return false
+  return check(rec.owner, id)
+}
+
 // The editing actors of this server, made on first use so a server without projects has none.
 const HOSTS = new WeakMap<ServerOptions, ProjectHost>()
 function editors(opts: ServerOptions, projects: ProjectStore): ProjectHost {
   const existing = HOSTS.get(opts)
   if (existing) return existing
-  const host = new ProjectHost(projects, cardCeilings(opts))
+  const host = new ProjectHost(projects, cardCeilings(opts), readOnlyCheck(opts, projects))
   HOSTS.set(opts, host)
   return host
 }
@@ -2114,6 +2143,7 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     }
     if (!result.ok && result.quota) quotaRefused(res, result.quota, await bearerOf(opts, account, gate.rec.owner))
     else if (!result.ok && result.reason === 'conflict') json(res, 409, { error: 'project changed since rev ' + rev })
+    else if (!result.ok && result.reason === 'read-only') json(res, 402, READ_ONLY)
     else if (!result.ok) json(res, 404, { error: 'unknown project' })
     else json(res, 200, { id: gate.rec.id, rev: result.rev })
     return true
