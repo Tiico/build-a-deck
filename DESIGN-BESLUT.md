@@ -5033,7 +5033,9 @@ Ett dokument utan bräde har ingen post och läses tillbaka orört.
 **Texturen.** Typen säger `ownFaces`: dess sidor kommer ur dokumentets egen mall och inte ur en rad. `queueFaces` kompilerar varje sida med den enda kompilatorn och köar den som en textur i samma DPI som ett kort, så att filten ritar brädet i samma pixlar per millimeter, nycklad på innehållet (DRIFT §6): samma spelarbräde på åtta platser är en rendering, och en ändrad bild är en ny hash.
 Hashen går till vyn genom `project` i `DeckFacts.ownFaces`, i fältet `faces` som ett korts, och läses bara för en typ som säger `ownFaces`, så att ett kort och ett bräde kan heta samma sak utan att dela yta.
 Ingen ändring i `packages/protocol`.
-Ett jobb för det största brädet i 150 DPI är 3602 × 2699 px; uppmätt mot renderns minnestak (1,5 GB, DRIFT §6) i #1479.
+Ett jobb för det största brädet, 610 × 457 mm i 150 DPI, är 3602 × 2699 px, och det ryms under renderns minnestak (1,5 GB, DRIFT §6).
+Mätt 2026-11-01 i #1479 som summan av Chromiums processers RSS medan jobbet ritades: 0,5 GB för en jämn bild över hela brädet, och 1,07 GB för det värsta fallet, en 3600 × 2700 px bild av brus, som också gav en textur på 28 MB.
+En textur så stor är filtens att hämta (#1480), och den hämtas bara av skärmar som ritar filten (C2).
 Brädets bilder går genom tillgångarna som kortets (#1028).
 Trycket i 300 DPI med utfall är #1488, och till dess hoppar tryckexporten över brädet i stället för att vägra spelet.
 
