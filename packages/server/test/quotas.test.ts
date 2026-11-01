@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_PLANS, growth, limitOf, plansFromEnv, plansLine } from '../src/quotas.js'
+import { DEFAULT_PLANS, growth, hasPrint, limitOf, plansFromEnv, plansLine } from '../src/quotas.js'
 
 // The tiers as configuration (A2, #1192, #1193): read once at start from `BYD_PLANS`, and without it
 // a single tier where nothing is limited — the beta's state, and the state a box lands in when the
@@ -44,12 +44,38 @@ describe('the tiers the box is given', () => {
     expect(() => plansFromEnv({ BYD_PLANS: raw })).toThrow(why)
   })
 
+  // The print package is a property of a tier and not a ceiling (A2, G5, #1469, #1490): it counts
+  // nothing, so a tier either has it or does not. The tier that is given it says so; the beta's
+  // standard has it, so that a forgotten variable never takes it away.
+  it('give the print package to a tier that has it, and not to one that does not', () => {
+    const plans = plansFromEnv({ BYD_PLANS: JSON.stringify({ default: 'free', plans: { free: { projects: 3 }, pro: { print: true } } }) })
+    expect(hasPrint(plans, 'pro')).toBe(true)
+    expect(hasPrint(plans, 'free')).toBe(false)
+    expect(limitOf(plans, 'pro', 'projects')).toBeNull()
+  })
+
+  it('give the print package to the beta’s standard, which is what a forgotten variable gives', () => {
+    expect(hasPrint(plansFromEnv({}), 'free')).toBe(true)
+  })
+
+  it.each([
+    ['a print package that is not true or false', { print: 'yes' }, /print/],
+    ['a misspelt property', { prnit: true }, /prnit/],
+  ])('refuse %s, as they refuse a misspelt measure', (_what, tier, why) => {
+    expect(() => plansFromEnv({ BYD_PLANS: JSON.stringify({ default: 'free', plans: { free: tier } }) })).toThrow(why)
+  })
+
   // What the start says about them (DRIFT §8): the tiers' names, the default and whether any ceiling
-  // is set at all — never who has which tier.
+  // is set at all, and which tiers have the print package (#1490) — never who has which tier.
   it('are said in one log line, which says when no ceiling is set', () => {
-    expect(plansLine(DEFAULT_PLANS)).toEqual({ msg: 'plans', plans: ['free'], default: 'free', limited: false, warning: 'no ceiling is set; nothing is limited' })
+    expect(plansLine(DEFAULT_PLANS)).toEqual({ msg: 'plans', plans: ['free'], default: 'free', limited: false, print: ['free'], warning: 'no ceiling is set; nothing is limited' })
     const plans = plansFromEnv({ BYD_PLANS: JSON.stringify({ default: 'free', plans: { free: { projects: 3 }, pro: {} } }) })
-    expect(plansLine(plans)).toEqual({ msg: 'plans', plans: ['free', 'pro'], default: 'free', limited: true })
+    expect(plansLine(plans)).toEqual({ msg: 'plans', plans: ['free', 'pro'], default: 'free', limited: true, print: [] })
+  })
+
+  it('say which tiers have the print package, and a property is no ceiling', () => {
+    const plans = plansFromEnv({ BYD_PLANS: JSON.stringify({ default: 'free', plans: { pro: { print: true }, free: { print: false } } }) })
+    expect(plansLine(plans)).toEqual({ msg: 'plans', plans: ['free', 'pro'], default: 'free', limited: false, print: ['pro'], warning: 'no ceiling is set; nothing is limited' })
   })
 })
 

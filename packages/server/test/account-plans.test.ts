@@ -114,5 +114,19 @@ for (const backend of backends) {
       expect(report).toContainEqual(expect.objectContaining({ email: 'bo@example.com', plan: 'free', measures: expect.objectContaining({ projects: { used: 0, limit: 2 }, cardRowsPerProject: { used: 0, limit: null, projects: [] }, openTables: { used: 0, limit: null }, tablesPer30Days: { used: 0, limit: null }, storageBytes: none, rendersPer30Days: none }) }))
       await db.plans.clearPlan(dee.id)
     })
+
+    // The print package is a property of the tier (#1490), and the report says whether each account
+    // has it, so the operator sees it beside the ceilings; the beta's standard has it.
+    it('says whether each account has the print package, by its tier', async () => {
+      const withPrint = plansFromEnv({ BYD_PLANS: JSON.stringify({ default: 'free', plans: { free: { projects: 2 }, pro: { print: true } } }) })
+      const eve = await db.auth.ensureAccount('eve@example.com')
+      await db.auth.ensureAccount('fay@example.com')
+      await db.plans.setPlan(eve.id, 'pro', 'operator')
+      const report = await usageReport({ auth: db.auth, accountPlans: db.plans, projects: db.projects, tables: db.tables }, withPrint)
+      expect(report).toContainEqual(expect.objectContaining({ email: 'eve@example.com', plan: 'pro', print: true }))
+      expect(report).toContainEqual(expect.objectContaining({ email: 'fay@example.com', plan: 'free', print: false }))
+      await db.plans.clearPlan(eve.id)
+      expect(await usageReport({ auth: db.auth, accountPlans: db.plans, projects: db.projects, tables: db.tables }, DEFAULT_PLANS)).toContainEqual(expect.objectContaining({ email: 'eve@example.com', plan: 'free', print: true }))
+    })
   })
 }
