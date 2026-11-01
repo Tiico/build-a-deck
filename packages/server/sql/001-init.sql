@@ -282,6 +282,15 @@ create table if not exists stripe_customers (
   customer_id text not null unique,
   created_at  timestamptz not null default now()
 );
+-- The Stripe customers whose subscriptions an erased account left to cancel (#1520, G6, DRIFT §12):
+-- queued before the account goes, so the erasure does not take the row with it, and deleted when
+-- Stripe has cancelled. Only Stripe's id for the customer, never the account or its address; the
+-- hourly sweep and `stripe sync` try again.
+create table if not exists stripe_cancellations (
+  customer_id text primary key,
+  queued_at   timestamptz not null default now(),
+  tries       integer not null default 0
+);
 
 -- What each game's versions name (#1197, #1192 question 4): one row per game and asset some version
 -- of it uses, read the way `assetHashesOf` reads a document — every string anywhere in it that is

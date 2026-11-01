@@ -8,7 +8,7 @@ import { TableRenderer, type FeltFit, type TableHandle } from '../table/TableRen
 import { previewOf } from '../setup/preview.js'
 import { MIN_MM, NUDGE_MM, onTableOf, sizedBy } from './zone-geometry.js'
 import { useNumberDraft } from './number-draft.js'
-import { layMaterial, newAreaSpot, newPileSpot, pasteSpot, placeLine, type Counter, type Die, type Geometry, type MaterialLine, type Piece, type Setup, type Zone } from '@byd/server/doc'
+import { boardTypeOf, layBoards, layMaterial, newAreaSpot, newPileSpot, pasteSpot, placeLine, type Counter, type Die, type Geometry, type MaterialLine, type Piece, type Setup, type Zone } from '@byd/server/doc'
 import type { ProjectClient } from './ProjectClient.js'
 import { useT, type T } from '../i18n/index.js'
 import { Help } from './HelpDrawer.js'
@@ -20,6 +20,7 @@ import { recipeWords } from './fields.js'
 import { newMarker, tileFaceOf } from './tiles.js'
 import { useGesture } from './gesture.js'
 import { CardPreview } from './CardPreview.js'
+import { useMm } from './box-mm.js'
 import { ZoneActions } from './ZoneActions.js'
 import { landingOf } from './landing.js'
 import { CARD_MM } from '../table/drop.js'
@@ -40,6 +41,8 @@ import { ChevronGlyph } from '../glyphs.js'
 export type SetupEditorProps = {
   doc: ProjectDoc
   client: ProjectClient
+  // The way from a board's row to the «Bräde» tab, where its side is drawn (#1481).
+  onDrawBoard?: ((id: string) => void) | undefined
   // Where the project's images are served from (E1), and what is drawn inside each picture — the
   // same two the wall and the canvas compile a card with. The felt compiles the deck's back, so
   // a back made of a picture is a picture here too and not an empty box.
@@ -75,7 +78,7 @@ function inAField(e: KeyboardEvent): boolean {
   return on.some((el) => el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)
 }
 
-export function SetupEditor({ doc, client, assetBase, motifs, beside, lead, onOpenDeck }: SetupEditorProps) {
+export function SetupEditor({ doc, client, assetBase, motifs, beside, lead, onDrawBoard, onOpenDeck }: SetupEditorProps) {
   const t = useT()
   const setup = doc.setup
   const [selected, setSelected] = useState<string | null>(null)
@@ -342,6 +345,8 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside, lead, onOp
           onMarkers={(markers, gesture) => client.setMarkers(markers, gesture)}
           onDecks={(decks, gesture) => client.setDecks(decks, gesture)}
           onOpenDeck={onOpenDeck}
+          onBoards={(boards) => client.setBoards(boards)}
+          onDrawBoard={onDrawBoard}
           onCounters={turnCounters}
           typing={counterTyping}
         />
@@ -415,6 +420,7 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside, lead, onOp
             onGeometry={(id, geometry, gesture) => client.patchZone(id, { geometry }, gesture)}
             onRemove={remove}
             onPlace={client.mayEdit ? (line, center, gesture) => place(client, setup, t, line, center, gesture) : undefined}
+            onBoard={(id) => setOpenMaterial(`board:${id}`)}
           />
         ) : (
           <p role="alert" className="byd-setup-invalid">{t('setup.invalid')}</p>
@@ -482,6 +488,7 @@ function Felt({
   onGeometry,
   onRemove,
   onPlace,
+  onBoard,
 }: {
   view: NonNullable<ReturnType<typeof previewOf>>
   doc: ProjectDoc
@@ -496,8 +503,11 @@ function Felt({
   onRemove(zone: Zone): void
   // Where a piece of material was taken to (#1292); a reader has no hand on it.
   onPlace?: ((line: MaterialLine, center: { x: number; y: number }, gesture?: string) => boolean) | undefined
+  // A board's handle pressed (#1481): its row opens in the tree, where it is resized and drawn.
+  onBoard?: ((id: string) => void) | undefined
 }) {
   const t = useT()
+  const mm = useMm()
   const say = useSay()
   const keysId = useId()
   // What the back is compiled from, held by identity and by the parts of the document it is
@@ -704,8 +714,26 @@ function Felt({
       />
     ))
   const materialKeysId = useId()
+  // The main board's handle (#1481, K31, variant A of #1473): a plate on its corner that names it, its
+  // measure and that it lies fixed, and opens its row. It is a plate and not a box over the board, so
+  // the zones drawn on the board keep their own handles under it. A player board is a seat's
+  // «Framför», whose own handle is the zone's.
+  const boardHandles = (fit: FeltFit) =>
+    layBoards(setup).flatMap((laid) => {
+      if (laid.board.role !== undefined) return []
+      const home = setup.zones.find((z) => z.id === laid.zone)
+      const size = boardTypeOf(laid.board.type)?.physical
+      if (!home || !size) return []
+      const words = t('setup.board.handle', { w: mm(size.widthMm), h: mm(size.heightMm) })
+      return [
+        <button key={laid.board.id} type="button" className="byd-setup-board-handle" data-board-handle={laid.board.id} aria-label={words} style={{ left: fit.left(home.geometry.x + laid.x), top: fit.top(home.geometry.y + laid.y) }} onClick={() => onBoard?.(laid.board.id)}>
+          {words}
+        </button>,
+      ]
+    })
   const overlay = (fit: FeltFit) => (
     <>
+      {boardHandles(fit)}
       {handles(fit)}
       {pieces(fit)}
       {landing(fit)}
@@ -817,6 +845,15 @@ function Felt({
               palette={doc.palette}
             />
           ) : null
+        }}
+        // The board's side as the designer draws it in «Bräde» (#1481), by the same compiler, so the
+        // layer laid there is on the board here before anything is saved or rendered.
+        boardSide={(c, fit) => {
+          const board = doc.setup.boards?.find((b) => b.id === c.cardRef)
+          const side = board?.faces?.['front']
+          const type = board && boardTypeOf(board.type)
+          if (!side || !type || side.base.length === 0) return null
+          return <CardPreview type={type} face={side} row={{}} icons={icons} fonts={fonts} id={`byd-setup-board-${board.id}`} scale={fit.px(1) / CSS_MM_PX} assetBase={assetBase} motifs={motifs} palette={doc.palette} />
         }}
         seatNames
       />

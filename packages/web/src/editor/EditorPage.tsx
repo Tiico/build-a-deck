@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent, type ReactNode, type RefObject } from 'react'
 import { fieldLabel, nextCardRef } from './fields.js'
 import { DeckWall, type WallView } from './DeckWall.js'
 import { EditorTabs, modesFor, panelId, tabId, type Mode } from './EditorTabs.js'
@@ -12,6 +12,7 @@ import type { CatalogIcon } from './icon-catalog.js'
 import type { OwnIcon } from './IconCatalog.js'
 import { TemplateCanvas } from './TemplateCanvas.js'
 import { BoxTab } from './BoxTab.js'
+import { BoardTab } from './BoardTab.js'
 import type { BoxFace, ComponentTypeDef } from '@byd/engine'
 import { DataTable } from './DataTable.js'
 import { AiPanel, useAiKey } from './AiPanel.js'
@@ -24,7 +25,8 @@ import { MarkedProvider } from './marked.js'
 import { HistoryPanel } from './HistoryPanel.js'
 import { GameMore } from './GameMore.js'
 import { NoticeBand } from './NoticeBand.js'
-import { QuotaReached } from '../account/quota.js'
+import { QuotaReached, type Quota } from '../account/quota.js'
+import { proCardUrl, useProOffer } from '../account/pro.js'
 import { QuotaSaid, quotaWords, type QuotaWords } from '../account/quota-words.js'
 import { marked } from '../account/marked.js'
 import { RulesPanel } from './RulesPanel.js'
@@ -135,8 +137,10 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   // the same moment and not before (#1406, beslut 2 och 3, #1413), so the two are asked the one
   // question; until then the box only grows in the wall's foot.
   const startable = client?.startable === true
-  const modes = modesFor(startable)
-  const stages = room === 'desk' ? null : stagesFor(room, startable)
+  // The board's tab comes with the first board laid in Bord (#1481).
+  const boarded = (client?.doc.setup.boards?.length ?? 0) > 0
+  const modes = modesFor(startable, boarded)
+  const stages = room === 'desk' ? null : stagesFor(room, startable, boarded)
   // Below the desk «Spara» and «Uppdatera bordet» stand in the header while the header stands, as
   // they do at the desk, and the strip is the stages' own (#567, beslut B): at 820 px the two had
   // hidden Media, Regler and Bord behind them. In a low window the header scrolls away (#550), so
@@ -200,6 +204,9 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   // so going between Mall and Låda leaves each where the designer left it.
   const [boxFace, setBoxFace] = useState<BoxFace>('front')
   const [boxElement, setBoxElement] = useState<string | null>(null)
+  // The board whose side the «Bräde» tab edits (#1481), by its name, and the layer chosen on it.
+  const [boardId, setBoardId] = useState<string | null>(null)
+  const [boardElement, setBoardElement] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   // What could not happen, and what just did. Two states, because they are two different pieces
   // of news and one slot could only ever hold the later of them (#35).
@@ -209,7 +216,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   // later, and the change it was about vanished without a word. Said again, the same words are a
   // new notice, so a save cannot put away a word it never stood in front of.
   // `lead` is what did not happen when a met ceiling is said (#1198, variant A), set off before the rest.
-  const [notice, setNotice] = useState<{ text: string; lead?: string } | null>(null)
+  const [notice, setNotice] = useState<{ text: string; lead?: string; quota?: Quota } | null>(null)
   const say = useCallback((text: string) => setNotice({ text }), [])
   // The terms (#1272): an account that has not accepted them holds its edits from the start, so the
   // first one opens the dialog rather than going to the actor and back. The server says so too, for
@@ -227,11 +234,18 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
       live = false
     }
   }, [client, http])
-  const sayQuota = useCallback((words: QuotaWords) => setNotice({ lead: words.what, text: [words.why, words.way].filter((part) => part !== '').join(' ') }), [])
+  const sayQuota = useCallback((words: QuotaWords, quota?: Quota) => setNotice({ lead: words.what, text: [words.why, words.way].filter((part) => part !== '').join(' '), ...(quota ? { quota } : {}) }), [])
+  // Pro beside a met ceiling of her own (#1494): the price and the way to Profil's card.
+  const offer = useProOffer(http, notice?.quota)
+  const goPro = (e: MouseEvent<HTMLAnchorElement>) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return
+    e.preventDefault()
+    onNavigate(proCardUrl())
+  }
   // An icon chosen for a layer is bound at once and its bytes follow (#1093). Should they not arrive
   // the choice has been taken back whole, and the notice says so where every upload's failure is said.
   const iconSettled = ({ name, stored }: { name: string; stored: Promise<void> }): string => {
-    void stored.catch((err: unknown) => (err instanceof QuotaSaid ? sayQuota(err.words) : say(saidOr(err, t('icons.catalog.refused', { name })))))
+    void stored.catch((err: unknown) => (err instanceof QuotaSaid ? sayQuota(err.words, err.quota) : say(saidOr(err, t('icons.catalog.refused', { name })))))
     return name
   }
   const putAway = (standing: { text: string; lead?: string } | null) => setNotice((now) => (now === standing ? null : now))
@@ -470,7 +484,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
     // A ceiling is said as the ceiling (#1198): what did not happen, the numbers and the way out.
     const met = client?.refusedQuota
     if (heard.client === client && refusedEdits > heard.n) {
-      if (met) sayQuota(quotaWords(met.quota, { kind: 'edit', edit: met.edit, game: client.doc.name, grown: met.grown }, t))
+      if (met) sayQuota(quotaWords(met.quota, { kind: 'edit', edit: met.edit, game: client.doc.name, grown: met.grown }, t), met.quota)
       else say(t('editor.edit.refused'))
     }
     heardRefusals.current = { client, n: refusedEdits }
@@ -586,7 +600,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
     // Never the server's own words (#485), and never the table's (#1018): why a save made no
     // version is one of the client's closed set, and each is said in the editor's voice.
     if (result.ok) putAway(standing)
-    else if (result.quota) sayQuota(quotaWords(result.quota, { kind: 'save', game: client.doc.name }, t))
+    else if (result.quota) sayQuota(quotaWords(result.quota, { kind: 'save', game: client.doc.name }, t), result.quota)
     else say(t(SAVE_FAILED[result.reason]))
     return result.ok
   }
@@ -640,7 +654,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
       // A met ceiling (#1196) is said as one (#1198), with the tables of this game the reader can open.
       if (err instanceof QuotaReached) {
         const here = (await client.tables().catch(() => [])).filter((one) => !one.ended && one.code !== undefined).length
-        sayQuota(quotaWords(err.quota, { kind: 'table', rev: client.rev, here }, t))
+        sayQuota(quotaWords(err.quota, { kind: 'table', rev: client.rev, here }, t), err.quota)
       } else say(t('editor.table.error.start'))
       return null
     }
@@ -908,6 +922,31 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         onAddPicture={(file) => client.addPicture(file, t)}
       />
     ),
+    // Brädet (#1481): the board's side, edited by Mall's own canvas as a face of the box is.
+    board: () => (
+      <BoardTab
+        doc={doc}
+        edit={client}
+        reading={!client.mayEdit}
+        assetBase={http}
+        motifs={deckMotifs}
+        board={boardId}
+        onSelectBoard={(id) => {
+          setBoardId(id)
+          setBoardElement(null)
+        }}
+        element={boardElement}
+        onSelectElement={setBoardElement}
+        onOpenFonts={() => {
+          revealThemeSection('fonts')
+          setStage('theme')
+        }}
+        {...(client.mayEdit ? { onCatalogFont: (family: CatalogFamily) => client.useCatalogFont(family, t) } : {})}
+        {...(client.mayEdit ? { onCatalogIcon: async (icon: CatalogIcon, gesture: string) => iconSettled(await client.chooseIcon(icon, t, gesture)) } : {})}
+        {...(client.mayEdit ? { onOwnIcon: async (own: OwnIcon, gesture: string) => iconSettled(await client.chooseOwnIcon(own.svg, own.name, own.credit, t, gesture)) } : {})}
+        onAddPicture={(file) => client.addPicture(file, t)}
+      />
+    ),
     table: () => (
       <DataTable
         // A deck's own table (#1487): its columns, widths and filters are its own.
@@ -963,6 +1002,12 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         results={results}
         // From a tile's row to its deck's tab (#1487), or to a marker's sides in Mall.
         onOpenDeck={goDeck}
+        // A board's row leads to the tab its side is drawn in, with that board chosen (#1481).
+        onDrawBoard={(id) => {
+          setBoardId(id)
+          setBoardElement(null)
+          setStage('board')
+        }}
       />
     ),
   }
@@ -1120,7 +1165,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
           nothing routine may push it out of the way — but the designer may put it away (#1073).
           It is the first strip under the header, so it is in the same place whatever is up below
           it, and the header's row never gives it room: the game's name is never cut for it. */}
-      {notice && <NoticeBand text={notice.text} {...(notice.lead ? { lead: notice.lead } : {})} onClose={() => setNotice(null)} />}
+      {notice && <NoticeBand text={notice.text} {...(notice.lead ? { lead: notice.lead } : {})} {...(offer ? { offer: { text: offer, href: proCardUrl(), onGo: goPro } } : {})} onClose={() => setNotice(null)} />}
       {/* Said out loud, because a tool that is quietly missing reads as a tool that is broken: on
           a phone the editor is a reading and writing surface, and laying a card out waits for a
           wider screen (L10). */}

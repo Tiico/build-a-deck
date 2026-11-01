@@ -103,7 +103,7 @@ describe('bordet som träd (#1403, beslut C)', () => {
     expect(plus.getAttribute('aria-expanded')).toBe('false')
     fireEvent.click(plus)
     const menu = screen.getByRole('menu', { name: 'Lägg till i Spelyta' })
-    expect(within(menu).getAllByRole('menuitem').map(itemName)).toEqual(['＋ Yta', '＋ Hög', '＋ Tärning', '＋ Pjäs', '＋ Bricka'])
+    expect(within(menu).getAllByRole('menuitem').map(itemName)).toEqual(['＋ Yta', '＋ Hög', '＋ Tärning', '＋ Pjäs', '＋ Bräde', '＋ Bricka'])
     // Menyn tar fokus på sitt första val, och Escape lämnar det tillbaka till ＋.
     await waitFor(() => expect(document.activeElement).toBe(within(menu).getByRole('menuitem', { name: '＋ Yta' })))
     fireEvent.keyDown(menu, { key: 'Escape' })
@@ -233,7 +233,7 @@ describe('pjäserna i trädet (#1477)', () => {
     addVia('Varje plats', '＋ Yta per plats')
     fireEvent.click(screen.getByRole('button', { name: 'Lägg till i Framför' }))
     const menu = screen.getByRole('menu', { name: 'Lägg till i Framför' })
-    expect(within(menu).getAllByRole('menuitem').map(itemName)).toEqual(['＋ Tärning', '＋ Pjäs', '＋ Räknare'])
+    expect(within(menu).getAllByRole('menuitem').map(itemName)).toEqual(['＋ Tärning', '＋ Pjäs', '＋ Räknare', '＋ Spelarbräde'])
     expect(within(menu).getByRole('menuitem', { name: '＋ Pjäs' }).textContent).toContain('meeple, kub eller skiva')
     fireEvent.click(within(menu).getByRole('menuitem', { name: '＋ Pjäs' }))
     await waitFor(async () => expect((await truth()).setup.pieces).toEqual([{ kind: 'meeple', count: 5, role: 'mine' }]))
@@ -360,5 +360,43 @@ describe('brickorna i trädet (#1487)', () => {
     choose('Hög 1', 'Hög ur en lek')
     await waitFor(async () => expect((await truth()).decks?.[0]).toMatchObject({ zone: 'hog-1' }))
     expect((await truth()).setup.zones.filter((z) => z.kind === 'pile')).toHaveLength(3)
+  })
+})
+
+// Brädet i trädet (#1481, variant A i #1473): huvudbrädet är en rad överst i Spelyta, spelarbrädet en
+// rad under Varje plats. Raden säger mått och att brädet ligger fast, öppnas till storleken och vägen
+// till fliken «Bräde», och × tar bort det. Varje ändring är en redigering och ett steg tillbaka.
+describe('brädet i trädet (#1481)', () => {
+  it('lägger huvudbrädet ur «＋ Bräde» överst i Spelyta, byter storlek och tar bort det', async () => {
+    await openBord()
+    addVia('Spelyta', '＋ Bräde')
+    await waitFor(async () => expect((await truth()).setup.boards).toEqual([{ id: 'main', type: { id: 'board.square457', version: 1 }, zone: 'table' }]))
+    expect(names('Spelyta')[0]).toBe('Brädet 457 × 457 mm, ligger fast')
+    // Filten växte för det, och högarna flyttade ut bredvid.
+    expect((await truth()).setup.zones.find((z) => z.id === 'draw')!.geometry.x).toBeLessThan(-228)
+    // Ett huvudbräde: menyn erbjuder inget andra.
+    fireEvent.click(screen.getByRole('button', { name: 'Lägg till i Spelyta' }))
+    expect(within(screen.getByRole('menu', { name: 'Lägg till i Spelyta' })).getAllByRole('menuitem').map(itemName)).not.toContain('＋ Bräde')
+    fireEvent.click(screen.getByRole('button', { name: 'Lägg till i Spelyta' }))
+
+    fireEvent.change(screen.getByRole('combobox', { name: 'Storlek på brädet' }), { target: { value: 'board.rect610' } })
+    await waitFor(async () => expect((await truth()).setup.boards).toEqual([{ id: 'main', type: { id: 'board.rect610', version: 1 }, zone: 'table' }]))
+    await waitFor(() => expect(names('Spelyta')[0]).toBe('Brädet 610 × 457 mm, ligger fast'))
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ta bort brädet' }))
+    await waitFor(async () => expect((await truth()).setup.boards).toBeUndefined())
+  })
+
+  it('lägger spelarbrädet ur «＋ Spelarbräde» i Framför, där det ligger, och leder till fliken «Bräde»', async () => {
+    await openBord()
+    addVia('Varje plats', '＋ Yta per plats')
+    addVia('Framför', '＋ Spelarbräde')
+    await waitFor(async () => expect((await truth()).setup.boards).toEqual([{ id: 'spelare', type: { id: 'board.player', version: 1 }, role: 'mine' }]))
+    await waitFor(() => expect(names('Framför')).toContain('Spelarbräde 240 × 150 mm'))
+    // «Framför» är spelarbrädets fotavtryck nu (#1480).
+    expect((await truth()).setup.zones.find((z) => z.id === 'mine:A')!.geometry).toMatchObject({ w: 240, h: 150 })
+    fireEvent.click(screen.getByRole('button', { name: 'Rita brädets yta i fliken Bräde' }))
+    await waitFor(() => expect(screen.getByRole('tab', { name: 'Bräde' }).getAttribute('aria-selected')).toBe('true'))
+    expect(screen.getByRole('button', { name: /^Spelarbräde/ }).getAttribute('aria-pressed')).toBe('true')
   })
 })

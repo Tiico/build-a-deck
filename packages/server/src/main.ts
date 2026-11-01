@@ -18,7 +18,7 @@ import { MemoryRenderStore, PostgresRenderStore, assetsFromEnv, type RenderStore
 import { MemoryAccountPlanStore, plansAtStart, type AccountPlanStore } from './account-plans.js'
 import { plansFromEnv, plansLine } from './quotas.js'
 import { printProvidersOf } from './print-providers.js'
-import { paymentsFromEnv, paymentsLine, stripeApi, type PaymentsConfig } from './payments.js'
+import { paymentsFromEnv, paymentsLine, retryCancellations, stripeApi, type PaymentsConfig } from './payments.js'
 import { CURRENT_CLASSIFIER } from '@byd/screening'
 import { inviteKeepFrom, sweepSpent } from './sweep.js'
 import { sweepErasures, type ErasureStore } from './erase.js'
@@ -197,7 +197,7 @@ try {
   process.exit(1)
 }
 console.log(JSON.stringify(paymentsLine(paymentsConfig)))
-const payments = paymentsConfig ? { payments: { config: paymentsConfig, stripe: stripeApi(paymentsConfig.secretKey) } } : {}
+const payments = paymentsConfig ? { payments: { config: paymentsConfig, stripe: stripeApi(paymentsConfig.secretKey, paymentsConfig.apiBase) } } : {}
 // What can no longer be used (#1277): swept once before the door opens, and every hour with the
 // stale tables below. The line says how many went from each table, never which (DRIFT §8). A sweep
 // that fails is said and does not keep the door shut: the next one comes within the hour.
@@ -209,6 +209,13 @@ const sweep = async () => {
   await sweepSpent({ auth, projects, store }, new Date(), inviteKeepMs).catch((e: unknown) => void console.error(JSON.stringify({ msg: 'sweep', error: (e as Error).message })))
   await sweepErasures(erasures, new Date()).catch((e: unknown) => void console.error(JSON.stringify({ msg: 'erase', error: (e as Error).message })))
   await assetSweep?.sweep(new Date()).catch((e: unknown) => void console.error(JSON.stringify({ msg: 'sweep-assets', error: (e as Error).message })))
+  // The subscriptions of erased accounts that Stripe did not cancel at once (#1520): tried again,
+  // and the line says how many, never whose.
+  await retryCancellations({ accountPlans, stripe: payments.payments?.stripe ?? null })
+    .then((tried) => {
+      if (tried.length > 0) console.log(JSON.stringify({ msg: 'stripe-cancellations', cancelled: tried.filter((t) => t.outcome === 'cancelled').length, failed: tried.filter((t) => t.outcome === 'failed').length }))
+    })
+    .catch((e: unknown) => void console.error(JSON.stringify({ msg: 'stripe-cancellations', error: (e as Error).message })))
 }
 await sweep()
 // Testtryckeriet stands where a print partner will (F1, F2, #1208): the print package is prepared

@@ -1,7 +1,8 @@
 import { Fragment, useContext, useEffect, useId, useRef, useState, type KeyboardEvent as RKeyboardEvent, type ReactNode } from 'react'
 import type { ProjectDoc } from '@byd/server'
 import type { ZoneBeside } from '@byd/protocol'
-import { counterId, titleOfRow, type Counter, type Die, type Marker, type Piece, type SeatRole, type Setup, type Zone, type ZonePatch } from '@byd/server/doc'
+import { BOARDS } from '@byd/engine'
+import { boardTypeOf, counterId, titleOfRow, type BoardKind, type Counter, type Die, type Marker, type Piece, type SeatRole, type Setup, type Zone, type ZonePatch } from '@byd/server/doc'
 import { useT, type Key } from '../i18n/index.js'
 import { ChevronGlyph, CloseGlyph } from '../glyphs.js'
 import { Help } from './HelpDrawer.js'
@@ -11,6 +12,7 @@ import { Reading, diePlaces, fixed, placeOf, rowsOf, type Family } from './setup
 import { CounterFields, DieFields, MaterialRow, PieceFields, dieWords, pieceWords, type MaterialKey } from './MaterialRow.js'
 import { DeckFields, MarkerFields, TileChoiceItem, deckWords, markerWords, shapeOf, type TileChoice } from './TileRows.js'
 import { tileType } from './tiles.js'
+import { useMm } from './box-mm.js'
 
 // The table as a tree (#1403, beställarens beslut C): the list in Bord's column mirrors the felt,
 // where everything lies in something. The floor is the root of what stands on the table — the
@@ -59,6 +61,8 @@ export function TableTree({
   onMarkers,
   onDecks,
   onOpenDeck,
+  onBoards,
+  onDrawBoard,
   typing,
 }: {
   setup: Setup
@@ -82,6 +86,9 @@ export function TableTree({
   onMarkers?(markers: Marker[], gesture?: string): void
   onDecks?(decks: NonNullable<ProjectDoc['decks']>, gesture?: string): void
   onOpenDeck?: ((ref: string, where: 'template' | 'table') => void) | undefined
+  // The game's boards (#1481), written back as the whole list, and the way to the «Bräde» tab.
+  onBoards(boards: BoardKind[]): void
+  onDrawBoard?: ((id: string) => void) | undefined
   typing: { visit: Record<string, unknown>; token(): string }
   onSelect(id: string | null): void
   onOpen(role: string): void
@@ -91,6 +98,7 @@ export function TableTree({
   onAdd(what: AddWhat): void
 }) {
   const t = useT()
+  const mm = useMm()
   const floor = setup.zones.find((z) => z.id === setup.floor)
   const onTable = setup.zones.filter((z) => z.owner === undefined && z.id !== setup.floor)
   const atSeats = rowsOf(setup.zones.filter((z) => z.owner !== undefined))
@@ -120,10 +128,32 @@ export function TableTree({
     ],
   })
   const materialIn = (place: string): AddItem[] => [dieIn(place), pieceIn(place)]
+  // The boards (#1481, variant A of #1473): one main board on the floor and one player board laid for
+  // every seat, each a row of its own that says it lies fixed. The ＋ offers one only while there is none.
+  const boards = setup.boards ?? []
+  const mainBoard = boards.find((b) => b.zone !== undefined)
+  const playerBoard = boards.find((b) => b.role !== undefined)
+  const laidBoard = (board: BoardKind) => {
+    onOpenMaterial(`board:${board.id}`)
+    onBoards([...boards, board])
+  }
+  const boardRow = (board: BoardKind) => {
+    const key: MaterialKey = `board:${board.id}`
+    const player = board.role !== undefined
+    const size = boardTypeOf(board.type)?.physical
+    const measure = size ? { w: mm(size.widthMm), h: mm(size.heightMm) } : { w: '', h: '' }
+    return (
+      <MaterialRow key={key} id={key} kind="board" label={t(player ? 'setup.board.player' : 'setup.board.main')} detail={t(player ? 'setup.board.player.detail' : 'setup.board.main.detail', measure)} removeLabel={t(player ? 'setup.board.player.remove' : 'setup.board.remove')} open={openMaterial === key} onOpen={(open) => onOpenMaterial(open ? key : null)} onRemove={() => { onOpenMaterial(null); onBoards(boards.filter((b) => b.id !== board.id)) }}>
+        <BoardFields board={board} onChange={(next) => onBoards(boards.map((b) => (b.id === board.id ? next : b)))} onDraw={onDrawBoard ? () => onDrawBoard(board.id) : undefined} />
+      </MaterialRow>
+    )
+  }
   const floorAdds: AddItem[] = [
     { label: t('setup.addArea'), pick: () => onAdd({ kind: 'area' }) },
     { label: t('setup.addPile'), pick: () => onAdd({ kind: 'pile' }) },
-    ...(floor ? [...materialIn(`zone:${floor.id}`), tileIn(`zone:${floor.id}`, null)] : []),
+    ...(floor ? materialIn(`zone:${floor.id}`) : []),
+    ...(floor && !mainBoard ? [{ label: t('setup.board.add'), pick: () => laidBoard({ id: 'main', type: FIRST_MAIN, zone: floor.id }) }] : []),
+    ...(floor ? [tileIn(`zone:${floor.id}`, null)] : []),
   ]
   const seatAdds: AddItem[] = [
     { label: t('setup.addSeatArea'), pick: () => onAdd({ kind: 'seat', role: 'mine' }) },
@@ -133,8 +163,15 @@ export function TableTree({
   ]
   // A counter lies in the seats' counters zone unless the designer put it in another area each
   // seat has (K31): in the counters family it is a counter with no role to say.
+  // A player board lies in a seat's «Framför» (#1481, variant A), so it is laid from that family's ＋.
   const familyAdds = (family: Family): AddItem[] | undefined =>
-    family.first.kind === 'area' ? [...materialIn(`role:${family.role}`), { label: t('setup.counter.add'), pick: () => onAdd({ kind: 'counter', role: family.role === 'counters' ? undefined : family.role }) }] : undefined
+    family.first.kind === 'area'
+      ? [
+          ...materialIn(`role:${family.role}`),
+          { label: t('setup.counter.add'), pick: () => onAdd({ kind: 'counter', role: family.role === 'counters' ? undefined : family.role }) },
+          ...(family.role === 'mine' && !playerBoard ? [{ label: t('setup.board.player.add'), pick: () => laidBoard({ id: 'spelare', type: PLAYER_BOARD, role: 'mine' }) }] : []),
+        ]
+      : undefined
   const seatsAdd = useAddMenu(t('setup.seats.node'), seatAdds)
 
   // The material, each line under the zone it lies in (K31). A die whose place is gone stands
@@ -242,6 +279,7 @@ export function TableTree({
             floor,
             floorAdds,
             <ul aria-label={floor.name}>
+              {mainBoard && boardRow(mainBoard)}
               {onTable.map((zone) =>
                 zoneRow(zone, zone.kind === 'area' ? [...materialIn(`zone:${zone.id}`), tileIn(`zone:${zone.id}`, null)] : zone.kind === 'pile' ? [tileIn(`zone:${zone.id}`, zone.id)] : undefined, [...diceAt(`zone:${zone.id}`), ...piecesAt(`zone:${zone.id}`), ...decksAt(zone.id), ...markersAt(`zone:${zone.id}`)]),
               )}
@@ -267,7 +305,7 @@ export function TableTree({
               it.kind === 'zone' ? (
                 zoneRow(it.zone)
               ) : (
-                <FamilyRow key={it.family.role} family={it.family} setup={setup} open={opened.includes(it.family.role)} add={familyAdds(it.family)} material={[...diceAt(`role:${it.family.role}`), ...piecesAt(`role:${it.family.role}`), ...markersAt(`role:${it.family.role}`), ...countersAt(it.family.role)]} onOpen={() => onOpen(it.family.role)}>
+                <FamilyRow key={it.family.role} family={it.family} setup={setup} open={opened.includes(it.family.role)} add={familyAdds(it.family)} material={[...(playerBoard && playerBoard.role === it.family.role ? [boardRow(playerBoard)] : []), ...diceAt(`role:${it.family.role}`), ...piecesAt(`role:${it.family.role}`), ...markersAt(`role:${it.family.role}`), ...countersAt(it.family.role)]} onOpen={() => onOpen(it.family.role)}>
                   {it.family.zones.map((zone) => zoneRow(zone))}
                 </FamilyRow>
               ),
@@ -666,3 +704,40 @@ function ZoneProps({ zone, setup, rows, why, onPatch, onHold }: { zone: Zone; se
   )
 }
 
+
+// The board types a game may lay (#1479): the main board in its sizes, and the player board.
+const ref = (def: { id: string; version: number }) => ({ id: def.id, version: def.version })
+const PLAYER_BOARD = { id: 'board.player', version: 1 }
+const MAIN_BOARDS = BOARDS.filter((b) => b.id !== PLAYER_BOARD.id)
+const FIRST_MAIN = { id: 'board.square457', version: 1 }
+
+// A board's row opened (#1481): the main board's size, the way to the tab its side is drawn in, and
+// what lying fixed means. The player board has one size, so it has nothing to choose.
+function BoardFields({ board, onChange, onDraw }: { board: BoardKind; onChange(board: BoardKind): void; onDraw: (() => void) | undefined }) {
+  const t = useT()
+  const mm = useMm()
+  const reading = useContext(Reading)
+  const player = board.role !== undefined
+  return (
+    <div className="byd-setup-board">
+      {!player && (
+        <select aria-label={t('setup.board.size')} value={board.type.id} disabled={reading} onChange={(e) => {
+          const next = MAIN_BOARDS.find((b) => b.id === e.target.value)
+          if (next) onChange({ ...board, type: ref(next) })
+        }}>
+          {MAIN_BOARDS.map((b) => (
+            <option key={b.id} value={b.id}>
+              {t('board.size', { w: mm(b.physical.widthMm), h: mm(b.physical.heightMm) })}
+            </option>
+          ))}
+        </select>
+      )}
+      {onDraw && (
+        <button type="button" className="byd-primary" onClick={onDraw}>
+          {t('setup.board.draw')}
+        </button>
+      )}
+      <p className="byd-setup-note">{t('setup.board.note')}</p>
+    </div>
+  )
+}

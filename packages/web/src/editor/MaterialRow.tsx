@@ -9,9 +9,9 @@ import { DIE_FACES, Reading, movedTo, placeOf, type DiePlace } from './setup-row
 // («2 × d6 · per spelare», «Guld · från 0») under the zone it lies in, and opened into its fields
 // like a zone is. Where it lies is the tree's to say, so the row has no picker for it — except
 // when the zone is gone, and the row has to be told where to go instead (#1139).
-export type MaterialKey = `die:${number}` | `counter:${number}` | `piece:${number}` | `marker:${number}` | `deck:${number}`
+export type MaterialKey = `die:${number}` | `counter:${number}` | `piece:${number}` | `marker:${number}` | `deck:${number}` | `board:${string}`
 
-export function MaterialRow({ id, kind, piece, shape, label, detail, removeLabel, open, note, onOpen, onRemove, children }: { id: MaterialKey; kind: 'die' | 'counter' | 'piece' | 'tile'; piece?: Piece['kind']; shape?: 'hex' | 'square' | 'round'; label: string; detail: string; removeLabel: string; open: boolean; note?: ReactNode; onOpen(open: boolean): void; onRemove(): void; children: ReactNode }) {
+export function MaterialRow({ id, kind, piece, shape, label, detail, removeLabel, open, note, onOpen, onRemove, children }: { id: MaterialKey; kind: 'die' | 'counter' | 'piece' | 'tile' | 'board'; piece?: Piece['kind']; shape?: 'hex' | 'square' | 'round'; label: string; detail: string; removeLabel: string; open: boolean; note?: ReactNode; onOpen(open: boolean): void; onRemove(): void; children: ReactNode }) {
   const reading = useContext(Reading)
   return (
     <li data-material-row={id} data-open={open ? 'true' : undefined}>

@@ -1,14 +1,14 @@
 import type { AssetCrop as Crop, CardQuery, FaceId, ZoneAction, ZoneBeside } from '@byd/protocol'
 import { RuleBlock, isSymbolName, type Element, type FaceTemplate, type Variant } from '@byd/template'
 import { showsWholePicture } from '@byd/protocol'
-import { BOX_SIDES, BoxFace, type BoxClearance, type BoxSide } from '@byd/engine'
+import { BOARDS, BOX_SIDES, BoxFace, type BoxClearance, type BoxSide } from '@byd/engine'
 import { MARKER_REF, deckView, rowRef } from './decks.js'
-import { AssetCrop, PictureName, ProjectBox, ProjectDecks, ProjectDice, ProjectMarkers, ProjectPieces } from './projects.js'
-import type { Cell, Picture, ProjectDeck, ProjectDie, ProjectMarker, ProjectPiece, ProjectCredit, ProjectDoc, ProjectFont, ProjectRow, ProjectTheme, RuleDoc } from './projects.js'
+import { AssetCrop, PictureName, ProjectBoards, ProjectBox, ProjectDecks, ProjectDice, ProjectMarkers, ProjectPieces } from './projects.js'
+import type { Cell, Picture, ProjectBoard, ProjectDeck, ProjectDie, ProjectMarker, ProjectPiece, ProjectCredit, ProjectDoc, ProjectFont, ProjectRow, ProjectTheme, RuleDoc } from './projects.js'
 import { DEFAULT_BOX_TYPE } from './box.js'
 import { applyRevert, decideRevert, type Revert } from './undo.js'
 import { columnsOf } from './columns.js'
-import { applyRecipe, newAreaSpot, newPileSpot, seatZones, type Geometry, type Recipe, type RecipeWords, type SeatRole, type Setup, type Shortcut, type Zone } from './recipe.js'
+import { applyRecipe, newAreaSpot, recipeOf, newPileSpot, seatZones, type Geometry, type Recipe, type RecipeWords, type SeatRole, type Setup, type Shortcut, type Zone } from './recipe.js'
 
 // The columns are their own module so that `undo.ts` can ask about them without importing the edits
 // that import it (#1072).
@@ -72,9 +72,10 @@ export function checkedName(name: string): string {
 
 export type Clearable = 'name' | 'locked' | 'shadow' | 'pattern' | 'points' | 'fill'
 
-// Whose face a template edit writes (#1413): the card's, which is what an edit without it means, or
-// the box's.
-export type FaceOwner = 'box'
+// Whose face a template edit writes (#1413): the card's, which is what an edit without it means, the
+// box's, or a board's (#1481, L91). A board's face is named by the board and the side, `main.front`:
+// a board's name has no full stop in it, so the two are read apart without doubt.
+export type FaceOwner = 'box' | 'board'
 
 // Vad en kolumn är (#1085): en rad text, prosa med stycken och listor, eller en bild.
 export type ColumnKind = 'text' | 'prose' | 'image'
@@ -171,6 +172,11 @@ export type EditIntent =
   | { v: 'setDice'; dice: ProjectDie[] }
   // The game's wooden pieces (#1471), the whole list at once as the dice: one version, one step back.
   | { v: 'setPieces'; pieces: ProjectPiece[] }
+  // The game's boards (#1481, #1480), the whole list at once as the dice: a board laid, resized or taken
+  // away is one version and one step back (B4). The felt and the seats are laid for them as the recipe
+  // lays them (`applyRecipe`, K18), and `places` is where that put every zone it moved, decided once
+  // when the edit is made, as `setRecipe` carries it (#895).
+  | { v: 'setBoards'; boards: ProjectBoard[]; places?: Places }
   // The game's markers (#1483), the whole list at once as the pieces, their sides with them: a marker
   // added, moved, counted again or drawn anew is one version and one step back (B4).
   | { v: 'setMarkers'; markers: ProjectMarker[] }
@@ -318,7 +324,7 @@ export function decideEdit(doc: ProjectDoc, intent: EditIntent): EditIntent {
   // A step back that brings a cell back into a column someone has taken away since it was worked
   // out lets that cell go (#1072), and the line says so by not carrying it.
   if (intent.v === 'revert') return decideRevert(doc, intent)
-  if ((intent.v === 'setRecipe' || intent.v === 'addSeatZone') && !intent.places) {
+  if ((intent.v === 'setRecipe' || intent.v === 'addSeatZone' || intent.v === 'setBoards') && !intent.places) {
     // The answer is what applying the edit by today's rule moved or made. An edit the document
     // refuses has no answer, and passes on as it is for `applyEdit` to say why.
     let next: ProjectDoc
@@ -566,8 +572,8 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
     case 'replaceFace': {
       // A face the template does not have yet is made rather than refused: an empty back is
       // exactly the back a gallery is for.
-      if (intent.on === 'box' && intent.variants && Object.keys(intent.variants).length > 0) throw new Error(groupless(intent.face))
-      const face = intent.on === 'box' ? faceOf(doc, intent.face, intent.on) : (doc.template.faces[intent.face] ?? { base: [], variants: {} })
+      if (intent.on !== undefined && intent.variants && Object.keys(intent.variants).length > 0) throw new Error(groupless(intent.face))
+      const face = intent.on !== undefined ? faceOf(doc, intent.face, intent.on) : (doc.template.faces[intent.face] ?? { base: [], variants: {} })
       return writeFace(doc, intent.face, { ...face, base: intent.base, ...(intent.variants ? { variants: intent.variants } : {}) }, intent.on)
     }
     case 'moveElement': {
@@ -608,6 +614,12 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
       const dice = ProjectDice.parse(intent.dice)
       const { dice: _gone, ...rest } = doc.setup
       return { ...doc, setup: dice.length > 0 ? { ...rest, dice } : rest }
+    }
+    case 'setBoards': {
+      const boards = ProjectBoards.parse(intent.boards)
+      const { boards: _gone, ...rest } = doc.setup
+      const next: Setup = boards.length > 0 ? { ...rest, boards } : rest
+      return { ...doc, setup: placed(doc.setup, applyRecipe(next, recipeOf(next)), intent.places) }
     }
     case 'setPieces': {
       const pieces = ProjectPieces.parse(intent.pieces)
@@ -989,16 +1001,38 @@ function faceOf(doc: ProjectDoc, face: string, on?: FaceOwner, group?: string | 
     if (group) throw new Error(groupless(face))
     return doc.box?.faces?.[face as BoxFace] ?? { base: [], variants: {} }
   }
-  if (on !== undefined) throw new Error(`a face belongs to the card or the box, not to ${String(on)}`)
+  if (on === 'board') {
+    // A board's side that has not been drawn is an empty one to draw on, as the box's is.
+    const { board, side } = boardFace(doc, face)
+    if (group) throw new Error(groupless(face))
+    return board.faces?.[side] ?? { base: [], variants: {} }
+  }
+  if (on !== undefined) throw new Error(`a face belongs to the card, the box or a board, not to ${String(on)}`)
   const found = doc.template.faces[face]
   if (!found) throw new Error(`template has no face ${face}`)
   return found
 }
-const groupless = (face: string) => `the box's ${face} has no group: there is one box, not one per kind of card`
+const groupless = (face: string) => `the ${face} has no group: there is one box and one board each, not one per kind of card`
+// The board and the side a board's face names (#1481): `main.front` is the board `main`, its `front`.
+function boardFace(doc: ProjectDoc, face: string): { board: ProjectBoard; side: string } {
+  const at = face.lastIndexOf('.')
+  const id = at < 0 ? face : face.slice(0, at)
+  const side = at < 0 ? '' : face.slice(at + 1)
+  const board = doc.setup.boards?.find((b) => b.id === id)
+  if (!board) throw new Error(`there is no board ${id}`)
+  const type = BOARDS.find((b) => b.id === board.type.id && b.version === board.type.version)
+  if (!type?.faces.includes(side)) throw new Error(`the board ${id} has no side ${side || '(none)'}: its sides are ${type?.faces.join(', ') ?? 'none'}`)
+  return { board, side }
+}
 // The one way a face of the template is written: every canvas edit leaves as one edit. A face of
 // the box is written into the box (#1413), beside its locks and its air.
 function writeFace(doc: ProjectDoc, face: string, next: FaceTemplate, on?: FaceOwner): ProjectDoc {
   if (on === 'box') return boxed(doc, (box) => ({ ...box, faces: { ...box.faces, [face]: next } }))
+  if (on === 'board') {
+    const { board, side } = boardFace(doc, face)
+    const boards = (doc.setup.boards ?? []).map((b) => (b.id === board.id ? { ...b, faces: { ...b.faces, [side]: next } } : b))
+    return { ...doc, setup: { ...doc.setup, boards } }
+  }
   return { ...doc, template: { ...doc.template, faces: { ...doc.template.faces, [face]: next } } }
 }
 function writeVariant(doc: ProjectDoc, faceId: string, face: FaceTemplate, group: string, change: (variant: Variant) => Variant): ProjectDoc {

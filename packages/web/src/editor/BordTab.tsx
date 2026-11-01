@@ -16,11 +16,11 @@ import { useT } from '../i18n/index.js'
 // A viewer runs no tables and reads no playtest (#524), so she has no switch: the tab is the
 // board and its tables, as it always was.
 // `results` is the version Resultat was asked to open on from Mina spel (#1225): the tab starts there.
-export type BordTabProps = { doc: ProjectDoc; client: ProjectClient; assetBase?: string | undefined; motifs?: Record<string, Motif> | undefined; server: string | null; started?: string | null; results?: string | null; onOpenDeck?: ((ref: string, where: 'template' | 'table') => void) | undefined }
+export type BordTabProps = { doc: ProjectDoc; client: ProjectClient; assetBase?: string | undefined; motifs?: Record<string, Motif> | undefined; server: string | null; started?: string | null; results?: string | null; onDrawBoard?: ((id: string) => void) | undefined; onOpenDeck?: ((ref: string, where: 'template' | 'table') => void) | undefined }
 
 type View = 'tables' | 'results'
 
-export function BordTab({ doc, client, assetBase, motifs, server, started = null, results = null, onOpenDeck }: BordTabProps) {
+export function BordTab({ doc, client, assetBase, motifs, server, started = null, results = null, onDrawBoard, onOpenDeck }: BordTabProps) {
   const [view, setView] = useState<View>(results && client.mayStartTables ? 'results' : 'tables')
   // The table the Resultat view was opened for, from its row; null for all of them.
   const [table, setTable] = useState<string | null>(null)
@@ -42,6 +42,7 @@ export function BordTab({ doc, client, assetBase, motifs, server, started = null
       motifs={motifs}
       lead={switcher}
       onOpenDeck={onOpenDeck}
+      onDrawBoard={onDrawBoard}
       beside={
         <TablesTab
           client={client}

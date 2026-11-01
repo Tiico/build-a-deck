@@ -436,7 +436,16 @@ Ett ångrat ja:
 Hur betalningen är kopplad står i DRIFT §12 (#1493): nycklarna och pris-id:na i `.env`, webhooken på `https://deckster.se/stripe/webhook`, och Stripes besked som skriver kontots nivå i `account_plans` med källan `stripe`.
 Efter en ändring i `.env`: `docker compose up -d app`, och läs raden `"msg":"payments"` i `docker compose logs app`; den säger `on`, `test` eller `live` och vilka nivåer som går att köpa, eller vad som är fel.
 
-**Före de skarpa nycklarna.** Bekräfta med beställaren hur momsen tas ut (fråga 2 i #1469, till exempel Stripe Tax), skapa produkten Pro med de fyra priserna i live-läget, lägg upp webhooken där med händelserna `customer.subscription.created`, `customer.subscription.updated` och `customer.subscription.deleted`, och byt alla tre variablerna på en gång: live-lägets pris-id och signeringshemlighet är andra än testlägets.
+**Momsen tas ut med Stripe Tax** (beställarens beslut 2026-11-01, #1521, A2): priset 99 kr eller 9 € är inklusive moms, och Stripe Tax räknar svensk moms och EU-moms via OSS efter kundens land, som Stripes kassa frågar efter.
+Förutsättningar innan de skarpa nycklarna läggs in, i live-läget:
+1. **OSS-registreringen** hos Skatteverket är gjord (beställaren), så att EU-momsen redovisas i en deklaration.
+2. **Stripe Tax är påslaget** under Settings → Tax: företagets adress i Sverige som ursprung, produktens skattekod *Software as a service (SaaS) – business use* eller *Electronically supplied services* (`txcd_10103000` eller `txcd_10000000`), och registreringarna inlagda: Sverige, och EU via OSS (*Union OSS*).
+3. **Produkten Pro med fyra priser**: 99 SEK och 9 EUR i månaden, 990 SEK och 90 EUR om året, alla återkommande och alla med **Include tax in price** (`tax_behavior: inclusive`). Ett pris utan det, eller ett vars valuta eller intervall inte är vad `BYD_STRIPE_PRICES` kallar det, säljs aldrig: kassan svarar `502`, och loggen säger `{"msg":"stripe","checkout":"refused","price":"price_…","fault":"tax_behavior is exclusive, not inclusive"}`. `tax_behavior` går inte att ändra på ett pris som redan är satt, så ett fel rättas med ett nytt pris och ett nytt id i `BYD_STRIPE_PRICES`.
+4. **Webhooken** läggs upp med händelserna `customer.subscription.created`, `customer.subscription.updated` och `customer.subscription.deleted`.
+5. **Kundportalen** slås på under Settings → Billing → Customer portal, med betalkort, faktureringsadress och fakturahistorik (#1494): «Kvitton och betalkort» i Profil öppnar den. Uppsägningen görs i Profil, som säger vilka spel som hamnar i läsläge, så stäng av «Cancel subscriptions» i portalen; lämnas den på gäller samma webhook, men designern ser inte spelen först.
+
+Byt sedan alla tre variablerna på en gång: live-lägets pris-id och signeringshemlighet är andra än testlägets.
+Pröva en gång i testläget först: en kassa med testkortet `4242 4242 4242 4242` och en svensk och en tysk adress ska visa 99 kr respektive 9 € med momsen inräknad, 25 % och 19 %.
 
 **En webhook som inte kommer fram.** Stripe försöker igen i upp till tre dygn, och Dashboard visar varje försök under webhookens händelser.
 1. Läs `docker compose logs app | grep '"msg":"stripe"'`. Ingen rad alls betyder att anropet inte når appen: kontrollera att Cloudflare inte utmanar eller stryper vägen (DRIFT §9) och att traefik släpper igenom den. `400` i Dashboard betyder att signaturen inte håller: `STRIPE_WEBHOOK_SECRET` hör inte till den här webhooken eller det här läget.
@@ -455,4 +464,13 @@ En återbetalning ändrar inte nivån av sig själv, eftersom abonnemanget fortf
 Ska kontot också lämna Pro, säg upp abonnemanget i Dashboard, direkt och inte vid periodens slut; webhooken gör då kontot utgånget, och läsläget gäller för det som ligger över gratisnivåns tak (G5).
 Ett konto som ska behålla Pro utan att betala, till exempel efter ett fel som är vårt, får nivån av operatören (`plan set <adress> pro`, källan `operator`), som Stripe sedan inte skriver över.
 
-**Ett konto som raderar sig själv** säger ännu inte upp sitt abonnemang hos Stripe (DRIFT §12). Sök upp kunden i Dashboard på adressen och säg upp abonnemanget direkt, så att ingen dras för ett konto som inte finns.
+**Ett konto som raderar sig själv** säger upp sitt abonnemang hos Stripe direkt, innan kontot försvinner (DRIFT §12, #1520).
+Svarar inte Stripe läggs kunden i en kö som lådan försöker igen med varje timme, och raden `"msg":"stripe-cancellations"` i loggen säger hur många som gick och hur många som står kvar.
+Kön töms för hand över Tailscale med `stripe sync` utan adress, med lådans variabler; den skriver en rad per kund med `cancelled` eller `failed`:
+
+```sh
+DATABASE_URL=postgres://… BYD_PLANS='…' STRIPE_SECRET_KEY=… STRIPE_WEBHOOK_SECRET=… BYD_STRIPE_PRICES='…' \
+  pnpm --filter @byd/server stripe sync
+```
+
+En kund som står kvar som `failed` efter några dygn söks upp i Dashboard på sitt id (`cus_…`), och abonnemanget sägs upp direkt där; nästa `stripe sync` ser att inget går att dra och tar kunden ur kön.

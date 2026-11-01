@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { CARD_STANDARD_63x88, TILE_COIN, TILE_HEX } from '@byd/engine'
+import { BOARDS, CARD_STANDARD_63x88, TILE_COIN, TILE_HEX } from '@byd/engine'
 import { contrastRatio, distance, remedyFor, simulate, validateCard, type Issue } from '../src/validate.js'
 import { textFloorPt } from '../src/fit.js'
 import type { FitReport } from '../src/dom-fit.js'
@@ -262,5 +262,25 @@ describe('the safe area of a tile follows the shape it is cut in', () => {
   it('measures a coin against its circle', () => {
     expect(codes(tile(TILE_COIN, [bg({ w: 31, h: 31 }), word(2.5, 2.5)]))).toEqual(['outside-safe-area:error'])
     expect(codes(tile(TILE_COIN, [bg({ w: 31, h: 31 }), word(7.5, 10)]))).toEqual([])
+  })
+})
+
+// Brädets sida (#1481, E5, L91) prövas med brädtypens egen `print`: textgolvet per skrift, och i
+// brädets eget mått, så att en text som är stor nog på ett kort men under brädets golv anmärks.
+describe("a board's side is checked by the board type (#1481)", () => {
+  const board = BOARDS.find((b) => b.id === 'board.square457')!
+  const ground: Element = { kind: 'shape', id: 'ground', x: -3, y: -3, w: 463, h: 463, shape: 'rect', fill: '#d8c49c' }
+  const words = (sizePt: number): Element => ({ kind: 'text', id: 'namn', x: 40, y: 40, w: 300, h: 60, bind: { literal: 'Hamnstaden' }, font: { family: 'system-ui', sizePt }, color: '#3b2a12' })
+  const onBoard = (base: Element[]) => validateCard({ type: board, face: face(base), row: {}, fonts: PINNED })
+
+  it("says text under the board type's floor is too small, and passes text above it", () => {
+    const floor = board.print.minPtByScript['Latn']!
+    expect(onBoard([ground, words(floor - 1)])).toEqual(expect.arrayContaining([expect.objectContaining({ element: 'namn', code: 'text-too-small', severity: 'error', values: { sizePt: floor - 1, floor } })]))
+    expect(codes(onBoard([ground, words(48)]))).toEqual([])
+  })
+
+  it("measures the bleed in the board's own size, not a card's", () => {
+    // A ground that would bleed a card (69 × 94 mm) is far short of a board.
+    expect(codes(onBoard([{ ...ground, w: 69, h: 94 }, words(48)]))).toContain('short-of-bleed:error')
   })
 })
