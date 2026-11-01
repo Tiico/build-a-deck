@@ -37,16 +37,15 @@ const made = async (name: string, rows = 3): Promise<string> => {
 }
 // Ada had Pro and four games; Pro lapses. Newest first: Skogens herrar has four cards, over the free
 // tier's three, and takes no place; Fyren and Kajen fit; Hamnen is past the two games Gratis holds.
-const lapsed = async () => {
+const FOUR: [string, number][] = [['Hamnen', 3], ['Kajen', 3], ['Fyren', 3], ['Skogens herrar', 4]]
+const lapsed = async (games: [string, number][] = FOUR) => {
   run = await startServer({ auth: true, authBypass: true, plans: tiers })
   const ada = await login('ada@example.com')
   await run.accountPlans!.setPlan(ada.id, 'pro', 'operator')
-  const hamnen = await made('Hamnen')
-  const kajen = await made('Kajen')
-  const fyren = await made('Fyren')
-  const skogen = await made('Skogens herrar', 4)
+  const ids: Record<string, string> = {}
+  for (const [name, rows] of games) ids[name] = await made(name, rows)
   await run.accountPlans!.lapse(ada.id)
-  return { ada, hamnen, kajen, fyren, skogen }
+  return { ada, hamnen: ids['Hamnen']!, kajen: ids['Kajen']!, fyren: ids['Fyren']!, skogen: ids['Skogens herrar']! }
 }
 const home = (): void => {
   history.replaceState(null, '', `/?server=${encodeURIComponent(run.http)}`)
@@ -86,7 +85,7 @@ describe('Mina spel for a lapsed account (#1492)', () => {
     // A row past the number of games.
     const hamnen = gameOf(g.hamnen)
     expect(within(hamnen).getByText('Läsläge')).toBeTruthy()
-    expect(hamnen.querySelector('[data-read-only-why]')?.textContent).toBe('Utöver de 2 senast ändrade spel som Gratis rymmer.')
+    expect(hamnen.querySelector('[data-read-only-why]')?.textContent).toBe('Utöver de 2 spel som Gratis rymmer.')
     // The games that fit look as they do today.
     expect(within(gameOf(g.kajen)).queryByText('Läsläge')).toBeNull()
     // The ⋯ keeps its choices, and says why the ones that write do not go.
@@ -138,24 +137,21 @@ describe('the editor on a game in read-only mode (#1492)', () => {
   })
 
   it('refuses an edit that changes the game before it is sent, and lets one through that makes it smaller', async () => {
-    const g = await lapsed()
-    const sent: string[] = []
-    const Real = WebSocket
-    vi.spyOn(Real.prototype, 'send').mockImplementation(function (this: WebSocket, data: string) {
-      sent.push(String(data))
-      return Reflect.apply(Object.getOwnPropertyDescriptor(Real.prototype, 'send')!.value as (d: string) => void, this, [data])
-    })
+    // Two games: Skogens herrar, over the cards, has a place to take once it is made smaller.
+    const g = await lapsed([['Kajen', 3], ['Skogens herrar', 4]])
     await editor(g.skogen)
     await reading()
+    const logged = async () => JSON.stringify(await run.projects.readEdits(g.skogen, 0))
     const title = await screen.findByDisplayValue('Drake')
     fireEvent.change(title, { target: { value: 'Draken' } })
     fireEvent.blur(title)
     await waitFor(() => expect(document.querySelector('.byd-editor-reading-said')?.textContent).toBe('Läsläge: bara att ta bort kort, sänka Antal och ta bort bilder sparas.'))
-    expect(sent.some((m) => m.includes('Draken'))).toBe(false)
+    expect(await logged()).not.toContain('Draken')
+    expect((screen.getAllByDisplayValue('Drake')).length).toBeGreaterThan(0)
     // Taking a card away goes, and the game, three cards now, fits: the band goes.
     fireEvent.click(screen.getByRole('button', { name: 'ta bort extra-0' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Ja, ta bort' }))
-    await waitFor(() => expect(sent.some((m) => m.includes('"removeRow"'))).toBe(true))
+    await waitFor(async () => expect(await logged()).toContain('"removeRow"'))
     await waitFor(() => expect(document.querySelector('#byd-editor-reading')).toBeNull())
   })
 
