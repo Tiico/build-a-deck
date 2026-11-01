@@ -1,0 +1,771 @@
+<!doctype html>
+<!-- PROTOTYP (#1472, del av #1470). Kastas när varianterna är valda.
+     ?yta=filt|telefon|editor  ?v=A|B|C  ?skarm=tv|bord|online  ?ren=1 (bara ramen, för mätning)
+     ←/→ byter variant. Geometrin är recipe.ts:s fyrplatsbord (1200 × 800 mm, högarna i ±140, 0). -->
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Meeple — prototyp #1472</title>
+<style>
+:root {
+  --plate: #171a23; --edge: #0d0f14; --chalk: #f3e9d6; --chalk-off: #9b968e; --accent: #f0b64a; --on-accent: #1c1c1c;
+  --plate-off: #2d2f35; --font: 'Roboto Condensed', system-ui, sans-serif; --blue: #2f7de1;
+  --ed-bg: #1c1f27; --ed-panel: #14161c; --ed-line: #343a48; --ed-ink: #e6ecfa; --ed-quiet: #8b93a7; --ed-btn: #232733;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: #0b0c10; color: var(--chalk); font: 14px system-ui, sans-serif; }
+body { padding: 16px 16px 110px; }
+body.ren { padding: 0; }
+body.ren .bara-las, body.ren .vaxlare { display: none !important; }
+.rubrik { max-width: 1400px; margin: 0 0 10px; color: #ffd98a; font-size: 13px; line-height: 1.5; }
+.rubrik b { color: #ffe9b8; }
+.ytor { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 10px; }
+.ytor button, .skarmar button { font: 700 13px system-ui; border-radius: 999px; padding: 0 14px; min-height: 36px; cursor: pointer; border: 1px solid #4a4230; background: transparent; color: #ffd98a; }
+.ytor button[aria-pressed=true], .skarmar button[aria-pressed=true] { background: #ffd98a; color: #1f1b12; }
+.skarmar { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 10px; align-items: center; color: var(--chalk-off); font-size: 12px; }
+.anteckning { max-width: 1400px; margin: 0 0 14px; padding: 8px 12px; border-radius: 8px; background: #1f1b12; border: 1px solid #4a4230; color: #e9d7a8; font-size: 13px; line-height: 1.55; }
+.anteckning b { color: #ffe9b8; } .plus { color: #b7dca0; } .minus { color: #f0a58a; }
+.matt { max-width: 1400px; margin: 10px 0; font-size: 13px; line-height: 1.5; color: #cfd6e6; }
+.matt b { color: #fff; }
+.matt .ok { color: #b7dca0; } .matt .nej { color: #f0a58a; }
+.etikett { color: var(--chalk-off); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; margin: 0 0 6px; }
+.scen { display: flex; gap: 24px; align-items: flex-start; flex-wrap: wrap; }
+.skal { transform-origin: 0 0; }
+.skalbox { overflow: hidden; }
+
+/* ── skärmarna runt filten ── */
+.ram { position: relative; overflow: hidden; background: var(--edge); font-family: var(--font); }
+.ram.tv { display: grid; grid-template-columns: 1fr 300px; }
+.ram.tv .sida { padding: 22px 18px; border-left: 1px solid #1e2129; background: #101219; }
+.sida h3 { margin: 0 0 8px; font-size: 15px; color: var(--chalk-off); letter-spacing: .1em; }
+.senast { list-style: none; margin: 0; padding: 0; }
+.senast li { padding: 8px 0; border-bottom: 1px solid #1e2129; line-height: 1.35; font-size: 20px; }
+.senast li b { color: var(--c); }
+.ram.online { background: #12141b; }
+.ram .huvud { height: 52px; display: flex; align-items: center; gap: 14px; padding: 0 16px; border-bottom: 1px solid #22262f; color: var(--chalk); font: 600 15px system-ui; }
+.ram .huvud .tyst { color: var(--chalk-off); font-weight: 400; }
+.ram.bord { background: linear-gradient(135deg, #5a3b22, #3a2414); }
+.feltplats { position: absolute; }
+.felt { position: absolute; border-radius: 16px; overflow: visible; touch-action: none; }
+.felt.gron { background: radial-gradient(ellipse at 50% 40%, #2e6b46, #1f4a30 70%, #173a26); box-shadow: inset 0 0 60px rgba(0,0,0,.45); }
+.felt.mork { background: #151924; border: 1px solid #262b3a; }
+.felt.editor { background: #12141a; border: 1px solid #262b3a; }
+.felt svg { position: absolute; inset: 0; overflow: visible; }
+.felt .pjas { cursor: grab; outline: none; }
+.felt .pjas:focus-visible .fokus, .felt .pjas.vald .fokus { display: block; }
+.felt .fokus { display: none; }
+.handrad { position: absolute; left: 0; right: 0; bottom: 0; height: 150px; border-top: 1px solid #22262f; background: #101219; display: flex; gap: 8px; align-items: center; justify-content: center; }
+.handrad div { overflow: hidden; width: 86px; height: 120px; border-radius: 6px; background: #f4ead8; color: #1c1c1c; font: 700 13px var(--font); padding: 6px; }
+.platta { position: absolute; z-index: 5; display: flex; gap: 4px; padding: 4px; border-radius: 10px; background: var(--plate); border: 1px solid var(--chalk-off); box-shadow: 0 10px 30px rgba(0,0,0,.6); transform: translate(-50%, 0); white-space: nowrap; }
+.platta button { font: 700 14px var(--font); min-height: 36px; padding: 0 10px; border-radius: 8px; border: 0; background: transparent; color: var(--chalk); cursor: pointer; }
+.platta button:hover, .platta button:focus-visible { background: var(--plate-off); outline: 2px solid var(--accent); outline-offset: -2px; }
+.platta kbd { font: 600 11px system-ui; color: var(--chalk-off); border: 1px solid #4a4f5c; border-radius: 4px; padding: 0 4px; margin-left: 4px; }
+.flytta { position: absolute; z-index: 6; left: 50%; top: 50%; transform: translate(-50%, -50%); min-width: 300px; padding: 10px; border-radius: 12px; background: var(--plate); border: 1px solid var(--chalk-off); box-shadow: 0 20px 40px rgba(0,0,0,.6); }
+.flytta h4 { margin: 4px 6px 12px; font: 700 18px var(--font); color: var(--chalk); }
+.flytta button { display: flex; width: 100%; justify-content: space-between; align-items: center; gap: 12px; font: 600 17px var(--font); min-height: 44px; padding: 0 12px; border: 0; border-radius: 8px; background: transparent; color: var(--chalk); cursor: pointer; }
+.flytta button:hover, .flytta button:focus-visible { background: var(--plate-off); outline: 2px solid var(--accent); outline-offset: -2px; }
+.flytta button span { color: var(--chalk-off); }
+.ram.tv .platta button { font-size: 22px; min-height: 48px; }
+.ram.tv .flytta { min-width: 420px; }
+.ram.tv .flytta h4 { font-size: 26px; }
+.ram.tv .flytta button { font-size: 24px; min-height: 56px; }
+
+/* ── familjen och kontrasten ── */
+.familj { display: flex; gap: 12px; flex-wrap: wrap; }
+.familj .grund { padding: 10px 14px; border-radius: 10px; display: flex; gap: 14px; align-items: end; }
+.familj .grund small { display: block; text-align: center; color: #d9e7dccc; font-size: 11px; margin-top: 4px; }
+table.kontrast { border-collapse: collapse; font-size: 12px; margin-top: 8px; }
+table.kontrast td, table.kontrast th { padding: 3px 8px; border-bottom: 1px solid #262b3a; text-align: right; }
+table.kontrast th { color: var(--chalk-off); font-weight: 600; }
+table.kontrast td:first-child, table.kontrast th:first-child { text-align: left; }
+.svag { color: #f0a58a; } .bar { color: #b7dca0; }
+
+/* ── telefonen ── */
+.telefon { width: 390px; height: 844px; border-radius: 40px; background: #000; padding: 10px; outline: 1px solid #2a2d36; flex: 0 0 auto; }
+body.ren .telefon { border-radius: 0; padding: 0; outline: 0; }
+.skarm { position: relative; width: 100%; height: 100%; border-radius: 30px; overflow: hidden; background: #14161c; display: flex; flex-direction: column; font: 15px system-ui; color: var(--ed-ink); }
+body.ren .skarm { border-radius: 0; }
+.p-topp { padding: 14px 16px 10px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #262a33; }
+.p-topp .vem { display: flex; gap: 8px; align-items: center; font-weight: 800; font-size: 22px; }
+.p-topp .vem i { width: 12px; height: 12px; border-radius: 50%; background: #e05a4f; }
+.p-topp .vem span { color: var(--ed-quiet); font-weight: 400; font-size: 16px; }
+.p-knapp { min-height: 44px; border: 0; border-radius: 12px; font: 700 16px system-ui; cursor: pointer; padding: 0 14px; background: #232733; color: var(--ed-ink); }
+.p-knapp.prim { background: var(--accent); color: var(--on-accent); }
+.p-knapp.tyst { background: transparent; border: 1px solid #3a3f4b; }
+.p-knapp:focus-visible { outline: 3px solid var(--chalk); outline-offset: 2px; }
+.p-panel { flex: 1; overflow: auto; padding: 4px 12px 12px; }
+.p-rub { margin: 16px 4px 8px; font: 800 13px system-ui; letter-spacing: .12em; color: var(--ed-quiet); text-transform: uppercase; }
+.p-kort { background: #1d2029; border-radius: 16px; padding: 10px 12px; margin-bottom: 8px; }
+.p-rad { display: flex; align-items: center; gap: 10px; justify-content: space-between; }
+.p-rad .namn { font-weight: 700; font-size: 17px; }
+.p-rad .tyst { color: var(--ed-quiet); font-size: 14px; }
+.p-figurer { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.p-fig { position: relative; width: 52px; height: 52px; border-radius: 12px; border: 1px solid #343a48; background: #14161c; display: grid; place-items: center; cursor: pointer; padding: 0; }
+.p-fig[aria-pressed=true] { outline: 3px solid var(--accent); outline-offset: -1px; background: #2a2618; }
+.p-fig .lag { position: absolute; bottom: 1px; font: 700 9px system-ui; color: var(--ed-quiet); letter-spacing: .05em; }
+.p-valrad { border-top: 1px solid #262a33; background: #1d2029; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+.p-valrad .vad { font-weight: 700; display: flex; gap: 8px; align-items: center; }
+.p-valrad .knappar { display: flex; gap: 8px; }
+.p-flikar { display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1px solid #262a33; background: #14161c; }
+.p-flikar button { background: transparent; border: 0; color: var(--ed-quiet); font: 700 14px system-ui; min-height: 64px; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; position: relative; }
+.p-flikar button[aria-selected=true] { color: #fff; }
+.p-flikar button[aria-selected=true]::before { content: ''; position: absolute; top: 0; left: 30%; right: 30%; height: 3px; background: #e05a4f; border-radius: 0 0 3px 3px; }
+.p-flikar b { font-size: 20px; line-height: 1; }
+.p-ark { position: absolute; inset: auto 0 0 0; background: #1d2029; border-radius: 20px 20px 0 0; box-shadow: 0 -10px 40px #000a; padding: 12px 14px 18px; z-index: 5; }
+.p-ark h4 { margin: 4px 4px 10px; font-size: 19px; }
+.p-ark .grepp { width: 40px; height: 4px; border-radius: 2px; background: #4a4f5c; margin: 0 auto 8px; }
+.p-ark button.mal { display: flex; justify-content: space-between; align-items: center; width: 100%; min-height: 52px; border: 0; border-radius: 12px; background: transparent; color: var(--ed-ink); font: 600 17px system-ui; padding: 0 12px; cursor: pointer; }
+.p-ark button.mal:hover, .p-ark button.mal:focus-visible { background: #2a2f3c; outline: none; }
+.p-ark button.mal span { color: var(--ed-quiet); font-size: 14px; display: flex; gap: 2px; align-items: center; }
+.p-toast { position: absolute; left: 12px; right: 12px; bottom: 76px; z-index: 4; background: #2a2f3c; border-radius: 14px; padding: 14px 16px; display: flex; justify-content: space-between; font-weight: 600; }
+.p-toast b { color: var(--accent); }
+.p-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.p-chips button { min-height: 40px; border-radius: 999px; border: 1px solid #3a3f4b; background: transparent; color: var(--ed-ink); font: 600 14px system-ui; padding: 0 12px; cursor: pointer; }
+.p-chips button:hover { background: #2a2f3c; }
+.p-tal { font: 800 30px system-ui; line-height: 1; }
+.p-pill { display: inline-flex; align-items: center; gap: 4px; border-radius: 999px; padding: 4px 10px 4px 6px; background: #14161c; border: 1px solid #343a48; font-weight: 700; cursor: pointer; color: var(--ed-ink); font-size: 14px; min-height: 40px; }
+.p-pill[aria-pressed=true] { outline: 3px solid var(--accent); }
+.rutor { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.ruta { min-height: 92px; border-radius: 14px; border: 1.5px dashed #4a5060; background: #191c24; padding: 8px; position: relative; }
+.ruta.bred { grid-column: 1 / -1; min-height: 120px; }
+.ruta.mal { border-color: var(--accent); background: #2a2618; border-style: solid; }
+.ruta .rnamn { font-weight: 700; font-size: 14px; color: var(--ed-quiet); display: flex; gap: 6px; align-items: center; }
+.ruta .rfig { display: flex; flex-wrap: wrap; gap: 2px; margin-top: 6px; }
+.lada { display: flex; gap: 6px; padding: 8px; border-radius: 14px; background: #1d2029; min-height: 64px; align-items: center; flex-wrap: wrap; }
+.drar { position: fixed; pointer-events: none; z-index: 99; transform: translate(-50%, -50%); }
+
+/* ── editorn ── */
+.editor { width: 1248px; display: grid; grid-template-columns: 420px minmax(0, 1fr); gap: 20px; background: var(--ed-bg); border-radius: 8px; padding: 18px; outline: 1px solid #2a2d36; color: var(--ed-ink); font: 15px system-ui; }
+.e-remsa { border: 1px solid #4a5060; border-radius: 12px; padding: 10px 14px; color: var(--ed-ink); margin-bottom: 14px; }
+.e-rub { display: flex; gap: 8px; align-items: center; font: 800 15px system-ui; letter-spacing: .2em; color: var(--ed-quiet); margin: 10px 0 8px; }
+.e-q { width: 26px; height: 26px; border-radius: 50%; border: 1.5px solid var(--ed-quiet); display: inline-grid; place-items: center; font-size: 13px; letter-spacing: 0; }
+.e-rad { display: flex; align-items: center; gap: 8px; min-height: 52px; padding-left: calc(var(--d, 0) * 22px); }
+.e-rad .ikon { width: 22px; height: 18px; flex: 0 0 22px; display: grid; place-items: center; }
+.e-rad .namn { flex: 1; min-width: 0; display: flex; gap: 8px; align-items: center; white-space: nowrap; }
+.e-rad .namn .tyst { color: var(--ed-quiet); }
+.e-rad .bricka { font: 600 12px system-ui; color: var(--ed-quiet); border: 1px solid #4a5060; border-radius: 999px; padding: 1px 8px; }
+.e-rad .fast { font: 700 11px system-ui; letter-spacing: .15em; color: var(--ed-quiet); border: 1px solid #343a48; border-radius: 999px; padding: 4px 10px; }
+.e-rad.oppen { background: #232733; border-radius: 10px; }
+.e-kn { width: 52px; height: 52px; border-radius: 10px; border: 1px solid #343a48; background: #14161c; color: var(--ed-ink); font: 600 20px system-ui; cursor: pointer; flex: 0 0 auto; }
+.e-kn[aria-expanded=true] { border-color: var(--accent); color: var(--accent); }
+.e-meny { margin: 4px 0 8px calc(var(--d, 0) * 22px + 22px); border: 1px solid #343a48; border-radius: 12px; background: #1a1d25; padding: 6px; display: flex; flex-direction: column; }
+.e-meny > button { text-align: left; background: transparent; border: 0; color: var(--ed-ink); font: 700 17px system-ui; min-height: 52px; padding: 0 14px; border-radius: 8px; cursor: pointer; display: flex; gap: 10px; align-items: center; }
+.e-meny > button:hover, .e-meny > button:focus-visible { background: #232733; outline: none; }
+.e-meny > button small { font: 400 13px system-ui; color: var(--ed-quiet); }
+.e-palett { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 4px; }
+.e-palett button { border: 1px solid #343a48; border-radius: 10px; background: #14161c; color: var(--ed-ink); min-height: 96px; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; font: 700 14px system-ui; }
+.e-palett button:hover { border-color: var(--accent); }
+.e-falt { margin: 0 0 8px calc(var(--d, 0) * 22px + 22px); padding: 10px 12px; border-radius: 10px; background: #14161c; border: 1px solid #343a48; display: flex; flex-direction: column; gap: 10px; }
+.e-falt label { display: flex; gap: 10px; align-items: center; color: var(--ed-quiet); font-size: 13px; }
+.e-falt .tyst { color: var(--ed-quiet); font-size: 13px; line-height: 1.45; }
+.seg { display: inline-flex; border: 1px solid #343a48; border-radius: 10px; overflow: hidden; }
+.seg button { border: 0; background: transparent; color: var(--ed-ink); font: 600 14px system-ui; min-height: 40px; padding: 0 12px; cursor: pointer; display: flex; gap: 6px; align-items: center; }
+.seg button[aria-pressed=true] { background: #2f3646; box-shadow: inset 0 -3px 0 var(--accent); }
+.steg { display: inline-flex; align-items: center; gap: 0; border: 1px solid #343a48; border-radius: 10px; overflow: hidden; }
+.steg button { width: 40px; height: 40px; border: 0; background: #232733; color: var(--ed-ink); font: 700 18px system-ui; cursor: pointer; }
+.steg output { min-width: 40px; text-align: center; font-weight: 700; }
+.e-hoger { display: flex; flex-direction: column; gap: 10px; }
+.e-flikar { display: flex; gap: 8px; }
+.e-flikar span { padding: 10px 20px; font-weight: 700; border-radius: 10px; }
+.e-flikar span:first-child { box-shadow: inset 0 -3px 0 var(--blue); }
+.e-flikar span + span { border: 1px solid #4a5060; }
+
+/* ── växlaren ── */
+.vaxlare { position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%); z-index: 60; display: flex; align-items: center; gap: 4px; padding: 5px; border-radius: 999px; background: #ffd98a; color: #1f1b12; box-shadow: 0 10px 30px rgba(0,0,0,.6); font: 700 13px system-ui; white-space: nowrap; max-width: calc(100vw - 16px); overflow-x: auto; }
+.vaxlare button { min-width: 36px; min-height: 36px; border: 0; border-radius: 999px; background: #1f1b12; color: #ffd98a; font: inherit; cursor: pointer; padding: 0 12px; }
+.vaxlare button[aria-pressed='false'] { background: transparent; color: #1f1b12; }
+</style>
+</head>
+<body>
+<div class="rubrik bara-las"><b>Prototyp #1472 · Meeple på filten, i telefonen och i fliken Bord.</b>
+Beställarens beslut 2026-10-28 (#1470) ligger fast i alla varianter: en meeple har sin plats färg (L11), kub och skiva är samma familj, en meeple kan läggas ned med <code>flip</code>, och den är en lagervara.
+Färgen bärs därför av platsens färg med filtens krita som andra band, som platsens kant på den gröna filten.
+Geometrin är <code>recipe.ts</code>: fyra platser på 1200 × 800 mm, högarna i ±140, 0 och en räknare per plats. Allt är lokalt; i produkten är varje drag ett <code>move</code> eller <code>flip</code> i loggen.</div>
+<div class="ytor bara-las" id="ytor"></div>
+<div class="anteckning bara-las" id="anteckning"></div>
+<div id="scen"></div>
+<nav class="vaxlare" aria-label="Prototypväxlare" id="vaxlare"></nav>
+<script>
+/* ═════════ data ═════════ */
+const $ = (s, r = document) => r.querySelector(s)
+const qs = new URLSearchParams(location.search)
+const SEATS = {
+  A: { name: 'Ada', c: '#e05a4f', edge: 'S' },
+  B: { name: 'Bo', c: '#3c8ce7', edge: 'N' },
+  C: { name: 'Cy', c: '#3aa76d', edge: 'E' },
+  D: { name: 'Di', c: '#d99a1f', edge: 'W' },
+}
+const PALETTE = ['#e05a4f', '#3c8ce7', '#3aa76d', '#d99a1f', '#8e6bd9', '#2bb5b5', '#d9699f', '#9bb63c']
+const CHALK = '#f3e9d6'
+// recipe.ts, fyra platser, en räknare: inFront, countersAt och handGeometry.
+const ZONES = [
+  { id: 'table', name: 'Spelyta', kind: 'area', g: [-600, -400, 1200, 800] },
+  { id: 'mine:A', name: 'Framför Ada', kind: 'area', seat: 'A', g: [-250, 230, 365, 100] },
+  { id: 'mine:B', name: 'Framför Bo', kind: 'area', seat: 'B', g: [-250, -330, 365, 100] },
+  { id: 'mine:C', name: 'Framför Cy', kind: 'area', seat: 'C', g: [430, -250, 100, 365] },
+  { id: 'mine:D', name: 'Framför Di', kind: 'area', seat: 'D', g: [-530, -250, 100, 365] },
+  { id: 'counters:A', name: 'Räknare', kind: 'counters', seat: 'A', g: [125, 230, 125, 100] },
+  { id: 'counters:B', name: 'Räknare', kind: 'counters', seat: 'B', g: [125, -330, 125, 100] },
+  { id: 'counters:C', name: 'Räknare', kind: 'counters', seat: 'C', g: [430, 125, 100, 125] },
+  { id: 'counters:D', name: 'Räknare', kind: 'counters', seat: 'D', g: [-530, 125, 100, 125] },
+  { id: 'hand:A', name: 'Hand', kind: 'hand', seat: 'A', g: [-250, 340, 500, 60] },
+  { id: 'hand:B', name: 'Hand', kind: 'hand', seat: 'B', g: [-250, -400, 500, 60] },
+  { id: 'hand:C', name: 'Hand', kind: 'hand', seat: 'C', g: [540, -250, 60, 500] },
+  { id: 'hand:D', name: 'Hand', kind: 'hand', seat: 'D', g: [-600, -250, 60, 500] },
+]
+const zone = (id) => ZONES.find((z) => z.id === id)
+const PILES = [{ name: 'Kortlek', x: -140, y: 0, n: 34, back: true }, { name: 'Kasthög', x: 140, y: 0, n: 3 }]
+const CARD = { w: 63, h: 88 }
+const SIZE = { meeple: 30, cube: 20, disc: 24 } // mm på filten; en riktig meeple är 16 mm, tärningen ritas på 30 (DIE_MM)
+const KIND_NAME = { meeple: 'meeple', cube: 'kub', disc: 'skiva' }
+const FACE = { S: 0, N: 180, E: -90, W: 90 }
+
+let pieces = []
+function reset() {
+  pieces = []
+  let id = 0
+  for (const s of 'ABCD') for (let i = 0; i < 5; i++) pieces.push({ id: 'm' + id++, kind: 'meeple', seat: s, zone: 'mine:' + s, at: null, lying: false })
+  // Två har redan flyttats ut: Adas står på Spelytan, Bos ligger ned där.
+  const a = pieces.find((p) => p.seat === 'A'); a.zone = 'table'; a.at = { x: -40, y: 150 }
+  const b = pieces.find((p) => p.seat === 'B'); b.zone = 'table'; b.at = { x: 52, y: 168 }; b.lying = true
+  // Familjen: en kub och en skiva på Spelytan.
+  pieces.push({ id: 'k0', kind: 'cube', seat: 'C', zone: 'table', at: { x: -50, y: -150 }, lying: false })
+  pieces.push({ id: 's0', kind: 'disc', seat: 'D', zone: 'table', at: { x: 40, y: -160 }, lying: false })
+}
+reset()
+let log = [{ who: 'B', text: 'Bo lade ned sin meeple' }, { who: 'A', text: 'Ada flyttade en meeple till Spelyta' }]
+
+const YTOR = { filt: 'Filten', telefon: 'Telefonen', editor: 'Fliken Bord' }
+const REK = { filt: 'B', telefon: 'A', editor: 'B' }
+const NAMES = {
+  filt: { A: 'Silhuetter i rad', B: 'Förrådet som hög', C: 'Figurer uppifrån' },
+  telefon: { A: 'Välj och flytta till', B: 'Antal per yta', C: 'Ytor som rutor' },
+  editor: { A: 'En rad per sort', B: 'Pjäs med sort i raden', C: 'Palett i menyn' },
+}
+let YTA = YTOR[qs.get('yta')] ? qs.get('yta') : 'filt'
+let V = ['A', 'B', 'C'].includes(qs.get('v')) ? qs.get('v') : REK[YTA]
+let SKARM = ['tv', 'bord', 'online'].includes(qs.get('skarm')) ? qs.get('skarm') : 'tv'
+let HITS = qs.get('mal') === '1'
+if (qs.get('ren') === '1') document.body.classList.add('ren')
+
+/* ═════════ kontrast (WCAG) ═════════ */
+function lum(hex) { const n = parseInt(hex.slice(1), 16); return [n >> 16, (n >> 8) & 255, n & 255].map((v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4 }).reduce((a, v, i) => a + v * [0.2126, 0.7152, 0.0722][i], 0) }
+function ratio(a, b) { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05) }
+
+/* ═════════ var en pjäs ligger ═════════ */
+// En punkt i plats A:s ram vänd till den plats vars yta det är (K31:s regel).
+function turned(at, edge) {
+  const wA = 365, hA = 100
+  if (edge === 'S') return { ...at }
+  if (edge === 'N') return { x: wA - at.x, y: hA - at.y }
+  if (edge === 'E') return { x: at.y, y: wA - at.x }
+  return { x: hA - at.y, y: at.x }
+}
+// Förrådet: pjäser utan egen punkt, i sin plats yta. Varianten avgör hur de läggs.
+function supplyOf(seat, zid) { return pieces.filter((p) => p.zone === zid && p.at === null && p.seat === seat) }
+const C_SPOTS = [[236, 34, -14], [270, 66, 9], [304, 30, 22], [334, 64, -8], [282, 18, 30], [214, 70, 16]]
+function slotLocal(p, v) {
+  const sup = supplyOf(p.seat, p.zone)
+  const i = sup.indexOf(p)
+  if (v === 'A') return { x: 200 + i * 36, y: 50, r: 0 }
+  if (v === 'B') { const lying = sup.filter((q) => q.lying); const j = lying.indexOf(p); return p.lying ? { x: 250 - j * 36, y: 50, r: 0 } : { x: 310, y: 50, r: 0 } }
+  const s = C_SPOTS[i % C_SPOTS.length]; return { x: s[0] - Math.floor(i / 6) * 20, y: s[1], r: s[2] }
+}
+function placeOf(p, v) {
+  const z = zone(p.zone)
+  const face = FACE[SEATS[p.seat].edge]
+  if (p.at) return { x: p.at.x, y: p.at.y, r: face + (v === 'C' ? ((p.id.charCodeAt(1) * 37) % 40) - 20 : 0) }
+  const l = slotLocal(p, v)
+  const t = turned(l, SEATS[z.seat].edge)
+  return { x: z.g[0] + t.x, y: z.g[1] + t.y, r: face + l.r }
+}
+const inside = (z, x, y) => x >= z.g[0] && y >= z.g[1] && x <= z.g[0] + z.g[2] && y <= z.g[1] + z.g[3]
+// Den innersta ytan under en punkt; en hand tar aldrig emot material (K32), så då filten under.
+const under = (x, y) => ZONES.filter((z) => z.kind !== 'hand' && inside(z, x, y)).sort((a, b) => a.g[2] * a.g[3] - b.g[2] * b.g[3])[0] ?? zone('table')
+function freeSpot(zid) {
+  const z = zone(zid)
+  const here = pieces.filter((p) => p.zone === zid && p.at)
+  const cx = z.g[0] + z.g[2] / 2, cy = z.g[1] + z.g[3] / 2
+  if (zid === 'table') return { x: -60 + (here.length % 5) * 36, y: 120 + Math.floor(here.length / 5) * 40 }
+  const along = z.g[2] > z.g[3]
+  const k = here.length
+  return along ? { x: z.g[0] + 40 + (k % 9) * 36, y: cy } : { x: cx, y: z.g[1] + 40 + (k % 9) * 36 }
+}
+
+/* ═════════ figurerna ═════════ */
+const MEEPLE = 'M50 6a14 14 0 0 1 14 14c0 5-2.5 9-6 11.5l26 11c6 2.5 7 10 1.5 13l-15 7 11 24c1.5 4-1 7-5 7h-17l-9.5-15-9.5 15h-17c-4 0-6.5-3-5-7l11-24-15-7c-5.5-3-4.5-10.5 1.5-13l26-11c-3.5-2.5-6-6.5-6-11.5a14 14 0 0 1 14-14z'
+const band = (w = 2.5) => `stroke="${CHALK}" stroke-width="${w}" vector-effect="non-scaling-stroke" paint-order="stroke" stroke-linejoin="round"`
+// Ritad i en ruta om 100 enheter; `lying` lägger figuren på sidan.
+function figure(kind, c, lying, style) {
+  if (kind === 'meeple') {
+    if (style === 'C') {
+      if (lying) return `<path d="${MEEPLE}" transform="translate(4 4)" fill="#000" opacity=".3"/><path d="${MEEPLE}" fill="${c}" ${band()}/><path d="${MEEPLE}" fill="none" stroke="#0005" stroke-width="5" transform="translate(0 3)" clip-path="none" opacity=".5"/>`
+      // Stående, sett rakt uppifrån: huvudet över axlarna och armarna.
+      return `<ellipse cx="57" cy="60" rx="48" ry="30" fill="#000" opacity=".35"/><rect x="4" y="32" width="92" height="40" rx="20" fill="${c}" ${band()}/><circle cx="50" cy="50" r="24" fill="${c}" ${band()}/><circle cx="43" cy="43" r="8" fill="#fff" opacity=".3"/>`
+    }
+    if (lying) return `<g transform="rotate(90 50 50) scale(.92) translate(4 4)"><path d="${MEEPLE}" fill="${c}" ${band()}/><path d="M30 60h40" stroke="#0006" stroke-width="4" stroke-linecap="round"/></g>`
+    return `<path d="${MEEPLE}" transform="translate(5 6)" fill="#000" opacity=".35"/><path d="${MEEPLE}" fill="${c}" ${band()}/>`
+  }
+  if (kind === 'cube') {
+    if (style === 'C') return `<polygon points="50,8 90,28 90,72 50,92 10,72 10,28" fill="#000" opacity=".25" transform="translate(5 5)"/><polygon points="50,8 90,28 50,48 10,28" fill="${c}" ${band()}/><polygon points="10,28 50,48 50,92 10,72" fill="${c}" style="filter:brightness(.75)" ${band()}/><polygon points="90,28 50,48 50,92 90,72" fill="${c}" style="filter:brightness(.55)" ${band()}/>`
+    return `<rect x="16" y="16" width="70" height="70" rx="9" fill="#000" opacity=".35"/><rect x="12" y="12" width="76" height="76" rx="9" fill="${c}" ${band()}/>`
+  }
+  if (style === 'C') return `<ellipse cx="54" cy="58" rx="42" ry="34" fill="#000" opacity=".3"/><ellipse cx="50" cy="56" rx="42" ry="32" fill="${c}" style="filter:brightness(.7)" ${band()}/><ellipse cx="50" cy="48" rx="42" ry="32" fill="${c}" ${band()}/>`
+  return `<circle cx="54" cy="55" r="40" fill="#000" opacity=".35"/><circle cx="50" cy="50" r="40" fill="${c}" ${band()}/>`
+}
+function chip(c, n) {
+  return `<circle cx="54" cy="55" r="46" fill="#000" opacity=".35"/><circle cx="50" cy="50" r="46" fill="#171a23" ${band(2)}/><g transform="translate(19 17) scale(.62)"><path d="${MEEPLE}" fill="${c}" ${band(1.5)}/></g>
+  <circle cx="82" cy="20" r="27" fill="${CHALK}" stroke="#171a23" stroke-width="4"/><text x="82" y="21" text-anchor="middle" dominant-baseline="central" font-size="36" font-weight="800" fill="#1c1c1c" font-family="var(--font)">${n}</text>`
+}
+// En figur som en egen SVG i given storlek i px, för telefonen och editorn.
+function icon(kind, c, px, lying = false, style = 'A') {
+  return `<svg width="${px}" height="${px}" viewBox="-6 -6 112 112" aria-hidden="true">${figure(kind, c, lying, style)}</svg>`
+}
+
+/* ═════════ filten ═════════ */
+const SCREENS = {
+  tv: { w: 1920, h: 1080, s: 1.3, felt: 'mork', label: 'TV 1920 × 1080' },
+  bord: { w: 1280, h: 800, s: 0.73, felt: 'gron', label: 'Bordsläge 1280 × 800' },
+  online: { w: 1280, h: 800, s: 0.73, felt: 'gron', label: '/online 1280 × 800' },
+}
+let selected = null, moveDialog = false, drag = null
+// Grupperna som ritas: en pjäs, eller (B) en plats stående förråd som en hög.
+function drawables(v) {
+  const out = []
+  const chipped = new Set()
+  if (v === 'B') for (const s of 'ABCD') for (const z of ZONES.filter((q) => q.kind === 'area')) {
+    const st = supplyOf(s, z.id).filter((p) => !p.lying && p.kind === 'meeple')
+    if (st.length >= 2) { st.forEach((p) => chipped.add(p.id)); const pl = placeOf(st[0], v); out.push({ chip: true, ids: st.map((p) => p.id), seat: s, x: pl.x, y: pl.y, r: 0, size: 44 }) }
+  }
+  for (const p of pieces) if (!chipped.has(p.id)) { const pl = placeOf(p, v); out.push({ chip: false, ids: [p.id], seat: p.seat, kind: p.kind, lying: p.lying, x: pl.x, y: pl.y, r: pl.r, size: SIZE[p.kind] }) }
+  return out
+}
+function feltSVG(v, s, mode) {
+  const W = 1200, H = 800
+  const fs = (px) => (px / s).toFixed(2)
+  const zc = mode === 'editor' ? '#d9c08a' : mode === 'tv' ? '#3a3f4b' : '#e9dcb455'
+  let g = ''
+  for (const z of ZONES) {
+    if (z.id === 'table') continue
+    const dash = mode === 'editor' ? `stroke-dasharray="${fs(6)} ${fs(4)}"` : z.kind === 'hand' ? `stroke-dasharray="${fs(2)} ${fs(3)}"` : ''
+    g += `<rect x="${z.g[0]}" y="${z.g[1]}" width="${z.g[2]}" height="${z.g[3]}" rx="6" fill="none" stroke="${zc}" stroke-width="${fs(1.2)}" ${dash}/>`
+  }
+  // Ett kort framför Ada och ett framför Cy, och räknarnas brickor.
+  g += `<rect x="-215" y="236" width="${CARD.w}" height="${CARD.h}" rx="4" fill="#f4ead8" stroke="#0004"/>`
+  g += `<rect x="436" y="40" width="${CARD.h}" height="${CARD.w}" rx="4" fill="#f4ead8" stroke="#0004"/>`
+  for (const s of 'ABCD') { const z = zone('counters:' + s); g += `<circle cx="${z.g[0] + z.g[2] / 2}" cy="${z.g[1] + z.g[3] / 2}" r="12" fill="#f0b64a" stroke="#0006"/><text x="${z.g[0] + z.g[2] / 2}" y="${z.g[1] + z.g[3] / 2}" font-size="13" font-weight="800" text-anchor="middle" dominant-baseline="central" fill="#1c1c1c">3</text>` }
+  for (const p of PILES) {
+    for (let k = 3; k >= 0; k--) g += `<rect x="${p.x - CARD.w / 2 + k * 0.8}" y="${p.y - CARD.h / 2 - k * 0.8}" width="${CARD.w}" height="${CARD.h}" rx="4" fill="${p.back ? '#2f477e' : '#f4ead8'}" stroke="${p.back ? '#4b5f8e' : '#0004'}"/>`
+    g += `<text x="${p.x}" y="${p.y + CARD.h / 2 + 4}" font-size="${fs(mode === 'tv' ? 18 : 11)}" font-weight="700" text-anchor="middle" dominant-baseline="hanging" fill="${mode === 'tv' ? '#9b968e' : '#f3e9d6cc'}">${p.name} · ${p.n}</text>`
+  }
+  // Handens baksidor längs kanten.
+  for (const s of 'ABCD') {
+    const z = zone('hand:' + s), along = z.g[2] > z.g[3]
+    for (let k = 0; k < 5; k++) {
+      const [w, h] = along ? [40, 56] : [56, 40]
+      const x = along ? z.g[0] + 150 + k * 32 : z.g[0] + (z.g[2] - w) / 2
+      const y = along ? z.g[1] + (z.g[3] - h) / 2 : z.g[1] + 150 + k * 32
+      g += `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="3" fill="#2f477e" stroke="#4b5f8e"/>`
+    }
+  }
+  // Platsernas skyltar vid kanten.
+  const plates = { A: [-310, 370], B: [-310, -370], C: [570, -290], D: [-570, -290] }
+  for (const [k, [x, y]] of Object.entries(plates)) g += `<circle cx="${x}" cy="${y}" r="${fs(mode === 'tv' ? 18 : 11)}" fill="${SEATS[k].c}" stroke="${CHALK}" stroke-width="${fs(1.5)}"/><text x="${x}" y="${y}" font-size="${fs(mode === 'tv' ? 18 : 11)}" font-weight="800" text-anchor="middle" dominant-baseline="central" fill="#1c1c1c">${k}</text>`
+  // Pjäserna.
+  const items = drawables(v)
+  for (const d of items) {
+    const sz = d.size, c = SEATS[d.seat].c
+    const sel = d.ids.includes(selected)
+    const hit = 22 / s
+    const label = d.chip ? `${d.ids.length} meeples, ${SEATS[d.seat].name}s, i ${zone(pieces.find((p) => p.id === d.ids[0]).zone).name}` : `${SEATS[d.seat].name}s ${KIND_NAME[d.kind]}${d.lying ? ', liggande' : ''}`
+    g += `<g class="pjas ${sel ? 'vald' : ''}" tabindex="${mode === 'editor' ? -1 : 0}" role="button" aria-label="${label}" data-ids="${d.ids.join(',')}" transform="translate(${d.x} ${d.y})">`
+    if (HITS && mode !== 'editor') g += `<circle r="${hit}" fill="#f0b64a22" stroke="#f0b64a" stroke-width="${fs(1)}" stroke-dasharray="${fs(3)} ${fs(2)}"/>`
+    g += `<circle class="fokus" r="${sz / 2 + 7}" fill="none" stroke="${CHALK}" stroke-width="${fs(3)}"/><circle class="fokus" r="${sz / 2 + 7 + 3 / s}" fill="none" stroke="#0d0f14" stroke-width="${fs(1.5)}"/>`
+    g += `<g transform="rotate(${d.r}) scale(${sz / 100}) translate(-50 -50)">${d.chip ? chip(c, d.ids.length) : figure(d.kind, c, d.lying, v)}</g>`
+    g += `<circle r="${Math.max(hit, sz / 2)}" fill="transparent"/></g>`
+  }
+  if (mode === 'editor') {
+    // K31: ett handtag per rad, i plats A:s yta; de andra platsernas kopior är bleka.
+    const z = zone('mine:A')
+    g += `<rect x="${z.g[0] + 178}" y="${z.g[1] + 28}" width="186" height="44" rx="6" fill="#f0b64a14" stroke="#f0b64a" stroke-width="${fs(1.5)}"/>`
+  }
+  return `<svg viewBox="-600 -400 ${W} ${H}" width="${W * s}" height="${H * s}" font-family="var(--font)">${g}</svg>`
+}
+function measures(v, s) {
+  // Förrådet hos plats A: hur många mål, och hur tätt de ligger.
+  const items = drawables(v).filter((d) => pieces.find((p) => p.id === d.ids[0]).zone === 'mine:A' && pieces.find((p) => p.id === d.ids[0]).at === null)
+  let min = Infinity
+  for (let i = 0; i < items.length; i++) for (let j = i + 1; j < items.length; j++) min = Math.min(min, Math.hypot(items[i].x - items[j].x, items[i].y - items[j].y))
+  const span = items.length ? (Math.max(...items.map((d) => d.x)) - Math.min(...items.map((d) => d.x)) + (items[0]?.size ?? 30)) : 0
+  return { targets: items.length, gapPx: min === Infinity ? null : Math.round(min * s), spanMm: Math.round(span) }
+}
+function renderFeltScreen(host, v, sk, opts = {}) {
+  const S = SCREENS[sk]
+  const s = S.s
+  const fw = 1200 * s, fh = 800 * s
+  let inner = ''
+  if (sk === 'tv') {
+    const left = Math.round((S.w - 300 - fw) / 2), top = Math.round((S.h - fh) / 2)
+    inner = `<div style="position:relative"><div class="felt ${S.felt}" style="left:${left}px;top:${top}px;width:${fw}px;height:${fh}px" data-felt>${feltSVG(v, s, 'tv')}</div></div>
+      <aside class="sida"><h3>SENAST</h3><ul class="senast">${log.slice(0, 7).map((l) => `<li style="--c:${SEATS[l.who]?.c ?? '#f0b64a'}">${l.text.replace(/^(\S+)/, '<b>$1</b>')}</li>`).join('')}</ul></aside>`
+  } else if (sk === 'online') {
+    const left = Math.round((S.w - fw) / 2), top = 52 + 8
+    inner = `<div class="huvud">Vargspelet <span class="tyst">· Ada · Senast: ${log[0]?.text ?? ''}</span></div><div class="felt ${S.felt}" style="left:${left}px;top:${top}px;width:${fw}px;height:${fh}px" data-felt>${feltSVG(v, s, 'online')}</div>
+      <div class="handrad"><div>Räven</div><div>Vargen</div><div>Svampringen</div></div>`
+  } else {
+    const left = Math.round((S.w - fw) / 2), top = Math.round((S.h - fh) / 2)
+    inner = `<div class="felt ${S.felt}" style="left:${left}px;top:${top}px;width:${fw}px;height:${fh}px" data-felt>${feltSVG(v, s, 'bord')}</div>
+      <div style="position:absolute;left:24px;top:12px;font:600 14px var(--font);color:#f3e9d6cc">Senast: ${log[0]?.text ?? ''}</div>`
+  }
+  const scale = opts.fit ? Math.min(1, opts.fit / S.w) : 1
+  host.innerHTML = `<div class="skalbox" style="width:${S.w * scale}px;height:${S.h * scale}px"><div class="skal" style="transform:scale(${scale})"><div class="ram ${sk}" style="width:${S.w}px;height:${S.h}px">${inner}</div></div></div>`
+  wireFelt(host, v, sk, s)
+}
+function feltPoint(svg, e) { const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY; return pt.matrixTransform(svg.getScreenCTM().inverse()) }
+function actor(sk) { return sk === 'tv' ? null : 'A' }
+function say(whoSeat, text) { log.unshift({ who: whoSeat ?? 'T', text }) }
+function whoName(sk) { return sk === 'tv' ? 'Bordet' : 'Ada' }
+function moveTo(p, zid, at, by) {
+  p.zone = zid; p.at = at
+  const own = p.seat === (by ?? '') ? 'sin' : `${SEATS[p.seat].name}s`
+  say(by, `${by ? SEATS[by].name : 'Bordet'} flyttade ${own} ${KIND_NAME[p.kind]} till ${zone(zid).name}`)
+}
+function flip(p, by) {
+  if (p.kind !== 'meeple') return
+  p.lying = !p.lying
+  const own = p.seat === (by ?? '') ? 'sin' : `${SEATS[p.seat].name}s`
+  say(by, `${by ? SEATS[by].name : 'Bordet'} ${p.lying ? 'lade ned' : 'reste'} ${own} meeple`)
+}
+function wireFelt(host, v, sk, s) {
+  const svg = host.querySelector('[data-felt] svg'); if (!svg) return
+  const feltEl = host.querySelector('[data-felt]')
+  const by = actor(sk)
+  svg.querySelectorAll('.pjas').forEach((el) => {
+    const ids = el.dataset.ids.split(',')
+    el.onpointerdown = (e) => {
+      e.preventDefault()
+      const p0 = feltPoint(svg, e), start = { x: e.clientX, y: e.clientY }
+      // En hög ger den översta; en ensam pjäs är sig själv.
+      const p = pieces.find((q) => q.id === ids[ids.length - 1])
+      let moved = false
+      const ghost = el.cloneNode(true)
+      const mv = (ev) => {
+        if (!moved && Math.hypot(ev.clientX - start.x, ev.clientY - start.y) < 4) return
+        if (!moved) { moved = true; if (ids.length > 1) { svg.appendChild(ghost); ghost.innerHTML = el.innerHTML.replace(/<circle cx="82"[\s\S]*?<\/text>/, '') } else svg.appendChild(el) }
+        const q = feltPoint(svg, ev)
+        ;(ids.length > 1 ? ghost : el).setAttribute('transform', `translate(${q.x} ${q.y})`)
+      }
+      const up = (ev) => {
+        removeEventListener('pointermove', mv); removeEventListener('pointerup', up)
+        if (!moved) { selected = selected === p.id ? null : p.id; moveDialog = false; rerender(); return }
+        const q = feltPoint(svg, ev)
+        const x = Math.max(-590, Math.min(590, q.x)), y = Math.max(-390, Math.min(390, q.y))
+        moveTo(p, under(x, y).id, { x, y }, by); selected = p.id; rerender()
+      }
+      addEventListener('pointermove', mv); addEventListener('pointerup', up)
+    }
+    el.ondblclick = () => { const p = pieces.find((q) => q.id === ids[ids.length - 1]); flip(p, by); rerender() }
+    el.onkeydown = (e) => {
+      const p = pieces.find((q) => q.id === ids[ids.length - 1])
+      if (e.key === 'f' || e.key === 'F') { e.preventDefault(); flip(p, by); selected = p.id; rerender(true) }
+      if (e.key === 'm' || e.key === 'M') { e.preventDefault(); selected = p.id; moveDialog = true; rerender() }
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selected = p.id; rerender(true) }
+      if (e.key === 'Escape') { selected = null; moveDialog = false; rerender() }
+    }
+  })
+  // Plattan vid den valda pjäsen och «Flytta till».
+  const p = pieces.find((q) => q.id === selected)
+  if (!p) return
+  const d = drawables(v).find((x) => x.ids.includes(p.id))
+  if (!d) return
+  const px = (d.x + 600) * s, py = (d.y + 400) * s + (d.size / 2 + 10) * s
+  const plate = document.createElement('div')
+  plate.className = 'platta'
+  plate.style.left = px + 'px'; plate.style.top = py + 'px'
+  plate.innerHTML = `${p.kind === 'meeple' ? `<button data-a="flip">${p.lying ? 'Res upp' : 'Lägg ner'}<kbd>F</kbd></button>` : ''}<button data-a="move">Flytta till…<kbd>M</kbd></button>`
+  feltEl.appendChild(plate)
+  plate.querySelector('[data-a=flip]')?.addEventListener('click', () => { flip(p, by); rerender() })
+  plate.querySelector('[data-a=move]').onclick = () => { moveDialog = true; rerender() }
+  if (moveDialog) {
+    const dlg = document.createElement('div')
+    dlg.className = 'flytta'; dlg.setAttribute('role', 'dialog'); dlg.setAttribute('aria-label', 'Flytta till')
+    dlg.innerHTML = `<h4>Flytta ${p.seat === by ? 'din' : SEATS[p.seat].name + 's'} ${KIND_NAME[p.kind]} till</h4>` +
+      ZONES.filter((z) => z.kind === 'area').map((z) => `<button data-z="${z.id}" ${z.id === p.zone ? 'aria-current="true"' : ''}>${z.name}<span>${pieces.filter((q) => q.zone === z.id).length || ''}</span></button>`).join('') +
+      `<button data-z="">Avbryt<span>Esc</span></button>`
+    feltEl.appendChild(dlg)
+    dlg.querySelectorAll('button').forEach((b) => b.onclick = () => { moveDialog = false; if (b.dataset.z) moveTo(p, b.dataset.z, freeSpot(b.dataset.z), by); rerender(true) })
+    dlg.onkeydown = (e) => { if (e.key === 'Escape') { moveDialog = false; rerender(true) } }
+    dlg.querySelector('button').focus()
+  }
+}
+
+/* ═════════ telefonen ═════════ */
+let pTab = 'framfor', pSel = null, pSheet = false, pToast = null, pOpen = null
+const ME = 'A'
+const zoneShort = (zid) => zid === 'mine:A' ? 'Framför dig' : zone(zid).name
+const MOVE_TARGETS = ['table', 'mine:A', 'mine:B', 'mine:C', 'mine:D']
+function phoneMove(p, zid) { moveTo(p, zid, zid === p.zone && p.at === null ? null : freeSpot(zid), ME); if (zid === 'mine:A' && p.seat === ME) p.at = null; pToast = `Flyttade ${p.seat === ME ? 'din' : SEATS[p.seat].name + 's'} ${KIND_NAME[p.kind]} till ${zoneShort(zid)}`; pSel = null; pSheet = false }
+function phoneFlip(p) { flip(p, ME); pToast = `${p.lying ? 'Lade ned' : 'Reste'} ${p.seat === ME ? 'din' : SEATS[p.seat].name + 's'} meeple` }
+function phoneShell(v, panel, extra = '') {
+  const mine = pieces.filter((p) => p.seat === ME && p.kind === 'meeple')
+  const titles = { hand: 'Handen', framfor: 'Framför mig', bordet: 'Bordet', mer: 'Mer' }
+  const sel = pieces.find((p) => p.id === pSel)
+  const valrad = sel && v === 'A' ? `<div class="p-valrad"><div class="vad">${icon(sel.kind, SEATS[sel.seat].c, 28, sel.lying)} ${sel.seat === ME ? 'Din' : SEATS[sel.seat].name + 's'} ${KIND_NAME[sel.kind]} · ${zoneShort(sel.zone)}${sel.lying ? ' · ligger' : ''}</div>
+      <div class="knappar">${sel.kind === 'meeple' ? `<button class="p-knapp tyst" data-pa="flip">${sel.lying ? 'Res upp' : 'Lägg ner'}</button>` : ''}<button class="p-knapp prim" data-pa="move" style="flex:1">Flytta till…</button><button class="p-knapp tyst" data-pa="avm" aria-label="Avmarkera">✕</button></div></div>` : ''
+  return `<div class="p-topp"><div class="vem"><i></i>${titles[pTab]} <span>· Ada</span></div><button class="p-knapp">↶ Ångra</button></div>
+    <div class="p-panel">${panel}</div>${pToast ? `<div class="p-toast">${pToast}<b>Ångra</b></div>` : ''}${valrad}
+    <div class="p-flikar" role="tablist">
+      <button role="tab" data-tab="hand" aria-selected="${pTab === 'hand'}"><b>▦</b>Handen</button>
+      <button role="tab" data-tab="framfor" aria-selected="${pTab === 'framfor'}"><b>▲</b>Framför mig</button>
+      <button role="tab" data-tab="bordet" aria-selected="${pTab === 'bordet'}"><b>◎</b>Bordet</button>
+      <button role="tab" data-tab="mer" aria-selected="${pTab === 'mer'}"><b>≡</b>Mer</button></div>${extra}`
+}
+const counters = `<div class="p-rub">Räknare</div><div class="p-kort p-rad"><button class="p-knapp">−</button><div style="text-align:center"><div class="p-tal">3</div><div class="tyst" style="letter-spacing:.1em;color:var(--ed-quiet)">GULD</div></div><button class="p-knapp">+</button></div>`
+const pilesBlock = `<div class="p-rub">Högar</div><div class="p-kort p-rad"><div style="display:flex;gap:12px;align-items:center"><div style="width:44px;height:60px;border-radius:4px;background:#2f477e"></div><div><div class="namn">Kortlek</div><div class="tyst">34 kort</div></div></div><button class="p-knapp" style="color:#7fd39a">Dra 1</button></div>`
+function figButton(p, attrs = '') {
+  return `<button class="p-fig" data-pick="${p.id}" aria-pressed="${pSel === p.id}" aria-label="${SEATS[p.seat].name}s ${KIND_NAME[p.kind]}${p.lying ? ', ligger' : ''}" ${attrs}>${icon(p.kind, SEATS[p.seat].c, 34, p.lying)}${p.lying ? '<span class="lag">LIGGER</span>' : ''}</button>`
+}
+function byZone(list) { const m = new Map(); for (const p of list) { if (!m.has(p.zone)) m.set(p.zone, []); m.get(p.zone).push(p) } return [...m.entries()].sort((a, b) => (a[0] === 'mine:A' ? -1 : b[0] === 'mine:A' ? 1 : 0)) }
+function phoneA() {
+  let panel = ''
+  const mine = pieces.filter((p) => p.seat === ME)
+  if (pTab === 'framfor') {
+    panel = counters + `<div class="p-rub">Dina meeples · ${mine.length}</div>` +
+      byZone(mine).map(([zid, ps]) => `<div class="p-kort"><div class="p-rad"><span class="namn">${zoneShort(zid)}</span><span class="tyst">${ps.length}</span></div><div class="p-figurer">${ps.map((p) => figButton(p)).join('')}</div></div>`).join('') +
+      `<div class="p-rub">Utlagt framför dig · 1</div><div class="p-kort p-rad"><div style="display:flex;gap:12px;align-items:center"><div style="width:44px;height:60px;border-radius:4px;background:#f4ead8"></div><span class="namn">Räven</span></div><button class="p-knapp">Ta upp</button></div>`
+  } else if (pTab === 'bordet') {
+    const onTable = pieces.filter((p) => p.zone === 'table')
+    panel = pilesBlock + `<div class="p-rub">Spelyta · ${onTable.length} pjäser</div><div class="p-kort"><div class="p-figurer" style="margin:0">${onTable.map((p) => figButton(p)).join('')}</div></div>` +
+      `<div class="p-rub">Spelarna</div>` + 'BCD'.split('').map((s) => { const ps = pieces.filter((p) => p.zone === 'mine:' + s); return `<div class="p-kort"><div class="p-rad"><span class="namn" style="display:flex;gap:8px;align-items:center"><i style="width:12px;height:12px;border-radius:50%;background:${SEATS[s].c}"></i>${SEATS[s].name}</span><span class="tyst">5 på handen · ${ps.length} framför</span></div><div class="p-figurer">${ps.map((p) => figButton(p)).join('')}</div></div>` }).join('')
+  } else panel = `<div class="p-rub">${pTab === 'hand' ? 'Handen' : 'Mer'}</div><p style="color:var(--ed-quiet);padding:0 4px">Oförändrad i prototypen.</p>`
+  const sel = pieces.find((p) => p.id === pSel)
+  const sheet = pSheet && sel ? `<div class="p-ark" role="dialog" aria-label="Flytta till"><div class="grepp"></div><h4>Flytta ${sel.seat === ME ? 'din' : SEATS[sel.seat].name + 's'} ${KIND_NAME[sel.kind]} till</h4>${MOVE_TARGETS.map((z) => `<button class="mal" data-to="${z}">${zoneShort(z)}<span>${pieces.filter((p) => p.zone === z).slice(0, 6).map((p) => icon(p.kind, SEATS[p.seat].c, 18, p.lying)).join('')}</span></button>`).join('')}<button class="p-knapp tyst" data-pa="stang" style="width:100%;margin-top:6px">Stäng</button></div>` : ''
+  return phoneShell('A', panel, sheet)
+}
+function phoneB() {
+  let panel = ''
+  const groupCard = (zid, ps, who) => {
+    const st = ps.filter((p) => !p.lying), ly = ps.filter((p) => p.lying)
+    const key = who + '|' + zid
+    return `<div class="p-kort"><div class="p-rad"><div><div class="namn">${zoneShort(zid)}</div><div class="tyst">${ps.length} ${who === ME ? '' : SEATS[who].name + 's '}meeple${ps.length === 1 ? '' : 's'}${ly.length ? ` · ${ly.length} ligger` : ''}</div></div><div style="display:flex;gap:2px">${ps.slice(0, 5).map((p) => icon('meeple', SEATS[p.seat].c, 22, p.lying)).join('')}</div><div class="p-tal" style="font-size:26px">${ps.length}</div></div>
+      <div class="p-chips"><button data-open="${key}">Flytta en ${pOpen === key ? '▴' : '▾'}</button>${st.length ? `<button data-flipone="${st[0].id}">Lägg ner en</button>` : ''}${ly.length ? `<button data-flipone="${ly[0].id}">Res en</button>` : ''}</div>
+      ${pOpen === key ? `<div class="p-chips" style="padding-top:4px;border-top:1px solid #343a48">${MOVE_TARGETS.filter((z) => z !== zid).map((z) => `<button data-moveone="${(st[0] ?? ly[0]).id}" data-to="${z}" style="border-color:var(--accent)">→ ${zoneShort(z)}</button>`).join('')}</div>` : ''}</div>`
+  }
+  if (pTab === 'framfor') {
+    const mine = pieces.filter((p) => p.seat === ME && p.kind === 'meeple')
+    panel = counters + `<div class="p-rub">Dina meeples · ${mine.length}</div>` + byZone(mine).map(([zid, ps]) => groupCard(zid, ps, ME)).join('')
+  } else if (pTab === 'bordet') {
+    panel = pilesBlock + `<div class="p-rub">Meeples på bordet</div>` + ['table', 'mine:B', 'mine:C', 'mine:D'].flatMap((zid) => 'ABCD'.split('').map((s) => [zid, s, pieces.filter((p) => p.zone === zid && p.seat === s && p.kind === 'meeple')])).filter(([, s, ps]) => ps.length && !(s === ME && false)).map(([zid, s, ps]) => groupCard(zid, ps, s)).join('')
+  } else panel = `<div class="p-rub">${pTab === 'hand' ? 'Handen' : 'Mer'}</div><p style="color:var(--ed-quiet);padding:0 4px">Oförändrad i prototypen.</p>`
+  return phoneShell('B', panel)
+}
+function phoneC() {
+  let panel = ''
+  const tile = (zid, wide) => `<div class="ruta ${wide ? 'bred' : ''}" data-drop="${zid}"><div class="rnamn">${zid.startsWith('mine:') && zid !== 'mine:A' ? `<i style="width:10px;height:10px;border-radius:50%;background:${SEATS[zid.slice(5)].c}"></i>` : ''}${zoneShort(zid)}</div><div class="rfig">${pieces.filter((p) => p.zone === zid && (zid !== 'mine:A' || p.at !== null || p.seat !== ME)).map((p) => `<button class="p-fig" style="width:44px;height:44px" data-pick="${p.id}" aria-pressed="${pSel === p.id}" aria-label="${SEATS[p.seat].name}s ${KIND_NAME[p.kind]}">${icon(p.kind, SEATS[p.seat].c, 28, p.lying)}</button>`).join('')}</div></div>`
+  const sel = pieces.find((p) => p.id === pSel)
+  const hint = sel ? `<div class="p-kort p-rad" style="background:#2a2618"><span>${icon(sel.kind, SEATS[sel.seat].c, 24, sel.lying)} Tryck på en yta${sel.kind === 'meeple' ? '' : ''}</span>${sel.kind === 'meeple' ? `<button class="p-knapp tyst" data-pa="flip">${sel.lying ? 'Res upp' : 'Lägg ner'}</button>` : ''}</div>` : ''
+  if (pTab === 'framfor' || pTab === 'bordet') {
+    const supply = pieces.filter((p) => p.zone === 'mine:A' && p.at === null && p.seat === ME)
+    panel = (pTab === 'framfor' ? `<div class="p-rub">Ditt förråd · dra till en yta</div><div class="lada" data-drop="mine:A">${supply.map((p) => `<button class="p-fig" data-pick="${p.id}" aria-pressed="${pSel === p.id}" aria-label="Din meeple${p.lying ? ', ligger' : ''}">${icon(p.kind, SEATS[p.seat].c, 34, p.lying)}</button>`).join('')}</div>` : pilesBlock) +
+      hint + `<div class="p-rub">Ytorna</div><div class="rutor">${tile('table', true)}${tile('mine:B')}${tile('mine:C')}${tile('mine:D')}${tile('mine:A')}</div>`
+  } else panel = `<div class="p-rub">${pTab === 'hand' ? 'Handen' : 'Mer'}</div><p style="color:var(--ed-quiet);padding:0 4px">Oförändrad i prototypen.</p>`
+  return phoneShell('C', panel)
+}
+function wirePhone(root, v) {
+  root.querySelectorAll('[data-tab]').forEach((b) => b.onclick = () => { pTab = b.dataset.tab; pSel = null; pSheet = false; pToast = null; rerender() })
+  root.querySelectorAll('[data-pa]').forEach((b) => b.onclick = () => {
+    const p = pieces.find((q) => q.id === pSel); const a = b.dataset.pa
+    if (a === 'avm') pSel = null
+    if (a === 'move') pSheet = true
+    if (a === 'stang') pSheet = false
+    if (a === 'flip' && p) phoneFlip(p)
+    rerender()
+  })
+  root.querySelectorAll('[data-to]').forEach((b) => { if (b.dataset.moveone) return; b.onclick = () => { const p = pieces.find((q) => q.id === pSel); if (p) phoneMove(p, b.dataset.to); rerender() } })
+  root.querySelectorAll('[data-open]').forEach((b) => b.onclick = () => { pOpen = pOpen === b.dataset.open ? null : b.dataset.open; rerender() })
+  root.querySelectorAll('[data-flipone]').forEach((b) => b.onclick = () => { phoneFlip(pieces.find((q) => q.id === b.dataset.flipone)); rerender() })
+  root.querySelectorAll('[data-moveone]').forEach((b) => b.onclick = () => { phoneMove(pieces.find((q) => q.id === b.dataset.moveone), b.dataset.to); pOpen = null; rerender() })
+  root.querySelectorAll('[data-pick]').forEach((b) => {
+    if (v !== 'C') { b.onclick = () => { pSel = pSel === b.dataset.pick ? null : b.dataset.pick; pToast = null; rerender() }; return }
+    // C: dra en figur till en ruta, eller tryck på figuren och sedan på rutan.
+    b.onpointerdown = (e) => {
+      e.preventDefault()
+      const id = b.dataset.pick, start = { x: e.clientX, y: e.clientY }
+      let ghost = null, over = null
+      const mv = (ev) => {
+        if (!ghost && Math.hypot(ev.clientX - start.x, ev.clientY - start.y) < 6) return
+        if (!ghost) { ghost = document.createElement('div'); ghost.className = 'drar'; ghost.innerHTML = b.innerHTML; document.body.appendChild(ghost) }
+        ghost.style.left = ev.clientX + 'px'; ghost.style.top = ev.clientY + 'px'
+        const t = document.elementFromPoint(ev.clientX, ev.clientY)?.closest('[data-drop]')
+        root.querySelectorAll('[data-drop]').forEach((d) => d.classList.toggle('mal', d === t)); over = t
+      }
+      const up = () => {
+        removeEventListener('pointermove', mv); removeEventListener('pointerup', up)
+        if (!ghost) { pSel = pSel === id ? null : id; pToast = null; rerender(); return }
+        ghost.remove()
+        if (over) phoneMove(pieces.find((q) => q.id === id), over.dataset.drop)
+        rerender()
+      }
+      addEventListener('pointermove', mv); addEventListener('pointerup', up)
+    }
+  })
+  if (v === 'C') root.querySelectorAll('[data-drop]').forEach((d) => d.addEventListener('click', (e) => { if (e.target.closest('[data-pick]')) return; const p = pieces.find((q) => q.id === pSel); if (p) { phoneMove(p, d.dataset.drop); rerender() } }))
+}
+
+/* ═════════ fliken Bord ═════════ */
+let eItems = [{ kind: 'meeple', n: 5, lying: false }]
+let eMenu = 'mine', eOpen = 0
+function eRow(depth, ikon, name, after = '', cls = '') { return `<div class="e-rad ${cls}" style="--d:${depth}"><span class="ikon">${ikon}</span><span class="namn">${name}</span>${after}</div>` }
+const zIcon = `<svg width="20" height="16"><rect x="1" y="1" width="18" height="14" rx="2" fill="none" stroke="#8b93a7" stroke-dasharray="3 2"/></svg>`
+const pIcon = `<svg width="16" height="20"><rect x="1" y="1" width="14" height="18" rx="2" fill="none" stroke="#8b93a7" stroke-width="1.5"/></svg>`
+function editorHTML(v) {
+  const kn = (key, label = '＋') => `<button class="e-kn" data-emenu="${key}" aria-expanded="${eMenu === key}" aria-label="Lägg till i ${key === 'mine' ? 'Framför' : 'Spelyta'}">${label}</button>`
+  const x = `<button class="e-kn" aria-label="Ta bort">✕</button>`
+  const fast = `<span class="fast">FAST</span>`
+  // Menyn under Framför: tärning som i dag, och pjäserna enligt varianten.
+  let menu = ''
+  if (eMenu === 'mine') {
+    if (v === 'A') menu = `<div class="e-meny" style="--d:2"><button>＋ Tärning</button><button data-add="meeple">${icon('meeple', '#e05a4f', 22)} ＋ Meeple</button><button data-add="cube">${icon('cube', '#e05a4f', 22)} ＋ Kub</button><button data-add="disc">${icon('disc', '#e05a4f', 22)} ＋ Skiva</button></div>`
+    if (v === 'B') menu = `<div class="e-meny" style="--d:2"><button>＋ Tärning</button><button data-add="meeple">${icon('meeple', '#e05a4f', 22)} ＋ Pjäs <small>meeple, kub eller skiva</small></button></div>`
+    if (v === 'C') menu = `<div class="e-meny" style="--d:2"><button>＋ Tärning</button><div class="e-palett">${['meeple', 'cube', 'disc'].map((k) => `<button data-add="${k}"><span style="display:flex;gap:2px">${'ABCD'.split('').map((s) => icon(k, SEATS[s].c, 22)).join('')}</span>${KIND_NAME[k][0].toUpperCase() + KIND_NAME[k].slice(1)}<small style="font-weight:400;color:var(--ed-quiet)">5 per spelare</small></button>`).join('')}</div></div>`
+  }
+  const rows = eItems.map((it, i) => {
+    const swatches = v === 'C' ? `<span style="display:flex;gap:1px">${'ABCD'.split('').map((s) => icon(it.kind, SEATS[s].c, 18, it.lying)).join('')}</span>` : ''
+    let html = eRow(3, icon(it.kind, '#e05a4f', 22, it.lying), `<button data-eopen="${i}" style="all:unset;cursor:pointer;display:flex;gap:8px;align-items:center">${it.n} × ${KIND_NAME[it.kind]} <span class="tyst">· per spelare</span></button>${swatches}`, x, eOpen === i ? 'oppen' : '')
+    if (eOpen === i) {
+      const antal = `<label>Antal <span class="steg"><button data-en="${i}:-1">−</button><output>${it.n}</output><button data-en="${i}:1">+</button></span> <span>per spelare</span></label>`
+      const ligger = it.kind === 'meeple' ? `<label>Börjar <span class="seg"><button data-elie="${i}:0" aria-pressed="${!it.lying}">Stående</button><button data-elie="${i}:1" aria-pressed="${it.lying}">Liggande</button></span></label>` : ''
+      const sort = v === 'B' ? `<label>Sort <span class="seg">${['meeple', 'cube', 'disc'].map((k) => `<button data-ekind="${i}:${k}" aria-pressed="${it.kind === k}">${icon(k, '#e05a4f', 20)}${KIND_NAME[k]}</button>`).join('')}</span></label>` : ''
+      const preview = v === 'C' ? `<div style="display:flex;flex-direction:column;gap:4px">${'ABCD'.split('').map((s) => `<div style="display:flex;gap:4px;align-items:center"><span style="width:28px;color:var(--ed-quiet);font-size:12px">${s}</span>${Array.from({ length: it.n }, () => icon(it.kind, SEATS[s].c, 22, it.lying)).join('')}</div>`).join('')}</div>` : ''
+      html += `<div class="e-falt" style="--d:3">${sort}${antal}${ligger}${preview}<div class="tyst">Färgen är platsens (L11): Ada röd, Bo blå, Cy grön, Di gul. Trycket väljer partnerns närmaste färg, och pjäsen listas som hårdvara.</div><div class="tyst">Var de ligger säger trädet; dra handtaget i filten för punkten (K31).</div></div>`
+    }
+    return html
+  }).join('')
+  return `<div class="editor"><div>
+    <div class="e-remsa">› 4 spelare · ingen turordning · leken i Kortlek</div>
+    <div class="e-rub">BORDET <span class="e-q">?</span></div>
+    ${eRow(0, zIcon, 'Spelyta', kn('table') + fast)}
+    ${eRow(1, pIcon, 'Kortlek <span style="color:#7fb2ff;font:700 12px system-ui;letter-spacing:.15em">LEKEN</span>', fast)}
+    ${eRow(1, pIcon, 'Kasthög', x)}
+    ${eRow(0, `<svg width="22" height="12"><rect x="1" y="1" width="20" height="10" rx="2" fill="none" stroke="#8b93a7" stroke-width="1.5"/></svg>`, 'Varje plats <span class="bricka">4 platser</span>', kn('seat'))}
+    ${eRow(1, zIcon, '⌄ Framför <span class="bricka">4 platser</span>', kn('mine'))}
+    ${menu}${rows}
+    ${eRow(1, zIcon, '› Räknare <span class="bricka">4 platser</span>', kn('counters'))}
+    ${eRow(1, `<svg width="22" height="12"><rect x="1" y="1" width="20" height="10" rx="2" fill="none" stroke="#8b93a7" stroke-width="1.5"/></svg>`, '› Hand <span class="bricka">4 platser</span>', fast)}
+  </div><div class="e-hoger"><div class="e-flikar"><span>Bord</span><span>Resultat</span></div><div class="felt editor" style="position:relative;width:${1200 * 0.64}px;height:${800 * 0.64}px">${feltSVGEditor()}</div>
+    <div style="color:var(--ed-quiet);font-size:13px">Filten i editorn: pjäserna ritas som bordet ritar dem, ett handtag per rad i Adas yta, och de andra platsernas kopior vända mot sin kant (K31).</div></div></div>`
+}
+function feltSVGEditor() {
+  // Editorns filt visar setupens förråd, inte ett pågående bord.
+  const keep = pieces
+  pieces = []
+  let id = 0
+  for (const it of eItems) for (const s of 'ABCD') for (let i = 0; i < it.n; i++) pieces.push({ id: 'e' + id++, kind: it.kind, seat: s, zone: 'mine:' + s, at: null, lying: it.lying })
+  const svg = feltSVG('A', 0.64, 'editor')
+  pieces = keep
+  return svg
+}
+function wireEditor(root) {
+  root.querySelectorAll('[data-emenu]').forEach((b) => b.onclick = () => { eMenu = eMenu === b.dataset.emenu ? null : b.dataset.emenu; rerender() })
+  root.querySelectorAll('[data-add]').forEach((b) => b.onclick = () => { eItems.push({ kind: b.dataset.add, n: 5, lying: false }); eOpen = eItems.length - 1; eMenu = null; rerender() })
+  root.querySelectorAll('[data-eopen]').forEach((b) => b.onclick = () => { eOpen = eOpen === +b.dataset.eopen ? null : +b.dataset.eopen; rerender() })
+  root.querySelectorAll('[data-en]').forEach((b) => b.onclick = () => { const [i, d] = b.dataset.en.split(':').map(Number); eItems[i].n = Math.max(1, Math.min(12, eItems[i].n + d)); rerender() })
+  root.querySelectorAll('[data-elie]').forEach((b) => b.onclick = () => { const [i, d] = b.dataset.elie.split(':').map(Number); eItems[i].lying = !!d; rerender() })
+  root.querySelectorAll('[data-ekind]').forEach((b) => b.onclick = () => { const [i, k] = b.dataset.ekind.split(':'); eItems[+i].kind = k; if (k !== 'meeple') eItems[+i].lying = false; rerender() })
+}
+
+/* ═════════ anteckningar ═════════ */
+const NOTES = {
+  filt: {
+    A: `<b>A — Silhuetter i rad.</b> Varje meeple ritas för sig, som silhuetten man känner igen, 30 mm (tärningens <code>DIE_MM</code>; en riktig är 16 mm). Platsens fem ligger på rad i ytan framför den, vända mot dess kant, 36 mm isär. Liggande är samma silhuett vriden på sidan utan skugga. Kub och skiva ritas lika platt.
+      <br><span class="plus">+ Mest lik tärningarna (K28 A) och lättast att läsa på avstånd; varje figur är sin egen och räknas med ögat.</span> <span class="minus">− Fem figurer tar 180 mm av ytans 365, och raden blir en klump av mål: vid 1280 ligger målen 26 px isär, under fingrets 44 px. Vid sju och åtta platser (0,443 px/mm) än tätare.</span>`,
+    B: `<b>B — Förrådet som hög.</b> Det som ännu inte flyttats är en bricka med figuren och antalet, «5», som räknarnas hög (#89). Att dra i den tar en meeple ur högen; ute på filten är varje meeple sin egen silhuett, och en liggande ligger alltid för sig. Klick väljer, dubbelklick eller F lägger ner, M öppnar «Flytta till».
+      <br><span class="plus">+ Fem blir aldrig en klump: ett mål per plats, 44 px var skärmen än är, och ytan framför har kvar plats för korten. Samma grepp som räknarhögen, så bordet har ett formspråk för «flera likadana».</span> <span class="minus">− Hur många som är kvar läses som en siffra, inte som fem figurer. En hög är bara ritning: motorn har fem pjäser, och tangentbordet når högen som en sak (den översta) och resten genom att flytta den.</span>`,
+    C: `<b>C — Figurer uppifrån.</b> Ärligt sett från ovan: en stående meeple är huvudet över axlarna med en skugga, och först när den läggs ner syns hela silhuetten. Kuben är en kub i perspektiv och skivan en skiva med kant. Förrådet ligger löst som på ett riktigt bord, varje figur med sin egen vinkel.
+      <br><span class="plus">+ Stående och liggande kan aldrig förväxlas, och bordet ser mest ut som ett bord. Passar den fysiska kopian (#1406).</span> <span class="minus">− Den stående figuren är inte den silhuett alla känner som «meeple»; på 22 px vid 1280 är det en prick med armar. Löst lagda figurer överlappar mål som A, och skuggan kräver mer av en enda renderare.</span>`,
+  },
+  telefon: {
+    A: `<b>A — Välj och flytta till.</b> «Framför mig» visar dina meeples per yta som rutor, och «Bordet» visar det som ligger på Spelytan och vid de andra platserna. Ett tryck markerar en figur (vems som helst, B5), och raden över flikarna säger vilken och har «Lägg ner» och «Flytta till…». Arket listar ytorna med det som redan ligger där.
+      <br><span class="plus">+ Samma väg som handens kort (markera, raden över flikarna, #1147) och samma lista som tangentbordets M; ingen ny gest.</span> <span class="minus">− Två tryck för ett drag. Ett förråd på tolv kub blir tolv rutor.</span>`,
+    B: `<b>B — Antal per yta.</b> Meeples räknas, som räknare: ett kort per yta med antalet stort, «Flytta en ▾» som fäller ut ytorna som knappar, och «Lägg ner en» / «Res en». Ingen enskild figur väljs.
+      <br><span class="plus">+ Kortast väg för den vanliga frågan «lägg en arbetare där», och tål vilket antal som helst.</span> <span class="minus">− Kan inte säga <i>vilken</i> meeple på Spelytan som flyttas när två av samma färg ligger där; motorn flyttar en pjäs, så telefonen gissar. «Bordet» blir en rad per färg och yta.</span>`,
+    C: `<b>C — Ytor som rutor.</b> Förrådet står överst och ytorna står under som rutor med sina figurer. Dra en figur till en ruta, eller tryck på figuren och sedan på rutan. Inget av filtens geometri, bara zonerna (C2 står kvar).
+      <br><span class="plus">+ Det mest direkta: en rörelse, och man ser alla ytor och vad som ligger i dem på en gång.</span> <span class="minus">− En ny gest på telefonen, som #1147 tog bort för korten. Rutorna växer med antalet zoner, och dragning tål inte rullning bra.</span>`,
+  },
+  editor: {
+    A: `<b>A — En rad per sort.</b> ＋-menyn under en yta får «＋ Meeple», «＋ Kub» och «＋ Skiva» bredvid «＋ Tärning». Raden i trädet är «5 × meeple · per spelare», och öppnas till antal och hur den börjar.
+      <br><span class="plus">+ Ett ord per sak man vill lägga ut, ingen väljare. Raden är exakt det L89 föreskrev.</span> <span class="minus">− Menyn växer med varje ny typ i familjen; att byta kub mot skiva är att ta bort och lägga till.</span>`,
+    B: `<b>B — Pjäs med sort i raden.</b> En enda «＋ Pjäs» i menyn, som «＋ Tärning», och sorten väljs i raden: meeple, kub eller skiva, med silhuetterna. Antal, «per spelare» och «Börjar stående/liggande». Det är tärningens form (K28: en rad, sort i raden).
+      <br><span class="plus">+ Familjen är en rad och ett ord, som beställaren beslutade; menyn står still när familjen växer, och sorten byts utan att raden försvinner.</span> <span class="minus">− «Pjäs» är ett ord till att lära sig, och den som letar efter «meeple» i menyn måste läsa undertexten.</span>`,
+    C: `<b>C — Palett i menyn.</b> Menyn under ytan visar familjen som rutor, varje sort i alla platsernas färger. Raden visar färgerna, och när den öppnas står förrådet ritat per plats.
+      <br><span class="plus">+ Man ser vad spelarna får, färgerna med, innan man lägger till något.</span> <span class="minus">− Den enda meny i trädet som inte är en lista; tar höjd vid 1024 × 640 (#711).</span>`,
+  },
+}
+
+/* ═════════ sidan ═════════ */
+function contrastTable() {
+  const grounds = [['#2e6b46', 'filt mitt'], ['#1f4a30', 'filt kant'], ['#173a26', 'filt hörn'], ['#151924', 'TV']]
+  const rows = PALETTE.map((c, i) => {
+    const cells = grounds.map(([g]) => { const a = ratio(c, g), b = ratio(CHALK, g), m = Math.max(a, b); return `<td><span class="${a < 3 ? 'svag' : ''}">${a.toFixed(2)}</span> / <span class="${m >= 3 ? 'bar' : 'svag'}">${m.toFixed(2)}</span></td>` }).join('')
+    return `<tr><td>${icon('meeple', c, 18)} plats ${'ABCDEFGH'[i]}</td>${cells}</tr>`
+  }).join('')
+  return `<table class="kontrast"><tr><th>Platsfärg</th>${grounds.map(([g, n]) => `<th>${n} ${g}</th>`).join('')}</tr>${rows}</table>
+    <div style="font-size:12px;color:var(--chalk-off);margin-top:4px">Varje cell: färgen ensam / den bästa av färgen och kritbandet. Grönt = minst 3:1 (L11). Kritan bär där färgen faller, som platsens kant gör.</div>`
+}
+function family(v) {
+  const g = (bg, name) => `<div class="grund" style="background:${bg}">${['meeple', 'cube', 'disc'].map((k) => `<div>${icon(k, SEATS.C.c, Math.round(SIZE[k] * 0.73 * 1.12), false, v)}<small>${KIND_NAME[k]}</small></div>`).join('')}<div>${icon('meeple', SEATS.C.c, Math.round(30 * 0.73 * 1.12), true, v)}<small>liggande</small></div><div style="align-self:center;color:#d9e7dccc;font-size:11px">${name}</div></div>`
+  return `<div class="familj">${g('#1f4a30', 'grön filt, 1280')}${g('#151924', 'TV:ns filt')}</div>`
+}
+function rerender(keepFocus) {
+  const focused = keepFocus ? document.activeElement?.dataset?.ids : null
+  $('#ytor').innerHTML = Object.entries(YTOR).map(([k, n]) => `<button data-yta="${k}" aria-pressed="${k === YTA}">${n}</button>`).join('')
+  $('#ytor').querySelectorAll('button').forEach((b) => b.onclick = () => { YTA = b.dataset.yta; V = REK[YTA]; sync() })
+  $('#anteckning').innerHTML = NOTES[YTA][V]
+  const scen = $('#scen')
+  if (YTA === 'filt') {
+    const S = SCREENS[SKARM]
+    const m = measures(V, S.s)
+    const fit = document.body.classList.contains('ren') ? null : Math.min(S.w, innerWidth - 32)
+    scen.innerHTML = `<div class="skarmar bara-las">Skärm: ${Object.entries(SCREENS).map(([k, s]) => `<button data-skarm="${k}" aria-pressed="${k === SKARM}">${s.label}</button>`).join('')}
+        <label style="margin-left:8px;display:flex;gap:4px;align-items:center"><input type="checkbox" id="mal" ${HITS ? 'checked' : ''}> visa fingrets mål (44 px)</label>
+        <button id="nollst">Börja om</button></div>
+      <div class="matt bara-las">Skala ${S.s} px/mm · kort i vila <b>${Math.round(63 * S.s)} px</b> på kortsidan (K9:s golv 45 px), oförändrat: pjäserna ligger i ytor som redan finns, så filten tar ingen rad och korten krymper inte · meeple ${Math.round(30 * S.s)} px (en riktig 16 mm vore ${Math.round(16 * S.s)} px) ·
+        förrådet framför Ada: <b>${m.targets} ${m.targets === 1 ? 'mål' : 'mål'}</b>${m.gapPx !== null ? `, närmast <span class="${m.gapPx >= 44 ? 'ok' : 'nej'}">${m.gapPx} px isär</span> (fingret vill 44)` : ' <span class="ok">(ett enda, inget att krocka med)</span>'}, ${m.spanMm} mm av ytans 365.
+        <br>Klicka på en meeple för plattan, dubbelklicka eller tryck F för att lägga ner, M för «Flytta till», dra för att flytta. Tab når pjäserna.</div>
+      <div id="feltvärd"></div>
+      <div class="bara-las" style="margin-top:16px"><p class="etikett">Familjen, i variantens ritsätt, i 1280:s storlek</p>${family(V)}<p class="etikett" style="margin-top:14px">Kontrasten mot filten</p>${contrastTable()}</div>`
+    renderFeltScreen($('#feltvärd'), V, SKARM, { fit })
+    scen.querySelectorAll('[data-skarm]').forEach((b) => b.onclick = () => { SKARM = b.dataset.skarm; selected = null; moveDialog = false; sync() })
+    $('#mal').onchange = (e) => { HITS = e.target.checked; sync() }
+    $('#nollst').onclick = () => { reset(); selected = null; moveDialog = false; rerender() }
+  } else if (YTA === 'telefon') {
+    const html = V === 'A' ? phoneA() : V === 'B' ? phoneB() : phoneC()
+    scen.innerHTML = `<div class="scen"><div><p class="etikett bara-las">Telefonen · Ada, 390 × 844, runt en TV</p><div class="telefon"><div class="skarm" id="skarm">${html}</div></div></div>
+      <div class="bara-las"><p class="etikett">TV:n samtidigt (förminskad), filtvariant B</p><div id="feltvärd"></div></div></div>`
+    wirePhone($('#skarm'), V)
+    renderFeltScreen($('#feltvärd'), 'B', 'tv', { fit: Math.max(320, Math.min(900, innerWidth - 460)) })
+  } else {
+    scen.innerHTML = `<div class="skalbox" id="edbox"><div class="skal" id="edskal">${editorHTML(V)}</div></div>`
+    const sc = Math.min(1, (innerWidth - 32) / 1284)
+    $('#edskal').style.transform = `scale(${sc})`
+    $('#edbox').style.width = 1284 * sc + 'px'; $('#edbox').style.height = $('#edskal').firstElementChild.offsetHeight * sc + 'px'
+    wireEditor($('#edskal'))
+  }
+  const names = NAMES[YTA]
+  $('#vaxlare').innerHTML = `<button id="prev" aria-label="Föregående">←</button>${['A', 'B', 'C'].map((k) => `<button data-v="${k}" aria-pressed="${k === V}">${k} · ${names[k]}${k === REK[YTA] ? ' ★' : ''}</button>`).join('')}<button id="next" aria-label="Nästa">→</button>`
+  $('#vaxlare').querySelectorAll('[data-v]').forEach((b) => b.onclick = () => go(b.dataset.v))
+  $('#prev').onclick = () => go(ORDER[(ORDER.indexOf(V) + 2) % 3])
+  $('#next').onclick = () => go(ORDER[(ORDER.indexOf(V) + 1) % 3])
+  if (focused) document.querySelector(`[data-ids="${focused}"]`)?.focus()
+  else if (selected && YTA === 'filt' && !moveDialog) document.querySelector(`.pjas.vald`)?.focus({ preventScroll: true })
+}
+const ORDER = ['A', 'B', 'C']
+function sync() { const u = new URL(location); u.searchParams.set('yta', YTA); u.searchParams.set('v', V); if (YTA === 'filt') u.searchParams.set('skarm', SKARM); else u.searchParams.delete('skarm'); history.replaceState(null, '', u); rerender() }
+function go(v) { V = v; selected = null; moveDialog = false; pSel = null; pSheet = false; pToast = null; sync() }
+addEventListener('keydown', (e) => { if (e.target.closest('input,textarea,select,[contenteditable],.pjas,.flytta')) return; if (e.key === 'ArrowLeft') $('#prev').click(); if (e.key === 'ArrowRight') $('#next').click() })
+addEventListener('resize', () => rerender())
+rerender()
+</script>
+</body>
+</html>
