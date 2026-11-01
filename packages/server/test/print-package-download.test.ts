@@ -123,7 +123,7 @@ describe('the print package to download', () => {
     expect(readme).toContain('Ingen beställning')
     expect(readme).toContain('`tryck/regelhafte.pdf`')
     expect(readme).not.toContain('utelämnade')
-  }, 120_000)
+  }, 90_000)
 
   // The printed parts (#1488, beställarens beslut 12 i #1470): the board's side and the markers' sides
   // are files under `tryck/` with the bleed Testtryckeriet asks for, identical markers once, and
@@ -160,14 +160,14 @@ describe('the print package to download', () => {
     ])
     for (const f of parts) expect(strFromU8(files[`tryck/${f.name}`]!.subarray(0, 5)), f.name).toBe('%PDF-')
     expect(strFromU8(files['LASMIG.md']!)).toMatch(/Stansark och vikning för brädet och brickorna kommer i ett steg 2/)
-  }, 120_000)
+  }, 90_000)
 
   it('leaves the files out when the board\'s side falls short of its bleed, and says it is the board', async () => {
     await call('POST', '/projects', { id: 'p1', ...withParts(2) })
     const summary = (await (await call('GET', '/projects/p1/print-package?to=SE')).json()) as Omit<Summary, 'errors'> & { errors: { code: string; cardRef: string; face: string }[] }
     expect(summary.files).toEqual([])
     expect(summary.errors.map((e) => [e.code, e.cardRef, e.face])).toContainEqual(['short-of-bleed', 'Kartan', 'front'])
-  }, 120_000)
+  }, 90_000)
 
   // Meeples are stock the printer packs (#1478, beställarens beslut 5 i #1470), each seat's in the
   // seat's colour (L11): the manifest lists them per colour with the printer's part number, and
@@ -187,7 +187,7 @@ describe('the print package to download', () => {
     expect(sv).toContain('- 2 × d6\n- 3 × meeple, röd\n- 3 × meeple, blå\n')
     const en = strFromU8(unzipSync(new Uint8Array(await (await zipOf('/projects/p1/print-package/zip?provider=testtryckeriet&lang=en')).arrayBuffer()))['LASMIG.md']!)
     expect(en).toContain('- 2 × d6\n- 3 × meeple, red\n- 3 × meeple, blue\n')
-  }, 120_000)
+  }, 90_000)
 
   it('leaves the card files out of a version the print checks stop, and says why', async () => {
     // A background that stops 2 mm past the trim falls short of the 3 mm bleed.
@@ -206,7 +206,7 @@ describe('the print package to download', () => {
     // What would have been sent still stands in the order, so the reader can see what is held back.
     expect(manifest.order.files.length).toBe(3)
     expect(strFromU8(files['LASMIG.md']!)).toMatch(/utelämnade: tryckkontrollen hittade \d+ fel/)
-  }, 120_000)
+  }, 90_000)
 
   // Del 3 (#1418, L91): the box stands in the package with its measure and whether it is drawn, and no
   // file of it is sent: a printer's box files, with the die line and in CMYK, come with a chosen partner.
@@ -229,7 +229,7 @@ describe('the print package to download', () => {
     const en = strFromU8(unzipSync(new Uint8Array(await (await zipOf('/projects/p1/print-package/zip?provider=testtryckeriet&lang=en')).arrayBuffer()))['LASMIG.md']!)
     expect(en).toMatch(/The box is a tuckbox of 65 × 90 × 20 mm/)
     expect(en).toMatch(/come once a print partner is chosen/)
-  }, 120_000)
+  }, 90_000)
 
   it('speaks the reader\'s language in the readme and the name, and keeps the file names', async () => {
     await call('POST', '/projects', { id: 'p1', ...game(4) })
@@ -238,5 +238,5 @@ describe('the print package to download', () => {
     const files = unzipSync(new Uint8Array(await res.arrayBuffer()))
     expect(strFromU8(files['LASMIG.md']!)).toContain('No order')
     expect(Object.keys(files)).toContain('tryck/regelhafte.pdf')
-  }, 120_000)
+  }, 90_000)
 })

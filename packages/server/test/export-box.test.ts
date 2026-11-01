@@ -131,7 +131,7 @@ describe('lådan i exporten (G5, #1418)', () => {
     const same = (m: ProjectExport) => ({ ...m, exportedAt: '', project: { id: '', name: '' }, versions: m.versions.map(({ atSeq: _, doc, ...v }) => ({ ...v, doc: { ...doc, name: '' } })) })
     expect(same(again.manifest)).toEqual(same(first.manifest))
     for (const face of FACES) expect(again.files[`tryck/lada/${face}.pdf`]).toBeDefined()
-  }, 120_000)
+  }, 90_000)
 })
 
 describe('LASMIG förklarar lådan (#1418)', () => {

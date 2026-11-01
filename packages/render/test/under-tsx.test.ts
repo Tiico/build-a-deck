@@ -15,5 +15,5 @@ describe('renderaren under tsx, som på lådan', () => {
   it('ritar en bild för screening, svg som raster, och passar in ett kort', async () => {
     const { stdout } = await promisify(execFile)(process.execPath, [tsx, script], { timeout: 90_000 })
     expect(JSON.parse(stdout.trim().split('\n').at(-1) ?? '')).toEqual({ drawn: [{ width: 384, height: 512 }, { width: 2, height: 2 }], fitted: true })
-  }, 120_000)
+  }, 90_000)
 })
