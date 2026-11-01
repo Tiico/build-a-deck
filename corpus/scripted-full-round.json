@@ -1196,7 +1196,16 @@
           },
           "dynamic": false,
           "visibility": "none",
-          "count": 10
+          "count": 10,
+          "types": [
+            {
+              "type": {
+                "id": "card.standard.63x88",
+                "version": 1
+              },
+              "count": 10
+            }
+          ]
         },
         {
           "mode": "order",
@@ -1260,8 +1269,8 @@
       "ended": true,
       "played": true,
       "version": "v1",
-      "notes": [],
-      "turn": null
+      "turn": null,
+      "notes": []
     },
     "B": {
       "seq": 26,
@@ -1310,7 +1319,16 @@
           },
           "dynamic": false,
           "visibility": "none",
-          "count": 10
+          "count": 10,
+          "types": [
+            {
+              "type": {
+                "id": "card.standard.63x88",
+                "version": 1
+              },
+              "count": 10
+            }
+          ]
         },
         {
           "mode": "count",
@@ -1371,8 +1389,8 @@
       "ended": true,
       "played": true,
       "version": "v1",
-      "notes": [],
-      "turn": null
+      "turn": null,
+      "notes": []
     },
     "table": {
       "seq": 26,
@@ -1421,7 +1439,16 @@
           },
           "dynamic": false,
           "visibility": "none",
-          "count": 10
+          "count": 10,
+          "types": [
+            {
+              "type": {
+                "id": "card.standard.63x88",
+                "version": 1
+              },
+              "count": 10
+            }
+          ]
         },
         {
           "mode": "count",
@@ -1485,8 +1512,8 @@
       "ended": true,
       "played": true,
       "version": "v1",
-      "notes": [],
-      "turn": null
+      "turn": null,
+      "notes": []
     },
     "observer": {
       "seq": 26,
@@ -1738,8 +1765,8 @@
       "ended": true,
       "played": true,
       "version": "v1",
-      "notes": [],
-      "turn": null
+      "turn": null,
+      "notes": []
     }
   }
 }

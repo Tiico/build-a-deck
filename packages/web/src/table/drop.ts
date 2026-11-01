@@ -1,7 +1,7 @@
 import type { Intent, Snapshot, SplitRow, VisibleComponentState, ZoneBeside, ZoneView } from '@byd/protocol'
 import { CHIP_MM, DIE_MM as RECIPE_DIE_MM } from '@byd/server/felt-sizes'
 import { zoneAt, type Drop } from '../zones.js'
-import { isMaterial, materialBox } from '../components.js'
+import { footprintOf, isMaterial, materialBox, pileTopType } from '../components.js'
 import { union, type Rect } from './camera.js'
 import { handExtent, handRotation, type TableMode } from './hand.js'
 import { laidIn } from './lay.js'
@@ -35,11 +35,12 @@ export const BESIDE_MM = 12
 // Above and below are measured in the card's height and not its width: a pile laid over another
 // has to clear the long side, and a card's width above a pile is a card lying on its name.
 const SIDES: Record<ZoneBeside, number> = { left: 180, right: 0, above: -90, below: 90 }
-export function besidePile(pile: { x: number; y: number; rot: number }, cards: number, side: ZoneBeside = 'left'): Point {
+// A lone tile off a pile of tiles (#1485) settles by its own corner, `box`, onto the same middle.
+export function besidePile(pile: { x: number; y: number; rot: number }, cards: number, side: ZoneBeside = 'left', box: { w: number; h: number } = CARD_MM): Point {
   const rad = ((pile.rot + SIDES[side]) * Math.PI) / 180
   const d = (side === 'left' || side === 'right' ? CARD_MM.w : CARD_MM.h) + BESIDE_MM
   const centre = { x: pile.x + d * Math.cos(rad), y: pile.y + d * Math.sin(rad) }
-  const at = cards === 1 ? { x: centre.x - CARD_MM.w / 2, y: centre.y - CARD_MM.h / 2 } : centre
+  const at = cards === 1 ? { x: centre.x - box.w / 2, y: centre.y - box.h / 2 } : centre
   // Whole millimetres in the log, and never the -0 a turned pile's sine leaves behind.
   const mm = (v: number): number => Math.round(v) + 0
   return { x: mm(at.x), y: mm(at.y) }
@@ -244,7 +245,9 @@ function aimedAt(view: Snapshot, d: Drag, mode: TableMode): Intent[] {
     // same reading `besidePile` makes when it says a pile travels by its centre and a lone card
     // settles by its corner. Which zone it lands in is still the pointer's to decide (#74); only
     // where in that zone it comes to rest is the grip's.
-    const was = { x: pile.geometry.x - CARD_MM.w / 2, y: pile.geometry.y - CARD_MM.h / 2 }
+    // A tile off a pile of tiles is its own size (#1485), centred on the pile as the card is.
+    const box = footprintOf(pileTopType(pile, view.components.find((c) => c.id === (pile.mode === 'order' ? pile.order[0] : pile.top))))
+    const was = { x: pile.geometry.x - box.w / 2, y: pile.geometry.y - box.h / 2 }
     const corner = { x: was.x + d.at.x - d.grab.x, y: was.y + d.at.y - d.grab.y }
     // In the zone the pointer is in, as a loose card let go there would be (K2, #680): named by
     // `to` and placed in that zone's own coordinates — the pointer's own place in it, shifted by
@@ -252,7 +255,7 @@ function aimedAt(view: Snapshot, d: Drag, mode: TableMode): Intent[] {
     // lay over the area, and everything that reads a card's zone said the floor. On the felt and
     // not past its edge (#66).
     const rel = { x: dest.x + corner.x - d.at.x, y: dest.y + corner.y - d.at.y }
-    const s = keptOnFelt(view, dest.zone, { ...rel, ...CARD_MM })
+    const s = keptOnFelt(view, dest.zone, { ...rel, ...box })
     return [{ v: 'split', pile: pile.id, at: 1, to: dest.zone, x: rel.x + s.x, y: rel.y + s.y }]
   }
   const moving = new Set(d.ids)
@@ -273,7 +276,7 @@ function aimedAt(view: Snapshot, d: Drag, mode: TableMode): Intent[] {
   })
   // On the felt and not past its edge (#66): what is dragged together is drawn back together, so
   // the cards keep their places among themselves.
-  const box = union(rest.map((r) => ({ x: r.x, y: r.y, ...CARD_MM })))
+  const box = union(rest.map((r) => ({ x: r.x, y: r.y, ...footprintOf(view.components.find((c) => c.id === r.id)) })))
   const s = box ? keptOnFelt(view, dest.zone, box) : { x: 0, y: 0 }
   // Och överst i ytan det landar i (#461). Punkten är pekarens — den är vad K2 ger spelaren, och
   // ingenting här rör den — men ordningen är ytans, och den frågas av `laidIn` så att de tre
@@ -335,7 +338,7 @@ export function hitAt(view: Snapshot, p: Point, ignore: ReadonlySet<string>, ign
     if (isMaterial(c)) continue
     const z = zones.get(c.zone)
     if (!z || z.kind !== 'area') continue
-    if (inside(p, { x: z.geometry.x + c.x, y: z.geometry.y + c.y })) return { kind: 'card', id: c.id, zone: c.zone }
+    if (inside(p, { x: z.geometry.x + c.x, y: z.geometry.y + c.y }, footprintOf(c))) return { kind: 'card', id: c.id, zone: c.zone }
   }
   for (const z of view.zones) {
     if (z.kind !== 'pile' || z.id === ignorePile) continue
@@ -344,8 +347,9 @@ export function hitAt(view: Snapshot, p: Point, ignore: ReadonlySet<string>, ign
   return null
 }
 
-function inside(p: Point, topLeft: Point): boolean {
-  return p.x >= topLeft.x && p.x <= topLeft.x + CARD_MM.w && p.y >= topLeft.y && p.y <= topLeft.y + CARD_MM.h
+// Within the box a card or a tile lies in (`footprintOf`), a card's when nothing else is said.
+function inside(p: Point, topLeft: Point, box: { w: number; h: number } = CARD_MM): boolean {
+  return p.x >= topLeft.x && p.x <= topLeft.x + box.w && p.y >= topLeft.y && p.y <= topLeft.y + box.h
 }
 
 export function absoluteOf(view: Snapshot, c: VisibleComponentState): Point {

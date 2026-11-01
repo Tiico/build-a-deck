@@ -26,7 +26,7 @@ import { HistoryPanel } from './HistoryPanel.js'
 import { GameMore } from './GameMore.js'
 import { NoticeBand } from './NoticeBand.js'
 import { QuotaReached, type Quota } from '../account/quota.js'
-import { proCardUrl, useProOffer } from '../account/pro.js'
+import { proCardUrl, useProOffer, useRenewOffer } from '../account/pro.js'
 import { QuotaSaid, quotaWords, type QuotaWords } from '../account/quota-words.js'
 import { marked } from '../account/marked.js'
 import { RulesPanel } from './RulesPanel.js'
@@ -237,6 +237,8 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   const sayQuota = useCallback((words: QuotaWords, quota?: Quota) => setNotice({ lead: words.what, text: [words.why, words.way].filter((part) => part !== '').join(' '), ...(quota ? { quota } : {}) }), [])
   // Pro beside a met ceiling of her own (#1494): the price and the way to Profil's card.
   const offer = useProOffer(http, notice?.quota)
+  // The reading band offers the owner Pro again, with its price (#1532); a co-editor hears no tier.
+  const renew = useRenewOffer(http, client?.readOnly?.bearer === 'you')
   const goPro = (e: MouseEvent<HTMLAnchorElement>) => {
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return
     e.preventDefault()
@@ -1393,7 +1395,13 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
             <div>
               <b>{t('editor.reading')}</b> — {readOnlyLine(client.readOnly, client.doc, t)}
               <small>{t(client.readOnly.bearer === 'you' ? 'editor.readOnly.you.ask' : 'editor.readOnly.owner.ask', ownerWords(client.readOnly, t))}</small>
+              {renew && <small>{renew}</small>}
             </div>
+          )}
+          {client.mayEdit && client.readOnly && renew && (
+            <a className="byd-editor-notice-pro" href={proCardUrl()} onClick={goPro}>
+              {t('readOnly.pro.go')}
+            </a>
           )}
           <span className="byd-editor-reading-said" role="status">
             {readingSaid ?? ''}

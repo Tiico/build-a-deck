@@ -3,6 +3,9 @@ import { Texture } from './Texture.js'
 import { hue } from './hue.js'
 import { useT } from '../i18n/index.js'
 import { cardWord } from './keyboard.js'
+import { isTile, tileOf } from '../components.js'
+import { TileInCard } from './TileInCard.js'
+import { HOLDS_A_TILE } from './tileLook.js'
 
 // "Titta" (K8): one card large, on this screen and nobody else's. The pointer gets here by
 // holding a card down; the keyboard gets here from the address panel, and needs a way out that
@@ -20,7 +23,7 @@ export function CardLook({ card, faces, onClose }: { card: VisibleComponentState
       className="byd-inspect byd-kbd-look"
       role="dialog"
       aria-modal="true"
-      aria-label={cardWord(card) ?? t('kbd.hidden')}
+      aria-label={cardWord(card) ?? t(isTile(card) ? 'kbd.tile.back' : 'kbd.hidden')}
       onClick={onClose}
       onKeyDown={(e) => {
         if (e.key === 'Tab') return e.preventDefault()
@@ -29,9 +32,11 @@ export function CardLook({ card, faces, onClose }: { card: VisibleComponentState
         onClose()
       }}
     >
-      <div data-inspect={card.id} data-face={face} style={card.cardRef === null ? undefined : { ['--hue' as string]: hue(card.cardRef) }}>
-        <Texture faces={faces} c={card} retry />
-        <span>{cardWord(card) ?? ''}</span>
+      <div data-inspect={card.id} data-face={face} data-shape={tileOf(card)?.shape} style={{ ...(card.cardRef === null ? {} : { ['--hue' as string]: hue(card.cardRef) }), ...(isTile(card) ? HOLDS_A_TILE : {}) }}>
+        <TileInCard c={card}>
+          <Texture faces={faces} c={card} retry />
+          <span>{cardWord(card) ?? ''}</span>
+        </TileInCard>
       </div>
       <button type="button" autoFocus onClick={onClose}>
         {t('kbd.panel.close')}

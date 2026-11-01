@@ -2701,8 +2701,13 @@ Beslutat och byggt 2026-11-01 (#1492, beställarens beslut variant A efter [prot
 - **Spelet i läsläge** bär märket «Läsläge» och taket det ligger över på sin rad eller i heron, i stället för när det senast spelades. Heron får «Exportera…» där «Starta bord» stod, och ⋯ behåller sina val, där «Starta bord», «Byt namn…» och «Duplicera» säger «Inte i läsläge». Spelen som ryms ser ut som i dag.
 - **Editorn** säger det i #489:s läsband, så läsläget har en form: till ägaren taket och vad spelet använder av det, till en medredigerare bara vems spelet är, med ägarens namn och aldrig hennes nivå. En redigering som inte bara gör spelet mindre avvisas i editorn innan den skickas, med regeln aktören håller den till (`onlyShrinks`, #1511), och bandet säger «Läsläge: bara att ta bort kort, sänka Antal och ta bort bilder sparas.». Kontrollerna står kvar, eftersom att ta bort kort, sänka Antal och ta bort bilder ska gå. «Starta bord» finns inte för ett spel i läsläge. När spelet ryms igen försvinner bandet.
 - Editorn frågar `GET /projects/<id>/read-only`, som svarar ägaren `{ bearer: 'you', why, limit }` och någon annan med en roll i spelet `{ bearer: 'owner', ownerName? }`, och `null` när spelet fungerar som vanligt.
-- Ordet «Pro», ett pris och «Förnya Pro» står inte i läsläget förrän kassan finns (#1493, #1494).
+- Ordet «Pro», ett pris och «Förnya Pro» stod inte i läsläget förrän kassan fanns (#1493, #1494); sedan #1532 gör de det för ägaren, se nedan.
 - Grindarna är `packages/web/test/read-only-mode.test.tsx`, `packages/server/test/read-only-lapsed.test.ts` och `packages/e2e/test/read-only-mode.spec.ts`, där ett utgånget konto i den byggda appen möter läsläget.
+
+Beslutat och byggt 2026-11-01 (#1532, beställarens beslut samma dag, efter #1492 och #1494): **läslägets band erbjuder ägaren Pro igen, med priset.**
+- Bandet i Mina spel och editorns läsband säger till ägaren «Förnya Pro för 99 kr i månaden, så gäller Pros tak igen.» och har knappen «Förnya Pro», som leder till kortet «Abonnemang» i Profil, på samma sätt som takbeskedet (#1494).
+- Priset är det Stripe har, i läsarens valuta, läst med `GET /me/subscription`. En medredigerare ser fortfarande bara ägarens namn, aldrig hennes nivå eller ett pris, och med betalningen avstängd sägs inget pris och ingen väg till Pro.
+- Grinden är `packages/web/test/read-only-pro.test.tsx`, mot Stripes ställföreträdare på maskinen.
 
 ### G6. Personuppgifter: Deckster är ansvarig, och loggen maskas på plats (beslutat 2026-10-24, #1269)
 
@@ -5150,6 +5155,23 @@ Vid bordet går en rad i en annan lek under lekens namn före sitt id (`landskap
 Bordets `Deck` bär varje leks mall i `templates` och `drawnWith`, som markörernas, och radens titel och tryckta text är dold information på kortets villkor (B6, #412), bevisat på råa frames (`wire.test.ts`).
 Versionernas diff (B4) säger vilken lek en ändrad rad hör till (`deck` på raden; Tabell visar den egna lekens), exporten och importen (G5) bär hela dokumentet och därmed alla lekar, Fysisk kontroll (E5) läser varje lek med dess typs minsta textstorlek och skyddsmarginal, och taken på kort per spel (#1195) räknar rader och exemplar i varje lek.
 Editorns ändring är `setDecks`, hela listan i en redigering och ett steg tillbaka; flikarna per lek i Kortvägg, Mall och Tabell (#1474, variant A) och finare redigeringar per rad är #1487.
+
+**Filten** (#1485, variant A i #1474).
+Brickan ritas i sin form, i typens millimetrar, med texturen inom konturen och kartongens kant under: en sexhörning med spetsen uppåt, en kvadrat med typens hörn, och en skiva.
+Kanten är 2,5 mm djup på filten så att den syns (C1), och den faller alltid nedåt på skärmen hur brickan än är vriden; i en hög läggs 0,9 mm kant till för varje bricka under, upp till åtta.
+En komponents `x` och `y` är det övre vänstra hörnet av dess egen ruta, kortets eller brickans, som setupen lägger en markör (`piecesAt`); en bricka som dras av en hög hamnar med sitt eget hörn där den bars, och den staplas på bara där den ligger.
+Ringen har «↺ Vrid 60°» och «↻ Vrid 60°» på var sin sida om «Vänd» (90° för kvadraten och de runda), och panelen har samma två rader (`turnActs`); ett kort har kvar sin enda «Rotera».
+«Vrid» är prototypens ord, godkänt 2026-11-01 och bara för brickan: pilen och vinkeln skiljer det från «Vänd», vilket var skälet till «Rotera» för kortet (#1134).
+R vrider det som har tangentbordets fokus ett steg framåt, annars det pekaren vilar på, och Skift + R ett steg tillbaka; steget är typens (`turnStepOf`), så ett kort vrids ett kvarts varv.
+När en brickas vinkel ändras visas stegen en kort stund runt den på varje skärm, en prick för varje sätt den kan ligga och den den ligger i markerad, och under minskad rörelse utan att tona ut.
+Påsen är en dold hög som korten, ritad i brickans form: vyn säger nu vilka typer en dold zon håller och hur många av varje, den översta typen först (`types` på zonen), som en hög sexhörningar syns vara det över rummet; aldrig vilken bricka.
+Samma fält låter telefonen och TV:n rita brickornas baksidor i en hand (#1486).
+Korpusens projektioner härleddes om ur oförändrade loggar.
+Ett mynt är 18 px vid åtta platser och får räknarbrickans osynliga träffyta; en bricka som är mindre än ett finger på skärmen får den.
+Håll för att förstora (K8, K26) lyfter brickan i sin form och i ett lyft korts pixlar per millimeter, så att orden läses som på ett kort och ett mynt förblir mindre än en sexhörning; där en kortram står — «Titta», TV:ns scen, «Visa för alla» — står brickan mitt i ramen i sin sanna storlek mot kortet (`TileInCard`).
+Högen behåller kortets ruta, som dess namn, antal och handtag läggs kring och ett släpp mäts mot, och brickorna står mitt i den; antalet står på brickans överkant, eftersom ett mynt vid åtta platser annars låg helt under brickan med antalet.
+Loggen säger «Ada vred Fjäll», eller «vred en bricka» där läsaren inte ser vilken.
+Skärmläsaren hör «Rågåker, bricka i Spelyta, vriden 120°», «Bricka, baksida, i Spelyta» för en bricka vars framsida inte syns, och påsen som «Landskap, 3 brickor, överst: bricka, baksida».
 
 **Editorn: en flik per lek, och «Bricka» i Bord (#1487, variant A i #1474).**
 Huvudet är oförändrat.

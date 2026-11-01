@@ -1,4 +1,4 @@
-import type { Activity, Applied, RewindProposal, SeatEdge, SeatId, Snapshot, TablePreview, VisibleComponentState, ZoneView } from '@byd/protocol'
+import type { Activity, Applied, RewindProposal, SeatEdge, SeatId, Snapshot, TablePreview, TypeRef, VisibleComponentState, ZoneView } from '@byd/protocol'
 
 import { undoTarget, type History } from './decide.js'
 import { bottomOf, componentOf, type ComponentInstance, type TableState, type Zone } from './state.js'
@@ -134,7 +134,7 @@ function projectTable(state: TableState, registry: TypeRegistry, seat: SeatId | 
       // The back is the face that is not the one the card's content is on, read the same way
       // `view` decides what it may hand out, so a type with some other pair of faces is answered
       // by its own definition rather than by the word "back".
-      zones.push({ mode: 'count', ...zoneBase(z), count: z.order.length, ...(shownTop ? { top: top.id } : {}), ...(top !== undefined ? backOf(registry, top, deck?.faces) : {}), ...bottomView })
+      zones.push({ mode: 'count', ...zoneBase(z), count: z.order.length, ...(shownTop ? { top: top.id } : {}), ...(top !== undefined ? backOf(registry, top, deck?.faces) : {}), ...bottomView, ...typesOf(state, z) })
       // A component the seat was explicitly granted knowledge of still appears, even though its
       // position inside the zone does not; so does the face-up top of a pile (K15), whose position
       // the zone view names.
@@ -161,6 +161,21 @@ function zoneBase(z: Zone) {
     ...(z.beside !== undefined ? { beside: z.beside } : {}),
     ...(z.actions !== undefined && z.actions.length > 0 ? { actions: z.actions } : {}),
   }
+}
+
+// What a hidden zone shows of its shape (#1485): every type it holds and how many of each, the top's
+// first. A stack of hexagons is seen to be one from across the room, and a hand held up shows its
+// tiles among its cards; which tile it is never is. Nothing at all for an empty zone.
+function typesOf(state: TableState, z: Zone): { types?: { type: TypeRef; count: number }[] } {
+  const tally = new Map<string, { type: TypeRef; count: number }>()
+  for (const id of z.order) {
+    const type = componentOf(state, id).type
+    const key = `${type.id}@${type.version}`
+    const seen = tally.get(key)
+    if (seen) seen.count += 1
+    else tally.set(key, { type: { id: type.id, version: type.version }, count: 1 })
+  }
+  return tally.size === 0 ? {} : { types: [...tally.values()] }
 }
 
 // The hidden side of a component, for a zone that may say what it wears without saying what it is.

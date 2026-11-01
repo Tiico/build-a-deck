@@ -91,7 +91,11 @@ export const ZoneView = z.discriminatedUnion('mode', [
   // about a face-down pile that is public in the room — a stack of cards shows its back to
   // everybody — and it says nothing about which card that is. The component itself stays out: a
   // hidden pile hands out no id, no position and no rotation (K15), so the back travels here.
-  z.object({ mode: z.literal('count'), ...zoneBase, count: z.number().int().nonnegative(), top: ComponentId.optional(), back: z.string().optional() }),
+  // `types` is the other thing about it that is public (#1485): the shape of a stack and of a hand
+  // held up, which says that three hexagons lie there and never which. Each type the zone holds with
+  // how many of it, the top's type first, and the rest in the order they first lie under it. Absent
+  // while the zone is empty.
+  z.object({ mode: z.literal('count'), ...zoneBase, count: z.number().int().nonnegative(), top: ComponentId.optional(), back: z.string().optional(), types: z.array(z.object({ type: TypeRef, count: z.number().int().positive() })).optional() }),
 ])
 export type ZoneView = z.infer<typeof ZoneView>
 
