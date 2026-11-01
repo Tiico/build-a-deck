@@ -118,9 +118,11 @@ export class TableActor {
     return this.cards?.faces ?? {}
   }
 
+  // The boards' own sides (`ownFaces`, #1479) are textures of the table as the cards' are, so the TV
+  // does not say it is ready before the felt's board is drawn (#765, #1539).
   textureHashes(): string[] {
     const all = new Set<string>()
-    for (const perFace of Object.values(this.cards?.faces ?? {})) for (const hash of Object.values(perFace)) all.add(hash)
+    for (const faces of [this.cards?.faces ?? {}, this.cards?.ownFaces ?? {}]) for (const perFace of Object.values(faces)) for (const hash of Object.values(perFace)) all.add(hash)
     return [...all]
   }
 
