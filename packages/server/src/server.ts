@@ -51,7 +51,7 @@ import { REFERRER_POLICY, UPLOAD_POLICY, pageNonce, pagePolicy, scriptHashesOf, 
 import { DEFAULT_PLANS, QuotaReached, YOU, growth, limitOf, tableWindowFrom, type Bearer, type Limit, type Measure, type Plans, type QuotaMet, type TableCeilings } from './quotas.js'
 import { lapseAccount, planOf, readOnlyOf, readOnlyWhyOf, usageOf, type AccountPlanStore } from './account-plans.js'
 import { ReadOnlyGame, gameWritten, type ReadOnlyCheck } from './read-only.js'
-import { INTERVALS, customerOfEvent, priceFor, signatureHolds, syncCustomer, type PaymentsConfig, type StripeApi } from './payments.js'
+import { INTERVALS, cancelForErasure, customerOfEvent, priceFor, signatureHolds, syncCustomer, type PaymentsConfig, type StripeApi } from './payments.js'
 import { NO_CARDS, cardGrowth, cardsUsed, type CardMeasure } from './quota-cards.js'
 import { checkRegister, openToTheDue, termsInForce, termsStanding, type TermsRegister, type TermsStanding } from './terms.js'
 import { entry, isMasked, type ErasureStore } from './erase.js'
@@ -778,6 +778,9 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
         for (const table of await opts.store.sessionsOf(id)) await opts.host.end(table.id)
       }
       const shared = projects ? (await projects.list(account.id)).filter((p) => !owned.includes(p.id)).map((p) => p.id) : []
+      // Her subscription at Stripe ends at once, before the account goes (#1520); a Stripe that
+      // does not answer leaves it queued and never stops the erasure.
+      const cancelled = opts.accountPlans ? await cancelForErasure({ accountPlans: opts.accountPlans, stripe: opts.payments?.stripe ?? null }, account.id) : 'no-customer'
       const done = await opts.erasures.erase([entry({ kind: 'account', account: account.id }, 'request', now), ...owned.map((project) => entry({ kind: 'game', project }, 'removed', now))])
       await opts.host.reload(done.sessions)
       if (projects) {
@@ -793,7 +796,7 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
       } catch (err) {
         console.error(JSON.stringify({ msg: 'erased-mail-failed', error: err instanceof Error ? err.message : String(err) }))
       }
-      console.log(JSON.stringify({ msg: 'account-erased', games: owned.length, tables: done.sessions.length, lines: done.lines, guests: done.guests }))
+      console.log(JSON.stringify({ msg: 'account-erased', games: owned.length, tables: done.sessions.length, lines: done.lines, guests: done.guests, stripe: cancelled }))
       res.writeHead(200, { 'content-type': 'application/json', 'set-cookie': `${COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0` })
       res.end(JSON.stringify({ ok: true }))
       return

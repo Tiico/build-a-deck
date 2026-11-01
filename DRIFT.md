@@ -519,7 +519,10 @@ En nivå som operatören satt (källan `operator`) skrivs aldrig över av Stripe
 Varje webhook loggar en rad med händelsens typ och vad som blev av den, till exempel `{"msg":"stripe","type":"customer.subscription.deleted","outcome":"lapsed"}`, aldrig vem som betalar, kunden eller adressen (§8).
 En webhook som inte kom fram läses om med `pnpm --filter @byd/server stripe sync <adress>`, med lådans variabler (RUNBOOK §10).
 Moms är inte avgjord: priset är med moms som en konsument i EU ser det (fråga 2 i #1469), och hur momsen tas ut, till exempel med Stripe Tax, bekräftar beställaren innan de skarpa nycklarna läggs in.
-Ett konto som raderar sig själv tar bort kopplingen till Stripe-kunden, men säger ännu inte upp abonnemanget hos Stripe; det görs för hand i Dashboard tills det byggs (RUNBOOK §10).
+Byggt 2026-11-01 (#1520): ett konto som raderar sig själv säger upp kundens abonnemang hos Stripe direkt, inte vid periodens slut, innan kontot försvinner, och kopplingen i `stripe_customers` går med kontot (G6).
+Kunden läggs först i tabellen `stripe_cancellations`, som bara har Stripes id för kunden och aldrig kontot, och tas ur den när Stripe har sagt ja; svarar Stripe inte stoppas inte raderingen, och lådan försöker igen vid start och varje timme med de andra sopningarna, med raden `{"msg":"stripe-cancellations","cancelled":1,"failed":0}`.
+Operatören ser och tömmer kön med `pnpm --filter @byd/server stripe sync` utan adress (RUNBOOK §10).
+Registerutdraget (`GET /me/data`) säger kontots Stripe-kund och varje abonnemang Stripe har för den, med status, nivå, valuta och intervall.
 
 Nivåerna och deras tak bor inte heller i koden (#1193, A2, #1192): de är `BYD_PLANS` i lådans `.env`, JSON på en rad inom enkla citattecken, och stacken skickar variabeln till appen.
 
