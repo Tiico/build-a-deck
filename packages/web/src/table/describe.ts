@@ -4,7 +4,7 @@ import { handName } from './handName.js'
 import { cardWord } from './keyboard.js'
 import { componentOf } from './presence.js'
 import { versionWord } from '../i18n/version.js'
-import { dieKind, pieceKind } from '../components.js'
+import { dieKind, isTile, pieceKind } from '../components.js'
 
 // The lines worth saying. A card played to a public zone is one envelope with a move and a flip,
 // and said as its flip it never said where the card went (#560 P-12): the flip of a card the same
@@ -78,15 +78,19 @@ export function describeActivity(line: Said, view: Snapshot, t: T): string {
   const card = about === null ? null : cardWord(view.components.find((c) => c.id === about))
   const it = line.intent
   const piece = about === null ? null : pieceOfView(view, about)
+  const thing = about === null ? undefined : view.components.find((c) => c.id === about)
+  const tile = thing !== undefined && isTile(thing)
   switch (it.v) {
     case 'move':
       if (piece) return t(`activity.move.piece.${piece}`, { who, zone: zone(it.to) })
       return card ? t('activity.move.named', { who, card, zone: zone(it.to) }) : t('activity.move', { who, zone: zone(it.to) })
+    // A tile is turned in its step and said as a tile (#1485), by its name where the reader sees it.
     case 'rotate':
+      if (tile) return card ? t('activity.rotate.tile.named', { who, card }) : t('activity.rotate.tile', { who })
       return t('activity.rotate', { who })
     case 'flip':
       if (piece === 'meeple' && (it.face === 'lying' || it.face === 'standing')) return t(`activity.flip.meeple.${it.face}`, { who })
-      return card ? t('activity.flip.named', { who, card }) : t('activity.flip', { who })
+      return card ? t('activity.flip.named', { who, card }) : t(tile ? 'activity.flip.tile' : 'activity.flip', { who })
     case 'stack':
       return t('activity.stack', { who })
     // One protocol verb, two moves a player recognises (#421). `split` is both "Dra 1 till min

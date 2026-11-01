@@ -134,6 +134,22 @@ describe('the log names the card a line is about, when the reader can see it (#5
   })
 })
 
+// A tile is turned in its shape's step and said as a tile (#1485): «Bo vred Rågåker» where the reader
+// sees it, «Bo vred en bricka» where not, and turned over as «en bricka» and never «ett kort».
+describe('the log says a tile is a tile (#1485)', () => {
+  const tile = { id: 'c1', type: { id: 'tile.hex.52', version: 1 }, zone: 'table', face: 'front', x: 0, y: 0, rot: 60, cardRef: 'l2', title: 'Rågåker' }
+  const withTile = (c: Record<string, unknown>): Snapshot => ({ ...table('A'), components: [c] } as unknown as Snapshot)
+  const rotate: Activity = { seq: 11, by: 'B', at: '2026-11-01T00:00:00.000Z', intent: { v: 'rotate', component: 'c1', rot: 60 } } as Activity
+  const flip: Activity = { seq: 12, by: 'B', at: '2026-11-01T00:00:00.000Z', intent: { v: 'flip', component: 'c1', face: 'back' } } as Activity
+
+  it('says the tile turned by its name, or as a tile', () => {
+    expect(describeActivity(rotate, withTile(tile), sv)).toBe('Bo vred Rågåker')
+    expect(describeActivity(rotate, withTile({ ...tile, face: 'back', cardRef: null, title: undefined }), sv)).toBe('Bo vred en bricka')
+    expect(describeActivity(rotate, withTile(tile), en)).toBe('Bo rotated Rågåker')
+    expect(describeActivity(flip, withTile({ ...tile, face: 'back', cardRef: null, title: undefined }), sv)).toBe('Bo vände en bricka')
+  })
+})
+
 // A card played to a public zone is one envelope with a move and a flip, and it used to be said as
 // its flip — «Ada vände Quickdraw» — so where it went was never said (#560 P-12). The flip of a card
 // moved in the same envelope is folded into the move, whose sentence names the card and the zone.

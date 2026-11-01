@@ -1525,3 +1525,17 @@
 .byd-seat-plate[data-edge='E'] > span, .byd-seat-plate[data-edge='W'] > span { padding-left: 46px; }
 .byd-seat-plate[data-form] { padding: 4px; }
 .byd-seat-plate[data-form] > span, .byd-seat-plate[data-form] > b > span { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); }
+
+/* Tiles (#1485, #1486, variant A of #1474): how a tile looks is written in `tileLook.ts` and not
+   here, since every byte of this sheet blocks the first frame and a tile is drawn only in a game
+   that has one. What is left is what a style attribute cannot say. The picture fills the printed
+   side, and the name under it is for a face still on its way. */
+.byd-tile-face > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 0; }
+.byd-tile-face > img ~ span:not([data-texture]) { visibility: hidden; }
+/* A pile's count stands on its tile's top edge and not its card box's: on a coin at eight seats the
+   card box's top put the badge over the whole pile. */
+.byd-table-frame[data-mode='tv'] .byd-pile[data-shape] .byd-pile-n { top: var(--tile-y); translate: -50% -70%; }
+/* The steps a tile was just turned through fade out; under reduced motion they only go. */
+.byd-detents { animation: byd-detents 1.4s ease-in forwards; }
+@keyframes byd-detents { 60% { opacity: 1; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .byd-detents { animation: none; } }

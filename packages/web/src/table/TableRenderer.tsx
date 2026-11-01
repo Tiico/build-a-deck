@@ -11,12 +11,12 @@ import { CAMERA_MIN_MM, CAMERA_STEP, activeBounds, cameraOf, centre, fitFloor, f
 import { recallCamera, rememberCamera, type CameraMemory } from './cameraMemory.js'
 import { flatToTable, tiltedToTable, unrotate, type Point, type Rotation } from './geometry.js'
 import { CARD_MM, DIE_MM, TOKEN_MM, absoluteOf, besidePile, dropIntents, handBound, nobodysHand, type Drag, type DragTarget } from './drop.js'
-import { boardMm, dieFaces, dieKind, isBoard, isCounter, isDie, materialBox, pieceKind, standIn, withoutBoards } from '../components.js'
+import { boardMm, dieFaces, dieKind, footprintOf, isBoard, isCounter, isDie, isTile, materialBox, pieceKind, pileTopType, standIn, tileOf, turnStepOf, withoutBoards, type TileShape } from '../components.js'
 import { piecePiles } from './pieces.js'
 import { PieceChip, PieceFigure } from './Piece.js'
 import { PIECE_PILE_MM } from '@byd/server/felt-sizes'
 import { DieFace, type Roll } from './Die.js'
-import { pieceActs, cardWord, counterActs, drawOne, feltShortcuts, flipUnder, labelOf, modifierHeld, ownerOf, thingsOn, type Act } from './keyboard.js'
+import { pieceActs, turnActs, cardWord, counterActs, drawOne, feltShortcuts, flipUnder, labelOf, modifierHeld, ownerOf, thingsOn, type Act } from './keyboard.js'
 import { ShortcutHelp } from './ShortcutHelp.js'
 import { CounterEntry } from './CounterEntry.js'
 import { useSay } from '../status/StatusLive.js'
@@ -33,6 +33,8 @@ import { Question } from '../editor/Question.js'
 import { DragDoor } from '../editor/DragDoor.js'
 import { RING_AIR, RING_REACH, ringCentre } from './ring.js'
 import { liftBox, type Edges } from './lift.js'
+import { TileInCard } from './TileInCard.js'
+import { BOARD_BACK, HOLDS_A_TILE, edgeLook, faceLook, outline } from './tileLook.js'
 import { useSmallestPt } from './smallest.js'
 import { Lifted } from './Lifted.js'
 import { useLetGoWhereMouseArrives, type Pointing } from './arrival.js'
@@ -522,6 +524,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   // its first frame. The same `STILL` the shuffle's fan answers to (L35), asked once for the felt
   // and not once per pile.
   const still = useStill()
+  const detents = useDetents(view.components)
   const cam = useGlide(drivable ? heldCamera.current : null, still ? 0 : glideMs)
   const placed = drivable && cam ? cameraOf(cam, size, floorRect) : null
   // The lens (#502): a multiple of the fit and an offset of the wood in its frame, in pixels. It is
@@ -1483,9 +1486,13 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   // a pile is drawn centred on the pile's geometry — moved by how far the hand has travelled. The
   // ghost used to be drawn centred on the pointer while the drop cornered the card there, so the
   // two disagreed by half a card and the card jumped at the moment it was let go (#223).
-  const topCornerOf = (pile: string, d: { grab: Point; at: Point }): Point | null => {
-    const g = zoneById.get(pile)?.geometry
-    return g ? { x: g.x - CARD_MM.w / 2 + d.at.x - d.grab.x, y: g.y - CARD_MM.h / 2 + d.at.y - d.grab.y } : null
+  const topOf = (z: ZoneView, skip = 0) => byId.get(topIdOf(z, skip) ?? '')
+  const topCornerOf =(pile: string, d: { grab: Point; at: Point }): Point | null => {
+    const z = zoneById.get(pile)
+    if (!z) return null
+    // A tile off a pile of tiles is a tile's width and height, centred on the pile as the card is.
+    const box = footprintOf(pileTopType(z, topOf(z)))
+    return { x: z.geometry.x - box.w / 2 + d.at.x - d.grab.x, y: z.geometry.y - box.h / 2 + d.at.y - d.grab.y }
   }
   const liveTop = drag?.started && drag.target.kind === 'pileTop' ? topCornerOf(drag.target.pile, drag) : null
   const offTop =
@@ -1494,7 +1501,6 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
       : settling?.top
         ? { pile: settling.top.pile, at: settling.top.at }
         : null
-  const topOf = (z: ZoneView, skip = 0) => byId.get(topIdOf(z, skip) ?? '')
 
   // A quarter-turned table (C5) is as tall as the floor is wide, so the wood it lies on takes
   // that shape too and holds it centred; otherwise the felt hangs over its own frame.
@@ -1787,7 +1793,32 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
                 handlers={onAct ? handlers({ kind: 'card', id: c.id }) : watches({ kind: 'card', id: c.id })}
                 points={bothPointing(bothPointing(inspects(c), reads({ kind: 'card', id: c.id })), points({ kind: 'card', id: c.id }))}
                 keys={keys(`card:${c.id}`)}
+                hit={((box) => {
+                  if (!onAct || !isTile(c)) return 0
+                  const hit = hitOf({ x: a.x + box.w / 2, y: a.y + box.h / 2 }, box.w)
+                  return hit > px(box.w) ? hit : 0
+                })(footprintOf(c))}
               />
+            )
+          })}
+          {[...detents].map(([id, n]) => {
+            const c = byId.get(id)
+            if (!c || !loose.includes(c)) return null
+            const a = absoluteOf(view, c)
+            const box = footprintOf(c)
+            const step = turnStepOf(c)
+            const ways = Math.round(360 / step)
+            const at = Math.round((((c.rot % 360) + 360) % 360) / step) % ways
+            // A dot for each way it can lie, round it at a little more than its own reach, turned
+            // about its middle; the one it lies at amber and larger.
+            const r = px(box.h / 2) + 9
+            return (
+              <div key={`detents-${id}-${n}`} className="byd-detents" data-detents={id} aria-hidden="true" style={{ position: 'absolute', width: 0, height: 0, zIndex: 55, pointerEvents: 'none', left: left(a.x + box.w / 2), top: top(a.y + box.h / 2) }}>
+                {Array.from({ length: ways }, (_, i) => {
+                  const d = i === at ? 10 : 6
+                  return <i key={i} data-at={i === at ? '' : undefined} style={{ position: 'absolute', left: -d / 2, top: -d / 2 - r, width: d, height: d, borderRadius: '50%', background: i === at ? '#f0b64a' : '#c9c3b8', boxShadow: '0 0 0 1px rgba(0, 0, 0, 0.55)', transformOrigin: `${d / 2}px ${d / 2 + r}px`, rotate: `${i * step}deg` }} />
+                })}
+              </div>
             )
           })}
           {(mode === 'table' || seatNames) &&
@@ -1803,19 +1834,35 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
           {peers.map((p) => {
             if (!p.drag) return null
             const c = byId.get(p.drag.component)
+            // A peer's tile is carried in its shape (#1485), as it lies.
+            const tile = tileOf(c)
+            const box = footprintOf(c)
+            const face = c?.cardRef ? 'front' : 'back'
+            const body = (
+              <>
+                {!c?.cardRef && backAt(`peer-${p.id}`)}
+                <Texture faces={faces} c={c} />
+                <span>{cardWord(c) ?? ''}</span>
+              </>
+            )
             return (
               <div
                 key={`ghost-${p.id}`}
                 className="byd-card byd-peer-ghost"
                 data-ghost-of={p.id}
                 data-component={p.drag.component}
-                data-face={c?.cardRef ? 'front' : 'back'}
+                data-shape={tile?.shape}
+                data-face={face}
                 data-back={!c?.cardRef && back ? 'own' : undefined}
-                style={{ position: 'absolute', left: left(p.drag.x), top: top(p.drag.y), width: px(CARD_MM.w), height: px(CARD_MM.h), transform: `rotate(${c?.rot ?? 0}deg)`, ['--peer' as string]: colourOf(p.seat), ...(c?.cardRef ? { ['--hue' as string]: hue(c.cardRef) } : {}) }}
+                style={{ position: 'absolute', left: left(p.drag.x), top: top(p.drag.y), width: px(box.w), height: px(box.h), transform: `rotate(${c?.rot ?? 0}deg)`, ['--peer' as string]: colourOf(p.seat), ...(c?.cardRef ? { ['--hue' as string]: hue(c.cardRef) } : {}), ...(tile ? { ...HOLDS_A_TILE, borderRadius: 0 } : {}) }}
               >
-                {!c?.cardRef && backAt(`peer-${p.id}`)}
-                <Texture faces={faces} c={c} />
-                <span>{cardWord(c) ?? ''}</span>
+                {tile ? (
+                  <TileBody shape={tile.shape} face={face} rot={c?.rot ?? 0} px={px}>
+                    {body}
+                  </TileBody>
+                ) : (
+                  body
+                )}
                 <b className="byd-peer-tag">{p.name}</b>
               </div>
             )
@@ -1836,7 +1883,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
             </div>
           ))}
           {offTop && (
-            <Ghost card={topOf(zoneById.get(offTop.pile) ?? floor)} zoneBack={backOf(zoneById.get(offTop.pile))} faces={faces} back={backAt('ghost')} hiding={hidingTop} left={left(offTop.at.x)} top={top(offTop.at.y)} px={px} />
+            <Ghost card={topOf(zoneById.get(offTop.pile) ?? floor)} zone={zoneById.get(offTop.pile)}faces={faces} back={backAt('ghost')} hiding={hidingTop} left={left(offTop.at.x)} top={top(offTop.at.y)} px={px} />
           )}
           {/* On the felt until something has happened at the table (K25); after that the tile would
               lie over the cards played where it stood, so it leaves for the corner (beslut
@@ -1995,7 +2042,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
         createPortal(
           <Lifted
             c={reading.c}
-            box={liftBox(reading.at, { w: window.innerWidth, h: window.innerHeight }, readingPt)}
+            box={liftBox(reading.at, { w: window.innerWidth, h: window.innerHeight }, readingPt, footprintOf(reading.c))}
             faces={faces}
             // Around the card it lifts, which is what the ring is about, and not around the lift.
             // A screen that watches has nothing to ask, so a press on what it reads puts it down.
@@ -2019,9 +2066,11 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
       )}
       {held && (
         <div className="byd-inspect" onClick={() => setHeld(null)}>
-          <div data-inspect={held.id} data-face={held.cardRef === null ? 'back' : 'front'} style={held.cardRef === null ? undefined : { ['--hue' as string]: hue(held.cardRef) }}>
-            <Texture faces={faces} c={held} retry />
-            <span>{cardWord(held) ?? ''}</span>
+          <div data-inspect={held.id} data-face={held.cardRef === null ? 'back' : 'front'} data-shape={tileOf(held)?.shape} style={{ ...(held.cardRef === null ? {} : { ['--hue' as string]: hue(held.cardRef) }), ...(isTile(held) ? HOLDS_A_TILE : {}) }}>
+            <TileInCard c={held}>
+              <Texture faces={faces} c={held} retry />
+              <span>{cardWord(held) ?? ''}</span>
+            </TileInCard>
           </div>
         </div>
       )}
@@ -2116,9 +2165,12 @@ function ringItems(view: Snapshot, ring: Ring, open: (r: Ring) => void, act: (in
   if (target.kind === 'card') {
     const c = view.components.find((x) => x.id === target.id)
     if (!c) return []
+    // A tile turns either way in its shape's step (#1485, variant A of #1474), the two turns on
+    // either side of «Vänd» so that each lies on its own side of the ring; a card keeps its one
+    // quarter turn. The same list the keyboard's panel reads (`turnActs`).
+    const [first, ...more] = turnActs(c, t).map((a): RadialItem => ({ label: a.key === 'rotate' ? t('ring.rotate') : a.label, run: () => act(a.intents ?? []) }))
     return [
-      flip(c),
-      { label: t('ring.rotate'), run: () => act([{ v: 'rotate', component: c.id, rot: (c.rot + 90) % 360 }]) },
+      ...(first && more.length > 0 ? [first, flip(c), ...more] : [flip(c), ...(first ? [first] : [])]),
       look(c),
       // A slice that can never go is not drawn (#719): a card this screen already reads has nothing
       // left to reveal. A verb that only cannot go right now stays, greyed, where the hand expects it.
@@ -2199,7 +2251,73 @@ type FeltNodeProps = {
   onKeyDown(e: RKeyboardEvent): void
 }
 
-function Card({ c, left, top, px, dragging, hiding = false, carried, by, faces, back, handlers, points, keys }: { c: VisibleComponentState; left: number; top: number; px: (mm: number) => number; dragging: boolean; hiding?: boolean; carried?: boolean; by?: { seat: string | null; colour: string } | undefined; faces?: string | undefined; back?: ReactNode | undefined; handlers?: Handlers | undefined; points?: Pointing | undefined; keys?: FeltNodeProps | undefined }) {
+// The steps a tile has just been turned through (#1485, variant A of #1474): for a moment after its
+// angle changes, on every screen, a dot for each way it can lie round it and the one it lies at
+// marked, so a sixth of a turn reads as one of six. Keyed by how many turns it has had, so a second
+// turn starts the moment over. Read off the view, so it is the same whoever turned it and however.
+const DETENT_MS = 1400
+function useDetents(components: readonly VisibleComponentState[]): ReadonlyMap<string, number> {
+  const seen = useRef(new Map<string, number>())
+  const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>())
+  const [shown, setShown] = useState<ReadonlyMap<string, number>>(new Map())
+  useEffect(() => {
+    const now = new Map<string, number>()
+    const turned: string[] = []
+    for (const c of components) {
+      if (!isTile(c)) continue
+      now.set(c.id, c.rot)
+      const was = seen.current.get(c.id)
+      if (was !== undefined && was !== c.rot) turned.push(c.id)
+    }
+    seen.current = now
+    if (turned.length === 0) return
+    setShown((d) => new Map([...d, ...turned.map((id) => [id, (d.get(id) ?? 0) + 1] as const)]))
+    for (const id of turned) {
+      const old = timers.current.get(id)
+      if (old) clearTimeout(old)
+      timers.current.set(
+        id,
+        setTimeout(() => {
+          timers.current.delete(id)
+          setShown((d) => new Map([...d].filter(([k]) => k !== id)))
+        }, DETENT_MS),
+      )
+    }
+  }, [components])
+  useEffect(() => () => timers.current.forEach((t) => clearTimeout(t)), [])
+  return shown
+}
+
+// The cardboard a tile is cut from (C1, variant A of #1474): its edge shows under the printed side,
+// drawn 2.5 mm deep so it reads at the felt's scale as a pile's thickness does, and a layer of 0.9 mm
+// for every tile under it in a pile, as far as eight.
+const TILE_EDGE_MM = 2.5
+const TILE_LAYER_MM = 0.9
+const TILE_LAYERS = 8
+// A tile's body (#1485): its edges under it, deepest first, and its printed side over them, both cut
+// to the tile's outline (`tileLook`). The edge always falls down the screen, as the light that
+// shows it falls, however the tile is turned: it is offset against the turn of the box it lies in.
+// `inset` stands it in the middle of a box larger than itself, as a pile's card box.
+function TileEdges({ shape, rot, px, layers, inset }: { shape: TileShape; rot: number; px: (mm: number) => number; layers: number; inset?: string | undefined }) {
+  const a = (rot * Math.PI) / 180
+  const under = Math.max(1, Math.min(layers, TILE_LAYERS))
+  return Array.from({ length: under }, (_, i) => under - 1 - i).map((i) => {
+    const d = Math.max(1.5, px(TILE_EDGE_MM + i * TILE_LAYER_MM))
+    return <i key={`edge-${i}`} className="byd-tile-edge" data-shape={shape} data-layer={i} aria-hidden="true" style={{ ...edgeLook(shape, i), ...(inset ? { inset } : {}), translate: `${(d * Math.sin(a)).toFixed(2)}px ${(d * Math.cos(a)).toFixed(2)}px` }} />
+  })
+}
+function TileBody({ shape, face, rot, px, children }: { shape: TileShape; face: 'front' | 'back'; rot: number; px: (mm: number) => number; children: ReactNode }) {
+  return (
+    <>
+      <TileEdges shape={shape} rot={rot} px={px} layers={1} />
+      <span className="byd-tile-face" data-shape={shape} data-face={face} style={faceLook(shape, face)}>
+        {children}
+      </span>
+    </>
+  )
+}
+
+function Card({ c, left, top, px, dragging, hiding = false, carried, by, faces, back, handlers, points, keys, hit = 0 }: { c: VisibleComponentState; left: number; top: number; px: (mm: number) => number; dragging: boolean; hiding?: boolean; carried?: boolean; by?: { seat: string | null; colour: string } | undefined; faces?: string | undefined; back?: ReactNode | undefined; handlers?: Handlers | undefined; points?: Pointing | undefined; keys?: FeltNodeProps | undefined; hit?: number }) {
   // A card on its way into a hand is drawn as the card it is about to be (#444, K24): face down,
   // in its own size and with its own lift. It is the same card the table already knows how to
   // draw with its face away, so it is drawn by handing that card on rather than by a look of its
@@ -2209,10 +2327,21 @@ function Card({ c, left, top, px, dragging, hiding = false, carried, by, faces, 
   // The deck's own back, when this card lies face down and a back was handed in. It is both what
   // is drawn and what tells the stylesheet to draw no stand-in under it.
   const own = shown.cardRef === null ? back : null
+  // A tile is the card in its own shape (#1485): its own millimetres, cut to its outline.
+  const tile = tileOf(c)
+  const box = footprintOf(c)
+  const body = (
+    <>
+      {own}
+      <Texture faces={faces} c={shown} />
+      <span>{cardWord(shown) ?? ''}</span>
+    </>
+  )
   return (
     <div
       className="byd-card"
       data-component={c.id}
+      data-shape={tile?.shape}
       data-face={face}
       data-back={own ? 'own' : undefined}
       data-dragging={dragging ? 'true' : undefined}
@@ -2226,16 +2355,25 @@ function Card({ c, left, top, px, dragging, hiding = false, carried, by, faces, 
         position: 'absolute',
         left,
         top,
-        width: px(CARD_MM.w),
-        height: px(CARD_MM.h),
+        width: px(box.w),
+        height: px(box.h),
         transform: `rotate(${c.rot}deg)`,
         ...(shown.cardRef === null ? {} : { ['--hue' as string]: hue(shown.cardRef) }),
         ...(by ? { ['--peer' as string]: by.colour } : {}),
+        // The box draws nothing of a card's own; lifted, its shadow follows the outline.
+        ...(tile ? { ...HOLDS_A_TILE, borderRadius: 0, ...(dragging ? { filter: 'drop-shadow(0 0 12px rgba(0, 0, 0, 0.6))' } : {}) } : {}),
       }}
     >
-      {own}
-      <Texture faces={faces} c={shown} />
-      <span>{cardWord(shown) ?? ''}</span>
+      {tile ? (
+        <TileBody shape={tile.shape} face={face} rot={c.rot} px={px}>
+          {body}
+        </TileBody>
+      ) : (
+        body
+      )}
+      {/* The finger's target over a tile smaller than a finger (#1485): a coin is 18 px at eight
+          seats, so it gets the chip's invisible 44, laid over the tile that keeps its size. */}
+      {hit > 0 && <i className="byd-token-hit" data-tile-hit={c.id} style={{ width: hit, height: hit, left: (px(box.w) - hit) / 2, top: (px(box.h) - hit) / 2 }} />}
     </div>
   )
 }
@@ -2243,17 +2381,35 @@ function Card({ c, left, top, px, dragging, hiding = false, carried, by, faces, 
 // The top card of a pile while it is being dragged off. A hidden pile's top is no component, so
 // the ghost wears the back the zone named for the pile (#313): the card that came off is the one
 // that showed, and it must not change back as it lifts.
-function Ghost({ card, zoneBack, faces, back, hiding = false, left, top, px }: { card: VisibleComponentState | undefined; zoneBack?: string | undefined; faces: string | undefined; back?: ReactNode | undefined; hiding?: boolean; left: number; top: number; px: (mm: number) => number }) {
+function Ghost({ card, zone, faces, back, hiding = false, left, top, px }: { card: VisibleComponentState | undefined; zone: ZoneView | undefined; faces: string | undefined; back?: ReactNode | undefined; hiding?: boolean; left: number; top: number; px: (mm: number) => number }) {
   // On its way into a hand it turns its back like any other carried card (#444, K24), and the
   // back it turns is the one it would have worn face down all along — the zone's, where the pile
   // named one.
+  const zoneBack = backOf(zone)
   const shown = hiding && card ? { ...card, cardRef: null } : card
   const own = shown?.cardRef ? null : zoneBack ? <BackTexture faces={faces} hash={zoneBack} /> : back
-  return (
-    <div className="byd-card" data-ghost data-dragging="true" data-hiding={hiding ? '' : undefined} data-face={shown?.cardRef ? 'front' : 'back'} data-back={own ? 'own' : undefined} style={{ position: 'absolute', left, top, width: px(CARD_MM.w), height: px(CARD_MM.h), pointerEvents: 'none', ...(shown?.cardRef ? { ['--hue' as string]: hue(shown.cardRef) } : {}) }}>
+  // A tile off a pile of tiles is lifted as the tile it is (#1485), in its shape: the pile says
+  // which shape lies on top even when it hands out no tile.
+  const type = zone ? pileTopType(zone, card) : card
+  const tile = tileOf(type)
+  const box = footprintOf(type)
+  const face = shown?.cardRef ? 'front' : 'back'
+  const body = (
+    <>
       {own}
       <Texture faces={faces} c={shown} />
       <span>{cardWord(shown) ?? ''}</span>
+    </>
+  )
+  return (
+    <div className="byd-card" data-ghost data-dragging="true" data-hiding={hiding ? '' : undefined} data-shape={tile?.shape} data-face={face} data-back={own ? 'own' : undefined} style={{ position: 'absolute', left, top, width: px(box.w), height: px(box.h), pointerEvents: 'none', ...(shown?.cardRef ? { ['--hue' as string]: hue(shown.cardRef) } : {}), ...(tile ? { ...HOLDS_A_TILE, borderRadius: 0, filter: 'drop-shadow(0 0 12px rgba(0, 0, 0, 0.6))' } : {}) }}>
+      {tile ? (
+        <TileBody shape={tile.shape} face={face} rot={0} px={px}>
+          {body}
+        </TileBody>
+      ) : (
+        body
+      )}
     </div>
   )
 }
@@ -2324,9 +2480,22 @@ function Pile({ zone, count, topCard, bottomCard, faces, back, left, top, px, li
   // or more and the twelve steps are what they always were; on the Bord tab's felt it is 28 px,
   // and twelve whole steps stood 13 px of navy above it — half a card, which read as a tab and
   // not as a deck. Thickness is the card's measure, as the fan's turn is.
+  //
+  // A pile of tiles (#1485, variant A of #1474) is a stack of cardboard in the tiles' shape instead:
+  // the top cut to the outline, and the edges of the tiles under it falling down the screen as a
+  // loose tile's edge does. A shadow cannot draw it, since the outline cuts every shadow off.
+  const tile = tileOf(pileTopType(zone, topCard))
+  const box = footprintOf(pileTopType(zone, topCard))
   const layers = Math.min(Math.max(count, 0), 12)
   const step = Math.min(1.2, (px(CARD_MM.h) * MAX_THICKNESS) / 11)
-  const thickness = Array.from({ length: layers }, (_, i) => `0 ${-i * step}px 0 #1f2b4a`).join(', ')
+  const thickness = tile ? undefined : Array.from({ length: layers }, (_, i) => `0 ${-i * step}px 0 #1f2b4a`).join(', ')
+  // The pile keeps a card's box, which its name, its count and its handle are laid out round and a
+  // drop is measured against; a pile of tiles stands in the middle of it in its own size.
+  const inset = tile ? `${px((CARD_MM.h - box.h) / 2)}px ${px((CARD_MM.w - box.w) / 2)}px` : undefined
+  const edges = tile && count > 0 ? <TileEdges shape={tile.shape} rot={zone.geometry.rot} px={px} layers={count} inset={inset} /> : null
+  // The top, the bottom and the fan's backs of a pile of tiles: cut to the outline, the board's
+  // back where the face is away, and a faint ground where the pile is empty.
+  const cut = (face: 'front' | 'back'): CSSProperties => (tile ? { ...outline(tile.shape), inset, padding: 0, border: 0, boxShadow: 'none', ...(count === 0 ? { background: 'rgba(255, 255, 255, 0.12)' } : face === 'back' ? { background: BOARD_BACK } : {}) } : {})
   // The pile's bottom card (K23, variant A): let out under the pile by its lower edge, drawn
   // before the top so the top covers all but that edge. It is the same card node as the top —
   // the same texture path, the same back, the same hue — because a second way to draw a card is
@@ -2365,22 +2534,24 @@ function Pile({ zone, count, topCard, bottomCard, faces, back, left, top, px, li
       className="byd-pile"
       data-zone={zone.id}
       data-count={count}
+      data-shape={tile?.shape}
       {...(aimed ? { 'data-aimed': '' } : {})}
       {...(lit ? { 'data-lit': '' } : {})}
       data-dynamic={zone.dynamic ? 'true' : 'false'}
       data-dragging={lifted ? 'true' : undefined}
       data-shuffling={playing ? (still ? 'pulse' : 'fan') : undefined}
-      style={{ position: 'absolute', left: left - px(CARD_MM.w / 2), top: top - px(CARD_MM.h / 2), width: px(CARD_MM.w), height: px(CARD_MM.h), transform: `rotate(${zone.geometry.rot}deg)` }}
+      style={{ position: 'absolute', left: left - px(CARD_MM.w / 2), top: top - px(CARD_MM.h / 2), width: px(CARD_MM.w), height: px(CARD_MM.h), transform: `rotate(${zone.geometry.rot}deg)`, ...(tile ? { ['--tile-y' as string]: `${px((CARD_MM.h - box.h) / 2)}px` } : {}) }}
       {...points}
       {...pileKeys}
     >
+      {edges}
       {bottom !== undefined && (
         <div
           className="byd-pile-bottom"
           data-face={bottomCard?.cardRef ? 'front' : 'back'}
           data-back={bottomOwn ? 'own' : undefined}
           {...bottomInspects}
-          style={{ transform: `translateY(${px(BOTTOM_EDGE_MM)}px)`, ...(bottomCard?.cardRef ? { ['--hue' as string]: hue(bottomCard.cardRef) } : {}) }}
+          style={{ transform: `translateY(${px(BOTTOM_EDGE_MM)}px)`, ...(bottomCard?.cardRef ? { ['--hue' as string]: hue(bottomCard.cardRef) } : {}), ...cut(bottomCard?.cardRef ? 'front' : 'back') }}
         >
           {bottomOwn}
           <Texture faces={faces} c={bottomCard} />
@@ -2394,7 +2565,7 @@ function Pile({ zone, count, topCard, bottomCard, faces, back, left, top, px, li
         data-back={own ? 'own' : undefined}
         {...topInspects}
         {...topHandlers}
-        style={{ boxShadow: thickness, ...(topCard?.cardRef ? { ['--hue' as string]: hue(topCard.cardRef) } : {}) }}
+        style={{ ...(thickness ? { boxShadow: thickness } : {}), ...(topCard?.cardRef ? { ['--hue' as string]: hue(topCard.cardRef) } : {}), ...cut(topCard?.cardRef ? 'front' : 'back') }}
       >
         {own}
         <Texture faces={faces} c={topCard} />
@@ -2403,7 +2574,7 @@ function Pile({ zone, count, topCard, bottomCard, faces, back, left, top, px, li
       {fanned && (
         <div className="byd-pile-fan" key={`fan-${shuffle}`} aria-hidden="true">
           {FAN.map(([out, turn], i) => (
-            <i key={i} className="byd-pile-fan-card" data-face="back" data-back={fanBack ? 'own' : undefined} style={{ ['--fan-out' as string]: `${out}%`, ['--fan-turn' as string]: `${turn}deg` }}>
+            <i key={i} className="byd-pile-fan-card" data-face="back" data-back={fanBack ? 'own' : undefined} style={{ ['--fan-out' as string]: `${out}%`, ['--fan-turn' as string]: `${turn}deg`, ...cut('back') }}>
               {fanBack}
             </i>
           ))}
