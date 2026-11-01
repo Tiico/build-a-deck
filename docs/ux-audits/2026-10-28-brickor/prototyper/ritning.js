@@ -85,11 +85,12 @@ function coinFace(side, w, h) {
     `<text x="${w / 2}" y="${h / 2 + 0.4}" font-size="${w * 0.42}" font-weight="800" text-anchor="middle" dominant-baseline="central" fill="#6d4a0e" font-family="system-ui">${side === 'back' ? 5 : 1}</text>`
 }
 function cardFace(c, w, h) {
-  return `<rect width="${w}" height="${h}" fill="#f6efe0"/><rect x="3" y="3" width="${w - 6}" height="${h * 0.45}" fill="#2f6b3a"/>` +
-    landArt('skog', w - 6, h * 0.45, c.id.charCodeAt(2)).replace(/<rect width[^>]*>/, '').replace(/^/, `<g transform="translate(3 3)">`) + `</g>` +
+  const cl = nid('k')
+  return `<rect width="${w}" height="${h}" fill="#f6efe0"/><defs><clipPath id="${cl}"><rect x="3" y="3" width="${w - 6}" height="${h * 0.45}"/></clipPath></defs>` +
+    `<g clip-path="url(#${cl})"><g transform="translate(3 3)">${landArt('skog', w - 6, h * 0.45, c.id.charCodeAt(2))}</g></g>` +
     `<text x="5" y="${h * 0.45 + 12}" font-size="7" font-weight="800" fill="#2b2110" font-family="system-ui">${c.namn}</text>` +
-    `<text x="5" y="${h * 0.45 + 22}" font-size="4.4" fill="#2b2110" font-family="system-ui">${c.text.slice(0, 26)}</text>` +
-    `<text x="5" y="${h * 0.45 + 28}" font-size="4.4" fill="#2b2110" font-family="system-ui">${c.text.slice(26)}</text>`
+    `<text x="5" y="${h * 0.45 + 22}" font-size="4.4" fill="#2b2110" font-family="system-ui">${c.text.slice(0, 24)}</text>` +
+    `<text x="5" y="${h * 0.45 + 28}" font-size="4.4" fill="#2b2110" font-family="system-ui">${c.text.slice(24)}</text>`
 }
 function cardBack(w, h) {
   return `<rect width="${w}" height="${h}" fill="#2f477e"/><rect x="3" y="3" width="${w - 6}" height="${h - 6}" rx="2" fill="none" stroke="#7d93c4" stroke-width="1"/>` +

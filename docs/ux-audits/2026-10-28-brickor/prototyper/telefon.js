@@ -26,19 +26,19 @@ window.Telefon = (() => {
 
   const css = `
   .tel-scen { min-height: 100%; display: flex; gap: 32px; align-items: flex-start; justify-content: center; flex-wrap: wrap; padding: 20px 16px 32px; background: #0b0c10; color: var(--chalk); font-family: var(--felt-font); }
-  .tel { width: 390px; max-width: 100%; height: 780px; border-radius: 36px; background: #000; padding: 10px; box-shadow: 0 0 0 1px #2a2d36, 0 20px 60px #000; flex: none; }
+  .tel { width: 390px; max-width: 100%; height: clamp(560px, calc(100dvh - 300px), 780px); border-radius: 36px; background: #000; padding: 10px; box-shadow: 0 0 0 1px #2a2d36, 0 20px 60px #000; flex: none; }
   .tel-skarm { position: relative; height: 100%; border-radius: 28px; overflow: hidden; background: #14161c; display: flex; flex-direction: column; }
   .tel-topp { flex: none; display: flex; align-items: center; gap: 8px; padding: 14px 16px 10px; font-weight: 700; font-size: 16px; }
   .tel-topp i { width: 28px; height: 28px; border-radius: 50%; background: #e05a4f; display: grid; place-items: center; font-style: normal; color: #fff; }
   .tel-topp span { margin-left: auto; color: var(--chalk-off); font-weight: 400; font-size: 14px; }
   .tel-inne { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 4px 0 12px; }
   .tel-rub { margin: 10px 16px 6px; color: var(--chalk-off); font-weight: 700; font-size: 14px; letter-spacing: .02em; display: flex; justify-content: space-between; }
-  .rad { display: flex; gap: 10px; align-items: center; padding: 10px 16px 14px; overflow-x: auto; scroll-snap-type: x proximity; }
+  .rad { display: flex; flex-wrap: wrap; gap: 18px 10px; align-items: center; padding: 14px 16px 14px; }
   .rad > button { flex: none; position: relative; padding: 0; border: 0; background: none; cursor: pointer; scroll-snap-align: start; transition: transform .18s; border-radius: 8px; }
   .rad > button[aria-pressed='true'] { transform: translateY(-12px); }
   .rad > button[aria-pressed='true']::after { content: ''; position: absolute; left: 10%; right: 10%; bottom: -10px; height: 3px; border-radius: 2px; background: var(--accent); }
   .rad > button:focus-visible { outline: 3px solid var(--accent); outline-offset: 4px; }
-  .ram { width: 112px; height: 156px; border-radius: 8px; background: #232733; display: grid; place-items: center; align-content: center; gap: 6px; color: var(--chalk); font-size: 12px; font-weight: 700; }
+  .ram { width: 104px; height: 145px; border-radius: 8px; background: #232733; display: grid; place-items: center; align-content: center; gap: 6px; color: var(--chalk); font-size: 12px; font-weight: 700; }
   .tel-handling { flex: none; display: flex; gap: 8px; padding: 10px 16px; border-top: 1px solid #22262f; background: #171a23; min-height: 68px; align-items: center; }
   .tel-handling p { margin: 0; color: var(--chalk-off); font-size: 14px; }
   .knapp { min-height: 48px; border: 0; border-radius: 12px; font: 700 16px var(--felt-font); cursor: pointer; padding: 0 16px; }
@@ -78,15 +78,15 @@ window.Telefon = (() => {
   function svgOf(item, px, opts) { return pieceSvg(item.kind === 'card' ? item : { kind: 'tile', shape, mm: dm(), tile: item.tile, up: item.up !== false, rot: item.rot || 0 }, px, opts) }
 
   function handTab() {
-    const cardPx = 112 / 63
+    const cardPx = 104 / 63
     const btn = (it, inner) => `<button aria-pressed="${sel === it.k}" data-sel="${it.k}" aria-label="${it.kind === 'card' ? it.card.namn + ', kort' : it.tile.namn + ', landskapsbricka, ' + SHAPE_NAME[shape]}">${inner}</button>`
-    if (V === 'A') return `<div class="tel-rub"><span>Handen · ${H.length}</span><span>dold för andra</span></div><div class="rad" style="min-height:190px">${H.map((it) => btn(it, svgOf(it, cardPx, { edge: it.kind !== 'card' }))).join('')}</div>`
+    if (V === 'A') return `<div class="tel-rub"><span>Handen · ${H.length}</span><span>dold för andra</span></div><div class="rad" style="">${H.map((it) => btn(it, svgOf(it, cardPx, { edge: it.kind !== 'card' }))).join('')}</div>`
     if (V === 'B') {
       const c = H.filter((x) => x.kind === 'card'), t = H.filter((x) => x.kind !== 'card')
-      return `<div class="tel-rub"><span>Kort · ${c.length}</span></div><div class="rad">${c.map((it) => btn(it, svgOf(it, 96 / 63, { edge: false }))).join('')}</div>
+      return `<div class="tel-rub"><span>Kort · ${c.length}</span></div><div class="rad">${c.map((it) => btn(it, svgOf(it, 104 / 63, { edge: false }))).join('')}</div>
         <div class="tel-rub"><span>Brickor · ${t.length}</span><span>dolda för andra</span></div><div class="rad">${t.map((it) => btn(it, svgOf(it, 124 / dm().w))).join('')}</div>`
     }
-    return `<div class="tel-rub"><span>Handen · ${H.length}</span><span>dold för andra</span></div><div class="rad" style="min-height:190px">${H.map((it) => btn(it, it.kind === 'card' ? svgOf(it, cardPx, { edge: false }) : `<span class="ram">${svgOf(it, 84 / dm().w, { edge: false })}<span>${it.tile.namn}</span></span>`)).join('')}</div>`
+    return `<div class="tel-rub"><span>Handen · ${H.length}</span><span>dold för andra</span></div><div class="rad" style="">${H.map((it) => btn(it, it.kind === 'card' ? svgOf(it, cardPx, { edge: false }) : `<span class="ram">${svgOf(it, 78 / dm().w, { edge: false })}<span>${it.tile.namn}</span></span>`)).join('')}</div>`
   }
   function turnable(p, px, where) {
     const st = STEP[shape]
