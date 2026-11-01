@@ -1,6 +1,6 @@
 import { matches } from '@byd/protocol'
 import { CARD_STANDARD_63x88, DICE, PIECES, TOKEN_COUNTER, type SetupDef } from '@byd/engine'
-import { layMaterial } from './material.js'
+import { layBoards, layMaterial } from './material.js'
 import type { ProjectDoc } from './projects.js'
 
 // Imported by the editor as well as the server, so this module stays free of anything Node.
@@ -11,6 +11,12 @@ import type { ProjectDoc } from './projects.js'
 export function setupFromProject(doc: Pick<ProjectDoc, 'rows' | 'setup'>): SetupDef {
   const type = { id: CARD_STANDARD_63x88.id, version: CARD_STANDARD_63x88.version }
   const components: SetupDef['components'] = []
+  // The boards first (#1479), so that everything laid after them lies on them. A board is named by
+  // its own name in the document, never by a row, and lies on its one side where the setup says.
+  for (const laid of layBoards(doc.setup)) {
+    const { type, id } = laid.board
+    components.push({ type: { id: type.id, version: type.version }, cardRef: id, zone: laid.zone, face: 'front', x: laid.x, y: laid.y, rot: laid.rot })
+  }
   // Where a row starts is the designer's question and not this function's opinion (B5): the
   // first zone whose question the row answers takes it, in the document's own order, and a row
   // no zone asks for lies in the deck's pile as every row used to.

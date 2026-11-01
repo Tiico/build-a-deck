@@ -30,6 +30,10 @@ export const ComponentTypeDef = z.object({
   // A type whose every face shows what it is (#1471): a meeple lying down is the same meeple, in the
   // same colour, as one standing. Absent, a face other than `contentFace` hides it, as a card's back.
   everyFaceShows: z.literal(true).optional(),
+  // A type whose faces the document draws, a template of its own per side (L91, #1479), rather than a
+  // row of the deck: a board. Its `cardRef` names that drawing in the document, never a row, so a
+  // row that shares the word gives it no face, title or words. Absent, its faces are a row's.
+  ownFaces: z.literal(true).optional(),
   behaviours: z.object({
     stackable: z.boolean(),
     shufflable: z.boolean(),
@@ -39,6 +43,9 @@ export const ComponentTypeDef = z.object({
     // Never held in a hand (K32, #1471): material that lies on the table. Declared by the type rather
     // than guessed from whether it rolls or counts, since a meeple does neither. Absent, it is held.
     holdable: z.literal(false).optional(),
+    // Lies where the setup put it (#1479, beställarens beslut 6 i #1470): a board is never moved or
+    // turned at the table, by any verb. Absent, it is moved as everything else is.
+    movable: z.literal(false).optional(),
   }),
   editorSchema: z.array(FieldDef),
   print: z.object({
@@ -58,6 +65,9 @@ export type ComponentTypeDef = z.infer<typeof ComponentTypeDef>
 // Material (K31, K32): a piece that lies on the table and is never held in a hand, as against a card.
 // What the type declares (`holdable: false`), and nothing else (#1471).
 export const isMaterial = (def: ComponentTypeDef): boolean => def.behaviours.holdable === false
+
+// Fixed (#1479): a type that lies where the setup put it, a board. What the type declares.
+export const isFixed = (def: ComponentTypeDef): boolean => def.behaviours.movable === false
 
 export const typeKey = (ref: TypeRef): string => `${ref.id}@${ref.version}`
 
@@ -229,8 +239,29 @@ export const CUBE = wood('cube', { shape: 'polyhedron', widthMm: 8, heightMm: 8,
 export const DISC = wood('disc', { shape: 'circle', widthMm: 16, heightMm: 16, thicknessMm: 5, material: 'wood' }, ['front'])
 export const PIECES: readonly ComponentTypeDef[] = [MEEPLE, CUBE, DISC]
 
+// The boards (#1479, #1470): a main board in a few sizes and a player board laid for every seat
+// (beställarens beslut 7, 2026-10-28), each size a type of its own as the dice are. The sizes are the
+// prototype's (#1473): a square and a rectangular main board and a small player board. One side each:
+// two-sided boards come later, so none is flippable. A board lies fixed where the setup put it
+// (beslut 6) and is never held (K32). Its side is designed in the document as a face of the box is
+// (L91, `ownFaces`), and goes to print with bleed (beslut 12, #1488); the fold a big board needs is the
+// partner's to say, so the shape is the flat sheet.
+const board = (id: string, widthMm: number, heightMm: number): ComponentTypeDef => ({
+  id: `board.${id}`,
+  version: 1,
+  physical: { shape: 'rect', widthMm, heightMm, thicknessMm: 2, material: 'greyboard' },
+  faces: ['front'],
+  contentFace: 'front',
+  ownFaces: true,
+  behaviours: { stackable: false, shufflable: false, flippable: false, rollable: false, counter: false, holdable: false, movable: false },
+  editorSchema: [],
+  print: { bleedMm: 3, safeMm: 5, dpi: 300, colorProfile: 'sRGB', minPtByScript: { Latn: 6, Hani: 8, Arab: 7 } },
+  manufacturableBy: [],
+})
+export const BOARDS: readonly ComponentTypeDef[] = [board('square457', 457, 457), board('rect610', 610, 457), board('player', 240, 150)]
+
 // What every table knows.
-export const STANDARD_TYPES: readonly ComponentTypeDef[] = [CARD_STANDARD_63x88, TOKEN_COUNTER, ...DICE, ...PIECES]
+export const STANDARD_TYPES: readonly ComponentTypeDef[] = [CARD_STANDARD_63x88, TOKEN_COUNTER, ...DICE, ...PIECES, ...BOARDS]
 
 // The tuckbox (#1412, L91): the one box of step 1 (#1406, beslut 4). The deck stands in it on its edge
 // and the lid tucks in at the top. Its measure follows the deck with 1 mm of air around the card and
