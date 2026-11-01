@@ -125,6 +125,26 @@ describe('the print package to download', () => {
     expect(readme).not.toContain('utelämnade')
   }, 120_000)
 
+  // Meeples are stock the printer packs (#1478, beställarens beslut 5 i #1470), each seat's in the
+  // seat's colour (L11): the manifest lists them per colour with the printer's part number, and
+  // LASMIG says them in words beside the dice, in the reader's language.
+  it('lists the meeples per seat colour in the manifest, and says them in LASMIG', async () => {
+    const base = game(4)
+    await call('POST', '/projects', { id: 'p1', ...base, setup: { ...base.setup, pieces: [{ kind: 'meeple', count: 3, zone: 'table', perSeat: true }] } })
+    const files = unzipSync(new Uint8Array(await (await zipOf('/projects/p1/print-package/zip?provider=testtryckeriet&lang=sv')).arrayBuffer()))
+    const manifest = JSON.parse(strFromU8(files['manifest.json']!)) as { order: PreparedOrder }
+    expect(manifest.order.cards.map((c) => c.cardRef)).toEqual(['drake', 'drake', 'troll'])
+    expect(manifest.order.hardware).toEqual([
+      { type: { id: 'die.d6', version: 1 }, sku: 'd6', count: 2 },
+      { type: { id: 'piece.meeple', version: 1 }, sku: 'meeple-red', count: 3, colour: '#e05a4f' },
+      { type: { id: 'piece.meeple', version: 1 }, sku: 'meeple-blue', count: 3, colour: '#3c8ce7' },
+    ])
+    const sv = strFromU8(files['LASMIG.md']!)
+    expect(sv).toContain('- 2 × d6\n- 3 × meeple, röd\n- 3 × meeple, blå\n')
+    const en = strFromU8(unzipSync(new Uint8Array(await (await zipOf('/projects/p1/print-package/zip?provider=testtryckeriet&lang=en')).arrayBuffer()))['LASMIG.md']!)
+    expect(en).toContain('- 2 × d6\n- 3 × meeple, red\n- 3 × meeple, blue\n')
+  }, 120_000)
+
   it('leaves the card files out of a version the print checks stop, and says why', async () => {
     // A background that stops 2 mm past the trim falls short of the 3 mm bleed.
     await call('POST', '/projects', { id: 'p1', ...game(2) })

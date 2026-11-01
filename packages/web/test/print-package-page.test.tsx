@@ -53,6 +53,12 @@ const slip = () => screen.getByRole('complementary', { name: 'Följesedel' })
 const part = (name: string | RegExp) => screen.getByRole('region', { name })
 const facts = (dl: HTMLElement) => Object.fromEntries([...dl.querySelectorAll('dt')].map((dt) => [dt.textContent, dt.nextElementSibling?.textContent]))
 
+// The fixture's game with meeples too (#1478): three per seat on the table, each seat's in its colour.
+function withMeeples(): ProjectDoc {
+  const doc = printable()
+  return { ...doc, setup: { ...doc.setup, pieces: [{ kind: 'meeple', count: 3, zone: 'table', perSeat: true }] } }
+}
+
 describe('the print package page', () => {
   it('asks a reader who is not logged in to log in', async () => {
     open()
@@ -251,5 +257,32 @@ describe('the ways to the print package', () => {
     expect(choices.indexOf('Tryckpaketet…')).toBe(choices.indexOf('Exportera…') + 1)
     fireEvent.click(screen.getByRole('button', { name: 'Tryckpaketet…' }))
     expect(gone.at(-1)).toBe(`/print-package?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
+  })
+})
+
+// A meeple is stock the printer packs, as a die is (#1478, beställarens beslut 5 i #1470), each
+// seat's in the seat's colour (L11): «Det som inte trycks» lists it by colour, the slip counts it,
+// and the printer's answer counts it beside the dice.
+describe('the meeples in the print package (#1478)', () => {
+  it('lists each seat\'s meeples under what is not printed, by colour, and on the slip', async () => {
+    await made(withMeeples())
+    open()
+    const stock = await screen.findByRole('region', { name: 'Det som inte trycks' })
+    const items = [...stock.querySelectorAll('.byd-print-item b')].map((b) => b.textContent)
+    expect(items).toEqual(['2 × sexsidig tärning', '6 × meeple'])
+    const colours = within(stock).getByRole('list', { name: 'Färgerna' })
+    expect(within(colours).getAllByRole('listitem').map((li) => li.textContent)).toEqual(['3 röd', '3 blå'])
+    const swatches = [...colours.querySelectorAll<HTMLElement>('.byd-print-piece')].map((s) => s.style.getPropertyValue('--piece'))
+    expect(swatches).toEqual(['#e05a4f', '#3c8ce7'])
+    expect(stock.textContent).toContain('tryckeriet köper trädelar i den färg det har närmast')
+    expect(facts(slip().querySelector('dl')!)).toEqual({ Kort: '4', 'Olika framsidor': '3', 'Tärningar d6': '2', Meeple: '6', Tryckkontrollen: 'inga fel' })
+  })
+
+  it('counts the meeples in the printer\'s answer, beside the dice', async () => {
+    await made(withMeeples())
+    open()
+    const answer = (await screen.findByText('Exempel · inget riktigt pris')).closest('.byd-print-answer') as HTMLElement
+    expect(answer.textContent).toContain('«Vi har tagit emot 4 kort i 3 varianter och 2 tärningar och 6 trädelar. Filerna håller måtten.»')
+    expect(answer.querySelector('.byd-print-answer-row')?.textContent).toMatch(/^4 kort, 2 tärningar och 6 trädelar/)
   })
 })

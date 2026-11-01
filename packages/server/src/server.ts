@@ -2484,7 +2484,7 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     for (const job of printed.jobs) await opts.renders.enqueue(job, rec.owner)
     // The licences of every symbol the game uses go with the order (E4): the printer is handed
     // what the deck is made of, not only how it looks.
-    json(res, 202, { project: rec.id, rev: rec.rev, cards: printed.cards, hardware: printed.hardware, credits: creditsOf(rec), warnings: found })
+    json(res, 202, { project: rec.id, rev: rec.rev, cards: printed.cards, hardware: printed.hardware, leftOut: printed.leftOut, credits: creditsOf(rec), warnings: found })
     return true
   }
   // The print package (#1207, the page and the download are #1208): GET says what the provider would

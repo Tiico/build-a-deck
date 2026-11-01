@@ -5035,6 +5035,14 @@ En rad vars yta tas bort står kvar under Spelyta med ett besked och en väljare
 Varje rad har ett handtag i filten ur samma `layMaterial` som bordet läggs ur (K31), pilarna flyttar det 10 mm och Skift 50, och ett grepp är ett steg tillbaka (L14).
 En rad som läggs på en punkt ligger mitt på den i hela millimeter, med ett jämnt avstånd mellan bitarna: med det gamla avståndet låg en rad med två bitar en halv millimeter från sin punkt, och varje pil drog den en millimeter åt sidan.
 
+**Trycket** (#1478, beställarens beslut 5): en trädel är en lagervara som tärningen, `print.stock` i typen, och tryckeriet packar den i stället för att trycka den.
+Manifestet listar den efter typ, antal och platsens färg (`colour`, `#rrggbb`), så att två platsers meeples är två rader och aldrig en.
+Platsernas färger bor i `packages/engine` (`SEAT_COLOURS`) sedan dess, eftersom bordet ritar dem och trycket beställer i dem.
+Ett tryckeri anger en lagervara den har i färger med ett artikelnummer per färg (`colours`), och en del packas i den färg det har närmast platsens, räknat i RGB (beslut 2: trycket väljer partnerns närmaste färg).
+Testtryckeriet låtsas ha alla åtta platsfärger, «meeple-red» och så vidare; flerstegsfaken har sex träfärger och visar att den närmaste väljs.
+`hardware: false` lämnar trädelarna utanför som tärningarna, och `POST /print` säger då vad det lämnade i `leftOut`.
+Tryckpaketets sida listar en sort som en rad med antalet, och färgerna under den med var sitt antal och sin silhuett i platsens färg; LASMIG säger dem i ord, «3 × meeple, röd».
+
 **Aktivitetsraden** säger biten efter sort: «Ada flyttade en meeple till Spelyta», «Ada lade ned en meeple» och «Ada ställde upp en meeple».
 
 ### K34. Brickor: kortet i sin egen form, och steget är typens (beslutat 2026-10-28 och 2026-11-01, #1470, #1474, #1482)

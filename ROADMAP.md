@@ -126,7 +126,7 @@ Målet är att en grupp kan spela vilket kortspel som helst utan att sakna någo
 - ✅ Vägen in till ett bord (L86, #1286): två sätt att sitta, runt en TV eller vid varsin dator. Varje start frågar vilket och bordet minns svaret, så ett bord har en väg in, «Öppna bordet», och anslutningssidan ett enda «Gå med» på varje skärm. Genvägarna där designern hoppade in själv är borta ur editorn.
 - 🔶 Fler komponenttyper än standardkortet och tärningen — bricka, meeple, bräde (B1, B2, B3).
   Beställaren beslutade 2026-10-28 att release är "kort- och brädspel": typerna byggs nu, parallellt med betan, med en PRD och en prototyp per synlig yta (#1470).
-  Trädelarna är i registret och i setupen (K33, #1471): `piece.meeple`, `piece.cube` och `piece.disc`, en meeple läggs ned med `flip`, och att material aldrig hålls deklareras i typen. Fliken Bord lägger till dem med en «＋ Pjäs» och drar dem på plats (#1477). Bordet, telefonen och trycket återstår (#1475, #1476, #1478), liksom brädet och brickan.
+  Trädelarna är i registret och i setupen (K33, #1471): `piece.meeple`, `piece.cube` och `piece.disc`, en meeple läggs ned med `flip`, och att material aldrig hålls deklareras i typen. Fliken Bord lägger till dem med en «＋ Pjäs» och drar dem på plats (#1477), och tryckpaketet listar dem som lagervaror per platsfärg (#1478). Bordet och telefonen återstår (#1475, #1476), liksom brädet och brickan.
   Brickorna är i registret och i motorn (K34, #1482): `tile.hex.52`, `tile.square.45`, `tile.round.44` och `tile.round.25`, som kortet i sin form, hållbara på handen, med vridsteget som typdata och den dolda brickan bevisad på tråden. Leken, bordet, telefonen, editorn och trycket återstår (#1484–#1488).
 
 ## Fas 2 — Editorn färdig ✅
