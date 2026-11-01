@@ -22,7 +22,7 @@ try {
   const accountPlans = store.accountPlans()
   // The lapse locks the order the account's games are taken in (#1518), as the webhook's does.
   const lapse = (account: string) => lapseAccount({ projects: store.projects(), accountPlans }, plansFromEnv(process.env), account)
-  const stores = { auth: store.auth(), accountPlans, stripe: stripeApi(config.secretKey), config, lapse }
+  const stores = { auth: store.auth(), accountPlans, stripe: stripeApi(config.secretKey, config.apiBase), config, lapse }
   if (email) {
     const done = await syncByAddress(stores, email)
     console.log(JSON.stringify({ msg: 'stripe', verb, email, ...done }))

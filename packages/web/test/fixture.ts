@@ -9,9 +9,11 @@ import { MemoryReportStore, blocking } from '../../server/src/reports.js'
 import { AiKeyVault, MemoryAiKeyStore } from '../../server/src/ai-keys.js'
 import { providersFromEnv } from '../../server/src/ai-providers.js'
 import type { Plans } from '../../server/src/quotas.js'
-import { MemoryAccountPlanStore } from '../../server/src/account-plans.js'
 import type { TermsRegister } from '@byd/server/terms'
 import { printProvidersOf } from '../../server/src/print-providers.js'
+import { MemoryAccountPlanStore } from '../../server/src/account-plans.js'
+import { paymentsFromEnv, stripeApi } from '../../server/src/payments.js'
+import { stripeStandIn, type StandIn } from '../../server/scripts/stripe-stand-in.js'
 import { fakeAiProvider, type FakeAiProvider } from '../../../test-support/fake-ai-provider.js'
 
 // A real server in-process. Client tests talk to it over a real socket — no mocks.
@@ -282,9 +284,19 @@ export type Running = {
   ai?: { vault: AiKeyVault; fake: FakeAiProvider }
   // With `auth`: the accounts, so a test can name one by its address (#1001).
   auth?: MemoryAuthStore
+  // With `payments` (#1494): the accounts' tiers, Stripe's stand-in the box asks, and the webhook's
+  // secret a test signs Stripe's word with.
+  payments?: { accountPlans: MemoryAccountPlanStore; stripe: StandIn; webhookSecret: string }
   // With `plans`: each account's own tier, so a test can give one Pro and let it lapse (#1492).
   accountPlans?: MemoryAccountPlanStore
 }
+// What Pro costs in the stand-in (A2): 99 kr / 9 € a month, ten months for a year.
+export const PRO_PRICES = {
+  price_sek_m: { currency: 'sek', interval: 'month', amount: 9900 },
+  price_sek_y: { currency: 'sek', interval: 'year', amount: 99000 },
+  price_eur_m: { currency: 'eur', interval: 'month', amount: 900 },
+  price_eur_y: { currency: 'eur', interval: 'year', amount: 9000 },
+} as const
 // Enough to tell two fixtures apart within a worker, which is as far as a port ever travels.
 let fixtures = 0
 
@@ -294,7 +306,7 @@ let fixtures = 0
 // ceilings (#1193), held only with accounts on; without them nothing is limited. `terms` is the
 // register of the terms' versions (#1270, #1272); without one no terms apply, as on a server started
 // without them.
-export async function startServer(opts: { auth?: boolean; authBypass?: boolean; ai?: boolean; appOrigin?: string; plans?: Plans; print?: boolean; terms?: TermsRegister } = {}): Promise<Running> {
+export async function startServer(opts: { auth?: boolean; authBypass?: boolean; ai?: boolean; appOrigin?: string; plans?: Plans; print?: boolean; terms?: TermsRegister; payments?: boolean } = {}): Promise<Running> {
   const store = new MemoryLogStore()
   // The assets weigh what the games store (#1197), as on the box: the store is handed them.
   // A picture blocked after a report (#1274) is not there for the server, as on the box.
@@ -317,9 +329,17 @@ export async function startServer(opts: { auth?: boolean; authBypass?: boolean; 
   const ai = vault ? { vault, providers: providersFromEnv({ AI_ANTHROPIC_URL: `${fakeUrl}/anthropic`, AI_OPENAI_URL: `${fakeUrl}/openai` }) } : null
   // A guest's own erasure (#1281) is a door on the server like any other, and the erasure in the
   // store is #1279's; an account that deletes itself (#1280) is forgotten in every store here too.
-  const erasures = store.erasures(surveys, projects, memoryForgetting({ auth: auth ?? null, projects, vault }))
+  // Payments (#1494) want the tiers they sell, and Stripe's stand-in on a port of this worker's.
+  const standIn = opts.payments ? await stripeStandIn(PRO_PRICES, claim) : null
+  const webhookSecret = 'whsec_web_suite'
+  const paymentsConfig =
+    standIn && opts.plans
+      ? paymentsFromEnv({ STRIPE_SECRET_KEY: 'sk_test_web', STRIPE_WEBHOOK_SECRET: webhookSecret, BYD_STRIPE_PRICES: JSON.stringify({ pro: { sek: { month: 'price_sek_m', year: 'price_sek_y' }, eur: { month: 'price_eur_m', year: 'price_eur_y' } } }), STRIPE_API_BASE: standIn.url }, opts.plans)
+      : null
+  const payments = paymentsConfig ? { config: paymentsConfig, stripe: stripeApi(paymentsConfig.secretKey, paymentsConfig.apiBase) } : null
+  const erasures = store.erasures(surveys, projects, memoryForgetting({ auth: auth ?? null, projects, vault, plans: accountPlans ?? null }))
   const make = () => {
-    const made = createServer({ host: new TableHost(registry, store, undefined, renders, () => reports.blocked()), store, registry, renders, projects, assets, surveys, erasures, reports, ...(auth ? { auth, mailer: mail, publicOrigin: http, authBypass: opts.authBypass } : {}), ...(opts.appOrigin ? { appOrigin: opts.appOrigin } : {}), ...(ai ? { ai } : {}), ...(opts.plans ? { plans: opts.plans } : {}), ...(accountPlans ? { accountPlans } : {}), ...(opts.print ? { printProviders: printProvidersOf(STANDARD_TYPES) } : {}), ...(opts.terms ? { terms: opts.terms } : {}) })
+    const made = createServer({ host: new TableHost(registry, store, undefined, renders, () => reports.blocked()), store, registry, renders, projects, assets, surveys, erasures, reports, ...(auth ? { auth, mailer: mail, publicOrigin: http, authBypass: opts.authBypass } : {}), ...(opts.appOrigin ? { appOrigin: opts.appOrigin } : {}), ...(ai ? { ai } : {}), ...(opts.plans ? { plans: opts.plans } : {}), ...(opts.print ? { printProviders: printProvidersOf(STANDARD_TYPES) } : {}), ...(opts.terms ? { terms: opts.terms } : {}), ...(accountPlans ? { accountPlans } : {}), ...(payments ? { payments } : {}) })
     // Never hang up an idle connection from this end (#848). Node does after five seconds, and the
     // client in this same process sends its next request on the connection it pooled: on a box
     // where a worker is descheduled for longer than that, the two meet on one socket and the
@@ -338,6 +358,7 @@ export async function startServer(opts: { auth?: boolean; authBypass?: boolean; 
     })
   const stop = async () => {
     await closeServer()
+    await standIn?.stop()
     if (fakeServer?.listening) {
       fakeServer.closeAllConnections()
       await new Promise<void>((resolve) => fakeServer.close(() => resolve()))
@@ -357,6 +378,7 @@ export async function startServer(opts: { auth?: boolean; authBypass?: boolean; 
     ...(vault && fake ? { ai: { vault, fake } } : {}),
     ...(auth ? { auth } : {}),
     ...(accountPlans ? { accountPlans } : {}),
+    ...(accountPlans && standIn ? { payments: { accountPlans, stripe: standIn, webhookSecret } } : {}),
     stop,
     // Marks every queued texture as rendered, with a stand-in for the PNG: what the render
     // container would do, without Chromium. A limit renders only that many, which is a worker

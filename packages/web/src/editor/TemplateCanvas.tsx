@@ -1688,6 +1688,9 @@ export const BOX_FACE_NAMES: Record<string, Key> = {
   'box.right': 'box.face.right',
   'box.lid': 'box.face.lid',
   'box.bottom': 'box.face.bottom',
+  // A board's side (#1481), named by the board's role.
+  'board.main': 'board.face.main',
+  'board.player': 'board.face.player',
 }
 
 // A face by the name the reader's language gives it; a face the template invented keeps its own

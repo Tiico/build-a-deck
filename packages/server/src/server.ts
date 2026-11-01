@@ -53,6 +53,7 @@ import { DEFAULT_PLANS, QuotaReached, YOU, growth, limitOf, tableWindowFrom, typ
 import { lapseAccount, planOf, readOnlyOf, readOnlyWhyOf, usageOf, type AccountPlanStore } from './account-plans.js'
 import { ReadOnlyGame, gameWritten, type ReadOnlyCheck } from './read-only.js'
 import { INTERVALS, cancelForErasure, customerOfEvent, priceFault, priceFor, signatureHolds, syncCustomer, type PaymentsConfig, type StripeApi } from './payments.js'
+import { liveOfCustomer, setCancellation, subscriptionView } from './subscription.js'
 import { NO_CARDS, cardGrowth, cardsUsed, type CardMeasure } from './quota-cards.js'
 import { checkRegister, openToTheDue, termsInForce, termsStanding, type TermsRegister, type TermsStanding } from './terms.js'
 import { entry, isMasked, type ErasureStore } from './erase.js'
@@ -454,6 +455,11 @@ function originOf(value: string | undefined): string | null {
 }
 
 // The scheme the browser reached us by: what the proxy in front says, else what the public origin is.
+// Where a way back from Stripe lands (#1493, #1494): the app's page, else the public address, else
+// the address the request came to. An origin set to nothing is no origin.
+function appBase(opts: ServerOptions, req: IncomingMessage): string {
+  return opts.appOrigin || opts.publicOrigin || `${schemeOf(opts, req)}://${req.headers.host ?? 'localhost'}`
+}
 function schemeOf(opts: ServerOptions, req: IncomingMessage): string {
   const forwarded = String(req.headers['x-forwarded-proto'] ?? '').split(',')[0]?.trim()
   return forwarded || (originOf(opts.publicOrigin)?.startsWith('https:') ? 'https' : 'http')
@@ -623,6 +629,58 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
     // card passes the box, with a Stripe customer of its own, made the first time and kept. Nothing
     // is a tier until Stripe's webhook says the subscription is paid. `back` is the path on the app
     // that Checkout returns to, never another site.
+    // What Profil's card «Abonnemang» reads (#1494, variant A): the tiers, Stripe's prices and the
+    // account's own subscription as Stripe has it (`subscription.ts`). 404 says payments are off,
+    // and the card is not there.
+    if (req.method === 'GET' && url.pathname === '/me/subscription') {
+      const payments = opts.payments
+      if (!payments || !opts.auth || !opts.accountPlans) return json(res, 404, { error: 'payments are off' })
+      const account = await accountOf(opts.auth, req)
+      if (!account) return json(res, 401, { error: 'log in first' })
+      try {
+        return json(res, 200, await subscriptionView({ accountPlans: opts.accountPlans, payments, plans: opts.plans ?? DEFAULT_PLANS }, account.id))
+      } catch (err) {
+        console.error(JSON.stringify({ msg: 'stripe', subscription: 'failed', error: err instanceof Error ? err.message : String(err) }))
+        return json(res, 502, { error: 'stripe unavailable' })
+      }
+    }
+    // «Säg upp Pro» and «Fortsätt med Pro» (#1494, variant A): at the period's end through Stripe's
+    // API, and taken back. 409 when the account has no live subscription; the answer is the card's
+    // new reading.
+    if (req.method === 'POST' && (url.pathname === '/me/subscription/cancel' || url.pathname === '/me/subscription/resume')) {
+      const payments = opts.payments
+      if (!payments || !opts.auth || !opts.accountPlans) return json(res, 404, { error: 'payments are off' })
+      const account = await accountOf(opts.auth, req)
+      if (!account) return json(res, 401, { error: 'log in first' })
+      const stores = { accountPlans: opts.accountPlans, payments, plans: opts.plans ?? DEFAULT_PLANS }
+      try {
+        if (!(await setCancellation(stores, account.id, url.pathname.endsWith('/cancel')))) return json(res, 409, { error: 'not subscribed' })
+        return json(res, 200, await subscriptionView(stores, account.id))
+      } catch (err) {
+        console.error(JSON.stringify({ msg: 'stripe', [url.pathname.endsWith('/cancel') ? 'cancel' : 'resume']: 'failed', error: err instanceof Error ? err.message : String(err) }))
+        return json(res, 502, { error: 'stripe unavailable' })
+      }
+    }
+    // «Kvitton och betalkort» and «Byt betalkort» (#1494): Stripe's customer portal, which keeps the
+    // receipts, the card and the address, and returns to `back` in the app. 409 for an account that
+    // never went to the checkout.
+    if (req.method === 'POST' && url.pathname === '/me/subscription/portal') {
+      const payments = opts.payments
+      if (!payments || !opts.auth || !opts.accountPlans) return json(res, 404, { error: 'payments are off' })
+      const account = await accountOf(opts.auth, req)
+      if (!account) return json(res, 401, { error: 'log in first' })
+      const body = PortalBody.safeParse(JSON.parse((await readBody(req)) || '{}') as unknown)
+      if (!body.success) return json(res, 400, { error: 'no such way back' })
+      const customer = await opts.accountPlans.customerOf(account.id)
+      if (!customer) return json(res, 409, { error: 'no stripe customer' })
+      try {
+        const returnUrl = new URL(body.data.back ?? '/', appBase(opts, req)).toString()
+        return json(res, 200, { url: await payments.stripe.createPortal({ customer, returnUrl }) })
+      } catch (err) {
+        console.error(JSON.stringify({ msg: 'stripe', portal: 'failed', error: err instanceof Error ? err.message : String(err) }))
+        return json(res, 502, { error: 'stripe unavailable' })
+      }
+    }
     if (req.method === 'POST' && url.pathname === '/me/subscription/checkout') {
       const payments = opts.payments
       if (!payments || !opts.auth || !opts.accountPlans) return json(res, 404, { error: 'payments are off' })
@@ -634,7 +692,7 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
       const own = await opts.accountPlans.planOf(account.id)
       if (own?.source === 'stripe' && own.lapsed === undefined && own.plan in payments.config.prices) return json(res, 409, { error: 'already subscribed' })
       const back = (outcome: string) => {
-        const to = new URL(body.data.back ?? '/', opts.appOrigin ?? opts.publicOrigin ?? `${schemeOf(opts, req)}://${req.headers.host ?? 'localhost'}`)
+        const to = new URL(body.data.back ?? '/', appBase(opts, req))
         to.searchParams.set('pro', outcome)
         return to.toString()
       }
@@ -642,6 +700,9 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
       // has them, never whose checkout it was (DRIFT §8).
       try {
         let customer = await opts.accountPlans.customerOf(account.id)
+        // Stripe sends the browser back before the webhook comes (#1494): a customer Stripe already
+        // bills is subscribed, whatever the account's tier says yet.
+        if (customer && (await liveOfCustomer(payments, customer))) return json(res, 409, { error: 'already subscribed' })
         if (!customer) {
           await opts.accountPlans.linkCustomer(account.id, await payments.stripe.createCustomer({ account: account.id, email: account.email }))
           // Two checkouts at once make two customers at Stripe and link the first: both use it.
@@ -3356,6 +3417,7 @@ const registerOf = (opts: ServerOptions): TermsRegister => opts.terms ?? []
 const TermsBody = z.object({ version: z.string().max(32) })
 // What a checkout asks for (#1493): a currency the box has prices in, month or year, and the path on
 // the app to come back to — a path, never another site.
+const PortalBody = z.object({ back: z.string().max(512).regex(/^\/(?![/\\])/).optional() })
 const CheckoutBody = z.object({
   currency: z.string().regex(/^[a-z]{3}$/),
   interval: z.enum(INTERVALS),

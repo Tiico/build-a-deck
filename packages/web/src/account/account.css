@@ -353,6 +353,13 @@ input.byd-code-field { font: 700 22px/1 ui-monospace, Menlo, monospace; letter-s
 .byd-home-notice { margin: 0; padding: 10px 14px; border-radius: 10px; background: #2a1b1b; color: #ffd8d8; line-height: 1.5; }
 /* A met ceiling (#1198, variant A) leads with what did not happen, set off in white. */
 .byd-home-notice b { color: #fff; }
+/* Pro beside a met ceiling of her own (#1494): a second row in the same box, the price in words and
+   «Uppgradera till Pro» as an outline in the box's own rose. */
+.byd-home-quota { display: grid; border-radius: 10px; background: #2a1b1b; }
+.byd-home-quota > .byd-home-notice { background: transparent; }
+.byd-home-pro { margin: 0; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; padding: 0 14px 10px; color: #ffd8d8; line-height: 1.5; }
+.byd-home-pro > a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 14px; box-sizing: border-box; border: 1px solid #e0a0a0; border-radius: 10px; color: #fff; font-weight: 700; text-decoration: none; }
+.byd-home-pro > a:hover { background: #3a2424; }
 
 /* The language switch (A4): on the login card, so a reader who cannot read the page can still change
    what it speaks. Signed in, it is on the profile page (#999). */
@@ -400,6 +407,9 @@ input.byd-code-field { font: 700 22px/1 ui-monospace, Menlo, monospace; letter-s
    mode reads the same on Mina spel as in the editor; the way back on a quieter line under it. */
 .byd-read-only-offer { align-items: start; background: #2a2418; border: 1px solid #4a4230; color: #ffe4b0; --byd-secondary-line: #8a7a52; --byd-secondary-ink: #ffe4b0; }
 .byd-read-only-offer > .byd-glyph { color: #ffd98a; }
+/* «Förnya Pro» (#1532): an outline in the band's own amber, beside «Stäng». */
+.byd-read-only-pro { display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; box-sizing: border-box; border: 1px solid #8a7a52; border-radius: 12px; color: #fff; font-weight: 700; text-decoration: none; white-space: nowrap; }
+.byd-read-only-pro:hover { background: #3a3222; }
 .byd-read-only-offer small { display: block; margin-top: 4px; color: #e0cfa3; font-size: 13px; }
 /* The name's band (#1254) asks in the band itself: the field stands before its two answers, on the
    band's green, in the band's own line colour. */

@@ -526,6 +526,9 @@ Byggt 2026-11-01 (#1520): ett konto som raderar sig själv säger upp kundens ab
 Kunden läggs först i tabellen `stripe_cancellations`, som bara har Stripes id för kunden och aldrig kontot, och tas ur den när Stripe har sagt ja; svarar Stripe inte stoppas inte raderingen, och lådan försöker igen vid start och varje timme med de andra sopningarna, med raden `{"msg":"stripe-cancellations","cancelled":1,"failed":0}`.
 Operatören ser och tömmer kön med `pnpm --filter @byd/server stripe sync` utan adress (RUNBOOK §10).
 Registerutdraget (`GET /me/data`) säger kontots Stripe-kund och varje abonnemang Stripe har för den, med status, nivå, valuta och intervall.
+Byggt 2026-11-01 (#1494): Profil läser abonnemanget med `GET /me/subscription`, som frågar Stripe om priserna en gång per process och om kontots abonnemang varje gång, och säger upp vid periodens slut och tar tillbaka det med `POST /me/subscription/cancel` och `resume` (`cancel_at_period_end`); `POST /me/subscription/portal` öppnar Stripes kundportal för kvitton och betalkort, som behöver vara påslagen i Dashboard (RUNBOOK §10).
+En kassa vägras med 409 till en kund som Stripe redan drar från, också innan webhooken har gjort kontot Pro.
+`STRIPE_API_BASE` pekar appen mot en annan adress för Stripes API, och används bara av den byggda appens resor mot Stripes ställföreträdare på maskinen; den godtas bara med en testnyckel och sätts aldrig på lådan.
 
 Nivåerna och deras tak bor inte heller i koden (#1193, A2, #1192): de är `BYD_PLANS` i lådans `.env`, JSON på en rad inom enkla citattecken, och stacken skickar variabeln till appen.
 

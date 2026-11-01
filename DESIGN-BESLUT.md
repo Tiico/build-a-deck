@@ -158,7 +158,7 @@ Byggt 2026-11-01 (#1493, skiva 4 av 5 i #1469, beställarens beslut 2026-11-01: 
 - En nivå med källan `operator` skrivs aldrig över av Stripe, tills operatören tar bort den med `plan clear`.
 - Momsen tas ut med Stripe Tax, och priset är inklusive moms (se nedan, #1521).
 - Ett konto som raderar sig själv säger upp sitt abonnemang hos Stripe direkt (#1520, se G6).
-- Hur Pro köps, syns och sägs upp i webben är #1494, som prototypas först.
+- Hur Pro köps, syns och sägs upp i webben är #1494 (se nedan).
 - Grindarna är `packages/server/test/payments.test.ts` (konfigurationen, signaturen och vad abonnemangen ger), `stripe-subscription.test.ts` (kassan och webhooken mot båda lagren, med en fake för Stripe), `stripe-api.test.ts` (klienten mot en ställföreträdare på maskinen), `payments-at-start.test.ts` och `deploy.test.ts`. Inget anrop går till Stripe i `pnpm test`.
 
 Beslutat och byggt 2026-11-01 (#1521, beställarens beslut 2026-11-01 i #1469): **momsen tas ut med Stripe Tax, och priset är inklusive moms.**
@@ -167,6 +167,19 @@ Beslutat och byggt 2026-11-01 (#1521, beställarens beslut 2026-11-01 i #1469): 
 - Priserna sätts upp i Stripe med momsen inräknad (`tax_behavior: inclusive`, RUNBOOK §10). Kassan frågar Stripe om priset innan den skickar någon dit, och ett pris med moms ovanpå, utan besked om moms, eller i en annan valuta eller ett annat intervall än `BYD_STRIPE_PRICES` säger säljs aldrig (`priceFault` i `packages/server/src/payments.ts`).
 - Stripe Tax påslaget med registreringarna och beställarens OSS-registrering hos Skatteverket är förutsättningar för de skarpa nycklarna.
 - Grindarna är `packages/server/test/stripe-subscription.test.ts` (kassan mot Stripe-faken) och `stripe-api.test.ts` (kassans och prisets fält i klienten).
+
+Beslutat och byggt 2026-11-01 (#1494, skiva 5 av 5 i #1469, beställarens val av **variant A** 2026-11-01): **Pro köps, syns och sägs upp i ett kort i Profil.**
+Tre varianter prototypades i [`docs/ux-audits/2026-11-01-prisnivaer/prototyper/pro.html`](docs/ux-audits/2026-11-01-prisnivaer/prototyper/pro.html): kortet i Profil (A), en egen Pro-sida med Stripes kundportal för uppsägningen (B), och en dialog där taket nås (C).
+- Kortet «Abonnemang» står i Profil ovanför Förbrukning, med nivån som ett märke vid rubriken. Med Gratis jämförs Gratis och Pro på två rader, ur `BYD_PLANS` och aldrig ur koden, och köpet är «Uppgradera till Pro, 99 kr i månaden» med månad eller år som ett val; året säger hur många månader det ger gratis, räknat ur Stripes priser.
+- Beloppen är de Stripe har under `BYD_STRIPE_PRICES`' id:n, lästa med `GET /me/subscription` och aldrig siffror i koden. Valutan följer språket: kronor på svenska och euro på engelska.
+- Med Pro säger kortet vad det kostar och när det förnyas, «Säg upp Pro» lika stort som köpet var, och «Kvitton och betalkort», som öppnar Stripes kundportal (`POST /me/subscription/portal`).
+- **Uppsägningen sker i appen och vid periodens slut**, genom Stripes API (`cancel_at_period_end`, `POST /me/subscription/cancel`), inte i kundportalen: bara appen kan säga vilka spel som hamnar i läsläge. Frågan står i kortet, räknar upp spelen ur `ifLapsed` (#1511), och «Behåll Pro» har fokus. Pro gäller perioden ut, och Stripes webhook gör kontot utgånget när perioden är slut (#1491, #1518). «Fortsätt med Pro» tar tillbaka uppsägningen (`POST /me/subscription/resume`).
+- Tillbakavägen från kassan (`?pro=paid`) kommer före Stripes webhook. Kortet säger att betalningen är gjord och att beskedet väntar, visar inget köp under tiden, och frågar servern tills kontot är Pro. Servern vägrar dessutom en kassa till en kund som Stripe redan drar från, oavsett vad kontots nivå säger ännu, så att ingen betalar två gånger. `?pro=cancelled` säger att inget köptes.
+- En förnyelse som misslyckats (`past_due`) behåller Pro medan Stripe försöker igen, och kortet säger det och har «Byt betalkort» först.
+- Ett konto som fått Pro av operatören har inget abonnemang, och kortet säger att det inte finns något att betala eller säga upp.
+- **Takbeskedet erbjuder Pro** (beställarens beslut 2026-11-01, som reviderar #1198:s förbud): efter de tre delarna står en mening med Pro:s tak och månadspris, till exempel «Med Pro rymmer kontot obegränsat antal spel, för 99 kr i månaden.», och «Uppgradera till Pro», som leder till kortet. I Mina spel står den som en andra rad i rutan, i editorn i notisbandet före ×. Den sägs bara till den som bär taket (`bearer: 'you'`), bara när Pro rymmer mer, och inte alls när betalningen är avstängd eller kontot redan har Pro.
+- Köpknappen är rummets fyllda knapp (#44), alltså grön i kontots rum och inte blå som i prototypen.
+- Grindarna är `packages/server/test/stripe-subscription.test.ts` och `stripe-api.test.ts` (servern och klienten mot Stripe-faken), `packages/web/test/pro-profile.test.tsx` (kortet och takbeskeden mot Stripes ställföreträdare på maskinen, `packages/server/scripts/stripe-stand-in.ts`) och `packages/e2e/test/pro-journey.spec.ts` (hela resan i den byggda appen). Inget anrop går till Stripe i `pnpm test`.
 
 ### A3. Testarrekrytering: enbart delbar länk (fråga 22)
 
@@ -2688,8 +2701,13 @@ Beslutat och byggt 2026-11-01 (#1492, beställarens beslut variant A efter [prot
 - **Spelet i läsläge** bär märket «Läsläge» och taket det ligger över på sin rad eller i heron, i stället för när det senast spelades. Heron får «Exportera…» där «Starta bord» stod, och ⋯ behåller sina val, där «Starta bord», «Byt namn…» och «Duplicera» säger «Inte i läsläge». Spelen som ryms ser ut som i dag.
 - **Editorn** säger det i #489:s läsband, så läsläget har en form: till ägaren taket och vad spelet använder av det, till en medredigerare bara vems spelet är, med ägarens namn och aldrig hennes nivå. En redigering som inte bara gör spelet mindre avvisas i editorn innan den skickas, med regeln aktören håller den till (`onlyShrinks`, #1511), och bandet säger «Läsläge: bara att ta bort kort, sänka Antal och ta bort bilder sparas.». Kontrollerna står kvar, eftersom att ta bort kort, sänka Antal och ta bort bilder ska gå. «Starta bord» finns inte för ett spel i läsläge. När spelet ryms igen försvinner bandet.
 - Editorn frågar `GET /projects/<id>/read-only`, som svarar ägaren `{ bearer: 'you', why, limit }` och någon annan med en roll i spelet `{ bearer: 'owner', ownerName? }`, och `null` när spelet fungerar som vanligt.
-- Ordet «Pro», ett pris och «Förnya Pro» står inte i läsläget förrän kassan finns (#1493, #1494).
+- Ordet «Pro», ett pris och «Förnya Pro» stod inte i läsläget förrän kassan fanns (#1493, #1494); sedan #1532 gör de det för ägaren, se nedan.
 - Grindarna är `packages/web/test/read-only-mode.test.tsx`, `packages/server/test/read-only-lapsed.test.ts` och `packages/e2e/test/read-only-mode.spec.ts`, där ett utgånget konto i den byggda appen möter läsläget.
+
+Beslutat och byggt 2026-11-01 (#1532, beställarens beslut samma dag, efter #1492 och #1494): **läslägets band erbjuder ägaren Pro igen, med priset.**
+- Bandet i Mina spel och editorns läsband säger till ägaren «Med Pro rymmer kontot det Pro rymmer igen, för 99 kr i månaden.» och har «Förnya Pro», som leder till kortet «Abonnemang» i Profil, på samma sätt som takbeskedet (#1494).
+- Priset är det Stripe har, i läsarens valuta, läst med `GET /me/subscription`. En medredigerare ser fortfarande bara ägarens namn, aldrig hennes nivå eller ett pris, och med betalningen avstängd sägs inget pris och ingen väg till Pro.
+- Grinden är `packages/web/test/read-only-pro.test.tsx`, mot Stripes ställföreträdare på maskinen.
 
 ### G6. Personuppgifter: Deckster är ansvarig, och loggen maskas på plats (beslutat 2026-10-24, #1269)
 
@@ -5185,6 +5203,15 @@ En zon som är ett brädes hela fotavtryck, som «Framför» med spelarbrädet, 
 Platsernas skyltar på TV:n står fria från bräden som från högarna.
 Kortets kortsida i vila med det kvadratiska brädet och spelarbräden, mätt 2026-11-01 i den byggda appen (`board-on-felt.spec.ts`): TV 1920 × 1080 57 px vid fyra platser och 45 vid åtta, som utan bräde (K9 håller), och bordsläget 1280 × 800 46 respektive 31 px.
 Högens bricka i bordsläget når några millimeter in över brädets kant; den är en platta som ligger över allt och läses ändå.
+
+**Editorn** (#1481, variant A i #1473).
+Brädet läggs i fliken Bord: «＋ Bräde» på Spelyta lägger huvudbrädet, och «＋ Spelarbräde» på Framför lägger ett spelarbräde per plats där det ligger; menyn erbjuder bara det som inte redan ligger.
+Brädets rad säger mått och att det ligger fast, öppnas till storleken (huvudbrädet i 457 × 457 eller 610 × 457 mm) och vägen till fliken «Bräde», och × tar bort det.
+Allt det är `setBoards`, hela listan i en redigering som tärningarna, och därmed ett steg tillbaka (B4); filten och platserna läggs ut för bräden i samma redigering, och var zonerna hamnade skrivs i raden som `setRecipe`:s `places` (#895).
+Fliken «Bräde» står efter Låda när spelet har ett bräde, och brädets sida ritas där med Mall:s duk, lager, verktyg och egenskaper, som lådans ytor (L91): kortets egna verb märkta `on: 'board'`, med ytan som brädets namn och sidan, `main.front`.
+Zonerna från Bord ligger ovanpå sidan som låsta konturer, så att bilden kan ritas runt dem.
+Sidan ritas av samma kompilator på brädet i Bords filt, innan något är sparat eller renderat, och huvudbrädet har en skylt på filten som öppnar dess rad.
+Fysisk kontroll (E5) mäter en ritad sida med brädtypens egen `print` i brädets eget mått (`boardIssues`).
 
 **Trycket** (#1488, beställarens beslut 12 i #1470): brädets och brickornas sidor går med i tryckpaketet och exporten redan i betan, som filer med utfall ur den enda renderaren (E2), efter tryckeriets krav som kortens.
 Ett bräde ritas ur sin egen mall under sitt namn och en markör ur sin (`printedSides`), aldrig ur en rad; ett bräde som ingen ritat har ingen fil.
