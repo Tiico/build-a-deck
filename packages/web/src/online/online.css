@@ -72,9 +72,10 @@
 .byd-col-card .byd-texture-state { justify-content: flex-start; }
 /* A name as long as a real one is read whole (#484 fynd 15, beslut A, prototyp 27): two lines of the
    strip the next card leaves, at a size the strip holds at its 44 px floor. The waiting line is said
-   on the card drawn whole and nowhere else, so it never takes the name's second line. */
+   on the card drawn whole and nowhere else, so it never takes the name's second line; the spinner
+   (#1546) goes with it, so the name stands at the top of the strip. */
 .byd-col-card .byd-texture-state > b { font-size: 13px; line-height: 1.25; white-space: normal; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
-.byd-col-slot:not(:last-child) .byd-col-card .byd-texture-state > i { display: none; }
+.byd-col-slot:not(:last-child) .byd-col-card .byd-texture-state > :is(i, .byd-texture-spin) { display: none; }
 /* The column's card lifted out to be read (#484 fynd 15, beslut B): over the felt's edge, whole,
    with its name under it. A picture — the pointer goes through it to the card it is of. */
 .byd-col-card:hover, .byd-col-card:focus-visible { z-index: 2; }

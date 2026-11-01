@@ -74,7 +74,7 @@ describe('väntrummet på /online (L77, #1130)', () => {
     await waitFor(() => expect(starts()).toHaveLength(1))
     const start = within(panel).getByRole<HTMLButtonElement>('button', { name: /Starta spelet/ })
     expect(starts()[0]).toBe(start)
-    await waitFor(() => expect(start.textContent).toBe('Starta speletladdar kort · 0/4'))
+    await waitFor(() => expect(start.textContent).toBe('Starta speletladdar kort · 0/1'))
     expect(start.disabled).toBe(true)
     expect(start.title).toBe('Kan inte starta än: korten laddas fortfarande')
 

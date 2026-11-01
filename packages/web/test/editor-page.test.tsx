@@ -231,14 +231,14 @@ describe('the table follows the editor (C7, L5)', () => {
 })
 
 describe('a table opens only once its cards can be seen (L5)', () => {
-  it('shows how the rendering comes along and withholds the link until every texture is done', async () => {
+  it('shows how the rendering comes along and withholds the link until what the table shows is drawn (#1546)', async () => {
     await run.projects.create(run.projectId, projectDoc())
     history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
     render(<EditorPage />)
     await screen.findByText('Skogens herrar')
     fireEvent.click(screen.getByRole('button', { name: /starta bord/i }))
     await answerStart()
-    expect(await screen.findByText(/laddar kort 0\/4/i)).toBeTruthy()
+    expect(await screen.findByText(/laddar kort 0\/1/i)).toBeTruthy()
     expect(screen.queryByRole('link', { name: /öppna bordet/i })).toBeNull()
     expect(await run.completeRenders()).toBe(4)
     expect(await screen.findByRole('link', { name: /öppna bordet/i })).toBeTruthy()

@@ -95,18 +95,19 @@ describe('the Bord tab (#19)', () => {
     expect(table.textContent).toContain('inga drag än')
   })
 
-  // The row says what the band says while the cards are still on their way (#765, beslut B): the
-  // same words, so a designer who reads either reads one state.
+  // The row says what the band says while the cards are still on their way (#765): the same words,
+  // so a designer who reads either reads one state. What it counts is what the start waits for, the
+  // cards that are seen (beslut A, #1546): here the one back of a draw pile, drawn first in the queue.
   it('says «laddar kort» with the count while the table’s cards are rendering, and nothing once they are done', async () => {
     await run.projects.create(run.projectId, projectDoc())
     await startTable()
     await openTables()
     const table = await onlyRow()
-    await waitFor(() => expect(table.querySelector('.byd-tables-render')?.textContent).toBe('laddar kort 0/4'))
-    expect(await run.completeRenders(3)).toBe(3)
-    await waitFor(() => expect(table.querySelector('.byd-tables-render')?.textContent).toBe('laddar kort 3/4'))
-    expect(await run.completeRenders()).toBe(1)
+    await waitFor(() => expect(table.querySelector('.byd-tables-render')?.textContent).toBe('laddar kort 0/1'))
+    expect(await run.completeRenders(1)).toBe(1)
     await waitFor(() => expect(table.querySelector('.byd-tables-render')).toBeNull())
+    // The fronts are still queued behind it, and say nothing to the row.
+    expect(await run.completeRenders()).toBe(3)
   })
 
   it('says so when the game has no table at all', async () => {
@@ -746,7 +747,7 @@ describe('«Uppdatera bordet» answers the press before the table does (#315)', 
     // after it.
     await user.click(screen.getByRole('button', { name: 'Starta bord' }))
     await answerStart()
-    await screen.findByText(/laddar kort 0\/4/)
+    await screen.findByText(/laddar kort 0\/1/)
     await screen.findByRole('button', { name: 'Uppdatera bordet' })
 
     // What actually switches the table under the players. Counted on the wire, because "one
@@ -798,7 +799,7 @@ describe('a rendering that stands still says so (#88, UX-43, L5)', () => {
     await screen.findByText('Skogens herrar')
     await user.click(screen.getByRole('button', { name: 'Starta bord' }))
     await answerStart()
-    return (await screen.findByText(/laddar kort 0\/4/)).closest('[role="status"]') as HTMLElement
+    return (await screen.findByText(/laddar kort 0\/1/)).closest('[role="status"]') as HTMLElement
   }
 
   it('after a while without progress it says the rendering is not moving, that the table shows the fallback text, and offers "Försök igen"', async () => {
@@ -808,7 +809,7 @@ describe('a rendering that stands still says so (#88, UX-43, L5)', () => {
     expect(await within(line).findByText(/laddningen har stannat/)).toBeTruthy()
     expect(line.textContent).toContain('visar sin text')
     expect(within(line).getByRole('button', { name: 'Försök igen' })).toBeTruthy()
-    expect(within(line).getByText(/laddar kort 0\/4/)).toBeTruthy()
+    expect(within(line).getByText(/laddar kort 0\/1/)).toBeTruthy()
     expect(line.hasAttribute('data-stalled')).toBe(true)
   })
 
@@ -834,21 +835,33 @@ describe('a rendering that stands still says so (#88, UX-43, L5)', () => {
     }
   })
 
+  // A count with room to move is «Uppdatera bordet»'s, which waits for every page of the new
+  // version (L5); a new table's start waits only for the back it shows (beslut A, #1546).
   it('a count that moves takes the message away, and the message comes back only when the count stands still again', async () => {
+    const user = userEvent.setup()
     const line = await startFromEditor()
-    await within(line).findByText(/laddningen har stannat/)
-    // One card lands: the count goes on from where it was, and the line has nothing to warn about.
+    await run.completeRenders()
+    await within(line).findByRole('link', { name: /öppna bordet/i })
+    // Two changed cards are two more textures for the update to wait for.
+    await user.click(screen.getByRole('tab', { name: 'Tabell' }))
+    for (const [card, title] of [['dragon', 'Drakhona'], ['knight', 'Riddarinna']] as const) {
+      await user.clear(screen.getByLabelText(`${card} title`))
+      await user.type(screen.getByLabelText(`${card} title`), title)
+    }
+    await user.click(screen.getByRole('button', { name: 'Uppdatera bordet' }))
+    await screen.findByText(/laddar kort 2\/4/)
+    await screen.findByText(/laddningen har stannat/)
+    // One card lands: the count goes on from where it was, and there is nothing to warn about.
     expect(await run.completeRenders(1)).toBe(1)
-    expect(await within(line).findByText(/laddar kort 1\/4/)).toBeTruthy()
-    expect(within(line).queryByText(/laddningen har stannat/)).toBeNull()
-    expect(line.hasAttribute('data-stalled')).toBe(false)
-    // Then nothing more comes, and the line says so again.
-    expect(await within(line).findByText(/laddningen har stannat/)).toBeTruthy()
-    expect(within(line).getByText(/laddar kort 1\/4/)).toBeTruthy()
-    // The rest lands: the link opens and the warning is gone for good.
-    expect(await run.completeRenders()).toBe(3)
-    expect(await within(line).findByRole('link', { name: /öppna bordet/i })).toBeTruthy()
-    expect(within(line).queryByText(/laddningen har stannat/)).toBeNull()
+    expect(await screen.findByText(/laddar kort 3\/4/)).toBeTruthy()
+    expect(screen.queryByText(/laddningen har stannat/)).toBeNull()
+    // Then nothing more comes, and the band says so again.
+    expect(await screen.findByText(/laddningen har stannat/)).toBeTruthy()
+    expect(screen.getByText(/laddar kort 3\/4/)).toBeTruthy()
+    // The last one lands: the table switches and the warning is gone with the count.
+    expect(await run.completeRenders()).toBe(1)
+    await screen.findByText(/Bordet uppdaterat till version 2/)
+    expect(screen.queryByText(/laddningen har stannat/)).toBeNull()
   })
 
   // An update to the version the table already runs changes nothing and writes nothing (#706): the

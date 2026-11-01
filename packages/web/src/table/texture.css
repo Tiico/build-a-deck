@@ -77,7 +77,7 @@
    inline (`Texture`), since this sheet is the one the first frame blocks on. */
 .byd-texture-spin {
   flex: none;
-  width: clamp(8px, 12cqw, 30px);
+  width: clamp(10px, 14cqw, 30px);
   aspect-ratio: 1;
   box-sizing: border-box;
   border-radius: 50%;

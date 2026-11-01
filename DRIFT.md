@@ -148,6 +148,34 @@ Det som kostar är väntan, och den kostar bara när flera stora bord startas el
 Startens räkning var 574 och inte 576, eftersom bordets framsteg (`textureHashes`) inte räknade brädenas egna texturer, alltså `ownFaces`.
 Sedan #1539 räknar starten dem, så TV:n säger inte att bordet är klart förrän brädet är ritat.
 
+### Efter #1546: varje bord kan börja inom sekunder
+
+Beställaren valde 2026-11-01 att renderkön turas om mellan borden och att starten bara väntar på det som syns (§6, DESIGN-BESLUT K25).
+Samma lasttest som för #1533 kördes om efter ändringen, med tre bord à 500 kort, 72 brickor och ett bräde, på samma maskin.
+Lasten var låg den här gången, 2–4.
+
+| 3 bord, 500 kort, 72 brickor, bräde | app (tak 512 MB) | render (tak 1 500 MB) | postgres (tak 768 MB) |
+|---|---|---|---|
+| före #1546, efter #1531 | 162 | 1 013 | 206 |
+| efter #1546 | 162 | 1 028 | 219 |
+
+Talen är toppar i MiB av arbetsmängden; ingen container kom inom en tiondel av sitt tak, ingen dödades och ingen startades om.
+Minnet rör sig inte: samma sidor ritas, i en annan ordning.
+
+| Väntan, sekunder | bord 1 | bord 2 | bord 3 |
+|---|---|---|---|
+| start före #1546 (574 texturer per bord) | 426 | 387 | 387 |
+| start efter #1546 (det som syns: 4 texturer per bord) | 4 | 4 | 4 |
+| ny version före #1546 (576 texturer) | 149 | 439 | 437 |
+| ny version efter #1546 (576 texturer) | 813 | 813 | 813 |
+
+Varje bord kan nu starta efter fyra sekunder, i stället för att det sista väntar i 6–10 minuter: det som syns är lekens baksida, brickornas baksida och de två brädena.
+Resten av leken ritas medan spelet pågår, kort för kort turvis mellan borden och i den ordning korten dras.
+«Uppdatera bordet» väntar som förut på varje sida av den nya versionen, men den delar nu kön med det som är kvar av den gamla versionens lek, eftersom starten inte längre ritar hela leken först.
+Därför blev alla tre bordens nya version klar samtidigt efter 813 sekunder.
+Räknat från starten är det ändå tidigare än förut: före #1546 var det sista bordet uppdaterat efter minst 865 sekunder (426 + 439), nu efter 817.
+Att en ny version går före den gamla versionens rest är #1549.
+
 ### AI-frågornas kostnad för lådan (#1007)
 
 Mätt 2026-10-19 med `pnpm --filter @byd/e2e load:ai` (`packages/e2e/load/ai.ts`), som startar appen ur källkoden som containern startar den, mot Postgres, och låter den falska leverantören svara ett ord var 1,5 sekund så att varje svar håller sin anslutning i femton sekunder, som ett riktigt svar gör.
@@ -362,6 +390,11 @@ Resten av leken får platser från en fast bas, i högarnas ordning med översta
 Kön delar ut lägsta plats först och sedan den äldsta, så varje bords synliga texturer ritas före något bords resten, och därefter bordens kort turvis.
 Ett bord som startar medan ett annat är halvvägs hinner ikapp det, och sedan turas de om.
 Platsen står i `render_jobs.place`, och ett jobb utan plats har plats 0.
+Resten numreras efter hur djupt kortet ligger i sin hög, så att två högar ritas uppifrån sida vid sida.
+Efter en blandning får högens köade jobb nya platser i den nya ordningen (`RenderStore.reorder`), så det som dras härnäst ritas först.
+«Starta spelet» väntar bara på det som syns (beslut A i #1546), och «Uppdatera bordet» väntar på varje sida av den nya versionen.
+Med tre bord à 500 kort, brickor och bräde kan varje bord starta efter 4 sekunder i stället för 6–10 minuter (§1).
+Minnet är detsamma, eftersom samma sidor ritas i en annan ordning.
 En Chromium-container med en sida i taget och det minnestak §1 ger den — 1,5 GB sedan 2026-09-11.
 Sidan namnger sina bilder och typsnitt med hash, och workern läser bytesen själv ur Postgres eller R2 (§4, #1028).
 Utdata i R2 under hash av mall, rad, typversion och fontset; ett jobb vars hash redan finns är en no-op.
