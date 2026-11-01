@@ -37,7 +37,7 @@ async function openBord(): Promise<void> {
   fireEvent.click(screen.getByRole('tab', { name: 'Bord' }))
 }
 const row = (id: string) => document.querySelector(`[data-zone-row="${id}"]`) as HTMLElement
-const openZone = (id: string, name: RegExp) => fireEvent.click(within(row(id)).getByRole('button', { name: (n) => name.test(n) && !n.startsWith('Ta bort') }))
+const openZone = (id: string, name: RegExp) => fireEvent.click(within(row(id)).getByRole('button', { name: (n) => name.test(n) && !n.startsWith('Ta bort') && !n.startsWith('Lägg till') }))
 const picker = (name: string) => screen.getByLabelText(`Bredvid högen för ${name}`) as HTMLSelectElement
 const outlines = () => [...document.querySelectorAll('[data-landing]')] as HTMLElement[]
 const seen = (el: HTMLElement) => ({ pile: el.getAttribute('data-landing'), at: el.getAttribute('data-at'), rot: el.getAttribute('data-rot'), cards: el.getAttribute('data-cards'), off: el.getAttribute('data-off') })
