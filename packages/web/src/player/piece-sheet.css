@@ -1,0 +1,12 @@
+/* The sheet behind «Flytta till…» for a wooden piece (#1476): loaded with the sheet, after a press. */
+.byd-piece-here .byd-piece { display: block; width: 20px; height: 20px; }
+.byd-piece-here svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.byd-piece-sheet { display: grid; gap: 12px; max-height: 88dvh; box-sizing: border-box; }
+.byd-piece-sheet .byd-sheet-title { margin: 0; font-size: 18px; font-weight: 700; }
+.byd-piece-places { display: grid; overflow-y: auto; min-height: 0; }
+.byd-piece-places button {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; padding: 0 8px;
+  border: 0; border-bottom: 1px solid var(--byd-rule-soft); background: none; color: var(--byd-ink-strong); font: 700 16px system-ui, sans-serif; text-align: left;
+}
+.byd-piece-here { display: flex; align-items: center; gap: 4px; color: var(--byd-ink-muted); font-size: 12px; }
+.byd-piece-sheet > .byd-secondary { min-height: 48px; border-radius: 12px; font: inherit; font-size: 16px; }
