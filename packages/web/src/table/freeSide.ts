@@ -77,9 +77,11 @@ export function placeNames(root: ParentNode): Record<string, string> {
       const r = el.getBoundingClientRect()
       return r.width > 0 && r.height > 0 ? r : null
     }
+    // A zone on a board keeps its plate on its own edge (#1480): it is read against the board's
+    // picture, where the prototype put it, and a name moved off it would land on the next zone.
     const labels = zones.flatMap((z) => {
       const el = z.querySelector<HTMLElement>(':scope > span')
-      return el && shown(el) ? [{ z, el }] : []
+      return el && shown(el) && !z.hasAttribute('data-on-board') ? [{ z, el }] : []
     })
     if (labels.length === 0) continue
     // One name at a time is what a quiet felt shows (#581): the Bord tab, which lights the zone that
@@ -345,8 +347,9 @@ export function placePlates(root: ParentNode, home = false): Record<string, Plat
   const LINE = 30
   const SLACK = 0.5
   // What a plate stands clear of on the felt: a pile and its words, a zone's box and name, an area's
-  // count, a hand, a chip and its figure, a seat's name card.
-  const FELT = '.byd-pile, .byd-pile-n, .byd-pile-name, .byd-pile-caption, .byd-zone, .byd-zone > span, .byd-area-count, .byd-hand-fan > i, .byd-hand-count, .byd-token, .byd-token > b, .byd-seat-name'
+  // count, a hand, a chip and its figure, a seat's name card, and a board (#1480): a plate on the main
+  // board covers the picture the zones on it are read against.
+  const FELT = '.byd-board, .byd-pile, .byd-pile-n, .byd-pile-name, .byd-pile-caption, .byd-zone, .byd-zone > span, .byd-area-count, .byd-hand-fan > i, .byd-hand-count, .byd-token, .byd-token > b, .byd-seat-name'
   // And the television's own chrome where it stands over the felt.
   const CHROME = '.byd-table-restart, .byd-shortcut-open, [data-tv] > aside'
   // How far the start tile's shadow (`table.css`: `0 6px 16px`) reaches past its box, in screen
