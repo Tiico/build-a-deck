@@ -1041,6 +1041,22 @@ i[data-kind='piece'][data-piece='disc'] { border-radius: 50%; }
 .byd-setup-add-menu > button:hover { background: #2a2f3c; }
 /* What a word in the menu covers (#1477): «＋ Pjäs», then «meeple, kub eller skiva» in the quiet grey. */
 .byd-setup-add-menu > button > small { margin-left: var(--byd-s2); color: #9aa3b8; font-size: 12px; font-weight: 400; }
+/* «＋ Bricka» opens its two choices side by side in the menu (#1487, #1474 A): a marker and a pile
+   from a deck, each with what it is and, in the amber, what it costs. Two columns of the menu's
+   width; a grid row inside a grid keeps its min-content, so each choice may shrink to nothing. */
+.byd-setup-add-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--byd-s1); padding: var(--byd-s1); min-width: 0; }
+.byd-setup-add-pair > button { display: grid; align-content: start; justify-items: start; gap: var(--byd-s1); min-width: 0; min-height: var(--byd-tap); padding: var(--byd-s2); border: 1px solid #6d7486; border-radius: 8px; background: #15171c; color: #e6ecfa; font: inherit; text-align: left; cursor: pointer; }
+.byd-setup-add-pair > button:hover { border-color: #ffd98a; background: #2a2f3c; }
+.byd-setup-add-pair > button > b { color: #fff; font-size: 13px; }
+.byd-setup-add-pair > button > span { color: #c7cede; font-size: 12px; line-height: 1.4; }
+.byd-setup-add-pair > button > em { color: #ffd98a; font-size: 12px; font-style: normal; line-height: 1.4; }
+/* A tile (#1487) drawn in its shape and in cardboard: a hexagon on its point, a square, a round one. */
+i[data-kind='tile'] { flex: none; display: inline-block; width: 14px; height: 16px; border: 0; border-radius: 0; box-shadow: none; background: #d9b77a; clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); }
+i[data-kind='tile'][data-shape='square'] { width: 14px; height: 14px; border-radius: 2px; clip-path: none; }
+i[data-kind='tile'][data-shape='round'] { width: 14px; height: 14px; border-radius: 50%; clip-path: none; }
+.byd-setup-add-pair i[data-kind='tile'] { width: 24px; height: 28px; }
+.byd-setup-add-pair i[data-kind='tile'][data-shape='round'] { width: 24px; height: 24px; background: #e3b04b; }
+.byd-setup-tile-go { display: inline-flex; align-items: center; gap: var(--byd-s1); }
 .byd-setup-name strong { flex: none; color: #8ad0ff; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; }
 .byd-setup-x { flex: none; border: 1px solid #2f333d; border-radius: 8px; background: #1b1d23; color: #c7cede; font-size: 15px; line-height: 1; padding: 4px 8px; cursor: pointer; }
 .byd-setup-x:hover { background: #2a1b1b; border-color: #6b2b2b; color: #ff9a9a; }

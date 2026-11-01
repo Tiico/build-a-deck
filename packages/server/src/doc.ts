@@ -5,6 +5,8 @@ export * from './diff.js'
 export * from './names.js'
 export * from './recipe.js'
 export * from './edits.js'
+// The game's decks and markers as the editor's tabs see them (#1484, #1487).
+export * from './decks.js'
 // Spelets låda ur dokumentet (#1412): måtten, låsen och om leken ryms, för editorns Fysisk kontroll.
 export * from './box.js'
 // Personlig ångra (#1056): vad en redigering ändrade, och steget tillbaka från det.

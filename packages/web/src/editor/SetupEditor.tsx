@@ -17,6 +17,7 @@ import { TableTree } from './TableTree.js'
 import { Reading, familyRole, fixed, movedTo, newCounter } from './setup-rows.js'
 import type { MaterialKey } from './MaterialRow.js'
 import { recipeWords } from './fields.js'
+import { newMarker } from './tiles.js'
 import { useGesture } from './gesture.js'
 import { CardPreview } from './CardPreview.js'
 import { ZoneActions } from './ZoneActions.js'
@@ -53,6 +54,8 @@ export type SetupEditorProps = {
   // whose ways to add a zone must all show at 1024 × 640 (#711), and not in the row over the
   // felt, which a chosen zone's four fields fill at 1024 (L50).
   lead?: ReactNode
+  // The way from a tile's row to its deck's tab in Mall or Tabell (#1487), or to a marker's sides.
+  onOpenDeck?: ((ref: string, where: 'template' | 'table') => void) | undefined
 }
 
 // What one CSS millimetre is worth in pixels. A compiled card is laid out in millimetres, the
@@ -72,7 +75,7 @@ function inAField(e: KeyboardEvent): boolean {
   return on.some((el) => el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)
 }
 
-export function SetupEditor({ doc, client, assetBase, motifs, beside, lead }: SetupEditorProps) {
+export function SetupEditor({ doc, client, assetBase, motifs, beside, lead, onOpenDeck }: SetupEditorProps) {
   const t = useT()
   const setup = doc.setup
   const [selected, setSelected] = useState<string | null>(null)
@@ -313,6 +316,19 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside, lead }: Se
               const counters = client.recipe.counters
               turnCounters([...counters, newCounter(counters, t, what.role)])
               born(`counter:${counters.length}`)
+            } else if (what.kind === 'marker') {
+              const markers = setup.markers ?? []
+              client.setMarkers([...markers, newMarker(doc, what.place, t)])
+              born(`marker:${markers.length}`)
+            } else if (what.kind === 'tileDeck') {
+              const decks = doc.decks ?? []
+              if (what.pile === null && newPileSpot(setup) === null) {
+                setSaid(t('setup.noRoomPile'))
+                setUndoable(null)
+                return
+              }
+              client.addTileDeck(what.pile, t)
+              born(`deck:${decks.length}`)
             }
           }}
           openMaterial={openMaterial}
@@ -321,6 +337,11 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside, lead }: Se
           onFocused={() => setFocusMaterial(null)}
           onDice={(dice) => client.setDice(dice)}
           onPieces={(pieces) => client.setPieces(pieces)}
+          markers={setup.markers}
+          decks={doc.decks}
+          onMarkers={(markers, gesture) => client.setMarkers(markers, gesture)}
+          onDecks={(decks, gesture) => client.setDecks(decks, gesture)}
+          onOpenDeck={onOpenDeck}
           onCounters={turnCounters}
           typing={counterTyping}
         />

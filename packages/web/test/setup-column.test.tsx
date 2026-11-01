@@ -103,7 +103,7 @@ describe('bordet som träd (#1403, beslut C)', () => {
     expect(plus.getAttribute('aria-expanded')).toBe('false')
     fireEvent.click(plus)
     const menu = screen.getByRole('menu', { name: 'Lägg till i Spelyta' })
-    expect(within(menu).getAllByRole('menuitem').map(itemName)).toEqual(['＋ Yta', '＋ Hög', '＋ Tärning', '＋ Pjäs'])
+    expect(within(menu).getAllByRole('menuitem').map(itemName)).toEqual(['＋ Yta', '＋ Hög', '＋ Tärning', '＋ Pjäs', '＋ Bricka'])
     // Menyn tar fokus på sitt första val, och Escape lämnar det tillbaka till ＋.
     await waitFor(() => expect(document.activeElement).toBe(within(menu).getByRole('menuitem', { name: '＋ Yta' })))
     fireEvent.keyDown(menu, { key: 'Escape' })
@@ -115,8 +115,10 @@ describe('bordet som träd (#1403, beslut C)', () => {
     expect(names('Spelyta')).toEqual(['Draghög leken', 'Kasthög', 'Hög 1'])
     // Den nya högen är vald, som förut: dess panel står öppen under raden.
     expect(screen.getByLabelText('Namn för Hög 1')).toBeTruthy()
-    // Inga ＋ på en hög eller en hand: de rymmer kort, inte zoner eller material.
-    expect(screen.queryByRole('button', { name: 'Lägg till i Hög 1' })).toBeNull()
+    // En hög rymmer kort och brickor, inte zoner eller trädelar: dess ＋ har bara «Bricka» (#1487).
+    // En hand har inget ＋.
+    fireEvent.click(screen.getByRole('button', { name: 'Lägg till i Hög 1' }))
+    expect(within(screen.getByRole('menu', { name: 'Lägg till i Hög 1' })).getAllByRole('menuitem').map(itemName)).toEqual(['＋ Bricka'])
     expect(screen.queryByRole('button', { name: 'Lägg till i Hand' })).toBeNull()
   })
 })
@@ -286,5 +288,77 @@ describe('pjäserna i trädet (#1477)', () => {
     expect(names('Spelyta')).toEqual(['Draghög leken', 'Kasthög', '5 × meeple totalt'])
     fireEvent.change(screen.getByRole('combobox', { name: 'Yta för pjäs 1' }), { target: { value: 'zone:table' } })
     await waitFor(async () => expect((await truth()).setup.pieces).toEqual([{ kind: 'meeple', count: 5, zone: 'table' }]))
+  })
+})
+
+// Brickorna i trädet (#1487, editorvariant A i #1474): «＋ Bricka» i ＋-menyn på en yta och en hög
+// öppnar två val sida vid sida, så att vad det andra kostar syns: en markör (en bild i n exemplar,
+// en rad i Bord) och en hög ur en lek (en bild per rad, en lek med mall och tabell).
+describe('brickorna i trädet (#1487)', () => {
+  const blank = { base: [], variants: {} }
+  const choose = (node: string, item: 'Markör' | 'Hög ur en lek') => {
+    fireEvent.click(screen.getByRole('button', { name: `Lägg till i ${node}` }))
+    const menu = screen.getByRole('menu', { name: `Lägg till i ${node}` })
+    const tile = within(menu).getByRole('menuitem', { name: '＋ Bricka' })
+    expect(tile.textContent).toContain('markör eller hög ur en lek')
+    expect(tile.getAttribute('aria-expanded')).toBe('false')
+    fireEvent.click(tile)
+    expect(tile.getAttribute('aria-expanded')).toBe('true')
+    // Valen står sida vid sida, och var och en säger vad den kostar.
+    const both = within(menu).getByRole('group', { name: 'Bricka' })
+    expect(within(both).getAllByRole('menuitem').map((b) => b.querySelector('b')?.textContent)).toEqual(['Markör', 'Hög ur en lek'])
+    expect(within(both).getByRole('menuitem', { name: 'Markör' }).textContent).toMatch(/Kostar: en rad i Bord/)
+    expect(within(both).getByRole('menuitem', { name: 'Hög ur en lek' }).textContent).toMatch(/Kostar: en lek med mall och tabell/)
+    fireEvent.click(within(both).getByRole('menuitem', { name: item }))
+  }
+
+  it('lägger en markör på Spelyta, och raden säger «10 × Markör» och öppnas till namn, antal och form', async () => {
+    await openBord()
+    choose('Spelyta', 'Markör')
+    await waitFor(async () => expect((await truth()).setup.markers).toEqual([{ id: 'markor-1', name: 'Markör', type: { id: 'tile.round.25', version: 1 }, faces: { front: blank, back: blank }, count: 10, zone: 'table' }]))
+    expect(names('Spelyta')).toEqual(['Draghög leken', 'Kasthög', '10 × Markör rund 25 mm, totalt'])
+    const count = screen.getByRole('spinbutton', { name: 'Antal för markör 1' })
+    await waitFor(() => expect(document.activeElement).toBe(count))
+    fireEvent.change(count, { target: { value: '30' } })
+    fireEvent.keyDown(count, { key: 'Enter' })
+    fireEvent.change(screen.getByRole('textbox', { name: 'Namn på markör 1' }), { target: { value: 'Guld' } })
+    fireEvent.change(screen.getByRole('combobox', { name: 'Form för markör 1' }), { target: { value: 'tile.hex.52' } })
+    await waitFor(async () => expect((await truth()).setup.markers?.[0]).toMatchObject({ name: 'Guld', count: 30, type: { id: 'tile.hex.52', version: 1 } }))
+    expect(names('Spelyta')).toEqual(['Draghög leken', 'Kasthög', '30 × Guld sexhörning 52 mm, totalt'])
+    fireEvent.click(screen.getByRole('button', { name: 'Ta bort markör 1' }))
+    await waitFor(async () => expect((await truth()).setup.markers).toBeUndefined())
+  })
+
+  it('lägger en markör i en hög, som en bank att ta ur', async () => {
+    await openBord()
+    choose('Kasthög', 'Markör')
+    await waitFor(async () => expect((await truth()).setup.markers?.[0]).toMatchObject({ count: 10, zone: 'discard' }))
+    expect(names('Kasthög')).toEqual(['10 × Markör rund 25 mm, totalt'])
+  })
+
+  it('lägger en hög ur en ny lek av brickor, i en ny hög på Spelyta, som ett steg', async () => {
+    await openBord()
+    choose('Spelyta', 'Hög ur en lek')
+    await waitFor(async () => expect((await truth()).decks).toHaveLength(1))
+    const doc = await truth()
+    const deck = doc.decks![0]!
+    expect(deck).toMatchObject({ id: 'brickor-1', name: 'Brickor', type: { id: 'tile.hex.52', version: 1 }, rows: [{ id: 'kort-1', fields: { title: '', antal: 1 } }] })
+    const pile = doc.setup.zones.find((z) => z.id === deck.zone)!
+    expect(pile).toMatchObject({ kind: 'pile', name: 'Brickor' })
+    expect(names('Spelyta')).toEqual(['Draghög leken', 'Kasthög', 'Brickor leken Brickor'])
+    expect(names('Brickor')).toEqual(['1 × Brickor sexhörning 52 mm, hög ur en lek'])
+    // Ett steg tillbaka tar både högen och leken.
+    fireEvent.keyDown(document, { key: 'z', ctrlKey: true })
+    await waitFor(async () => expect((await truth()).decks).toBeUndefined())
+    expect((await truth()).setup.zones.some((z) => z.id === deck.zone)).toBe(false)
+  })
+
+  it('lägger leken i högen den valdes i', async () => {
+    await openBord()
+    addVia('Spelyta', '＋ Hög')
+    await waitFor(() => expect(row('hog-1')).toBeTruthy())
+    choose('Hög 1', 'Hög ur en lek')
+    await waitFor(async () => expect((await truth()).decks?.[0]).toMatchObject({ zone: 'hog-1' }))
+    expect((await truth()).setup.zones.filter((z) => z.kind === 'pile')).toHaveLength(3)
   })
 })

@@ -1,8 +1,8 @@
 import type { AssetCrop as Crop, CardQuery, FaceId, ZoneAction, ZoneBeside } from '@byd/protocol'
 import { RuleBlock, isSymbolName, type Element, type FaceTemplate, type Variant } from '@byd/template'
 import { showsWholePicture } from '@byd/protocol'
-import { BOX_SIDES, BoxFace, TILES, type BoxClearance, type BoxSide } from '@byd/engine'
-import { rowRef } from './decks.js'
+import { BOX_SIDES, BoxFace, type BoxClearance, type BoxSide } from '@byd/engine'
+import { MARKER_REF, deckView, rowRef } from './decks.js'
 import { AssetCrop, PictureName, ProjectBox, ProjectDecks, ProjectDice, ProjectMarkers, ProjectPieces } from './projects.js'
 import type { Cell, Picture, ProjectDeck, ProjectDie, ProjectMarker, ProjectPiece, ProjectCredit, ProjectDoc, ProjectFont, ProjectRow, ProjectTheme, RuleDoc } from './projects.js'
 import { DEFAULT_BOX_TYPE } from './box.js'
@@ -874,8 +874,6 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
 // and no rows, so only the template's are made on it.
 const FACE_EDITS: ReadonlySet<EditIntent['v']> = new Set(['patchElement', 'addElement', 'removeElement', 'moveElement', 'replaceFace'])
 const DECK_EDITS: ReadonlySet<EditIntent['v']> = new Set([...FACE_EDITS, 'setCell', 'addRow', 'removeRow', 'replaceRows', 'addField', 'removeField', 'renameField', 'setProse', 'setColumnKind', 'moveField', 'resetElement', 'setGroupColumn'])
-const MARKER = 'marker:'
-const BLANK_FACE: FaceTemplate = { base: [], variants: {} }
 
 // An edit made on another deck than the document's own, or on a marker's sides (#1487). The deck is
 // put in the document's own place, the edit made there by the one `applyEdit`, and what came out
@@ -887,23 +885,19 @@ function inDeck(doc: ProjectDoc, ref: string, intent: EditIntent): ProjectDoc {
   const edit = inner as EditIntent
   if (!DECK_EDITS.has(edit.v)) throw new Error(`${edit.v} is not an edit of a deck`)
   if ((edit as { on?: unknown }).on !== undefined) throw new Error('an edit of a deck is on its own faces')
-  if (ref.startsWith(MARKER)) {
-    const id = ref.slice(MARKER.length)
+  if (ref.startsWith(MARKER_REF)) {
+    const id = ref.slice(MARKER_REF.length)
     const markers = doc.setup.markers ?? []
-    const marker = markers.find((m) => m.id === id)
-    if (!marker) throw new Error(`the game has no marker ${id}`)
+    if (!markers.some((m) => m.id === id)) throw new Error(`the game has no marker ${id}`)
     if (!FACE_EDITS.has(edit.v)) throw new Error('a marker has sides and no rows')
-    const sides = TILES.find((t) => t.id === marker.type.id && t.version === marker.type.version)?.faces ?? []
-    const faces = Object.fromEntries(sides.map((f) => [f, marker.faces?.[f as FaceId] ?? BLANK_FACE]))
-    const after = applyEdit({ ...doc, rows: [], template: { faces } }, edit)
-    const drawn = { ...marker, faces: after.template.faces }
-    return { ...after, template: doc.template, rows: doc.rows, setup: { ...after.setup, markers: ProjectMarkers.parse(markers.map((m) => (m.id === id ? drawn : m))) } }
+    const after = applyEdit(deckView(doc, ref), edit)
+    const drawn = markers.map((m) => (m.id === id ? { ...m, faces: after.template.faces } : m))
+    return { ...after, template: doc.template, rows: doc.rows, ...(doc.columns ? { columns: doc.columns } : {}), setup: { ...after.setup, markers: ProjectMarkers.parse(drawn) } }
   }
   const decks = doc.decks ?? []
   const deck = decks.find((d) => d.id === ref)
   if (!deck) throw new Error(`the game has no deck ${ref}`)
-  const { columns: _own, ...shared } = doc
-  const after = applyEdit({ ...shared, template: deck.template, rows: deck.rows, ...(deck.columns ? { columns: deck.columns } : {}) }, edit)
+  const after = applyEdit(deckView(doc, ref), edit)
   const { columns, template, rows, decks: _decks, ...rest } = after
   const { columns: _was, ...kept } = deck
   const next: ProjectDeck = { ...kept, template, rows, ...(columns ? { columns } : {}) }
