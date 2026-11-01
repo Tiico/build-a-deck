@@ -55,12 +55,17 @@ describe('markörens texturer (#1483)', () => {
     expect(after?.['back']).toBe(before?.['back'])
   })
 
-  it('lämnar markörerna utanför trycket tills #1488 ger dem sina filer, och kortet trycks som förut', () => {
+  // Markörerna går till tryck (#1488): en post per exemplar, som ett korts kopior, och en bild per sida.
+  it('trycker varje markör som ett exemplar, och de identiska sidorna en gång', () => {
     const doc = game('1 guld')
     const exported = printExportOf(deckFromProject(doc), setupFromProject(doc), registry, 0)
-    expect(exported.cards.map((c) => c.cardRef)).toEqual(['mynt'])
+    const coins = exported.cards.filter((c) => c.cardRef === markerRef('mynt'))
+    expect(coins.length).toBe(doc.setup.markers?.[0]?.count)
+    expect(new Set(coins.map((c) => JSON.stringify(c.faces))).size).toBe(1)
+    expect(Object.keys(coins[0]!.faces).sort()).toEqual(['back', 'front'])
+    expect(exported.cards.filter((c) => c.cardRef === 'mynt')).toHaveLength(1)
     const manifest = printManifestOf(deckFromProject(doc), setupFromProject(doc), registry)
-    expect(manifest.cards.map((c) => c.cardRef)).toEqual(['mynt'])
+    expect(manifest.cards.filter((c) => c.cardRef === markerRef('mynt')).every((c) => c.type.id.startsWith('tile.'))).toBe(true)
   })
 
   it('ritar en sida utan mall som en tom sida i stället för att vägra bordet', async () => {

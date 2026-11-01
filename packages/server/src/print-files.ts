@@ -1,7 +1,7 @@
 import { seatColourOf, typeKey, type ComponentTypeDef, type SetupDef, type TypeRegistry } from '@byd/engine'
 import type { FileSource, PreparedFile, PreparedOrder, PrintManifest } from '@byd/print'
 import { contentHash, type RenderKind, type RenderRequest, type RenderStore } from '@byd/render/queue'
-import { compileRow, deckFor, printedYet, type Deck } from './faces.js'
+import { printedSides, type Deck } from './faces.js'
 
 // The platform's side of a print partner (F2, #1207): the game as a provider is handed it, and the
 // files the provider's `prepare` names, drawn after its `requirements()` by the one compiler and
@@ -30,12 +30,10 @@ export function printManifestOf(deck: Deck, setup: SetupDef, registry: TypeRegis
       continue
     }
     if (spec.counter !== undefined) continue
-    if (!printedYet(type)) continue
-    // A board (#1479) is drawn from its own template, not a row, and goes to print as #1488 says.
-    if (type.ownFaces) continue
-    const row = deck.rows[spec.cardRef]
-    if (!row) throw new Error(`deck has no row "${spec.cardRef}" for print`)
-    const faces = Object.fromEntries(Object.entries(compileRow(deckFor(deck, spec.cardRef), type, row)).map(([face, page]) => [face, contentHash(page, { kind: 'pdf' })]))
+    // A board and a tile are printed parts as a card is (#1488), each side from what it is drawn with.
+    const sides = printedSides(deck, type, spec.cardRef)
+    if (sides === null) continue
+    const faces = Object.fromEntries(Object.entries(sides).map(([face, page]) => [face, contentHash(page, { kind: 'pdf' })]))
     cards.push({ cardRef: spec.cardRef, type: { id: spec.type.id, version: spec.type.version }, faces })
   }
   return { cards, hardware: [...hardware.values()] }
@@ -48,9 +46,7 @@ export function printFileJobsOf(deck: Deck, registry: TypeRegistry, order: Prepa
   return order.files.map((file) => {
     const type = registry.get(file.type)
     drawable(file, type)
-    const row = deck.rows[file.cardRef]
-    if (!row) throw new Error(`deck has no row "${file.cardRef}" for print`)
-    const page = compileRow(deckFor(deck, file.cardRef), type, row, file.bleedMm)[file.face]
+    const page = printedSides(deck, type, file.cardRef, file.bleedMm)?.[file.face]
     if (!page) throw new Error(`${typeKey(file.type)} has no face "${file.face}"`)
     const kind = kindOf(file)
     const compiled = { html: page.html, css: page.css }

@@ -15,6 +15,12 @@ export const CONTRACT_MANIFEST: PrintManifest = {
     { cardRef: 'troll', type: CARD, faces: { front: 'front:troll', back: 'back:skurk' } },
     // Folds to the same file name as «Älg på väg», and is another card.
     { cardRef: 'Alg på väg', type: CARD, faces: { front: 'front:alg-2', back: 'back:bas' } },
+    // A board and two kinds of tile (#1488): the board's one side, two identical hexagonal markers
+    // that are one picture each side, and a square tile of its own.
+    { cardRef: 'Kartan', type: { id: 'board.square457', version: 1 }, faces: { front: 'front:karta' } },
+    { cardRef: 'guld', type: { id: 'tile.hex.52', version: 1 }, faces: { front: 'front:guld', back: 'back:mark' } },
+    { cardRef: 'guld', type: { id: 'tile.hex.52', version: 1 }, faces: { front: 'front:guld', back: 'back:mark' } },
+    { cardRef: 'torn', type: { id: 'tile.square.45', version: 1 }, faces: { front: 'front:torn', back: 'back:mark-2' } },
   ],
   hardware: [
     { type: { id: 'die.d6', version: 1 }, count: 2 },

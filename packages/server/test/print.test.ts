@@ -107,6 +107,40 @@ describe('the print export (#14)', () => {
     })
   })
 
+  // The export (G5) bears the printed parts as the package does (#1488): a board's side from its own
+  // template with the type's bleed, and a marker's sides once however many copies there are.
+  describe('boards and tiles (#1488)', () => {
+    const side = (fill: string) => ({ base: [{ kind: 'shape' as const, id: 'bg', x: -3, y: -3, w: 400, h: 400, shape: 'rect' as const, fill }], variants: {} })
+    const parts: Deck = {
+      ...deck,
+      boards: { Kartan: { faces: { front: side('#2e6b46') } }, Tom: { faces: {} } },
+      templates: { 'marker:guld': { faces: { front: side('#d99a1f'), back: side('#3a2a1a') } } },
+      drawnWith: { 'marker:guld': 'marker:guld' },
+      rows: { ...deck.rows, 'marker:guld': { title: 'Guld' } },
+    }
+    const hex = { id: 'tile.hex.52', version: 1 }
+    const withParts: SetupDef = {
+      ...setup,
+      components: [
+        ...setup.components,
+        { type: { id: 'board.player', version: 1 }, cardRef: 'Kartan', zone: 'table', face: 'front' },
+        { type: { id: 'board.player', version: 1 }, cardRef: 'Tom', zone: 'table', face: 'front' },
+        { type: hex, cardRef: 'marker:guld', zone: 'table', face: 'back' },
+        { type: hex, cardRef: 'marker:guld', zone: 'table', face: 'back' },
+      ],
+    }
+
+    it('prints the board\'s side and the markers\' sides, a board nobody drew not at all, and identical markers once', () => {
+      const printed = printExportOf(parts, withParts, registry, 123)
+      expect(printed.cards.map((card) => card.cardRef)).toEqual(['trap', 'dragon', 'trap', 'Kartan', 'marker:guld', 'marker:guld'])
+      expect(Object.keys(printed.cards[3]!.faces)).toEqual(['front'])
+      expect(printed.cards[4]!.faces).toEqual(printed.cards[5]!.faces)
+      const board = printed.jobs.find((j) => j.hash === printed.cards[3]!.faces['front'])!
+      expect(board.compiled.html).toContain('data-bleed="3"')
+      expect(new Set(printed.jobs.map((j) => j.hash)).size).toBe(printed.jobs.length)
+    })
+  })
+
   // A meeple is stock as a die is (#1478, beställarens beslut 5 i #1470), in its seat's colour (L11).
   describe('meeples (#1478)', () => {
     const meeple = (seat: string) => ({ type: { id: MEEPLE.id, version: MEEPLE.version }, cardRef: seat, zone: 'table', face: 'standing' })
