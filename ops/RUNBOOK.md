@@ -455,4 +455,13 @@ En återbetalning ändrar inte nivån av sig själv, eftersom abonnemanget fortf
 Ska kontot också lämna Pro, säg upp abonnemanget i Dashboard, direkt och inte vid periodens slut; webhooken gör då kontot utgånget, och läsläget gäller för det som ligger över gratisnivåns tak (G5).
 Ett konto som ska behålla Pro utan att betala, till exempel efter ett fel som är vårt, får nivån av operatören (`plan set <adress> pro`, källan `operator`), som Stripe sedan inte skriver över.
 
-**Ett konto som raderar sig själv** säger ännu inte upp sitt abonnemang hos Stripe (DRIFT §12). Sök upp kunden i Dashboard på adressen och säg upp abonnemanget direkt, så att ingen dras för ett konto som inte finns.
+**Ett konto som raderar sig själv** säger upp sitt abonnemang hos Stripe direkt, innan kontot försvinner (DRIFT §12, #1520).
+Svarar inte Stripe läggs kunden i en kö som lådan försöker igen med varje timme, och raden `"msg":"stripe-cancellations"` i loggen säger hur många som gick och hur många som står kvar.
+Kön töms för hand över Tailscale med `stripe sync` utan adress, med lådans variabler; den skriver en rad per kund med `cancelled` eller `failed`:
+
+```sh
+DATABASE_URL=postgres://… BYD_PLANS='…' STRIPE_SECRET_KEY=… STRIPE_WEBHOOK_SECRET=… BYD_STRIPE_PRICES='…' \
+  pnpm --filter @byd/server stripe sync
+```
+
+En kund som står kvar som `failed` efter några dygn söks upp i Dashboard på sitt id (`cus_…`), och abonnemanget sägs upp direkt där; nästa `stripe sync` ser att inget går att dra och tar kunden ur kön.

@@ -44,7 +44,16 @@ export type AccountPlanStore = {
   linkCustomer(account: string, customer: string): Promise<void>
   customerOf(account: string): Promise<string | null>
   accountOfCustomer(customer: string): Promise<string | null>
+  // The Stripe customers whose subscriptions an erased account left to cancel (#1520): a queue that
+  // is nobody's account, so the erasure does not take it, and that a customer leaves when Stripe has
+  // cancelled. Queuing one already queued keeps it as it was.
+  queueCancellation(customer: string): Promise<void>
+  cancellationFailed(customer: string): Promise<void>
+  unqueueCancellation(customer: string): Promise<void>
+  pendingCancellations(): Promise<PendingCancellation[]>
 }
+// One customer in the queue: since when, and how many times Stripe failed to cancel.
+export type PendingCancellation = { customer: string; queued: string; tries: number }
 
 export class MemoryAccountPlanStore implements AccountPlanStore {
   private readonly rows = new Map<string, AccountPlan>()
@@ -85,8 +94,22 @@ export class MemoryAccountPlanStore implements AccountPlanStore {
   async accountOfCustomer(customer: string): Promise<string | null> {
     return [...this.customers].find(([, c]) => c === customer)?.[0] ?? null
   }
+  private readonly cancellations = new Map<string, PendingCancellation>()
+  async queueCancellation(customer: string): Promise<void> {
+    if (!this.cancellations.has(customer)) this.cancellations.set(customer, { customer, queued: new Date().toISOString(), tries: 0 })
+  }
+  async cancellationFailed(customer: string): Promise<void> {
+    const row = this.cancellations.get(customer)
+    if (row) row.tries += 1
+  }
+  async unqueueCancellation(customer: string): Promise<void> {
+    this.cancellations.delete(customer)
+  }
+  async pendingCancellations(): Promise<PendingCancellation[]> {
+    return [...this.cancellations.values()].map((r) => ({ ...r })).sort((a, b) => (a.queued < b.queued ? -1 : a.queued > b.queued ? 1 : 0))
+  }
   // What an account that deletes itself leaves here, in memory (#1280); Postgres drops it with the
-  // account.
+  // account. The queue of cancellations is nobody's account, and stays.
   forget(account: string): void {
     this.rows.delete(account)
     this.customers.delete(account)
@@ -131,6 +154,19 @@ export class PostgresAccountPlanStore implements AccountPlanStore {
   async accountOfCustomer(customer: string): Promise<string | null> {
     const [row] = await this.sql<{ account_id: string }[]>`select account_id::text from stripe_customers where customer_id = ${customer}`
     return row ? String(row.account_id) : null
+  }
+  async queueCancellation(customer: string): Promise<void> {
+    await this.sql`insert into stripe_cancellations (customer_id) values (${customer}) on conflict (customer_id) do nothing`
+  }
+  async cancellationFailed(customer: string): Promise<void> {
+    await this.sql`update stripe_cancellations set tries = tries + 1 where customer_id = ${customer}`
+  }
+  async unqueueCancellation(customer: string): Promise<void> {
+    await this.sql`delete from stripe_cancellations where customer_id = ${customer}`
+  }
+  async pendingCancellations(): Promise<PendingCancellation[]> {
+    const rows = await this.sql<{ customer_id: string; queued_at: Date; tries: number }[]>`select customer_id, queued_at, tries from stripe_cancellations order by queued_at, customer_id`
+    return rows.map((r) => ({ customer: r.customer_id, queued: r.queued_at.toISOString(), tries: r.tries }))
   }
 }
 
