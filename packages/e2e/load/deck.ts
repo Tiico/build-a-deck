@@ -1,9 +1,13 @@
 import { deflateSync } from 'node:zlib'
 import type { ProjectDoc } from '@byd/server'
-import { openingSetup } from '@byd/server/doc'
+import { applyRecipe, openingSetup, recipeOf } from '@byd/server/doc'
 
-/** The hashes of what a designer has uploaded before the load game can be written. */
-export type LoadAssets = { pictures: readonly string[]; back: string; fonts: { title: string; body: string } }
+/**
+ * The hashes of what a designer has uploaded before the load game can be written. `tiles` and
+ * `board` are the pictures of a tile deck and a main board on top of the cards (#1533); a game
+ * without them is the card game #1012 measured.
+ */
+export type LoadAssets = { pictures: readonly string[]; back: string; fonts: { title: string; body: string }; tiles?: readonly string[]; board?: string }
 
 const SEATS = 8
 // What changes between two versions of the load game. A frame colour sits on every front, so a
@@ -51,7 +55,59 @@ export function loadGame(o: { name: string; generation: number; cards: number; a
       Rubrik: { stack: '"Rubrik", Georgia, serif', asset: `asset:${assets.fonts.title}` },
       Brödtext: { stack: '"Brödtext", Arial, sans-serif', asset: `asset:${assets.fonts.body}` },
     },
-    setup: openingSetup({ players: SEATS, counters: [{ name: 'Poäng', start: 0 }] }),
+    setup: setupOf(frame, o.generation, assets.board),
+    ...(assets.tiles && assets.tiles.length > 0 ? { decks: [tileDeck(frame, o.generation, assets.tiles)] } : {}),
+  }
+}
+
+// The table for eight seats, and with a board picture a main board on the felt and a player board
+// for every seat (#1480), laid by the recipe as the editor lays them. The boards wear the version's
+// frame, so a saved version redraws them with the cards.
+function setupOf(frame: string, generation: number, board: string | undefined): ProjectDoc['setup'] {
+  const opening = openingSetup({ players: SEATS, counters: [{ name: 'Poäng', start: 0 }] })
+  if (board === undefined) return opening
+  const face = (w: number, h: number, art: string | undefined) => ({
+    base: [
+      { kind: 'shape' as const, id: 'frame', x: 0, y: 0, w, h, shape: 'rect' as const, fill: frame },
+      ...(art ? [{ kind: 'image' as const, id: 'art', x: 10, y: 10, w: w - 20, h: h - 20, bind: { literal: `asset:${art}` }, fit: 'cover' as const }] : []),
+      { kind: 'text' as const, id: 'version', x: 12, y: h - 18, w: 80, h: 8, bind: { literal: `v${generation}` }, font: { family: 'Brödtext', sizePt: 14 }, color: '#111' },
+    ],
+    variants: {},
+  })
+  const boards = [
+    { id: 'huvudbrade', type: { id: 'board.rect610', version: 1 }, zone: opening.floor, faces: { front: face(610, 457, board) } },
+    { id: 'spelarbrade', type: { id: 'board.player', version: 1 }, role: 'mine', faces: { front: face(240, 150, undefined) } },
+  ]
+  const withBoards = { ...opening, boards }
+  const laid = applyRecipe(withBoards, recipeOf(withBoards))
+  return { ...laid, zones: [...laid.zones, TILE_PILE] }
+}
+
+// The pile the tiles start in, face down and seen by nobody, beside the felt.
+const TILE_PILE = { id: 'brickor', kind: 'pile' as const, name: 'Brickorna', visibility: 'none' as const, geometry: { x: -160, y: 0, w: 0, h: 0, rot: 0 } }
+
+// A tile deck of hexagons (#1484), each tile with its own picture and a name, its back one colour.
+function tileDeck(frame: string, generation: number, pictures: readonly string[]): NonNullable<ProjectDoc['decks']>[number] {
+  return {
+    id: 'brickor',
+    name: 'Brickor',
+    type: { id: 'tile.hex.52', version: 1 },
+    template: {
+      faces: {
+        front: {
+          base: [
+            { kind: 'shape', id: 'frame', x: 0, y: 0, w: 52, h: 60, shape: 'rect', fill: frame },
+            { kind: 'image', id: 'art', x: 6, y: 12, w: 40, h: 30, bind: { field: 'art' }, fit: 'cover' },
+            { kind: 'text', id: 'title', x: 8, y: 43, w: 36, h: 7, bind: { field: 'title' }, font: { family: 'Rubrik', sizePt: 9, weight: 700 }, color: '#111' },
+            { kind: 'text', id: 'version', x: 20, y: 51, w: 12, h: 3, bind: { literal: `v${generation}` }, font: { family: 'Brödtext', sizePt: 6 }, color: '#555' },
+          ],
+          variants: {},
+        },
+        back: { base: [{ kind: 'shape', id: 'bg', x: 0, y: 0, w: 52, h: 60, shape: 'rect', fill: '#3c5a2f' }], variants: {} },
+      },
+    },
+    rows: pictures.map((art, i) => ({ id: `bricka-${i + 1}`, fields: { title: `Bricka ${i + 1}`, art: `asset:${art}` } })),
+    zone: TILE_PILE.id,
   }
 }
 

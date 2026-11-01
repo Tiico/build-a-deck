@@ -58,11 +58,24 @@ export class Designer {
    * illustration's size and the asked weight, and two typefaces. `seed` keeps two designers'
    * pictures apart, as two designers' art is.
    */
-  async uploadAssets(o: { pictures: number; pictureBytes: number; seed: number; fonts: { title: Uint8Array; body: Uint8Array } }): Promise<LoadAssets> {
+  //
+  // With `tiles` a tile deck's pictures too, one a tile at the same weight, and with `boardBytes` a
+  // main board's picture at a print photograph's size (#1533): what the render worker decodes for
+  // the felt's board is that bitmap, four bytes a pixel.
+  async uploadAssets(o: { pictures: number; pictureBytes: number; seed: number; fonts: { title: Uint8Array; body: Uint8Array }; tiles?: number; boardBytes?: number }): Promise<LoadAssets> {
     const pictures: string[] = []
     for (let i = 0; i < o.pictures; i++) pictures.push(await this.upload(picture(o.seed * 100_000 + i, { width: 900, height: 675, bytes: o.pictureBytes }), 'image/png'))
     const back = await this.upload(picture(o.seed * 100_000 + 99_999, { width: 750, height: 1050, bytes: o.pictureBytes }), 'image/png')
-    return { pictures, back, fonts: { title: await this.upload(o.fonts.title, 'font/ttf'), body: await this.upload(o.fonts.body, 'font/ttf') } }
+    const tiles: string[] = []
+    for (let i = 0; i < (o.tiles ?? 0); i++) tiles.push(await this.upload(picture(o.seed * 100_000 + 50_000 + i, { width: 600, height: 450, bytes: o.pictureBytes }), 'image/png'))
+    const board = o.boardBytes ? await this.upload(picture(o.seed * 100_000 + 99_998, { width: 3600, height: 2700, bytes: o.boardBytes }), 'image/png') : undefined
+    return {
+      pictures,
+      back,
+      fonts: { title: await this.upload(o.fonts.title, 'font/ttf'), body: await this.upload(o.fonts.body, 'font/ttf') },
+      ...(tiles.length > 0 ? { tiles } : {}),
+      ...(board ? { board } : {}),
+    }
   }
 
   /** A game saved `versions` times over, each save one row of history, as an afternoon's editing is. */

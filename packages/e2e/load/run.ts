@@ -14,6 +14,7 @@ import { playTable, type Played } from './table.js'
  *
  *   pnpm --filter @byd/e2e load:memory [--tables 1,3] [--cards 308] [--pictures 308]
  *                                      [--picture-kb 250] [--versions 15] [--intents 200]
+ *                                      [--tiles 72] [--board-kb 3000]
  *                                      [--project byd-load-…] [--keep] [--no-build]
  *
  * Each scenario starts the stack from nothing (`down -v`, `up`), as a deploy does, so the kernel's
@@ -22,6 +23,11 @@ import { playTable, type Played } from './table.js'
  * television and an observer playing `intents` envelopes on real sockets, with shuffles and
  * rewinds; and, while they play, the designer saving a version that redraws every card and sending
  * it to the table. The tables of a scenario do all of it at the same time.
+ *
+ * With `tiles` the game also has a deck of that many hexagon tiles, each on a picture of its own,
+ * and with `board-kb` a main board on a 3600 × 2700 picture of that weight and a player board for
+ * every seat (#1533); a saved version redraws them with the cards. Pro's 500 cards are
+ * `--cards 500 --tiles 72 --board-kb 3000`.
  *
  * It is not part of `pnpm test`: it takes the machine for a quarter of an hour and needs Docker.
  * What it prints is what goes into DRIFT §1; the raw readings are kept in `packages/e2e/.load/`.
@@ -36,6 +42,8 @@ const { values: args } = parseArgs({
     // How many different illustrations the cards are drawn from; one per card unless fewer.
     pictures: { type: 'string' },
     'picture-kb': { type: 'string', default: '250' },
+    tiles: { type: 'string', default: '0' },
+    'board-kb': { type: 'string', default: '0' },
     'pause-ms': { type: 'string', default: '150' },
     project: { type: 'string', default: `byd-load-${process.pid}` },
     keep: { type: 'boolean', default: false },
@@ -50,6 +58,8 @@ const versions = Number(args.versions)
 const intents = Number(args.intents)
 const pictures = Number(args.pictures ?? args.cards)
 const pictureBytes = Number(args['picture-kb']) * 1000
+const tiles = Number(args.tiles)
+const boardBytes = Number(args['board-kb']) * 1000
 const pauseMs = Number(args['pause-ms'])
 const OUT = join(import.meta.dirname, '..', '.load')
 const RENDER_BUDGET_MS = 30 * 60_000
@@ -75,7 +85,7 @@ try {
 }
 
 const { stdout: host } = await run('docker', ['info', '--format', '{{.NCPU}} CPU, {{.MemTotal}} B, kernel {{.KernelVersion}}'])
-const report = { at: new Date().toISOString(), host: host.trim(), cards, pictures, versions, intents, pictureBytes, results }
+const report = { at: new Date().toISOString(), host: host.trim(), cards, pictures, tiles, boardBytes, versions, intents, pictureBytes, results }
 const file = join(OUT, `memory-${report.at.replace(/[:.]/g, '-')}.json`)
 writeFileSync(file, JSON.stringify(report, null, 2))
 for (const r of results) {
@@ -109,8 +119,8 @@ async function scenario(tables: number): Promise<Result> {
     const designers = await Promise.all(Array.from({ length: tables }, (_, i) => Designer.logIn(stack.origin, `designer-${i + 1}-${Date.now()}@load.test`, mailbox)))
     const games = await Promise.all(
       designers.map(async (d, i) => {
-        say(`designer ${i + 1}: ${cards} cards on ${pictures} pictures of ${pictureBytes / 1000} kB, ${versions} versions`)
-        const game = { name: `Lastspelet ${i + 1}`, cards, assets: await d.uploadAssets({ pictures, pictureBytes, seed: i + 1, fonts }) }
+        say(`designer ${i + 1}: ${cards} cards on ${pictures} pictures of ${pictureBytes / 1000} kB, ${tiles} tiles, ${boardBytes ? `a board of ${boardBytes / 1000} kB` : 'no board'}, ${versions} versions`)
+        const game = { name: `Lastspelet ${i + 1}`, cards, assets: await d.uploadAssets({ pictures, pictureBytes, seed: i + 1, fonts, tiles, boardBytes }) }
         return { game, project: await d.saveGame(game, versions) }
       }),
     )
