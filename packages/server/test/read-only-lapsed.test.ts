@@ -7,7 +7,8 @@ import type { EditIntent } from '../src/edits.js'
 import type { EditorMessage } from '../src/project-actor.js'
 import type { ProjectDoc, ProjectStore } from '../src/projects.js'
 import { plansFromEnv, type Plans } from '../src/quotas.js'
-import { readOnlyGames, type GameStanding, type FitCeilings } from '../src/read-only.js'
+import { applyEdit } from '../src/edits.js'
+import { onlyShrinks, readOnlyGames, readOnlyReasons, type GameStanding, type FitCeilings } from '../src/read-only.js'
 import { start, twoSeatSetup, type Running } from './fixture.js'
 import { template } from './deck.js'
 
@@ -47,6 +48,46 @@ describe('which games of a lapsed account are read-only', () => {
     const at = '2026-10-01T00:00:00Z'
     expect(sorted(readOnlyGames({ ...none, projects: 1 }, [game('b', at), game('a', at)]))).toEqual(['b'])
     expect(sorted(readOnlyGames({ ...none, projects: 1 }, [game('a', at), game('b', at)]))).toEqual(['b'])
+  })
+
+  // Why each one is (#1511): the ceiling it lies over, so the page can say it in the reader's words.
+  // A game over a card measure says that measure, unique cards before copies; one past the number
+  // says `projects`; one that would carry the fitting games past the storage says `storageBytes`.
+  it('say why each game is read-only: the ceiling it lies over', () => {
+    const games = [game('big', '2026-10-05T00:00:00Z', { rows: 31, copies: 200 }), game('many', '2026-10-04T00:00:00Z', { copies: 101 }), game('heavy', '2026-10-03T00:00:00Z', { assets: { p: 80 } }), game('a', '2026-10-02T00:00:00Z'), game('b', '2026-10-01T12:00:00Z'), game('old', '2026-09-01T00:00:00Z')]
+    const why = readOnlyReasons({ projects: 2, cardRowsPerProject: 30, cardCopiesPerProject: 100, storageBytes: 50 }, games)
+    expect(Object.fromEntries(why)).toEqual({ big: 'cardRowsPerProject', many: 'cardCopiesPerProject', heavy: 'storageBytes', old: 'projects' })
+    expect(sorted(readOnlyGames({ projects: 2, cardRowsPerProject: 30, cardCopiesPerProject: 100, storageBytes: 50 }, games))).toEqual(['big', 'heavy', 'many', 'old'])
+  })
+})
+
+// What a read-only game may still have done to it (beställarens beslut 2026-11-01 i #1469, #1511):
+// rows taken away, copies lowered and pictures taken away, and nothing else. Judged on the
+// documents, before and after, so a compound edit, a whole document written over HTTP and a version
+// are held to the same rule as a single edit.
+describe('a change that only makes a read-only game smaller', () => {
+  const three = (): ProjectDoc => ({ ...doc('Spel', 3), rows: doc('Spel', 3).rows.map((r) => ({ ...r, fields: { ...r.fields, antal: 3 } })), pictures: { aa: { name: 'sol.png' }, bb: {} } })
+  const after = (...edits: EditIntent[]) => edits.reduce((d, e) => applyEdit(d, e), three())
+
+  it('is a row taken away, copies lowered, or a picture taken away, alone or together', () => {
+    expect(onlyShrinks(three(), after({ v: 'removeRow', cardRef: 'kort-2' }))).toBe(true)
+    expect(onlyShrinks(three(), after({ v: 'setCell', cardRef: 'kort-1', field: 'antal', value: 1 }))).toBe(true)
+    expect(onlyShrinks(three(), after({ v: 'setCell', cardRef: 'kort-1', field: 'antal', value: 0 }))).toBe(true)
+    expect(onlyShrinks(three(), after({ v: 'removePicture', hash: 'aa' }))).toBe(true)
+    expect(onlyShrinks(three(), after({ v: 'removeRow', cardRef: 'kort-3' }, { v: 'setCell', cardRef: 'kort-2', field: 'antal', value: 2 }, { v: 'removePicture', hash: 'bb' }))).toBe(true)
+    expect(onlyShrinks(three(), three())).toBe(true)
+  })
+
+  it('is not anything that adds, raises or changes', () => {
+    expect(onlyShrinks(three(), after({ v: 'setCell', cardRef: 'kort-1', field: 'antal', value: 4 }))).toBe(false)
+    expect(onlyShrinks(three(), after({ v: 'setCell', cardRef: 'kort-1', field: 'title', value: 'Drake' }))).toBe(false)
+    expect(onlyShrinks(three(), after({ v: 'addRow', cardRef: 'kort-9', fields: { title: 'Ny' } }))).toBe(false)
+    expect(onlyShrinks(three(), after({ v: 'addPicture', hash: 'cc' }))).toBe(false)
+    expect(onlyShrinks(three(), after({ v: 'rename', name: 'Annat' }))).toBe(false)
+    expect(onlyShrinks(three(), after({ v: 'removeRow', cardRef: 'kort-1' }, { v: 'rename', name: 'Annat' }))).toBe(false)
+    // Rows put in another order are a change, not a shrink.
+    const turned = three()
+    expect(onlyShrinks(three(), { ...turned, rows: [...turned.rows].reverse() })).toBe(false)
   })
 })
 
@@ -169,7 +210,9 @@ for (const backend of backends) {
       }
       return { ...who, oldest: ids[0]!, ids }
     }
-    const usage = async (cookie: string) => (await (await send('GET', '/me/usage', cookie)).json()) as { plan: string; print: boolean; lapsed?: { plan: string; at: string }; readOnly: string[] }
+    type Held = { id: string; why: string }
+    const usage = async (cookie: string) => (await (await send('GET', '/me/usage', cookie)).json()) as { plan: string; print: boolean; lapsed?: { plan: string; at: string }; readOnly: Held[]; ifLapsed: Held[] }
+    const ids = (held: Held[]) => held.map((g) => g.id)
     const saveOver = async (cookie: string, id: string, name: string) => {
       const rev = ((await (await send('GET', `/projects/${id}`, cookie)).json()) as { rev: number }).rev
       return send('PUT', `/projects/${id}`, cookie, { rev, ...doc(name) })
@@ -193,7 +236,7 @@ for (const backend of backends) {
       const a = await ada()
       expect(await usage(a.cookie)).toMatchObject({ plan: 'pro', print: true, readOnly: [] })
       await db.accountPlans.lapse(a.id)
-      expect(await usage(a.cookie)).toMatchObject({ plan: 'free', print: false, lapsed: { plan: 'pro' }, readOnly: [a.oldest] })
+      expect(await usage(a.cookie)).toMatchObject({ plan: 'free', print: false, lapsed: { plan: 'pro' }, readOnly: [{ id: a.oldest, why: 'projects' }] })
     })
 
     it('lets the two most recently changed games be edited, saved and started as usual', async () => {
@@ -230,8 +273,8 @@ for (const backend of backends) {
 
       const editor = await edit(a.oldest, a.cookie)
       expect(await editor.edit(retitle('Drake'))).toEqual({ v: 'refused', why: 'read-only', to: 'edit', ask: 1 })
-      // An edit that only shrinks the game is a change too: the decision says «not changed».
-      expect(await editor.edit({ v: 'removeRow', cardRef: 'kort-1' })).toEqual({ v: 'refused', why: 'read-only', to: 'edit', ask: 2 })
+      expect(await editor.edit({ v: 'addRow', cardRef: 'kort-9', fields: { title: 'Ny' } })).toEqual({ v: 'refused', why: 'read-only', to: 'edit', ask: 2 })
+      expect(await editor.edit({ v: 'setCell', cardRef: 'kort-1', field: 'antal', value: 2 })).toEqual({ v: 'refused', why: 'read-only', to: 'edit', ask: 3 })
       expect(await editor.save()).toEqual({ v: 'refused', why: 'read-only', to: 'save' })
       expect(await db.projects.readEdits(a.oldest, 0)).toEqual(before)
       expect((await db.projects.versions(a.oldest)).length).toBe(1)
@@ -240,11 +283,55 @@ for (const backend of backends) {
       expect((await fetch(`${run.http}/sessions/${table.id}/code`, { method: 'POST', headers: { authorization: `Bearer ${table.hostKey}` } })).status).toBe(200)
     })
 
+    // Beställarens beslut 2026-11-01 (#1469, #1511): rows, copies and pictures may be taken away from a
+    // read-only game, and nothing else. A shrink goes into the log and may be saved as a version; a
+    // whole document written over HTTP goes when it is only a shrink of what stands.
+    it('lets a read-only game be made smaller: rows and pictures taken away, copies lowered, and saved', async () => {
+      const a = await ada([1, 1, 4])
+      await db.accountPlans.lapse(a.id)
+      const big = a.ids[2]!
+      const editor = await edit(big, a.cookie)
+      expect((await editor.edit({ v: 'setCell', cardRef: 'kort-4', field: 'antal', value: 0 })).v).toBe('edits')
+      expect((await editor.edit({ v: 'compound', edits: [{ v: 'removeRow', cardRef: 'kort-4' }, { v: 'removePicture', hash: 'ingen' }] })).v).toBe('edits')
+      expect((await editor.edit(retitle('Drake'))).v).toBe('refused')
+      expect((await editor.save()).v).toBe('saved')
+      // Three cards fit under the free tier's three: the game is as usual again, with nothing stored about it.
+      expect((await usage(a.cookie)).readOnly.map((g) => g.id)).not.toContain(big)
+      expect((await editor.edit(retitle('Drake'))).v).toBe('edits')
+    })
+
+    it('takes a whole document over HTTP when it only makes a read-only game smaller, and refuses one that changes it', async () => {
+      const a = await ada([1, 1, 4])
+      await db.accountPlans.lapse(a.id)
+      const big = a.ids[2]!
+      const got = (await (await send('GET', `/projects/${big}`, a.cookie)).json()) as ProjectDoc & { rev: number }
+      const smaller = { ...got, rows: got.rows.slice(0, 2) }
+      const grown = await send('PUT', `/projects/${big}`, a.cookie, { ...smaller, name: 'Annat' })
+      expect(grown.status).toBe(402)
+      expect(await grown.json()).toEqual(READ_ONLY)
+      expect((await send('PUT', `/projects/${big}`, a.cookie, smaller)).status).toBe(200)
+    })
+
+    // Why each game is read-only, and which would be if the tier lapsed (#1511, for #1492 and #1494).
+    it('says why each game is read-only, and which games would be if the tier lapsed', async () => {
+      const a = await ada([1, 1, 4])
+      const big = a.ids[2]!
+      expect(await usage(a.cookie)).toMatchObject({ readOnly: [], ifLapsed: [{ id: big, why: 'cardRowsPerProject' }] })
+      await db.accountPlans.lapse(a.id)
+      expect(await usage(a.cookie)).toMatchObject({ readOnly: [{ id: big, why: 'cardRowsPerProject' }], ifLapsed: [{ id: big, why: 'cardRowsPerProject' }] })
+      const b = await ada()
+      await db.accountPlans.lapse(b.id)
+      expect((await usage(b.cookie)).readOnly).toEqual([{ id: b.oldest, why: 'projects' }])
+      // An account on the default tier has nothing to lapse from.
+      await db.accountPlans.clearPlan(b.id)
+      expect(await usage(b.cookie)).toMatchObject({ readOnly: [], ifLapsed: [] })
+    })
+
     it('holds a game with more unique cards than the free tier to read-only the same way', async () => {
       const a = await ada([1, 1, 4])
       await db.accountPlans.lapse(a.id)
       const big = a.ids[2]!
-      expect((await usage(a.cookie)).readOnly).toEqual([big])
+      expect(ids((await usage(a.cookie)).readOnly)).toEqual([big])
       expect((await saveOver(a.cookie, big, 'Ändrat')).status).toBe(402)
       expect((await saveOver(a.cookie, a.oldest, 'Ändrat')).status).toBe(200)
     })
@@ -263,7 +350,7 @@ for (const backend of backends) {
       }
       expect(Object.values(await db.projects.weighed(a.ids[1]!))).toEqual([20])
       await db.accountPlans.lapse(a.id)
-      expect((await usage(a.cookie)).readOnly).toEqual([a.ids[1]])
+      expect((await usage(a.cookie)).readOnly).toEqual([{ id: a.ids[1], why: 'storageBytes' }])
     })
 
     it('always lets a game be deleted, and the next one then fits and works again', async () => {
