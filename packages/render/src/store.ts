@@ -8,7 +8,11 @@ import { MemoryObjectStore, type ObjectStore } from './objects.js'
 // an object store (DRIFT §4) — R2 on the box, memory in tests — under `renders/<hash>`.
 
 export type Priority = 'texture' | 'print' | 'screen'
-export type RenderRequest = { hash: string; kind: RenderKind; priority: Priority; compiled: CompiledLike; requestedAt: number }
+// `order` is the job's place in what asked for it (#1546): a table's textures are numbered from 0, the
+// ones seen first first. Within a kind the queue hands out the lowest place first and then the oldest,
+// so every table's first texture goes before any table's second, and a table that starts while
+// another is half drawn catches up with it before they take turns. A job without a place is at 0.
+export type RenderRequest = { hash: string; kind: RenderKind; priority: Priority; compiled: CompiledLike; requestedAt: number; order?: number }
 export type JobState = 'queued' | 'running' | 'done' | 'failed'
 export type JobStatus = { state: JobState; error?: string; startedAt?: number }
 export type ClaimedJob = RenderRequest & { startedAt: number }
@@ -116,7 +120,7 @@ export class MemoryRenderStore implements RenderStore {
   async claim(now: number): Promise<ClaimedJob | null> {
     const next = [...this.jobs.values()]
       .filter((j) => j.state === 'queued')
-      .sort((a, b) => RANK[a.priority] - RANK[b.priority] || a.requestedAt - b.requestedAt)[0]
+      .sort((a, b) => RANK[a.priority] - RANK[b.priority] || (a.order ?? 0) - (b.order ?? 0) || a.requestedAt - b.requestedAt)[0]
     if (!next) return null
     next.state = 'running'
     next.startedAt = now

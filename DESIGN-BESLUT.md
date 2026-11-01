@@ -4751,6 +4751,15 @@ Priset är erkänt: brickans text är filtskalad och ligger under 24 px på TV:n
 Grindarna: `packages/web/test/start-waits-for-textures.test.tsx` (spaltens rad, den släckta brickan, att den tänds när sista kortet landar, «Starta ändå» vid stillastående kö och distansvyns bricka) och `packages/e2e/test/tv-chrome-floor.spec.ts` (raden vid golvet i den byggda produkten, där sviten inte kör någon renderare).
 Sviter vars fråga är starten och inte renderingen öppnar TV:n med `facesReady`, som svarar att korten är klara.
 
+**Reviderat 2026-11-01 (#1546): starten väntar på det som syns, och kön turas om mellan borden.**
+Lasttestet för Pros 500 kort (#1533, DRIFT §1) visade det sista av tre bord som startas samtidigt vänta 7–10 minuter, eftersom en arbetare ritar alla bordens texturer i tur och ordning.
+Med kön turvis och starten som väntade på allt hade alla tre blivit klara mot slutet, och det första hade väntat längre än förut.
+Beställaren valde 2026-11-01 alternativ A av tre (#1546): «Starta spelet» väntar bara på det som syns när spelet startar — baksidorna, brädena, uppvända kort och högarnas översta kort — och resten av leken ritas efteråt i lekens ordning, turvis mellan borden.
+B, att vänta på allt och bara turas om, nådde inte målet att varje bord kan börja inom en minut; C, att också vänta på nästa varv kort, var en mellanväg som inte behövdes.
+Det ersätter «tills alla kort är klara» ovan; den släckta brickan, spaltens rad och «Starta ändå» står kvar som de är, och räknar det starten väntar på.
+Kön är byggd först: varje bords texturer numreras från 0, det som syns först, och resten från en fast bas i högarnas ordning, och kön delar ut lägsta plats först inom varje jobbslag (DRIFT §6).
+Hur en sida ser ut när den dras innan dess textur är ritad — kort, brickor i alla former och bräden — prototypas i #1546 och byggs när den är godkänd, och starten ändras samtidigt.
+
 **Tillägg 2026-10-25 (#1344): platsernas skyltar står fritt från brickan.**
 Pillren under högarna trycker ned brickan i pixlar, mot platserna, och platsens skylt på TV:n (#683) står i pixlar ovanför platsens zoner.
 Vid 1024, 1280 och 1440 låg brickan därför över plats A:s skylt med två till fyra platser, och vid 1440 och 1920 över E:s med fem och sex.
