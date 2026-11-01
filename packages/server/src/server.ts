@@ -627,19 +627,26 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
       if (!body.success || !price) return json(res, 400, { error: 'no such price' })
       const own = await opts.accountPlans.planOf(account.id)
       if (own?.source === 'stripe' && own.lapsed === undefined && own.plan in payments.config.prices) return json(res, 409, { error: 'already subscribed' })
-      let customer = await opts.accountPlans.customerOf(account.id)
-      if (!customer) {
-        await opts.accountPlans.linkCustomer(account.id, await payments.stripe.createCustomer({ account: account.id, email: account.email }))
-        // Two checkouts at once make two customers at Stripe and link the first: both use it.
-        customer = await opts.accountPlans.customerOf(account.id)
-      }
       const back = (outcome: string) => {
         const to = new URL(body.data.back ?? '/', opts.appOrigin ?? opts.publicOrigin ?? `${schemeOf(opts, req)}://${req.headers.host ?? 'localhost'}`)
         to.searchParams.set('pro', outcome)
         return to.toString()
       }
-      const checkoutUrl = await payments.stripe.createCheckout({ customer: customer ?? '', account: account.id, price, successUrl: back('paid'), cancelUrl: back('cancelled') })
-      return json(res, 200, { url: checkoutUrl })
+      // Stripe that does not answer is a gateway's failure, said without Stripe's words; the log
+      // has them, never whose checkout it was (DRIFT §8).
+      try {
+        let customer = await opts.accountPlans.customerOf(account.id)
+        if (!customer) {
+          await opts.accountPlans.linkCustomer(account.id, await payments.stripe.createCustomer({ account: account.id, email: account.email }))
+          // Two checkouts at once make two customers at Stripe and link the first: both use it.
+          customer = await opts.accountPlans.customerOf(account.id)
+        }
+        const checkoutUrl = await payments.stripe.createCheckout({ customer: customer ?? '', account: account.id, price, successUrl: back('paid'), cancelUrl: back('cancelled') })
+        return json(res, 200, { url: checkoutUrl })
+      } catch (err) {
+        console.error(JSON.stringify({ msg: 'stripe', checkout: 'failed', error: err instanceof Error ? err.message : String(err) }))
+        return json(res, 502, { error: 'stripe unavailable' })
+      }
     }
     // Stripe's webhook (#1493, DRIFT §12): a body signed with the box's webhook secret, about some
     // customer. What it says is never taken as the truth: the customer's subscriptions are read from
@@ -662,9 +669,15 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
       }
       const type = String((parsed as { type?: unknown } | null)?.type ?? '')
       const customer = customerOfEvent(parsed)
-      const outcome = customer ? await syncCustomer({ accountPlans: opts.accountPlans, ...payments }, customer) : 'no-customer'
-      console.log(JSON.stringify({ msg: 'stripe', type, outcome }))
-      return json(res, 200, { received: true })
+      try {
+        const outcome = customer ? await syncCustomer({ accountPlans: opts.accountPlans, ...payments }, customer) : 'no-customer'
+        console.log(JSON.stringify({ msg: 'stripe', type, outcome }))
+        return json(res, 200, { received: true })
+      } catch (err) {
+        // Stripe or the database did not answer: 500, so Stripe sends the event again.
+        console.error(JSON.stringify({ msg: 'stripe', type, outcome: 'failed', error: err instanceof Error ? err.message : String(err) }))
+        return json(res, 500, { error: 'not handled; send it again' })
+      }
     }
     // Accepting the terms (#1270): only the version in force, so a tab opened before a change never
     // accepts what its reader has not read. 409 says which version that is, null when there is none.

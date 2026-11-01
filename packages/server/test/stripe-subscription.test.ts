@@ -228,6 +228,22 @@ for (const backend of backends) {
       expect(await db.accountPlans.planOf(ada.id)).toMatchObject({ plan: 'pro', source: 'stripe' })
     })
 
+    // Stripe that does not answer: the checkout says so as a gateway's failure, and the webhook as the
+    // box's, so that Stripe sends it again; nothing is written either way.
+    it('answer 502 for a checkout and 500 for a webhook when Stripe cannot be reached, and write nothing', async () => {
+      await open()
+      const ada = await someone('ada')
+      const cus = await customer(ada.cookie)
+      const down = () => Promise.reject(new Error('stripe GET /v1/subscriptions: 500 '))
+      stripe.subscriptionsOf = down
+      stripe.createCheckout = down
+      expect((await webhook(event('customer.subscription.created', cus))).status).toBe(500)
+      const refused = await checkout(ada.cookie, { currency: 'sek', interval: 'month' })
+      expect(refused.status).toBe(502)
+      expect(await refused.json()).toEqual({ error: 'stripe unavailable' })
+      expect(await db.accountPlans.planOf(ada.id)).toBeNull()
+    })
+
     // A webhook that never came (RUNBOOK): the operator reads the account's subscriptions from Stripe
     // by its address and writes them as the webhook would have.
     it('are read back by address for the operator, as a webhook would have written them', async () => {
