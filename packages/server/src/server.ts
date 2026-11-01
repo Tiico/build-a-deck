@@ -7,9 +7,9 @@ import { compressible, encodedBytes, encodedCopy, precompressed, typeOf } from '
 import { sharedPage, type LinkPicture } from './share.js'
 import { WebSocketServer, type WebSocket } from 'ws'
 import { z } from 'zod'
-import { ASSET_MAX_BYTES, assetFormatsNamed, assetKindDeclared, ClientMessage, PHYSICAL_VERBS, codeOfAddress, REDACTED, SEATINGS, TABLE_PROTOCOL, hostKeyOfProtocols, offersTableProtocol, sniffAsset, tokenOfProtocols, type Applied, type Seating, type ServerMessage } from '@byd/protocol'
+import { ASSET_MAX_BYTES, assetFormatsNamed, assetKindDeclared, ClientMessage, PHYSICAL_VERBS, codeOfAddress, REDACTED, SEATINGS, TABLE_PROTOCOL, hostKeyOfProtocols, offersTableProtocol, sniffAsset, tokenOfProtocols, type Applied, type Seating, type ServerMessage, type TypeRef } from '@byd/protocol'
 import { validateSetup, type DeckFacts, type SetupDef, type TypeRegistry } from '@byd/engine'
-import { renderRules, Template, validateCard, type Motif } from '@byd/template'
+import { renderRules, Template, validateCard, type FaceTemplate, type Motif, type Row } from '@byd/template'
 import { A5, bookletOf } from './booklet.js'
 import { contentHash, contentTypeOf, type ObjectStore, type RenderKind, type RenderRequest, type RenderStore } from '@byd/render/queue'
 import type { Subscriber, TableActor, TableHost } from './actor.js'
@@ -22,6 +22,7 @@ import { checkedName, type EditIntent } from './edits.js'
 import { decksOf, rowRef } from './decks.js'
 import { arrangementOf, fanFaces, namesOfProject, peekFace, type CardFace } from './names.js'
 import { boxIssues, coverOf, showsCover } from './box.js'
+import { markerRef } from './material.js'
 import { SurveyAsk, SurveyBody, sameSender, type SurveyAnswer, type SurveyStanding, type SurveyStore } from './surveys.js'
 import { playtestOf, type PlaytestSource } from './playtest.js'
 import { playtestWaiting, WAITING_VERBS, type GameWaiting, type Waiting, type WaitingTable } from './waiting.js'
@@ -1634,6 +1635,19 @@ function checkedCards(rec: ProjectRecord, opts: Pick<ServerOptions, 'registry' |
       }
     }
   }
+  // The printed parts (#1488): every side a board's or a marker's template draws, at the bleed that
+  // will be printed for its type, named by the name it goes by at the table, as a card's is. An error
+  // in a board stops an order as one in a card does.
+  const check = (ref: TypeRef, cardRef: string, faces: Record<string, FaceTemplate | undefined>, row: Row) => {
+    const type = opts.registry.get(ref)
+    const bleedMm = widestBleedMm(provider ? [provider] : (opts.printProviders ?? []), ref) ?? type.print.bleedMm
+    for (const [face, template] of Object.entries(faces)) {
+      if (!template) continue
+      for (const issue of validateCard({ type, face: template, row, bleedMm, ...(rec.fonts ? { fonts: rec.fonts } : {}) })) out.push({ ...issue, cardRef, face })
+    }
+  }
+  for (const board of rec.setup.boards ?? []) check(board.type, board.id, board.faces ?? {}, {})
+  for (const marker of rec.setup.markers ?? []) check(marker.type, markerRef(marker.id), marker.faces ?? {}, { title: marker.name })
   for (const { face, ...issue } of boxIssues(rec)) out.push({ ...issue, face: `box.${face}` })
   return out
 }

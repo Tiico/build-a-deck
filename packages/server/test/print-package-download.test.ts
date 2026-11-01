@@ -125,6 +125,50 @@ describe('the print package to download', () => {
     expect(readme).not.toContain('utelämnade')
   }, 120_000)
 
+  // The printed parts (#1488, beställarens beslut 12 i #1470): the board's side and the markers' sides
+  // are files under `tryck/` with the bleed Testtryckeriet asks for, identical markers once, and
+  // LASMIG says that die-cut sheets and folding wait for a real partner, as the box's files do (L91).
+  const side = (w: number, h: number, reach: number, fill: string) => ({ base: [{ kind: 'shape', id: 'bg', x: -reach, y: -reach, w: w + 2 * reach, h: h + 2 * reach, shape: 'rect', fill }], variants: {} })
+  const withParts = (reach: number) => {
+    const base = game(4)
+    return {
+      ...base,
+      setup: {
+        ...base.setup,
+        boards: [{ id: 'Kartan', type: { id: 'board.player', version: 1 }, zone: 'table', faces: { front: side(240, 150, reach, '#2e6b46') } }],
+        markers: [{ id: 'guld', name: 'Guld', type: { id: 'tile.round.25', version: 1 }, count: 3, zone: 'table', faces: { front: side(25, 25, 4, '#d99a1f'), back: side(25, 25, 4, '#3a2a1a') } }],
+      },
+    }
+  }
+
+  it('puts the board\'s side and the markers\' sides in the zip with bleed, identical markers once', async () => {
+    await call('POST', '/projects', { id: 'p1', ...withParts(4) })
+    const files = unzipSync(new Uint8Array(await (await zipOf('/projects/p1/print-package/zip?provider=testtryckeriet&lang=sv')).arrayBuffer()))
+    const manifest = JSON.parse(strFromU8(files['manifest.json']!)) as { files: string[]; errors: unknown[]; order: PreparedOrder }
+    expect(manifest.errors).toEqual([])
+    expect(manifest.order.cards.filter((c) => c.type.id !== 'card.standard.63x88').map((c) => [c.cardRef, c.type.id])).toEqual([
+      ['Kartan', 'board.player'],
+      ['marker:guld', 'tile.round.25'],
+      ['marker:guld', 'tile.round.25'],
+      ['marker:guld', 'tile.round.25'],
+    ])
+    const parts = manifest.order.files.filter((f) => f.type.id !== 'card.standard.63x88')
+    expect(parts.map((f) => [f.name, f.trim, f.bleedMm])).toEqual([
+      ['Kartan-front.pdf', { widthMm: 240, heightMm: 150 }, 3],
+      ['marker_guld-front.pdf', { widthMm: 25, heightMm: 25 }, 3],
+      ['marker_guld-back.pdf', { widthMm: 25, heightMm: 25 }, 3],
+    ])
+    for (const f of parts) expect(strFromU8(files[`tryck/${f.name}`]!.subarray(0, 5)), f.name).toBe('%PDF-')
+    expect(strFromU8(files['LASMIG.md']!)).toMatch(/Stansark och vikning för brädet och brickorna kommer i ett steg 2/)
+  }, 120_000)
+
+  it('leaves the files out when the board\'s side falls short of its bleed, and says it is the board', async () => {
+    await call('POST', '/projects', { id: 'p1', ...withParts(2) })
+    const summary = (await (await call('GET', '/projects/p1/print-package?to=SE')).json()) as Omit<Summary, 'errors'> & { errors: { code: string; cardRef: string; face: string }[] }
+    expect(summary.files).toEqual([])
+    expect(summary.errors.map((e) => [e.code, e.cardRef, e.face])).toContainEqual(['short-of-bleed', 'Kartan', 'front'])
+  }, 120_000)
+
   // Meeples are stock the printer packs (#1478, beställarens beslut 5 i #1470), each seat's in the
   // seat's colour (L11): the manifest lists them per colour with the printer's part number, and
   // LASMIG says them in words beside the dice, in the reader's language.
