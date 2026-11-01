@@ -90,14 +90,13 @@
 .sida[data-bredd='1024'] .hero .fan i { left: 36px; }
 
 /* ── Profil (profile.css, och Förbrukning efter #1198) ─────────────────────────────────────────── */
-.pf { height: 100%; overflow: auto; background: #0f1117; color: #e6e6e6; font: 14px system-ui, sans-serif; padding: 40px 20px; display: grid; justify-content: center; align-content: start; }
-.pf .profil { width: 640px; max-width: 100%; }
+.pf { height: 100%; overflow: auto; background: #0f1117; color: #e6e6e6; font: 14px system-ui, sans-serif; padding: 40px 20px; display: grid; grid-template-columns: minmax(0, 640px); justify-content: center; align-content: start; }
+.pf .profil { width: auto; min-width: 0; }
 .pf .pkort { position: relative; }
 .pf .pkort[data-fram] { border-color: #4a6fd4; box-shadow: 0 0 0 1px #4a6fd4; }
 .sida[data-bredd='390'] .pf { padding: 20px 16px; }
 .sida[data-bredd='390'] .pf .pkort { padding: 18px; }
-.sida[data-bredd='390'] .forbr { grid-template-columns: minmax(0, 1fr) auto; }
-.sida[data-bredd='390'] .forbr .bar { grid-column: 1 / -1; order: 3; }
+.sida[data-bredd='390'] .forbr { grid-template-columns: minmax(0, 1fr) 64px auto; gap: 10px; }
 
 /* ── Editorns krom ─────────────────────────────────────────────────────────────────────────────── */
 .ed .t-data td .cell { display: block; width: 100%; min-height: 44px; padding: 12px 10px; color: #ddd; font-size: 12px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }

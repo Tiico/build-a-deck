@@ -21,6 +21,7 @@
      Stripes egna sidor ritas inte; de står som en grå ruta.
      PROTOTYP. Slängs när beslutet står i DESIGN-BESLUT (A2).
      ────────────────────────────────────────────────────────────────────────────────────── */
+  .tillbaka { text-decoration: none; color: #9aa3b8; }
   .abo h2 { display: flex; align-items: center; gap: 10px; }
   .niva { display: inline-flex; align-items: center; min-height: 24px; padding: 0 10px; border-radius: 999px; font-size: 12px; font-weight: 750; letter-spacing: .3px; }
   .niva[data-n='gratis'] { background: #262a35; color: #dce3f2; }
@@ -29,7 +30,7 @@
   .jmf dt { color: #9aa3b8; font-weight: 700; }
   .jmf dd { margin: 0; color: #dce3f2; }
   .jmf dd b { color: #fff; }
-  .period { display: inline-flex; padding: 3px; gap: 3px; border-radius: 10px; background: #11131a; border: 1px solid #2f333d; border-width: 1px; margin: 0; }
+  .period { justify-self: start; display: inline-flex; padding: 3px; gap: 3px; border-radius: 10px; background: #11131a; border: 1px solid #2f333d; border-width: 1px; margin: 0; }
   .period legend { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
   .period label { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 14px; border-radius: 8px; color: #c3cbdd; font-weight: 650; cursor: pointer; }
   .period input { position: absolute; opacity: 0; }
@@ -213,7 +214,7 @@ function aboA() {
   if (k === 'gratis') return `<section class="pkort abo" id="abonnemang" ${yta === 'tak' ? 'data-fram' : ''} aria-labelledby="abo-h"><h2 id="abo-h">Abonnemang <span class="niva" data-n="gratis">Gratis</span></h2>${statusRad()}
     <dl class="jmf"><dt>Gratis</dt><dd>${GRATIS()}.</dd><dt>Pro</dt><dd>${PRO()}.</dd></dl>
     <div class="kop">${periodVal()}<button class="k-blå" data-do="kassa">Uppgradera till Pro, ${pris()}</button></div>
-    <p class="liten">Priset är med moms. Du betalar hos Stripe och kan säga upp när du vill, här; Pro gäller då perioden ut.</p></section>`
+    <p class="liten">Priset är med moms. Du betalar hos Stripe och säger upp när du vill, här i Profil; Pro gäller då perioden ut.</p></section>`
   if (k === 'uppsagt') return aboAUppsagt()
   const miss = k === 'miss'
   return `<section class="pkort abo" id="abonnemang" aria-labelledby="abo-h"><h2 id="abo-h">Abonnemang <span class="niva" data-n="pro">Pro</span></h2>${statusRad()}
