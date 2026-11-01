@@ -269,6 +269,10 @@ create table if not exists account_plans (
 -- tier, and what of its games lies over that tier's ceilings is read-only. The row keeps its tier,
 -- so lifting the lapse gives it back; giving the account a tier again sets it back to null.
 alter table account_plans add column if not exists lapsed_at timestamptz;
+-- The order the account's games are taken in while it is lapsed (#1518), locked at the lapse: a JSON
+-- array of game ids, those that fit the free tier then first. Null while the tier holds, and set back
+-- to null with `lapsed_at`.
+alter table account_plans add column if not exists lapsed_order jsonb;
 
 -- What each game's versions name (#1197, #1192 question 4): one row per game and asset some version
 -- of it uses, read the way `assetHashesOf` reads a document — every string anywhere in it that is

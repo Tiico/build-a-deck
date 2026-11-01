@@ -121,12 +121,12 @@ for (const backend of backends) {
     it('lapses, is held to the default while lapsed, and is as before when lifted or given a tier again', async () => {
       const gus = await db.auth.ensureAccount('gus@example.com')
       const stores = { auth: db.auth, accountPlans: db.plans }
-      expect(await lapsePlanByAddress(stores, 'gus@example.com')).toEqual({ ok: false, why: 'no tier of its own' })
-      expect(await lapsePlanByAddress(stores, 'nobody@example.com')).toEqual({ ok: false, why: 'no such account' })
+      expect(await lapsePlanByAddress({ ...stores, projects: db.projects, plans: tiers }, 'gus@example.com')).toEqual({ ok: false, why: 'no tier of its own' })
+      expect(await lapsePlanByAddress({ ...stores, projects: db.projects, plans: tiers }, 'nobody@example.com')).toEqual({ ok: false, why: 'no such account' })
       await setPlanByAddress({ ...stores, plans: tiers }, 'gus@example.com', 'pro')
       expect(await planOf(db.plans, tiers, gus.id)).toBe('pro')
 
-      expect(await lapsePlanByAddress(stores, ' Gus@Example.com ')).toEqual({ ok: true })
+      expect(await lapsePlanByAddress({ ...stores, projects: db.projects, plans: tiers }, ' Gus@Example.com ')).toEqual({ ok: true })
       expect(await db.plans.planOf(gus.id)).toMatchObject({ plan: 'pro', source: 'operator', lapsed: expect.any(String) })
       expect(Date.parse((await db.plans.planOf(gus.id))!.lapsed!)).not.toBeNaN()
       expect(await planOf(db.plans, tiers, gus.id)).toBe('free')
@@ -139,7 +139,7 @@ for (const backend of backends) {
       expect(await unlapsePlanByAddress(stores, 'gus@example.com')).toEqual({ ok: false, why: 'not lapsed' })
 
       // A tier given again ends the lapse.
-      await lapsePlanByAddress(stores, 'gus@example.com')
+      await lapsePlanByAddress({ ...stores, projects: db.projects, plans: tiers }, 'gus@example.com')
       await setPlanByAddress({ ...stores, plans: tiers }, 'gus@example.com', 'pro')
       expect(await planOf(db.plans, tiers, gus.id)).toBe('pro')
       await db.plans.clearPlan(gus.id)

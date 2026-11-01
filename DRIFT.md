@@ -521,6 +521,7 @@ Vilken nivå ett konto har står i tabellen `account_plans`, som Stripe skriver 
 I dag sätter operatören den över Tailscale (§10), med lådans egen `BYD_PLANS` så att en nivå lådan inte har aldrig skrivs:
 `pnpm --filter @byd/server plan set <adress> <nivå>` och `plan clear <adress>`.
 Byggt 2026-11-01 (#1491): ett abonnemang som gått ut är en utgång på kontots rad i `account_plans` (`lapsed_at`), och operatören sätter och häver den med `plan lapse <adress>` och `plan unlapse <adress>`; Stripe skriver samma sak när abonnemangen kopplas på.
+Utgången låser ordningen spelen tas i (`lapsed_order`, #1518), så att senare ändringar aldrig skjuter ett annat spel in i läsläge; `plan lapse` behöver därför lådans `BYD_PLANS`, som `plan set`, för att veta vilka spel som ryms i gratisnivån.
 Ett utgånget konto hålls till standardnivån, alltså Gratis, och de av dess spel som ligger över gratisnivåns tak är i läsläge (G5, L2); `plan set` ger kontot en nivå igen och häver utgången.
 Ett spel i läsläge får göras mindre, rader, Antal och bilder, men inget annat (#1511), och `GET /me/usage` säger varför varje spel är i läsläge och vilka som skulle hamna där om nivån gick ut.
 Raden behåller sin nivå medan den är utgången, så starten håller fortfarande `BYD_PLANS` mot den, och standardnivån finns alltid, eftersom schemat kräver att standarden är en av nivåerna.
