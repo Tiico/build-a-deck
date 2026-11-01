@@ -522,7 +522,10 @@ Byggt 2026-11-01 (#1521, beställarens beslut samma dag): **momsen tas ut med St
 Kassan skapas med automatisk skatt (`automatic_tax[enabled]`), Stripes kassa frågar efter kundens land så som Stripe Tax kräver, och adressen sparas på kunden så att förnyelserna beskattas likadant; Stripe Tax räknar svensk moms och EU-moms via OSS efter landet.
 Varje pris i `BYD_STRIPE_PRICES` sätts upp i Stripe med momsen inräknad (`tax_behavior: inclusive`), och kassan frågar Stripe om priset innan den skickar någon dit: ett pris med moms ovanpå, utan besked om moms, eller i en annan valuta eller ett annat intervall än variabeln säger säljs aldrig, svaret är `502` och loggen säger vilket pris och varför.
 Stripe Tax påslaget med registreringarna, och beställarens OSS-registrering hos Skatteverket, är förutsättningar för de skarpa nycklarna (RUNBOOK §10).
-Ett konto som raderar sig själv tar bort kopplingen till Stripe-kunden, men säger ännu inte upp abonnemanget hos Stripe; det görs för hand i Dashboard tills det byggs (RUNBOOK §10).
+Byggt 2026-11-01 (#1520): ett konto som raderar sig själv säger upp kundens abonnemang hos Stripe direkt, inte vid periodens slut, innan kontot försvinner, och kopplingen i `stripe_customers` går med kontot (G6).
+Kunden läggs först i tabellen `stripe_cancellations`, som bara har Stripes id för kunden och aldrig kontot, och tas ur den när Stripe har sagt ja; svarar Stripe inte stoppas inte raderingen, och lådan försöker igen vid start och varje timme med de andra sopningarna, med raden `{"msg":"stripe-cancellations","cancelled":1,"failed":0}`.
+Operatören ser och tömmer kön med `pnpm --filter @byd/server stripe sync` utan adress (RUNBOOK §10).
+Registerutdraget (`GET /me/data`) säger kontots Stripe-kund och varje abonnemang Stripe har för den, med status, nivå, valuta och intervall.
 
 Nivåerna och deras tak bor inte heller i koden (#1193, A2, #1192): de är `BYD_PLANS` i lådans `.env`, JSON på en rad inom enkla citattecken, och stacken skickar variabeln till appen.
 

@@ -157,7 +157,7 @@ Byggt 2026-11-01 (#1493, skiva 4 av 5 i #1469, beställarens beslut 2026-11-01: 
 - Ett levande abonnemang (`active`, `trialing`, `past_due`) ger Pro och häver en utgång; inget levande abonnemang gör ett konto vars nivå Stripe gav utgånget, och läsläget från #1491 gäller.
 - En nivå med källan `operator` skrivs aldrig över av Stripe, tills operatören tar bort den med `plan clear`.
 - Momsen tas ut med Stripe Tax, och priset är inklusive moms (se nedan, #1521).
-- Ett konto som raderar sig själv säger ännu inte upp sitt abonnemang hos Stripe; RUNBOOK §10 säger hur det görs för hand tills det byggs.
+- Ett konto som raderar sig själv säger upp sitt abonnemang hos Stripe direkt (#1520, se G6).
 - Hur Pro köps, syns och sägs upp i webben är #1494, som prototypas först.
 - Grindarna är `packages/server/test/payments.test.ts` (konfigurationen, signaturen och vad abonnemangen ger), `stripe-subscription.test.ts` (kassan och webhooken mot båda lagren, med en fake för Stripe), `stripe-api.test.ts` (klienten mot en ställföreträdare på maskinen), `payments-at-start.test.ts` och `deploy.test.ts`. Inget anrop går till Stripe i `pnpm test`.
 
@@ -2772,6 +2772,15 @@ Ett raderat inträde får bara lämna sin egen plats, eftersom det inte säger n
 Platsen står alltså kvar som tagen under «Utan namn» tills hon lämnar den eller värden sparkar den, men inget nytt skrivs från den.
 Och en sida som öppnas på en plats som redan är tagen räknar sig som sittande (`useSitDown`), eftersom dörren bara släpper in en plats till den token som håller den.
 Liggaren är tabellen `erasures`: id, när, vad (`guest`, `table` eller `game`), varför (`request`, `retention` eller `removed`), och bordet, platsen och stunden eller spelet; inget namn, ingen adress och ingen token.
+
+Byggt 2026-11-01 (#1520): **ett raderat konto säger upp sitt abonnemang hos Stripe.**
+Raderingen säger upp varje abonnemang kontots Stripe-kund har som Stripe fortfarande kan dra från, direkt och inte vid periodens slut, innan kontot försvinner, så att ingen dras för ett konto som inte finns.
+Kopplingen i `stripe_customers` är en uppgift om kontot och går med det i samma transaktion, som nivån.
+Kunden läggs först i en kö, `stripe_cancellations`, som bara har Stripes id för kunden och inget konto, och den tas ur kön när Stripe har sagt upp.
+Svarar Stripe inte stoppas raderingen inte: kunden står kvar i kön, lådan försöker igen vid start och varje timme, och operatören ser och tömmer kön med `stripe sync` utan adress (RUNBOOK §10).
+Stripe-kunden själv raderas inte hos Stripe: där står adressen kvar bredvid kvittona, som bokföringen kräver, och Stripe är biträde för betalningen.
+Registerutdraget säger kontots Stripe-kund och varje abonnemang Stripe har för den (`stripe`), eller `null` för ett konto som aldrig gick till kassan.
+Grindarna är `packages/server/test/stripe-subscription.test.ts` mot båda lagren med Stripe-faken, och `stripe-api.test.ts` för uppsägningen i klienten.
 Operatörsskriptet är `pnpm --filter @byd/server erase`, med `table <session> [--seat <plats> | --name <namn>]`, `game <id>`, `ledger` och `replay [--from <fil>]`, och det säger vad det gjorde i en rad utan namn.
 `erase game` maskar ett spels bord och lämnar spelet, som är designerns att ta bort; `replay` tar bort ett spel igen bara när designern hade tagit bort det.
 Ytorna säger ännu inte det maskade värdet med egna ord: en maskad plats visar platshållaren som den är, och det hör till kontots och gästens skivor (#1280, #1281).
