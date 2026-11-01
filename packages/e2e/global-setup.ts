@@ -1,4 +1,5 @@
 import { takeTheMachine } from '../../test-support/one-suite-at-a-time.js'
+import { browsersReady } from '../../test-support/playwright-browsers.js'
 import { start } from './support/stack.js'
 
 /**
@@ -14,6 +15,8 @@ import { start } from './support/stack.js'
  * in here was measured against.
  */
 export default async function globalSetup(): Promise<() => Promise<void>> {
+  // A missing browser is said once, before the build, and not as every spec red (#1508).
+  await browsersReady()
   const release = await takeTheMachine()
   try {
     const stack = await start()

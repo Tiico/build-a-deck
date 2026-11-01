@@ -19,8 +19,9 @@ describe("CI's browser (#1125)", () => {
   })
 
   it('is installed in one place, with its system packages kept between runs', () => {
-    expect(workflow()).not.toMatch(/playwright install/)
-    expect(setup()).toMatch(/playwright install --with-deps chromium/)
+    expect(workflow()).not.toMatch(/playwright install|pnpm browsers/)
+    // `pnpm browsers` is `playwright install` into the repo's own cache (#1508).
+    expect(setup()).toMatch(/pnpm browsers --with-deps/)
     expect(setup()).toMatch(/uses: actions\/cache@/)
     // The runner's apt throws a package away once it is installed; kept, the cache has something to hold.
     expect(setup()).toMatch(/Keep-Downloaded-Packages "true"/)

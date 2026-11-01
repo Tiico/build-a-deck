@@ -928,6 +928,17 @@
 .byd-setup-props .byd-setup-die > select { width: auto; min-width: 0; }
 .byd-setup-die-where { grid-area: where; display: flex; gap: 6px; align-items: center; min-width: 0; }
 .byd-setup-die-where select { flex: 1 1 auto; }
+/* A piece's fields (#1477, editorvariant B in #1472): a line each for the kind, the count and how a
+   meeple starts, every line led by its quiet word as the prototype has it. The kinds and the start
+   are the tool's `.byd-choice` in a row, and wrap rather than widen the column at 1024. */
+.byd-setup-piece { display: grid; gap: var(--byd-s2); min-width: 0; color: #9aa3b8; }
+.byd-setup-piece-line { display: flex; flex-wrap: wrap; gap: var(--byd-s1) var(--byd-s2); align-items: center; min-width: 0; }
+/* Each line's word stands over its controls: beside them, the three kinds did not fit the column at
+   1024 and wrapped under «Sort» alone, while «Antal» and «Börjar» stood beside theirs. */
+.byd-setup-piece-line > span:first-child { flex-basis: 100%; font-size: 12px; }
+.byd-setup-piece-choice { display: flex; flex-wrap: wrap; gap: var(--byd-s1); min-width: 0; }
+.byd-setup-props .byd-setup-piece-choice > .byd-choice { display: inline-flex; gap: var(--byd-s1); align-items: center; padding: var(--byd-s1); font-size: 13px; font-weight: 600; }
+.byd-setup-props .byd-setup-piece-line > select { width: auto; min-width: 0; }
 /* Border-box (#480): the editor's 44 px floor is the whole field's height, and with the padding
    counted on top of it every field on this tab stood 62 px tall. */
 .byd-setup input:not([type='checkbox']), .byd-setup select { box-sizing: border-box; padding: 8px; border: 1px solid var(--byd-secondary-line); border-radius: 8px; background: #1b1d23; color: #fff; font: inherit; min-width: 0; }
@@ -993,6 +1004,12 @@
 .byd-setup-name i[data-kind='die'] { width: 12px; height: 12px; border-radius: 3px; border-color: #f3e9d6; background: #f3e9d6; box-shadow: inset 0 0 0 4px #f3e9d6, inset 0 0 0 6px #1c1c1c; }
 .byd-setup-name i[data-kind='counter'] { width: 12px; height: 12px; border-radius: 50%; border-color: #ffd98a; background: #2a2f3c; box-shadow: none; }
 .byd-setup-name small { flex: none; color: #9aa3b8; font-size: 11px; }
+/* A wooden piece (#1477, K33) drawn as its silhouette in wood, since its colour is each seat's (L11):
+   a meeple, a cube, a disc. The same glyph stands in the row and in the row's kind buttons. */
+i[data-kind='piece'] { flex: none; display: inline-block; width: 14px; height: 14px; border: 0; border-radius: 0; box-shadow: none; background: #e3b878; }
+i[data-kind='piece'][data-piece='meeple'] { clip-path: polygon(50% 0, 64% 6%, 66% 24%, 100% 38%, 100% 50%, 70% 54%, 86% 100%, 58% 100%, 50% 80%, 42% 100%, 14% 100%, 30% 54%, 0 50%, 0 38%, 34% 24%, 36% 6%); }
+i[data-kind='piece'][data-piece='cube'] { width: 12px; height: 12px; border-radius: 2px; }
+i[data-kind='piece'][data-piece='disc'] { border-radius: 50%; }
 /* Efterledet: verktygets eget ord efter zonens namn, i en ram som säger just det (#255, A4).
    Ramen är alltså inte utsmyckning utan hela skälet att formen heter «Bricka» och inte «Tyst» —
    utan den blir `Hand A` typografiskt omöjlig att skilja från `Framför A`, som designern verkligen
@@ -1022,6 +1039,8 @@
 .byd-setup-add-menu { display: grid; gap: 2px; margin: var(--byd-s1) 0 var(--byd-s2) var(--byd-s5); padding: var(--byd-s1); border: 1px solid #2f333d; border-radius: 10px; background: #1b1d23; }
 .byd-setup-add-menu > button { border: 0; border-radius: 8px; min-height: var(--byd-tap); padding: 0 var(--byd-s3); background: transparent; color: #e6ecfa; font: inherit; font-weight: 600; text-align: left; cursor: pointer; }
 .byd-setup-add-menu > button:hover { background: #2a2f3c; }
+/* What a word in the menu covers (#1477): «＋ Pjäs», then «meeple, kub eller skiva» in the quiet grey. */
+.byd-setup-add-menu > button > small { margin-left: var(--byd-s2); color: #9aa3b8; font-size: 12px; font-weight: 400; }
 .byd-setup-name strong { flex: none; color: #8ad0ff; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; }
 .byd-setup-x { flex: none; border: 1px solid #2f333d; border-radius: 8px; background: #1b1d23; color: #c7cede; font-size: 15px; line-height: 1; padding: 4px 8px; cursor: pointer; }
 .byd-setup-x:hover { background: #2a1b1b; border-color: #6b2b2b; color: #ff9a9a; }

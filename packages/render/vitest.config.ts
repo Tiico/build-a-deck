@@ -1,3 +1,6 @@
+// Playwright's browsers are the repo's own, in .playwright-browsers/ (#1508): imported first, so
+// every worker is born knowing, and checked before the run (`test-support/playwright-browsers.ts`).
+import '../../test-support/playwright-browsers.js'
 import { defineConfig } from 'vitest/config'
 import { reporting } from '../../test-support/report.js'
 import { TEST_CEILING } from '../../test-support/own-time.js'
@@ -15,5 +18,5 @@ import { TEST_CEILING } from '../../test-support/own-time.js'
 // The worker screens with the box classifier (#1273), whose models the run fetches first, once per
 // machine (`test-support/screening-models.ts`).
 export default defineConfig({
-  test: { testTimeout: TEST_CEILING, setupFiles: ['./test/setup.ts'], globalSetup: ['../../test-support/one-suite-at-a-time.ts', '../../test-support/screening-models.ts'], ...reporting() },
+  test: { testTimeout: TEST_CEILING, setupFiles: ['./test/setup.ts'], globalSetup: ['../../test-support/playwright-browsers.ts', '../../test-support/one-suite-at-a-time.ts', '../../test-support/screening-models.ts'], ...reporting() },
 })
