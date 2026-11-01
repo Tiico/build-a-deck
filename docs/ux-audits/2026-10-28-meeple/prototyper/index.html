@@ -56,16 +56,20 @@ body.ren .bara-las, body.ren .vaxlare { display: none !important; }
 .felt .pjas:focus-visible .fokus, .felt .pjas.vald .fokus { display: block; }
 .felt .fokus { display: none; }
 .handrad { position: absolute; left: 0; right: 0; bottom: 0; height: 150px; border-top: 1px solid #22262f; background: #101219; display: flex; gap: 8px; align-items: center; justify-content: center; }
-.handrad div { width: 86px; height: 120px; border-radius: 6px; background: #f4ead8; color: #1c1c1c; font: 700 13px var(--font); padding: 6px; }
+.handrad div { overflow: hidden; width: 86px; height: 120px; border-radius: 6px; background: #f4ead8; color: #1c1c1c; font: 700 13px var(--font); padding: 6px; }
 .platta { position: absolute; z-index: 5; display: flex; gap: 4px; padding: 4px; border-radius: 10px; background: var(--plate); border: 1px solid var(--chalk-off); box-shadow: 0 10px 30px rgba(0,0,0,.6); transform: translate(-50%, 0); white-space: nowrap; }
 .platta button { font: 700 14px var(--font); min-height: 36px; padding: 0 10px; border-radius: 8px; border: 0; background: transparent; color: var(--chalk); cursor: pointer; }
 .platta button:hover, .platta button:focus-visible { background: var(--plate-off); outline: 2px solid var(--accent); outline-offset: -2px; }
 .platta kbd { font: 600 11px system-ui; color: var(--chalk-off); border: 1px solid #4a4f5c; border-radius: 4px; padding: 0 4px; margin-left: 4px; }
 .flytta { position: absolute; z-index: 6; left: 50%; top: 50%; transform: translate(-50%, -50%); min-width: 300px; padding: 10px; border-radius: 12px; background: var(--plate); border: 1px solid var(--chalk-off); box-shadow: 0 20px 40px rgba(0,0,0,.6); }
-.flytta h4 { margin: 4px 6px 8px; font: 700 18px var(--font); color: var(--chalk); }
-.flytta button { display: flex; width: 100%; justify-content: space-between; gap: 12px; font: 600 17px var(--font); min-height: 44px; padding: 0 12px; border: 0; border-radius: 8px; background: transparent; color: var(--chalk); cursor: pointer; }
+.flytta h4 { margin: 4px 6px 12px; font: 700 18px var(--font); color: var(--chalk); }
+.flytta button { display: flex; width: 100%; justify-content: space-between; align-items: center; gap: 12px; font: 600 17px var(--font); min-height: 44px; padding: 0 12px; border: 0; border-radius: 8px; background: transparent; color: var(--chalk); cursor: pointer; }
 .flytta button:hover, .flytta button:focus-visible { background: var(--plate-off); outline: 2px solid var(--accent); outline-offset: -2px; }
 .flytta button span { color: var(--chalk-off); }
+.ram.tv .platta button { font-size: 22px; min-height: 48px; }
+.ram.tv .flytta { min-width: 420px; }
+.ram.tv .flytta h4 { font-size: 26px; }
+.ram.tv .flytta button { font-size: 24px; min-height: 56px; }
 
 /* ── familjen och kontrasten ── */
 .familj { display: flex; gap: 12px; flex-wrap: wrap; }
@@ -298,7 +302,7 @@ function figure(kind, c, lying, style) {
     if (style === 'C') {
       if (lying) return `<path d="${MEEPLE}" transform="translate(4 4)" fill="#000" opacity=".3"/><path d="${MEEPLE}" fill="${c}" ${band()}/><path d="${MEEPLE}" fill="none" stroke="#0005" stroke-width="5" transform="translate(0 3)" clip-path="none" opacity=".5"/>`
       // Stående, sett rakt uppifrån: huvudet över axlarna och armarna.
-      return `<ellipse cx="56" cy="60" rx="40" ry="22" fill="#000" opacity=".35"/><rect x="10" y="40" width="80" height="26" rx="13" fill="${c}" ${band()}/><circle cx="50" cy="50" r="17" fill="${c}" ${band()}/><circle cx="45" cy="45" r="6" fill="#fff" opacity=".28"/>`
+      return `<ellipse cx="57" cy="60" rx="48" ry="30" fill="#000" opacity=".35"/><rect x="4" y="32" width="92" height="40" rx="20" fill="${c}" ${band()}/><circle cx="50" cy="50" r="24" fill="${c}" ${band()}/><circle cx="43" cy="43" r="8" fill="#fff" opacity=".3"/>`
     }
     if (lying) return `<g transform="rotate(90 50 50) scale(.92) translate(4 4)"><path d="${MEEPLE}" fill="${c}" ${band()}/><path d="M30 60h40" stroke="#0006" stroke-width="4" stroke-linecap="round"/></g>`
     return `<path d="${MEEPLE}" transform="translate(5 6)" fill="#000" opacity=".35"/><path d="${MEEPLE}" fill="${c}" ${band()}/>`
@@ -312,7 +316,7 @@ function figure(kind, c, lying, style) {
 }
 function chip(c, n) {
   return `<circle cx="54" cy="55" r="46" fill="#000" opacity=".35"/><circle cx="50" cy="50" r="46" fill="#171a23" ${band(2)}/><g transform="translate(19 17) scale(.62)"><path d="${MEEPLE}" fill="${c}" ${band(1.5)}/></g>
-  <circle cx="84" cy="18" r="19" fill="${CHALK}" stroke="#171a23" stroke-width="4"/><text x="84" y="19" text-anchor="middle" dominant-baseline="central" font-size="24" font-weight="800" fill="#1c1c1c" font-family="var(--font)">${n}</text>`
+  <circle cx="82" cy="20" r="27" fill="${CHALK}" stroke="#171a23" stroke-width="4"/><text x="82" y="21" text-anchor="middle" dominant-baseline="central" font-size="36" font-weight="800" fill="#1c1c1c" font-family="var(--font)">${n}</text>`
 }
 // En figur som en egen SVG i given storlek i px, för telefonen och editorn.
 function icon(kind, c, px, lying = false, style = 'A') {
@@ -332,7 +336,7 @@ function drawables(v) {
   const chipped = new Set()
   if (v === 'B') for (const s of 'ABCD') for (const z of ZONES.filter((q) => q.kind === 'area')) {
     const st = supplyOf(s, z.id).filter((p) => !p.lying && p.kind === 'meeple')
-    if (st.length >= 2) { st.forEach((p) => chipped.add(p.id)); const pl = placeOf(st[0], v); out.push({ chip: true, ids: st.map((p) => p.id), seat: s, x: pl.x, y: pl.y, r: 0, size: 38 }) }
+    if (st.length >= 2) { st.forEach((p) => chipped.add(p.id)); const pl = placeOf(st[0], v); out.push({ chip: true, ids: st.map((p) => p.id), seat: s, x: pl.x, y: pl.y, r: 0, size: 44 }) }
   }
   for (const p of pieces) if (!chipped.has(p.id)) { const pl = placeOf(p, v); out.push({ chip: false, ids: [p.id], seat: p.seat, kind: p.kind, lying: p.lying, x: pl.x, y: pl.y, r: pl.r, size: SIZE[p.kind] }) }
   return out
@@ -349,7 +353,7 @@ function feltSVG(v, s, mode) {
   }
   // Ett kort framför Ada och ett framför Cy, och räknarnas brickor.
   g += `<rect x="-215" y="236" width="${CARD.w}" height="${CARD.h}" rx="4" fill="#f4ead8" stroke="#0004"/>`
-  g += `<rect x="436" y="-180" width="${CARD.h}" height="${CARD.w}" rx="4" fill="#f4ead8" stroke="#0004"/>`
+  g += `<rect x="436" y="40" width="${CARD.h}" height="${CARD.w}" rx="4" fill="#f4ead8" stroke="#0004"/>`
   for (const s of 'ABCD') { const z = zone('counters:' + s); g += `<circle cx="${z.g[0] + z.g[2] / 2}" cy="${z.g[1] + z.g[3] / 2}" r="12" fill="#f0b64a" stroke="#0006"/><text x="${z.g[0] + z.g[2] / 2}" y="${z.g[1] + z.g[3] / 2}" font-size="13" font-weight="800" text-anchor="middle" dominant-baseline="central" fill="#1c1c1c">3</text>` }
   for (const p of PILES) {
     for (let k = 3; k >= 0; k--) g += `<rect x="${p.x - CARD.w / 2 + k * 0.8}" y="${p.y - CARD.h / 2 - k * 0.8}" width="${CARD.w}" height="${CARD.h}" rx="4" fill="${p.back ? '#2f477e' : '#f4ead8'}" stroke="${p.back ? '#4b5f8e' : '#0004'}"/>`
@@ -360,8 +364,8 @@ function feltSVG(v, s, mode) {
     const z = zone('hand:' + s), along = z.g[2] > z.g[3]
     for (let k = 0; k < 5; k++) {
       const [w, h] = along ? [40, 56] : [56, 40]
-      const x = along ? z.g[0] + 150 + k * 32 : z.g[0] + (z.g[2] - w) / 2 + (s === 'C' ? 14 : -14)
-      const y = along ? z.g[1] + (z.g[3] - h) / 2 + (s === 'A' ? 14 : -14) : z.g[1] + 150 + k * 32
+      const x = along ? z.g[0] + 150 + k * 32 : z.g[0] + (z.g[2] - w) / 2
+      const y = along ? z.g[1] + (z.g[3] - h) / 2 : z.g[1] + 150 + k * 32
       g += `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="3" fill="#2f477e" stroke="#4b5f8e"/>`
     }
   }
@@ -393,7 +397,7 @@ function measures(v, s) {
   const items = drawables(v).filter((d) => pieces.find((p) => p.id === d.ids[0]).zone === 'mine:A' && pieces.find((p) => p.id === d.ids[0]).at === null)
   let min = Infinity
   for (let i = 0; i < items.length; i++) for (let j = i + 1; j < items.length; j++) min = Math.min(min, Math.hypot(items[i].x - items[j].x, items[i].y - items[j].y))
-  const span = items.length ? (Math.max(...items.map((d) => d.x)) - Math.min(...items.map((d) => d.x)) + 38) : 0
+  const span = items.length ? (Math.max(...items.map((d) => d.x)) - Math.min(...items.map((d) => d.x)) + (items[0]?.size ?? 30)) : 0
   return { targets: items.length, gapPx: min === Infinity ? null : Math.round(min * s), spanMm: Math.round(span) }
 }
 function renderFeltScreen(host, v, sk, opts = {}) {
@@ -448,7 +452,7 @@ function wireFelt(host, v, sk, s) {
       const ghost = el.cloneNode(true)
       const mv = (ev) => {
         if (!moved && Math.hypot(ev.clientX - start.x, ev.clientY - start.y) < 4) return
-        if (!moved) { moved = true; if (ids.length > 1) { svg.appendChild(ghost); ghost.innerHTML = el.innerHTML.replace(/<circle cx="84"[\s\S]*?<\/text>/, '') } else svg.appendChild(el) }
+        if (!moved) { moved = true; if (ids.length > 1) { svg.appendChild(ghost); ghost.innerHTML = el.innerHTML.replace(/<circle cx="82"[\s\S]*?<\/text>/, '') } else svg.appendChild(el) }
         const q = feltPoint(svg, ev)
         ;(ids.length > 1 ? ghost : el).setAttribute('transform', `translate(${q.x} ${q.y})`)
       }
@@ -558,7 +562,7 @@ function phoneB() {
 }
 function phoneC() {
   let panel = ''
-  const tile = (zid, wide) => `<div class="ruta ${wide ? 'bred' : ''}" data-drop="${zid}"><div class="rnamn">${zid.startsWith('mine:') && zid !== 'mine:A' ? `<i style="width:10px;height:10px;border-radius:50%;background:${SEATS[zid.slice(5)].c}"></i>` : ''}${zoneShort(zid)}</div><div class="rfig">${pieces.filter((p) => p.zone === zid && (zid !== 'mine:A' || p.at !== null || p.seat !== ME)).map((p) => `<button class="p-fig" style="width:40px;height:40px" data-pick="${p.id}" aria-pressed="${pSel === p.id}" aria-label="${SEATS[p.seat].name}s ${KIND_NAME[p.kind]}">${icon(p.kind, SEATS[p.seat].c, 28, p.lying)}</button>`).join('')}</div></div>`
+  const tile = (zid, wide) => `<div class="ruta ${wide ? 'bred' : ''}" data-drop="${zid}"><div class="rnamn">${zid.startsWith('mine:') && zid !== 'mine:A' ? `<i style="width:10px;height:10px;border-radius:50%;background:${SEATS[zid.slice(5)].c}"></i>` : ''}${zoneShort(zid)}</div><div class="rfig">${pieces.filter((p) => p.zone === zid && (zid !== 'mine:A' || p.at !== null || p.seat !== ME)).map((p) => `<button class="p-fig" style="width:44px;height:44px" data-pick="${p.id}" aria-pressed="${pSel === p.id}" aria-label="${SEATS[p.seat].name}s ${KIND_NAME[p.kind]}">${icon(p.kind, SEATS[p.seat].c, 28, p.lying)}</button>`).join('')}</div></div>`
   const sel = pieces.find((p) => p.id === pSel)
   const hint = sel ? `<div class="p-kort p-rad" style="background:#2a2618"><span>${icon(sel.kind, SEATS[sel.seat].c, 24, sel.lying)} Tryck på en yta${sel.kind === 'meeple' ? '' : ''}</span>${sel.kind === 'meeple' ? `<button class="p-knapp tyst" data-pa="flip">${sel.lying ? 'Res upp' : 'Lägg ner'}</button>` : ''}</div>` : ''
   if (pTab === 'framfor' || pTab === 'bordet') {
