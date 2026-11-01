@@ -1,4 +1,4 @@
-import { seatEdgeOf } from '@byd/engine'
+import { BOARDS, seatEdgeOf } from '@byd/engine'
 import { CHIP_MM, DIE_MM, PIECE_MM, counterSpots, diceSpots, type Counter, type Die, type Geometry, type Piece, type Setup, type Zone } from './recipe.js'
 
 // Imported by the editor as well as the server, so this module stays free of anything Node.
@@ -171,3 +171,28 @@ export function placeLine(setup: Setup, line: MaterialLine, center: { x: number;
 }
 
 const contains = (g: Geometry, p: { x: number; y: number }): boolean => p.x >= g.x && p.y >= g.y && p.x <= g.x + g.w && p.y <= g.y + g.h
+
+// Where the game's boards lie when a table is laid (#1479): one board for a line in a shared zone, and
+// one for every seat for a line in a role, turned to face the seat's edge. `x` and `y` are the top
+// left corner of the board as it stands before it is turned, so that it turns about its own middle
+// onto the point (`at`, or the middle of its zone). A board in a zone that is gone lies nowhere. Asked
+// by `setupFromProject` and by whatever draws the boards in the editor, so both lay the same board.
+export type BoardKind = NonNullable<Setup['boards']>[number]
+export type LaidBoard = { board: BoardKind; zone: string; seat: string | null; x: number; y: number; rot: number }
+const TURN: Record<'N' | 'E' | 'S' | 'W', number> = { S: 0, W: 90, N: 180, E: 270 }
+export function layBoards(setup: Setup): LaidBoard[] {
+  const laid: LaidBoard[] = []
+  const lay = (board: BoardKind, zoneId: string, seat: string | null) => {
+    const zone = zoneOf(setup, zoneId)
+    const size = BOARDS.find((b) => b.id === board.type.id && b.version === board.type.version)?.physical
+    if (!zone || !size) return
+    const edge = seat === null ? null : edgeOf(setup, seat)
+    const at = board.at === undefined ? { x: zone.geometry.w / 2, y: zone.geometry.h / 2 } : seat === null ? board.at : seatPoint(board.at, zone.geometry, edge)
+    laid.push({ board, zone: zoneId, seat, x: at.x - size.widthMm / 2, y: at.y - size.heightMm / 2, rot: edge === null ? 0 : TURN[edge] })
+  }
+  for (const board of setup.boards ?? []) {
+    if (board.role !== undefined) for (const seat of setup.seats) lay(board, `${board.role}:${seat}`, seat)
+    else if (board.zone !== undefined) lay(board, board.zone, null)
+  }
+  return laid
+}

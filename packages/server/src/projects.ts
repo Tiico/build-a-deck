@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { BoxFace } from '@byd/engine'
+import { BOARDS, BoxFace } from '@byd/engine'
 import { CardQuery, FaceId, Picture, TypeRef, ZoneAction, ZoneBeside } from '@byd/protocol'
 import { FaceTemplate, RuleDoc, Template, liftTemplate, type Row } from '@byd/template'
 import type { Deck } from './faces.js'
@@ -81,6 +81,28 @@ export const ProjectPiece = z
   .refine((d) => d.lying === undefined || d.kind === 'meeple', { message: 'only a meeple lies down' })
 export type ProjectPiece = z.infer<typeof ProjectPiece>
 export const ProjectPieces = z.array(ProjectPiece)
+// One of the game's boards (#1479, L91): carried as the box carries its faces, a template per side
+// drawn with the same template system as the cards (E2), and where it lies on the felt. `type` is the
+// board type the game pins (B3), one of the registry's `board.` family: a main board in a size, or the
+// player board. `id` is the board's own name in the document, its `cardRef` at the table, and never a
+// row of the deck. `zone` is an area every seat shares (the main board), `role` an area each seat has
+// (`mine` is `mine:A`, `mine:B` …), which lays one board for every seat turned to its edge. `at` is the
+// middle of the board in the zone's millimetres, said from seat A's chair as a die's point is (K31);
+// without one it lies in the middle of its zone. A side without a template is a board left blank.
+const boardType = (t: TypeRef) => BOARDS.find((b) => b.id === t.id && b.version === t.version)
+export const ProjectBoard = z
+  .object({
+    id: z.string().regex(/^[\p{L}\p{N}_-]{1,64}$/u),
+    type: TypeRef.refine((t) => boardType(t) !== undefined, { message: 'a board is a board type the registry has' }),
+    zone: z.string().min(1).optional(),
+    role: z.string().min(1).optional(),
+    at: MaterialAt.optional(),
+    faces: z.record(FaceId, FaceTemplate).optional(),
+  })
+  .refine((b) => (b.zone === undefined) !== (b.role === undefined), { message: 'a board lies in a zone or in a role, and only one' })
+  .refine((b) => Object.keys(b.faces ?? {}).every((face) => boardType(b.type)?.faces.includes(face)), { message: 'a board has a template only for a side its type has' })
+export type ProjectBoard = z.infer<typeof ProjectBoard>
+export const ProjectBoards = z.array(ProjectBoard).refine((boards) => new Set(boards.map((b) => b.id)).size === boards.length, { message: 'every board has a name of its own' })
 export const ProjectSetup = z.object({
   zones: z.array(ZoneDef),
   seats: z.array(z.string().min(1)),
@@ -116,6 +138,9 @@ export const ProjectSetup = z.object({
   // The game's wooden pieces (#1471): meeples, cubes and discs, line by line as the dice. Absent is a
   // game without any, which is every game written before there were pieces.
   pieces: ProjectPieces.optional(),
+  // The game's boards (#1479): laid first, so that everything else lies on them. Absent is a game
+  // without a board, which is every game written before there were boards.
+  boards: ProjectBoards.optional(),
 })
 const Cell = z.union([z.string(), z.number(), z.boolean(), z.null()])
 export type Cell = z.infer<typeof Cell>
@@ -753,7 +778,13 @@ export function deckFromProject(doc: ProjectDoc): Deck {
     icons: doc.icons,
     ...(doc.palette ? { palette: doc.palette } : {}),
     ...(doc.fonts ? { fonts: doc.fonts } : {}),
+    ...(doc.setup.boards ? { boards: boardTemplatesOf(doc.setup.boards) } : {}),
   }
+}
+
+// Each board's template under its name (#1479): its sides as the document draws them.
+export function boardTemplatesOf(boards: readonly ProjectBoard[]): Record<string, Template> {
+  return Object.fromEntries(boards.map((b) => [b.id, { faces: { ...(b.faces ?? {}) } }]))
 }
 
 // What these weigh together, a hash the store does not have weighing nothing.

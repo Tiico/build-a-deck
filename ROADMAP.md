@@ -128,6 +128,7 @@ Målet är att en grupp kan spela vilket kortspel som helst utan att sakna någo
   Beställaren beslutade 2026-10-28 att release är "kort- och brädspel": typerna byggs nu, parallellt med betan, med en PRD och en prototyp per synlig yta (#1470).
   Trädelarna är i registret och i setupen (K33, #1471): `piece.meeple`, `piece.cube` och `piece.disc`, en meeple läggs ned med `flip`, och att material aldrig hålls deklareras i typen. Fliken Bord lägger till dem med en «＋ Pjäs» och drar dem på plats (#1477). Bordet, telefonen och trycket återstår (#1475, #1476, #1478), liksom brädet och brickan.
   Brickorna är i registret och i motorn (K34, #1482): `tile.hex.52`, `tile.square.45`, `tile.round.44` och `tile.round.25`, som kortet i sin form, hållbara på handen, med vridsteget som typdata och den dolda brickan bevisad på tråden. Leken, bordet, telefonen, editorn och trycket återstår (#1484–#1488).
+  Brädtyperna är i registret och brädet i dokumentet (K35, #1479): `board.square457`, `board.rect610` och `board.player`, fasta där setupen lade dem, lagda först, och sidan en textur ur den enda renderaren. Filten, fliken «Bräde» och trycket återstår (#1480, #1481, #1488).
 
 ## Fas 2 — Editorn färdig ✅
 

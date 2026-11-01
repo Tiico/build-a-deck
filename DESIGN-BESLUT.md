@@ -5057,6 +5057,36 @@ En bricka staplas på ett kort och blandas i en hög med kort som motorn ser det
 
 Brickor i setupen, en egen lek och tabell per brickform, bordet, telefonen och trycket byggs i #1484–#1488.
 
+### K35. Brädet: brädtyperna, brädet i dokumentet och dess textur (beslutat 2026-10-28 och 2026-11-01, #1470, #1473, #1479)
+
+Beställarens beslut i #1470 den 2026-10-28: brädet ligger fast där setupen lade det och går inte att flytta vid bordet (fråga 6); de första bräden är ett huvudbräde i några mått och spelarbräden per plats, och tvåsidiga bräden kommer senare (fråga 7); brädets sidor går i tryckpaketet som PDF med utfall redan i betan (fråga 12).
+Prototypen #1473 godkändes 2026-11-01 i variant A: brädet mitt på filten, spelarbräden där «Framför» ligger, och sidan designas i en egen flik «Bräde» som «Låda» (L91).
+
+**Typerna.** Tre typer i `STANDARD_TYPES`, en per storlek som tärningarnas sorter: `board.square457` (457 × 457 mm) och `board.rect610` (610 × 457 mm) som huvudbräden, och `board.player` (240 × 150 mm), prototypens mått.
+En sida, `front`, och inget går att stapla, blanda, slå eller vända; `flippable` blir sant den dag ett bräde har två sidor.
+Tryckprofilen har 3 mm utfall och 5 mm skyddsmarginal i 300 DPI.
+`physical.shape` är det platta arket, `rect`: vikningen är partnerns att säga (beslut 12) och ritas inte.
+
+**Fast.** Typen säger `movable: false` bland sina beteenden, och motorn läser vägran ur typen som K32:s (`isFixed`): `move` och `rotate` av brädet vägras, och en `draw`, `deal` eller `split` som skulle ta med det vägras hel.
+Brädet säger också `holdable: false` och hålls alltså aldrig (K32).
+Allt annat flyttas fritt över det.
+Inget nytt verb.
+
+**Dokumentet.** `setup.boards` är en lista, och varje bräde bär sina sidor som lådan bär sina (L91): en `FaceTemplate` per sida, ritad med samma mallsystem som korten (E2).
+Ett bräde har ett namn (`id`), som är dess `cardRef` vid bordet och aldrig en rad i leken; den brädtyp spelet pinnar (`type`, B3); och var det ligger: `zone`, en yta alla delar, för huvudbrädet, eller `role`, en yta varje plats har, som lägger ett bräde per plats vänt mot platsens kant; och `at`, brädets mitt i ytans millimeter, sagd från plats A:s stol som en tärnings punkt (K31), annars ytans mitt.
+`layBoards` säger var varje bräde ligger, och `setupFromProject` lägger bräden först, så att allt annat ligger på dem.
+`x` och `y` är brädets övre vänstra hörn som det står innan det vrids, så att det vrids kring sin egen mitt till punkten, och `rot` är 0, 90, 180 eller 270 efter platsens kant.
+Ett dokument utan bräde har ingen post och läses tillbaka orört.
+
+**Texturen.** Typen säger `ownFaces`: dess sidor kommer ur dokumentets egen mall och inte ur en rad. `queueFaces` kompilerar varje sida med den enda kompilatorn och köar den som en textur i samma DPI som ett kort, så att filten ritar brädet i samma pixlar per millimeter, nycklad på innehållet (DRIFT §6): samma spelarbräde på åtta platser är en rendering, och en ändrad bild är en ny hash.
+Hashen går till vyn genom `project` i `DeckFacts.ownFaces`, i fältet `faces` som ett korts, och läses bara för en typ som säger `ownFaces`, så att ett kort och ett bräde kan heta samma sak utan att dela yta.
+Ingen ändring i `packages/protocol`.
+Ett jobb för det största brädet, 610 × 457 mm i 150 DPI, är 3602 × 2699 px, och det ryms under renderns minnestak (1,5 GB, DRIFT §6).
+Mätt 2026-11-01 i #1479 som summan av Chromiums processers RSS medan jobbet ritades: 0,5 GB för en jämn bild över hela brädet, och 1,07 GB för det värsta fallet, en 3600 × 2700 px bild av brus, som också gav en textur på 28 MB.
+En textur så stor är filtens att hämta (#1480), och den hämtas bara av skärmar som ritar filten (C2).
+Brädets bilder går genom tillgångarna som kortets (#1028).
+Trycket i 300 DPI med utfall är #1488, och till dess hoppar tryckexporten över brädet i stället för att vägra spelet.
+
 ## L. Editorn (grillad 2026-09-06)
 
 E1, E2 och E3 gav principerna; det här är hur de blir konkreta.
