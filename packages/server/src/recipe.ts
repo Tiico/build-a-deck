@@ -20,6 +20,8 @@ export type Recipe = { players: number; counters: Counter[] }
 export type Die = NonNullable<Setup['dice']>[number]
 // One line of the game's wooden pieces (#1471): which kind, how many, and where, as a die's line.
 export type Piece = NonNullable<Setup['pieces']>[number]
+// One of the game's markers (#1483): identical tiles with designed sides, and where they lie.
+export type Marker = NonNullable<Setup['markers']>[number]
 
 export const SEAT_IDS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'] as const
 export const MAX_PLAYERS = SEAT_IDS.length

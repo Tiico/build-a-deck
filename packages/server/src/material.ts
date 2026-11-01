@@ -1,5 +1,5 @@
-import { BOARDS, seatEdgeOf } from '@byd/engine'
-import { CHIP_MM, DIE_MM, PIECE_MM, PIECE_PILE_MM, counterSpots, diceSpots, type Counter, type Die, type Geometry, type Piece, type Setup, type Zone } from './recipe.js'
+import { BOARDS, TILES, seatEdgeOf } from '@byd/engine'
+import { CHIP_MM, DIE_MM, PIECE_MM, PIECE_PILE_MM, counterSpots, diceSpots, type Counter, type Die, type Geometry, type Marker, type Piece, type Setup, type Zone } from './recipe.js'
 
 // Imported by the editor as well as the server, so this module stays free of anything Node.
 // Where the game's material lies when a table is laid (#1292): the counters (C4) and the dice
@@ -211,6 +211,41 @@ export function placeLine(setup: Setup, line: MaterialLine, center: { x: number;
 }
 
 const contains = (g: Geometry, p: { x: number; y: number }): boolean => p.x >= g.x && p.y >= g.y && p.x <= g.x + g.w && p.y <= g.y + g.h
+
+// The name a marker goes by at the table (#1483): its `cardRef`, under which its faces are compiled
+// once for every copy. Kept apart from the deck's rows, whose ids are the designer's to choose, so a
+// card and a marker that share a word never share a face, a title or a texture.
+export const markerRef = (id: string): string => `marker:${id}`
+
+// Where the game's markers lie when a table is laid (#1483), copy by copy, with the marker each is
+// a copy of. In a pile they lie in the pile, as its cards do, and a point means nothing there. In an
+// area they lie in a row around the point (`at`, or the middle of the zone), a tile and a gap apart,
+// as a line of dice dragged to a point does; for an area each seat has the point is said from seat
+// A's chair and turned to face every other seat's edge (K31). `role` gives every seat `count` in its
+// own zone, and `perSeat` on a shared zone `count` for every player. A marker put in a zone that is
+// gone, or of a type nobody knows, lies nowhere. Asked by `setupFromProject` and by whatever draws
+// the markers in the editor, so both lay the same copies.
+export type LaidMarker = { marker: Marker; zone: string; seat: string | null; x?: number; y?: number }
+export function layMarkers(setup: Setup): LaidMarker[] {
+  const laid: LaidMarker[] = []
+  const lay = (marker: Marker, zoneId: string, count: number, seat: string | null) => {
+    const zone = zoneOf(setup, zoneId)
+    const size = TILES.find((t) => t.id === marker.type.id && t.version === marker.type.version)?.physical.widthMm
+    if (!zone || size === undefined) return
+    if (zone.kind !== 'area') {
+      for (let i = 0; i < count; i++) laid.push({ marker, zone: zoneId, seat })
+      return
+    }
+    const at = marker.at ?? { x: zone.geometry.w / 2, y: zone.geometry.h / 2 }
+    const point = seat === null ? at : seatPoint(at, zone.geometry, edgeOf(setup, seat))
+    for (const spot of piecesAt(point, zone.geometry, count, size)) laid.push({ marker, zone: zoneId, seat, ...spot })
+  }
+  for (const marker of setup.markers ?? []) {
+    if (marker.role !== undefined) for (const seat of setup.seats) lay(marker, `${marker.role}:${seat}`, marker.count, seat)
+    else if (marker.zone !== undefined) lay(marker, marker.zone, marker.perSeat ? marker.count * setup.seats.length : marker.count, null)
+  }
+  return laid
+}
 
 // Where the game's boards lie when a table is laid (#1479): one board for a line in a shared zone, and
 // one for every seat for a line in a role, turned to face the seat's edge. `x` and `y` are the top

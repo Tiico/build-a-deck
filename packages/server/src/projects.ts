@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { BOARDS, BoxFace } from '@byd/engine'
+import { BOARDS, BoxFace, TILES } from '@byd/engine'
 import { CardQuery, FaceId, Picture, TypeRef, ZoneAction, ZoneBeside } from '@byd/protocol'
 import { FaceTemplate, RuleDoc, Template, liftTemplate, type Row } from '@byd/template'
 import type { Deck } from './faces.js'
@@ -10,6 +10,7 @@ import { QuotaReached, growth, type Limit } from './quotas.js'
 import type { AssetStore } from './assets.js'
 import { assetHashesOf } from './asset-refs.js'
 import { liftBoxGrounds } from './box.js'
+import { markerRef } from './material.js'
 
 // A project is what the editor edits: the template, the rows keyed by cardRef, the icon set and
 // the table setup without its components — those come from the rows and their `antal` (L4).
@@ -81,6 +82,31 @@ export const ProjectPiece = z
   .refine((d) => d.lying === undefined || d.kind === 'meeple', { message: 'only a meeple lies down' })
 export type ProjectPiece = z.infer<typeof ProjectPiece>
 export const ProjectPieces = z.array(ProjectPiece)
+// One of the game's markers (#1483, #1470): identical tiles, thirty gold coins, with a designed front
+// and back. Carried as the box carries its faces, a `FaceTemplate` per side drawn with the same
+// template system as the cards (L91, E2), and not as rows of a deck: every copy is the same tile. `type`
+// is the tile type the game pins (B3), one of the registry's `tile.` family; `id` is the marker's own
+// name in the document and `name` what it is called. Where it lies is a line as a die's is (K28, K31):
+// `count`, a zone every seat shares (`zone`, `perSeat` for a count per player) or a zone each seat has
+// (`role`), and the point in it (`at`). Unlike a die it may lie in a pile, a bank to take from, where
+// copies lie as cards do and a point means nothing. A side without a template is a side left blank.
+const tileType = (t: TypeRef) => TILES.find((d) => d.id === t.id && d.version === t.version)
+export const ProjectMarker = z
+  .object({
+    id: z.string().regex(/^[\p{L}\p{N}_-]{1,64}$/u),
+    name: z.string().min(1).max(40),
+    type: TypeRef.refine((t) => tileType(t) !== undefined, { message: 'a marker is a tile type the registry has' }),
+    faces: z.partialRecord(FaceId, FaceTemplate).optional(),
+    count: z.number().int().min(1).max(200),
+    perSeat: z.boolean().optional(),
+    zone: z.string().min(1).optional(),
+    role: z.string().min(1).optional(),
+    at: MaterialAt.optional(),
+  })
+  .refine((m) => (m.zone === undefined) !== (m.role === undefined), { message: 'a marker lies in a zone or in a role, and only one' })
+  .refine((m) => Object.keys(m.faces ?? {}).every((face) => tileType(m.type)?.faces.includes(face)), { message: 'a marker has a template only for a side its type has' })
+export type ProjectMarker = z.infer<typeof ProjectMarker>
+export const ProjectMarkers = z.array(ProjectMarker).refine((ms) => new Set(ms.map((m) => m.id)).size === ms.length, { message: 'every marker has a name of its own' })
 // One of the game's boards (#1479, L91): carried as the box carries its faces, a template per side
 // drawn with the same template system as the cards (E2), and where it lies on the felt. `type` is the
 // board type the game pins (B3), one of the registry's `board.` family: a main board in a size, or the
@@ -138,6 +164,9 @@ export const ProjectSetup = z.object({
   // The game's wooden pieces (#1471): meeples, cubes and discs, line by line as the dice. Absent is a
   // game without any, which is every game written before there were pieces.
   pieces: ProjectPieces.optional(),
+  // The game's markers (#1483): identical tiles with designed sides. Absent is a game without any,
+  // which is every game written before there were markers.
+  markers: ProjectMarkers.optional(),
   // The game's boards (#1479): laid first, so that everything else lies on them. Absent is a game
   // without a board, which is every game written before there were boards.
   boards: ProjectBoards.optional(),
@@ -772,6 +801,7 @@ export function stamp(value: unknown): string {
 export function deckFromProject(doc: ProjectDoc): Deck {
   const rows: Record<string, Row> = {}
   for (const { id, fields } of doc.rows) rows[id] = fields
+  for (const m of doc.setup.markers ?? []) rows[markerRef(m.id)] = { title: m.name }
   return {
     template: doc.template,
     rows,
@@ -779,7 +809,27 @@ export function deckFromProject(doc: ProjectDoc): Deck {
     ...(doc.palette ? { palette: doc.palette } : {}),
     ...(doc.fonts ? { fonts: doc.fonts } : {}),
     ...(doc.setup.boards ? { boards: boardTemplatesOf(doc.setup.boards) } : {}),
+    ...markersOf(doc),
   }
+}
+
+// The markers' sides (#1483), each marker a row of its own under the name it goes by at the table
+// (`markerRef`), drawn with a template of its own: the sides the document draws, and a side it does
+// not draw left blank, since a tile has both. The row says only what the marker is called, which is
+// its title wherever its face may be seen.
+const BLANK_SIDE: FaceTemplate = { base: [], variants: {} }
+function markersOf(doc: ProjectDoc): Pick<Deck, 'templates' | 'drawnWith'> & { rows?: Record<string, Row> } {
+  const markers = doc.setup.markers ?? []
+  if (markers.length === 0) return {}
+  const templates: Record<string, Template> = {}
+  const drawnWith: Record<string, string> = {}
+  for (const m of markers) {
+    const ref = markerRef(m.id)
+    const sides = TILES.find((t) => t.id === m.type.id && t.version === m.type.version)?.faces ?? []
+    templates[ref] = { faces: Object.fromEntries(sides.map((side) => [side, m.faces?.[side] ?? BLANK_SIDE])) }
+    drawnWith[ref] = ref
+  }
+  return { templates, drawnWith }
 }
 
 // Each board's template under its name (#1479): its sides as the document draws them.

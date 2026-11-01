@@ -165,6 +165,27 @@ for (const backend of backends) {
 
     // The print package is a property of the tier (#1490), and the report says whether each account
     // has it, so the operator sees it beside the ceilings; the beta's standard has it.
+    // Which Stripe customer is which account (#1493): written once, when the account first asks for
+    // a checkout, and read both ways — by the account for the next checkout, by the customer for
+    // Stripe's webhooks. One customer is one account and the other way round.
+    it('links an account to one Stripe customer, read both ways', async () => {
+      const ivy = await db.auth.ensureAccount('ivy@example.com')
+      const jo = await db.auth.ensureAccount('jo@example.com')
+      expect(await db.plans.customerOf(ivy.id)).toBeNull()
+      expect(await db.plans.accountOfCustomer(`cus_ivy_${backend.name}`)).toBeNull()
+      await db.plans.linkCustomer(ivy.id, `cus_ivy_${backend.name}`)
+      expect(await db.plans.customerOf(ivy.id)).toBe(`cus_ivy_${backend.name}`)
+      expect(await db.plans.accountOfCustomer(`cus_ivy_${backend.name}`)).toBe(ivy.id)
+      // A second link for the same account keeps the first: the customer is made once.
+      await db.plans.linkCustomer(ivy.id, `cus_ivy2_${backend.name}`)
+      expect(await db.plans.customerOf(ivy.id)).toBe(`cus_ivy_${backend.name}`)
+      await expect(db.plans.linkCustomer(jo.id, `cus_ivy_${backend.name}`)).rejects.toThrow()
+      expect(await db.plans.customerOf(jo.id)).toBeNull()
+      // The link is no tier: taking the tier away leaves it.
+      await db.plans.clearPlan(ivy.id)
+      expect(await db.plans.customerOf(ivy.id)).toBe(`cus_ivy_${backend.name}`)
+    })
+
     it('says whether each account has the print package, by its tier', async () => {
       const withPrint = plansFromEnv({ BYD_PLANS: JSON.stringify({ default: 'free', plans: { free: { projects: 2 }, pro: { print: true } } }) })
       const eve = await db.auth.ensureAccount('eve@example.com')
