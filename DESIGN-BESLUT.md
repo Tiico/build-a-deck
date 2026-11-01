@@ -4944,10 +4944,34 @@ Beställaren: «Material ska inte gå att ha på handen.»
 En tärning som släpptes över en hands solfjäder hamnade i handen, men ingen skärm ritar en bit i en hand: telefonen ritar handen som en rad kort.
 Tärningen försvann alltså från filten och gick inte att ta ut igen.
 
-**Material är en typ som går att slå eller har en räknare** (`isMaterial` i `packages/engine`), och det läses ur typens deklarerade beteenden som varje annan vägran i motorn.
+**Material är en typ som säger att den aldrig hålls** (`holdable: false` bland typens beteenden, läst av `isMaterial` i `packages/engine`), som varje annan vägran i motorn läses ur typens deklaration.
+*Reviderat 2026-11-01 (#1471):* först härleddes material ur att typen går att slå eller har en räknare, men en meeple gör ingetdera och ska ändå aldrig hållas (K33). Räknaren, tärningarna och trädelarna deklarerar det; kortet deklarerar ingenting och hålls.
 Motorn vägrar lägga material i en hand, vilket verb det än kommer med: `move`, `draw`, `deal`, `split` och `version.change`.
 Filten lägger en bit som släpps över en hand på det handen ligger över, oftast filten (`pieceAt`), och tangentbordets «Flytta till» erbjuder ingen hand för en bit.
 Kort hålls som förut.
+
+### K33. Trädelar: meeple, kub och skiva som egna typer i en familj (beslutat 2026-10-28, #1470, #1471)
+
+Release är kort- och brädspel (#1468), och meeplen är den första av de nya typerna.
+Beställarens beslut i #1470 den 2026-10-28: kub och skiva byggs i samma skiva som meeplen, som egna typer i en familj på samma sätt som tärningarna (fråga 3); en meeple har sin plats färg (L11, fråga 2); en meeple kan läggas ned med `flip` mellan stående och liggande (fråga 4); och en trädel är en lagervara som partnern packar och som går att välja bort med `hardware: false`, precis som tärningen (fråga 5).
+
+**Tre typer i registret.** `piece.meeple`, `piece.cube` och `piece.disc`, version 1, står i `STANDARD_TYPES` (B1–B3).
+Ingen av dem har en tryckt yta, och ingen staplas, blandas, slås eller räknar.
+Meeplen har formen `figure`, ett nytt värde i `physical.shape`, eftersom ingen av de andra formerna beskriver en silhuett; kuben är en `polyhedron` och skivan en `circle`.
+Kuben och skivan har en enda yta.
+Meeplen har två, `standing` och `lying`, och `flippable`; typen säger `everyFaceShows`, så att en liggande meeple är samma meeple i samma färg för alla och inte en baksida som döljer något (B6).
+Inget nytt verb: `move` flyttar, och `flip` lägger ned och ställer upp.
+
+**Färgen är platsens.** En trädel som läggs för en plats bär platsen som `cardRef`, som räknaren bär sitt namn, utan ändring i `packages/protocol`.
+Material är inget kort: projektionen ger det aldrig titel, text eller ytor ur en rad i leken som råkar heta som platsen, och texturerna kompileras aldrig för det.
+Hur färgen ritas avgörs av prototypen (#1472) och byggs med bordet (#1475).
+
+**Setupen.** Dokumentet har `setup.pieces` som tärningarna har `setup.dice` (K28, K31): sort (`kind`), antal, en yta alla delar (`zone`, med `perSeat` för ett antal per plats) eller en yta varje plats har (`role`), och en punkt (`at`).
+`layMaterial` och `setupFromProject` lägger ut dem, en per plats vänd mot platsens kant, och en delad ytas rad per spelare ger varje plats sina i dess färg; en rad utan plats ger bitar utan färg.
+Editorns ändring är `setPieces`, hela listan i en redigering som `setDice`, och därmed ett steg tillbaka (B4).
+Raden i fliken Bord väntar på prototypen (#1477), och tills dess har en trädel inget handtag i filten.
+
+**Aktivitetsraden** säger biten efter sort: «Ada flyttade en meeple till Spelyta», «Ada lade ned en meeple» och «Ada ställde upp en meeple».
 
 ## L. Editorn (grillad 2026-09-06)
 

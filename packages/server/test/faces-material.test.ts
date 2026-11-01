@@ -24,13 +24,13 @@ const setup: SetupDef = {
 
 describe('material is never compiled as a card (#1471)', () => {
   it('gives a meeple and a counter no faces, title or words of a row that shares their word', async () => {
-    const out = await queueFaces(deck, setup, registry, 72, 0, async () => {})
+    const out = await queueFaces(deck, setup, registry, 72, 0, () => Promise.resolve())
     expect(out).toMatchObject({ faces: {}, titles: {}, texts: {}, hashes: [] })
   })
 
   it('still compiles the card of that row', async () => {
     const withCard = { ...setup, components: [...setup.components, { type: card, cardRef: 'A', zone: 'table', face: 'back' }] }
-    const out = await queueFaces(deck, withCard, registry, 72, 0, async () => {})
+    const out = await queueFaces(deck, withCard, registry, 72, 0, () => Promise.resolve())
     expect(out.titles).toEqual({ A: 'Ess' })
   })
 })

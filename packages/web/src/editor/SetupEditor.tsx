@@ -790,6 +790,9 @@ type MaterialHandle = { key: string; line: MaterialLine; zone: string; zoneName:
 function materialHandles(setup: Setup): MaterialHandle[] {
   const byKey = new Map<string, MaterialHandle>()
   for (const p of layMaterial(setup)) {
+    // The wooden pieces' rows in this tab are #1477, after its prototype (#1472); until then a piece
+    // has no handle rather than one that calls it a counter (#1471).
+    if (p.line.kind === 'piece') continue
     const zone = setup.zones.find((z) => z.id === p.zone)
     if (!zone) continue
     const key = `${p.line.kind}:${p.line.index}@${p.zone}`

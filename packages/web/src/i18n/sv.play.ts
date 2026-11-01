@@ -285,6 +285,12 @@ export const svPlay = {
   'activity.rotate': '{who} roterade ett kort',
   'activity.flip': '{who} vände ett kort',
   'activity.flip.named': '{who} vände {card}',
+  // A wooden piece is said by its kind (#1471), never by its seat's letter.
+  'activity.move.piece.meeple': '{who} flyttade en meeple till {zone}',
+  'activity.move.piece.cube': '{who} flyttade en kub till {zone}',
+  'activity.move.piece.disc': '{who} flyttade en skiva till {zone}',
+  'activity.flip.meeple.lying': '{who} lade ned en meeple',
+  'activity.flip.meeple.standing': '{who} ställde upp en meeple',
   'activity.stack': '{who} lade ett kort på ett annat',
   'activity.split.to.one': '{who} drog {n} kort från {zone} till {to}',
   'activity.split.to.other': '{who} drog {n} kort från {zone} till {to}',

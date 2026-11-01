@@ -290,3 +290,27 @@ describe('the reader’s own undo is said in one person (#1366)', () => {
     expect(describeActivity(undo, table(null), sv)).toBe('Ada ångrade sitt senaste drag')
   })
 })
+
+// A wooden piece is said by its kind (#1471): its `cardRef` is the seat whose colour it wears, and
+// «Ada flyttade A till Spelyta» would name it by a letter. A meeple laid down or stood up is a flip
+// between its two faces, and said as what it is.
+describe('the log says a wooden piece by its kind (#1471)', () => {
+  const withPieces = (seat: string | null): Snapshot => {
+    const view = table(seat)
+    const piece = (id: string, kind: string, face = 'front') => ({ id, type: { id: `piece.${kind}`, version: 1 }, zone: 'table', face, x: 0, y: 0, rot: 0, cardRef: 'A' })
+    return { ...view, components: [piece('m', 'meeple', 'standing'), piece('k', 'cube'), piece('s', 'disc')] } as unknown as Snapshot
+  }
+  const line = (intent: Activity['intent']): Activity => ({ seq: 3, batch: 'e1', by: 'A', at: '2026-11-01T00:00:00.000Z', intent }) as Activity
+
+  it('says «Ada flyttade en meeple», a cube and a disc likewise', () => {
+    expect(describeActivity(line({ v: 'move', component: 'm', to: 'table' }), withPieces(null), sv)).toBe('Ada flyttade en meeple till Spelyta')
+    expect(describeActivity(line({ v: 'move', component: 'k', to: 'front:A' }), withPieces(null), sv)).toBe('Ada flyttade en kub till Framför A')
+    expect(describeActivity(line({ v: 'move', component: 's', to: 'table' }), withPieces('B'), en)).toBe('Ada moved a disc to Spelyta')
+  })
+
+  it('says a meeple laid down and stood up', () => {
+    expect(describeActivity(line({ v: 'flip', component: 'm', face: 'lying' }), withPieces(null), sv)).toBe('Ada lade ned en meeple')
+    expect(describeActivity(line({ v: 'flip', component: 'm', face: 'standing' }), withPieces(null), sv)).toBe('Ada ställde upp en meeple')
+    expect(describeActivity(line({ v: 'flip', component: 'm', face: 'lying' }), withPieces(null), en)).toBe('Ada laid a meeple down')
+  })
+})

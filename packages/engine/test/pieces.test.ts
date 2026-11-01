@@ -70,6 +70,15 @@ describe('the wooden pieces (#1471)', () => {
     const h = new Harness(1, withPieces())
     for (const p of PIECES) expect(h.try('A', { v: 'move', component: idOf(h, p.id), to: 'table', x: 300, y: 40 }).ok).toBe(true)
   })
+
+  it('replays a log with pieces moved and a meeple laid down to the same table (D4)', () => {
+    const h = new Harness(3, withPieces())
+    h.do('A', { v: 'move', component: idOf(h, 'piece.cube'), to: 'table', x: 120, y: -40 })
+    h.do('B', { v: 'flip', component: idOf(h, 'piece.meeple'), face: 'lying' })
+    h.do('B', { v: 'move', component: idOf(h, 'piece.meeple'), to: 'discard', index: 0 })
+    h.do('A', { v: 'rotate', component: idOf(h, 'piece.disc'), rot: 90 })
+    expect(replay(h.initial, registry, h.log)).toEqual(h.state)
+  })
 })
 
 // K32, declared in the type (#1471): whether a type may be held is what it says of itself, and not

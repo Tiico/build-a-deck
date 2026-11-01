@@ -20,8 +20,8 @@ afterEach(async () => {
   await run.stop()
 })
 
-async function openBord(): Promise<void> {
-  await run.projects.create(run.projectId, projectDoc())
+async function openBord(doc: ProjectDoc = projectDoc()): Promise<void> {
+  await run.projects.create(run.projectId, doc)
   history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
   // Where the page says things (#558): the tab's own status line, as the app mounts it.
   render(
@@ -72,5 +72,14 @@ describe('materialet i filten (#1292)', () => {
     await waitFor(async () => expect((await truth()).setup.counters?.[0]?.at).toEqual({ x: before.x, y: before.y - 10 }))
     expect((await truth()).setup.counters?.[0]?.role).toBeUndefined()
     await waitFor(() => expect(document.querySelector('[data-status-live="polite"]')?.textContent).toMatch(/^Räknare .* i Räknare A · \d+, \d+ mm$/))
+  })
+
+  // Trädelarnas rad i fliken Bord är #1477 och väntar på en prototyp; fram till dess har en meeple
+  // inget handtag i filten, i stället för ett som kallar den en räknare (#1471).
+  it('ger ingen meeple ett handtag förrän fliken Bord bär trädelar', async () => {
+    const doc = projectDoc()
+    await openBord({ ...doc, setup: { ...doc.setup, pieces: [{ kind: 'meeple', count: 2, zone: 'table' }] } })
+    await screen.findByRole('tab', { name: 'Bord', selected: true })
+    expect(document.querySelectorAll('[data-material]')).toHaveLength(0)
   })
 })

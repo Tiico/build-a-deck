@@ -4,7 +4,7 @@ import { handName } from './handName.js'
 import { cardWord } from './keyboard.js'
 import { componentOf } from './presence.js'
 import { versionWord } from '../i18n/version.js'
-import { dieKind } from '../components.js'
+import { dieKind, pieceKind } from '../components.js'
 
 // The lines worth saying. A card played to a public zone is one envelope with a move and a flip,
 // and said as its flip it never said where the card went (#560 P-12): the flip of a card the same
@@ -48,6 +48,11 @@ function thrown(rolls: readonly { component: string; value: number }[], view: Sn
   return rolls.length > 1 ? `${told} = ${rolls.reduce((sum, r) => sum + r.value, 0)}` : told
 }
 
+const pieceOfView = (view: Snapshot, id: string) => {
+  const c = view.components.find((x) => x.id === id)
+  return c ? pieceKind(c) : null
+}
+
 // One line per log line, for the activity feed, in whichever language the reader is given (A4).
 // Names come from the view; zone names too, so "Draghög" rather than "draw" — a zone's name is
 // the designer's word and is never translated — except a hand, which is named by whoever sits there.
@@ -72,12 +77,15 @@ export function describeActivity(line: Said, view: Snapshot, t: T): string {
   const about = componentOf(line)
   const card = about === null ? null : cardWord(view.components.find((c) => c.id === about))
   const it = line.intent
+  const piece = about === null ? null : pieceOfView(view, about)
   switch (it.v) {
     case 'move':
+      if (piece) return t(`activity.move.piece.${piece}`, { who, zone: zone(it.to) })
       return card ? t('activity.move.named', { who, card, zone: zone(it.to) }) : t('activity.move', { who, zone: zone(it.to) })
     case 'rotate':
       return t('activity.rotate', { who })
     case 'flip':
+      if (piece === 'meeple' && (it.face === 'lying' || it.face === 'standing')) return t(`activity.flip.meeple.${it.face}`, { who })
       return card ? t('activity.flip.named', { who, card }) : t('activity.flip', { who })
     case 'stack':
       return t('activity.stack', { who })

@@ -124,8 +124,9 @@ Målet är att en grupp kan spela vilket kortspel som helst utan att sakna någo
 - ✅ Vägen tillbaka mellan editorn och borden (L80, #1217): varje bordsyta leder ägaren till editorns egen flik, ett bord öppnas i sin egen flik i stället för en ny, ägaren som lämnar `/online` landar i spelet, och Mina spel, `/join` och `/login` har en väg vidare.
 - ✅ Materialets plats (K31, #1292): tärningar och räknare dras i fliken Bords filt dit de ska ligga, och en punkt i en yta vid platserna vänds mot varje plats kant.
 - ✅ Vägen in till ett bord (L86, #1286): två sätt att sitta, runt en TV eller vid varsin dator. Varje start frågar vilket och bordet minns svaret, så ett bord har en väg in, «Öppna bordet», och anslutningssidan ett enda «Gå med» på varje skärm. Genvägarna där designern hoppade in själv är borta ur editorn.
-- ⬜ Fler komponenttyper än standardkortet och tärningen — bricka, meeple, bräde (B1, B2, B3).
-  Beställaren beslutade 2026-10-28 att release är "kort- och brädspel": typerna byggs nu, parallellt med betan, med en PRD och en prototyp per synlig yta.
+- 🔶 Fler komponenttyper än standardkortet och tärningen — bricka, meeple, bräde (B1, B2, B3).
+  Beställaren beslutade 2026-10-28 att release är "kort- och brädspel": typerna byggs nu, parallellt med betan, med en PRD och en prototyp per synlig yta (#1470).
+  Trädelarna är i registret och i setupen (K33, #1471): `piece.meeple`, `piece.cube` och `piece.disc`, en meeple läggs ned med `flip`, och att material aldrig hålls deklareras i typen. Bordet, telefonen, fliken Bord och trycket återstår (#1475–#1478), liksom brädet och brickan.
 
 ## Fas 2 — Editorn färdig ✅
 
