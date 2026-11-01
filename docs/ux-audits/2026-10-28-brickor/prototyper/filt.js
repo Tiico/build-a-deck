@@ -33,7 +33,7 @@ window.Filt = (() => {
     S.pile = TILES.filter((t) => !placedIds.includes(t.id)).map((t) => t.id)
     S.coinsOut = [{ k: 'g1', x: 160, y: 272 }, { k: 'g2', x: 192, y: 264 }, { k: 'g3', x: 178, y: 296 }]
     // Sjön (C): de dolda brickornas platser. Identiteten väljs först när någon tar en.
-    S.pool = S.pile.map((_, i) => { const a = i * 2.4, r = 18 + 9 * Math.sqrt(i) * 2.2; return { k: 'q' + i, x: -330 + r * Math.cos(a) * 0.9, y: 10 + r * Math.sin(a) * 1.1, rot: (i * 37) % 60 } })
+    S.pool = S.pile.map((_, i) => { const a = i * 2.4, r = 6 + 19 * Math.sqrt(i); return { k: "q" + i, x: -320 + r * Math.cos(a), y: 20 + r * Math.sin(a), rot: (i * 37) % 60 } })
   }
   function lattice(shape) {
     const { w, h } = deckMm(shape)
@@ -79,7 +79,7 @@ window.Filt = (() => {
       const [x, y, r] = pos[s.edge], hd = S.hands[s.id]
       const items = [...Array(hd.cards)].map(() => pieceSvg({ kind: 'card', up: false }, mm * 0.6, { edge: false })).concat([...Array(hd.tiles)].map(() => pieceSvg({ kind: 'tile', shape: S.shape, mm: deckMm(S.shape), up: false }, mm * 0.6, { edge: false })))
       h += `<div class="fan" style="left:${X(x)}px;top:${Y(y)}px;transform:translate(-50%,-50%) rotate(${r}deg)">${items.join('')}</div>`
-      const np = { S: [0, 216], N: [0, -216], E: [404, -200], W: [-404, -200] }[s.edge]
+      const np = { S: [0, 216], N: [0, -216], E: [480, -272], W: [-480, -272] }[s.edge]
       h += `<div class="platsnamn" style="--c:${s.c};left:${X(np[0])}px;top:${Y(np[1])}px"><i>${s.id}</i>${s.name} · ${hd.cards + hd.tiles}</div>`
     }
     return h
@@ -109,7 +109,7 @@ window.Filt = (() => {
     if (V === 'A') h += `<div class="hog" tabindex="0" role="button" data-hog aria-label="Landskap, dold hög, ${n} brickor. Enter öppnar handlingar." style="left:${X(-310)}px;top:${Y(0)}px">${n ? pieceSvg({ kind: 'tile', shape, mm: dm, up: false }, mm, { layers: n }) : `<div style="width:${dm.w * mm}px;height:${dm.h * mm}px;border:1px dashed #3a3f4b;border-radius:6px"></div>`}<span class="zn">Landskap · ${n}</span></div>`
     if (V === 'B') h += `<div class="hog" tabindex="0" role="button" data-hog aria-label="Landskap, påse, ${n} brickor. Enter öppnar handlingar." style="left:${X(-310)}px;top:${Y(0)}px">${bagSvg(mm, n)}<span class="zn">Påsen · ${n}</span></div>`
     if (V === 'C') {
-      h += `<span class="zn" style="position:absolute;left:${X(-330)}px;top:${Y(-92)}px;transform:translateX(-50%)">Sjön · ${n}</span>`
+      h += `<span class="zn" style="position:absolute;left:${X(-330)}px;top:${Y(-112)}px;transform:translateX(-50%)">Sjön · ${n}</span>`
       S.pool.slice(0, n).forEach((q) => { h += `<div class="lagd" tabindex="0" role="button" data-pool="${q.k}" aria-label="Dold landskapsbricka i Sjön. Enter öppnar handlingar." style="left:${X(q.x)}px;top:${Y(q.y)}px">${pieceSvg({ kind: 'tile', shape, mm: dm, up: false, rot: q.rot }, mm)}</div>` })
     }
     // Guldet: en öppen hög och tre mynt framför Nicklas.
@@ -125,14 +125,14 @@ window.Filt = (() => {
     renderSide()
   }
 
-  function ringAt(x, y, buttons, radius) {
+  function ringAt(x, y, buttons, radius, arc) {
     const f = root.querySelector('.filt')
     f.querySelector('.ring')?.remove()
     const ring = document.createElement('div')
     ring.className = 'ring'; ring.style.left = X(x) + 'px'; ring.style.top = Y(y) + 'px'
     const R = radius
     buttons.forEach((b, i) => {
-      const a = (-90 + (360 / buttons.length) * i) * Math.PI / 180
+      const a = (arc ? arc[0] + (arc[1] - arc[0]) * i / Math.max(1, buttons.length - 1) : -90 + (360 / buttons.length) * i) * Math.PI / 180
       const el = document.createElement('button')
       el.innerHTML = b.label; el.style.left = R * Math.cos(a) + 'px'; el.style.top = R * Math.sin(a) * 0.8 + 'px'
       el.onclick = (e) => { e.stopPropagation(); ring.remove(); b.go() }
@@ -175,7 +175,7 @@ window.Filt = (() => {
       { label: 'Flytta…', go: () => { log('A', `flyttade ${p.tile.namn}`); render() } },
       { label: 'Till handen', go: () => { S.placed = S.placed.filter((x) => x !== p); S.hands.A.tiles++; S.sel = null; log('A', `tog ${p.tile.namn} till handen`); render() } },
     ]
-    ringAt(p.x, p.y, V === 'B' ? rest : [...turn.slice(0, 1), ...rest.slice(0, 1), ...turn.slice(1), ...rest.slice(1)], R)
+    ringAt(p.x, p.y, V === 'B' ? rest : [...turn.slice(0, 1), ...rest.slice(0, 1), ...turn.slice(1), ...rest.slice(1)], R, V === "B" ? [160, 20] : undefined)
   }
   function drawToHand() {
     if (!S.pile.length) return
