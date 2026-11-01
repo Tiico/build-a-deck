@@ -2637,6 +2637,18 @@ Preciserat 2026-10-28 (#1469, beställarens beslut, form L2): **läsläget gäll
 - Det här skiljer sig från ett nått tak under en gällande nivå, som fortfarande bara stoppar tillväxt (A2, #1192): läsläget gäller ett konto vars abonnemang har gått ut.
 - Hur läsläget syns för designern är inte beslutat och prototypas först. Om samma läsläge gäller ett betakonto som vuxit utan tak när gratisnivåns tak sätts hör till fråga 3 i #1469.
 
+Byggt 2026-11-01 (#1491, skiva 2 av 5 i #1469): **läsläget L2 på servern.**
+- Ett konto kan vara **utgånget**: `lapsed_at` på dess rad i `account_plans`. Operatören sätter och häver det med `plan lapse <adress>` och `plan unlapse <adress>` (DRIFT §12), och Stripe skriver samma sak när abonnemangen kopplas på. Bara ett konto med en egen nivå kan gå ut; `plan set` ger det en nivå igen och häver utgången.
+- Ett utgånget konto hålls till standardnivån, Gratis, för varje tak. Raden behåller sin nivå, så starten håller fortfarande `BYD_PLANS` mot den, och standardnivån finns alltid eftersom schemat kräver det.
+- Vilka spel som ryms står på ett ställe, `readOnlyGames` i `packages/server/src/read-only.ts`, och prövas utan HTTP: de senast ändrade först (senaste versionen eller senaste redigeringen i loggen efter den), där ett spel ryms om det har högst gratisnivåns `cardRowsPerProject` och `cardCopiesPerProject`, om det finns en plats kvar under `projects`, och om det som de spel som ryms nämner tillsammans håller sig under `storageBytes`, en bild som två spel delar räknad en gång. Ett spel över korttaken tar ingen plats. Regeln räknas om varje gång och lagras inte, så ett borttaget spel eller en hävd utgång märks genast.
+- Grinden sitter före allt som skriver, som villkorens: en skrivning under `/projects/<id>` på ett spel i läsläge, och en uppladdning med `?project=<id>`, svarar 402 med `{ error: 'read-only' }` innan något läses eller skrivs. Öppna är läsning, export, tryck-PDF:erna och regelhäftet (tills #1209 säger annat), en bild att spara («Spara bilden»), att lådan öppnats, borttagning, och att ta bort en medlem eller dra tillbaka en inbjudan (`READ_ONLY_OPEN`). En väg som läggs till senare är stängd tills listan säger annat; en kopia av ett spel i läsläge är det också.
+- Projektaktören frågar samma regel i beslutssteget, före commit, för varje redigering och version, så editorns linje svarar `refused` med `why: 'read-only'` och ingenting hamnar i loggen. En redigering som bara krymper spelet avvisas också, eftersom beslutet säger «inte ändra».
+- Grinden frågas bara för den som har en roll i spelet, så en främling inte får veta något om det. En medredigerare möter ägarens läsläge, eftersom det är ägarens nivå som gäller (D3); medredigerare grindas inte i övrigt (fråga 5).
+- Bord som redan står stängs inte: att ansluta, spela, få en ny kod och avsluta prövar aldrig läsläget.
+- `GET /me/usage` och `usage`-skriptet säger `plan` (nivån kontot hålls till), `lapsed` (den egna nivån och när den gick ut) och `readOnly`, spelen i läsläge. Hur det sägs för designern är #1492.
+- Ett konto som bara nått ett tak under en gällande nivå beter sig som förut: bara tillväxt stoppas.
+- Grindarna är `packages/server/test/read-only-lapsed.test.ts` (regeln utan HTTP, och REST, editorns linje och `GET /me/usage` mot båda lagren) och `account-plans.test.ts` (utgången och skriptets rapport).
+
 ### G6. Personuppgifter: Deckster är ansvarig, och loggen maskas på plats (beslutat 2026-10-24, #1269)
 
 Beställarens beslut 2026-10-24 på frågorna F1–F7 i #1269.

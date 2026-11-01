@@ -598,6 +598,13 @@ export class PostgresProjectStore implements ProjectStore {
     return storedIn(this.sql, owner)
   }
 
+  async weighed(id: string): Promise<Record<string, number>> {
+    const rows = await this.sql<{ hash: string; size: string | null }[]>`
+      select pa.hash, a.size::text as size from project_assets pa left join assets a on a.hash = pa.hash where pa.project_id = ${id}
+    `
+    return Object.fromEntries(rows.map((r) => [r.hash, Number(r.size ?? 0)]))
+  }
+
   async using(hash: string): Promise<{ id: string; owner?: string }[]> {
     const rows = await this.sql<{ id: string; owner: string | null }[]>`
       select p.id, p.owner from project_assets pa join projects p on p.id = pa.project_id where pa.hash = ${hash} order by p.id collate "C"

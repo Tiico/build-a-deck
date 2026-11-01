@@ -265,6 +265,10 @@ create table if not exists account_plans (
   since       timestamptz not null default now(),
   source      text not null check (source in ('operator', 'stripe'))
 );
+-- When the tier lapsed (#1491, G5, L2), null while it holds: a lapsed account is held to the default
+-- tier, and what of its games lies over that tier's ceilings is read-only. The row keeps its tier,
+-- so lifting the lapse gives it back; giving the account a tier again sets it back to null.
+alter table account_plans add column if not exists lapsed_at timestamptz;
 
 -- What each game's versions name (#1197, #1192 question 4): one row per game and asset some version
 -- of it uses, read the way `assetHashesOf` reads a document — every string anywhere in it that is
