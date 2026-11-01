@@ -2756,10 +2756,11 @@ function Hand({ zone, color, rot, countAt, countIn = false, counted = true, fold
           ))
         ) : (
           Array.from({ length: fan }, (_, i) => {
-            const tile = tileOf(backs[i])
+            const back = backs[i]
+            const tile = tileOf(back)
             return (
               <i key={i} className="byd-back" data-shape={tile?.shape} style={{ ...box, transform: place(i, false), ...(tile ? HOLDS_A_TILE : {}) }}>
-                {tile && <TileInCard c={{ type: backs[i]!.type, cardRef: null }} />}
+                {tile && back && <TileInCard c={{ type: back.type, cardRef: null }} />}
               </i>
             )
           })

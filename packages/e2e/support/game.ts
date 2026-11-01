@@ -79,7 +79,7 @@ export const cardTitle = (i: number): string => `${WORDS[i % WORDS.length]} ${Ma
 export const TILE_TITLES = ['Granskog', 'Tjärn', 'Fjäll', 'Rågåker']
 export function tileGame(game: Game = {}): ProjectDoc {
   const doc = gameDoc({ players: 2, counters: [], cards: 6, ...game })
-  const floor = doc.setup.zones.find((z) => z.id === doc.setup.floor)!.geometry
+  const floor = doc.setup.zones.find((z) => z.id === doc.setup.floor)?.geometry ?? { x: 0, y: 0, w: 0, h: 0, rot: 0 }
   const bag = { id: 'bag', kind: 'pile' as const, name: 'Landskap', visibility: 'none' as const, geometry: { x: floor.x + floor.w / 2, y: floor.y + floor.h / 2, w: 0, h: 0, rot: 0 } }
   const lands: Template = {
     faces: {
