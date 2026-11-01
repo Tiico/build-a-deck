@@ -113,6 +113,14 @@ describe('Renderer.renderRaster (#1207)', () => {
     expect(jpegSize(jpg)).toEqual({ w: 819, h: 1114 })
   }, 60_000)
 
+  // The felt's board asks for its own quality (#1480): a lower one is a lighter file of the same pixels.
+  it('writes a JPEG at the quality the kind names', async () => {
+    const at95 = await renderer.renderRaster(card(3.175), { format: 'jpg', widthPx: 819, heightPx: 1114 })
+    const at40 = await renderer.renderRaster(card(3.175), { format: 'jpg', widthPx: 819, heightPx: 1114, quality: 40 })
+    expect(jpegSize(at40)).toEqual({ w: 819, h: 1114 })
+    expect(at40.length).toBeLessThan(at95.length)
+  }, 60_000)
+
   // The raster is the texture's picture and not a second drawing of the card: the same compiled
   // page, the same Chromium, the same ink where the card has ink.
   it('is the picture the texture is, ink for ink', async () => {

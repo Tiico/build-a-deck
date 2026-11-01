@@ -3,7 +3,9 @@ import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { parseArgs, promisify } from 'node:util'
 import { free } from '../support/ports.js'
+import { printGame } from './deck.js'
 import { Designer } from './designer.js'
+import { photo } from './photo.js'
 import { CONTAINERS, verdict, type Kernel, type Container, type Verdict } from './memory.js'
 import { Compose } from './stack.js'
 import { playTable, type Played } from './table.js'
@@ -14,6 +16,7 @@ import { playTable, type Played } from './table.js'
  *
  *   pnpm --filter @byd/e2e load:memory [--tables 1,3] [--cards 308] [--pictures 308]
  *                                      [--picture-kb 250] [--versions 15] [--intents 200]
+ *                                      [--tiles 72] [--board-kb 3000]
  *                                      [--project byd-load-…] [--keep] [--no-build]
  *
  * Each scenario starts the stack from nothing (`down -v`, `up`), as a deploy does, so the kernel's
@@ -22,6 +25,16 @@ import { playTable, type Played } from './table.js'
  * television and an observer playing `intents` envelopes on real sockets, with shuffles and
  * rewinds; and, while they play, the designer saving a version that redraws every card and sending
  * it to the table. The tables of a scenario do all of it at the same time.
+ *
+ * With `tiles` the game also has a deck of that many hexagon tiles, each on a picture of its own,
+ * and with `board-kb` a main board on a 3600 × 2700 picture of that weight and a player board for
+ * every seat (#1533); a saved version redraws them with the cards. Pro's 500 cards are
+ * `--cards 500 --tiles 72 --board-kb 3000`.
+ *
+ * With `print-board`, once the tables have played, the first designer also asks for the print
+ * package of a game with the big main board under a photograph out into the bleed (#1531): a JPEG
+ * of 7276 × 5469 px, a print's pixels, just under the upload limit. The phase is `tryck`, so the
+ * render worker's peak while it draws the board's print file is read apart from the tables'.
  *
  * It is not part of `pnpm test`: it takes the machine for a quarter of an hour and needs Docker.
  * What it prints is what goes into DRIFT §1; the raw readings are kept in `packages/e2e/.load/`.
@@ -36,10 +49,13 @@ const { values: args } = parseArgs({
     // How many different illustrations the cards are drawn from; one per card unless fewer.
     pictures: { type: 'string' },
     'picture-kb': { type: 'string', default: '250' },
+    tiles: { type: 'string', default: '0' },
+    'board-kb': { type: 'string', default: '0' },
     'pause-ms': { type: 'string', default: '150' },
     project: { type: 'string', default: `byd-load-${process.pid}` },
     keep: { type: 'boolean', default: false },
     'no-build': { type: 'boolean', default: false },
+    'print-board': { type: 'boolean', default: false },
     // One more compose file on top, for measuring a proposed limit before it is proposed.
     'compose-extra': { type: 'string' },
   },
@@ -50,10 +66,14 @@ const versions = Number(args.versions)
 const intents = Number(args.intents)
 const pictures = Number(args.pictures ?? args.cards)
 const pictureBytes = Number(args['picture-kb']) * 1000
+const tiles = Number(args.tiles)
+const boardBytes = Number(args['board-kb']) * 1000
 const pauseMs = Number(args['pause-ms'])
 const OUT = join(import.meta.dirname, '..', '.load')
 const RENDER_BUDGET_MS = 30 * 60_000
 const MiB = 2 ** 20
+// A print's photograph: the big board with its bleed at 300 DPI, under the 8 MB upload limit.
+const PRINT_PHOTO = { width: 7276, height: 5469, maxBytes: 7_800_000 }
 
 const say = (line: string) => console.log(`${new Date().toISOString().slice(11, 19)} ${line}`)
 const pause = (ms: number) => new Promise((r) => setTimeout(r, ms))
@@ -65,8 +85,11 @@ if (!args['no-build']) {
   say(`building the images as ${stack.tag}`)
   await stack.build()
 }
+const printPhoto = args['print-board'] ? await photo(4242, PRINT_PHOTO) : undefined
+if (printPhoto) say(`a print photograph of ${PRINT_PHOTO.width} × ${PRINT_PHOTO.height} px, ${Math.round(printPhoto.length / 1000)} kB`)
 
-type Result = { tables: number; verdicts: Verdict[]; played: Played[]; renders: { start: number; refresh: number }[]; failure?: string }
+type Printed = { total: number; seconds: number; zipBytes: number; photoBytes: number }
+type Result = { tables: number; verdicts: Verdict[]; played: Played[]; renders: { start: number; refresh: number }[]; print?: Printed; failure?: string }
 const results: Result[] = []
 try {
   for (const tables of scenarios) results.push(await scenario(tables))
@@ -75,13 +98,14 @@ try {
 }
 
 const { stdout: host } = await run('docker', ['info', '--format', '{{.NCPU}} CPU, {{.MemTotal}} B, kernel {{.KernelVersion}}'])
-const report = { at: new Date().toISOString(), host: host.trim(), cards, pictures, versions, intents, pictureBytes, results }
+const report = { at: new Date().toISOString(), host: host.trim(), cards, pictures, tiles, boardBytes, versions, intents, pictureBytes, results }
 const file = join(OUT, `memory-${report.at.replace(/[:.]/g, '-')}.json`)
 writeFileSync(file, JSON.stringify(report, null, 2))
 for (const r of results) {
   console.log(`\n${r.tables} ${r.tables === 1 ? 'bord' : 'bord samtidigt'}: ${r.played.map((p) => `${p.acked} intents (${p.shuffles} blandningar, ${p.rewinds} tillbakaspolningar), ${p.faces} texturhämtningar`).join('; ')}`)
   if (r.failure) console.log(`  AVBRÖTS: ${r.failure}`)
   console.log(`  rendering: ${r.renders.map((x) => `start ${x.start} s, ny version ${x.refresh} s`).join('; ')}`)
+  if (r.print) console.log(`  tryckpaketet: ${r.print.total} filer på ${r.print.seconds} s, zip ${mib(r.print.zipBytes)} MiB, fotot ${Math.round(r.print.photoBytes / 1000)} kB`)
   for (const v of r.verdicts) {
     const phases = Object.entries(v.phases).map(([p, b]) => `${p} ${mib(b)}`).join(', ')
     console.log(`  ${v.container.padEnd(8)} topp ${mib(v.workingSetPeak).padStart(5)} MiB av ${mib(v.limit)} (anon ${mib(v.anonPeak)}, kärnans topp ${mib(v.kernelPeak)}, i taket ${v.hitLimit} ggr, OOM ${v.oomKills}, omstarter ${v.restarts}) ${v.fits ? 'ryms' : 'RYMS INTE'} — ${phases}`)
@@ -100,6 +124,7 @@ async function scenario(tables: number): Promise<Result> {
   const sampler = await stack.sample(() => phase)
   const outcome: { played: Played; refresh: number; start: number }[] = []
   let failure: string | undefined
+  let print: Printed | undefined
   try {
     await pause(20_000)
 
@@ -109,8 +134,8 @@ async function scenario(tables: number): Promise<Result> {
     const designers = await Promise.all(Array.from({ length: tables }, (_, i) => Designer.logIn(stack.origin, `designer-${i + 1}-${Date.now()}@load.test`, mailbox)))
     const games = await Promise.all(
       designers.map(async (d, i) => {
-        say(`designer ${i + 1}: ${cards} cards on ${pictures} pictures of ${pictureBytes / 1000} kB, ${versions} versions`)
-        const game = { name: `Lastspelet ${i + 1}`, cards, assets: await d.uploadAssets({ pictures, pictureBytes, seed: i + 1, fonts }) }
+        say(`designer ${i + 1}: ${cards} cards on ${pictures} pictures of ${pictureBytes / 1000} kB, ${tiles} tiles, ${boardBytes ? `a board of ${boardBytes / 1000} kB` : 'no board'}, ${versions} versions`)
+        const game = { name: `Lastspelet ${i + 1}`, cards, assets: await d.uploadAssets({ pictures, pictureBytes, seed: i + 1, fonts, tiles, boardBytes }) }
         return { game, project: await d.saveGame(game, versions) }
       }),
     )
@@ -141,6 +166,17 @@ async function scenario(tables: number): Promise<Result> {
       }),
     )))
 
+    if (printPhoto) {
+      phase = 'tryck'
+      const designer = designers[0]
+      if (!designer) throw new Error('no designer to print')
+      const hash = await designer.uploadFile(printPhoto, 'image/jpeg')
+      const saved = await designer.saveDoc(printGame({ name: 'Tryckbrädet', photo: hash }))
+      const done = await designer.printPackage(saved.id, RENDER_BUDGET_MS)
+      print = { ...done, photoBytes: printPhoto.length }
+      say(`print package drawn: ${done.total} files in ${done.seconds} s, zip ${mib(done.zipBytes)} MiB`)
+    }
+
     phase = 'efteråt'
     await pause(20_000)
   } catch (cause) {
@@ -153,7 +189,7 @@ async function scenario(tables: number): Promise<Result> {
   const kernel: Partial<Record<Container, Kernel>> = {}
   for (const c of CONTAINERS) kernel[c] = await stack.kernel(c)
   if (failure) writeFileSync(join(OUT, `app-${tables}-${Date.now()}.log`), await stack.logs('app'))
-  return { tables, verdicts: verdict(sampler.readings, kernel), played: outcome.map((o) => o.played), renders: outcome.map((o) => ({ start: o.start, refresh: o.refresh })), ...(failure ? { failure } : {}) }
+  return { tables, verdicts: verdict(sampler.readings, kernel), played: outcome.map((o) => o.played), renders: outcome.map((o) => ({ start: o.start, refresh: o.refresh })), ...(print ? { print } : {}), ...(failure ? { failure } : {}) }
 }
 
 // Two real typefaces, taken from the render image, which every run of this has built anyway.

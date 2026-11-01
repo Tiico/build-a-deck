@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { TEST_CEILING } from '../../../test-support/own-time.js'
 
 // A test that launches a browser has to say how long it may take.
 //
@@ -30,6 +31,11 @@ const files = readdirSync(DIR).filter((name) => name.endsWith('.test.ts') && nam
 // Every test of this package, as the source between one `it(` and the next.
 const blocks = (source: string): string[] => source.split(/\n {2}it\(/).slice(1)
 const starts = (block: string) => LAUNCHES.some((pattern) => pattern.test(block))
+// The timeout a test names for itself, in milliseconds, or null when it names none.
+const declared = (block: string): number | null => {
+  const found = /\n {2}\}, (\d[\d_]*)\)/.exec(block)?.[1]
+  return found === undefined ? null : Number(found.replaceAll('_', ''))
+}
 const named = (block: string) => (/^\s*['"`](.*?)['"`]/.exec(block)?.[1] ?? block.slice(0, 40)).trim()
 
 describe('a test that launches a browser (#92)', () => {
@@ -42,11 +48,28 @@ describe('a test that launches a browser (#92)', () => {
     expect(forgot).toEqual([])
   })
 
+  // A test that names the ceiling as its own timeout (#1542) cannot be told from one that names
+  // none: vitest gives the guard the same number either way, so the guard holds it to the
+  // package's fifteen seconds of own time, and a worker waiting on a Chromium that a loaded machine
+  // runs slowly is a worker that runs. `box-still` asked for two minutes, got fifteen seconds and
+  // fell on them. A test that waits on a browser is on the wall clock it names, so it names a
+  // number that is not the ceiling.
+  it('names a timeout of its own that is not the ceiling, which would put it back on the budget', () => {
+    const onBudget = files.flatMap((name) =>
+      blocks(read(name))
+        .filter((block) => declared(block) === TEST_CEILING)
+        .map((block) => `${name}: ${named(block)}`),
+    )
+    expect(onBudget).toEqual([])
+  })
+
   it('is a guard that can fail: a budget taken away is seen', () => {
     // The condition itself, since a guard that cannot fail says nothing about the suite it guards.
     const block = `'renders the deck', async () => {\n    await run.renderAll()\n  })\n`
     expect(starts(block)).toBe(true)
     expect(DECLARES.test(block)).toBe(false)
     expect(DECLARES.test(block.replace('\n  })', '\n  }, 60_000)'))).toBe(true)
+    expect(declared(block.replace('\n  })', '\n  }, 120_000)'))).toBe(TEST_CEILING)
+    expect(declared(block.replace('\n  })', '\n  }, 90_000)'))).toBe(90_000)
   })
 })

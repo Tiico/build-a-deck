@@ -377,7 +377,16 @@
           "dynamic": false,
           "visibility": "none",
           "count": 7,
-          "top": "r0"
+          "top": "r0",
+          "types": [
+            {
+              "type": {
+                "id": "card.standard.63x88",
+                "version": 1
+              },
+              "count": 7
+            }
+          ]
         },
         {
           "mode": "order",
@@ -515,8 +524,8 @@
       "ended": false,
       "played": true,
       "version": "v1",
-      "notes": [],
-      "turn": null
+      "turn": null,
+      "notes": []
     },
     "B": {
       "seq": 8,
@@ -566,7 +575,16 @@
           "dynamic": false,
           "visibility": "none",
           "count": 7,
-          "top": "r0"
+          "top": "r0",
+          "types": [
+            {
+              "type": {
+                "id": "card.standard.63x88",
+                "version": 1
+              },
+              "count": 7
+            }
+          ]
         },
         {
           "mode": "count",
@@ -584,7 +602,16 @@
           "visibility": "owner",
           "owner": "A",
           "returnTo": "draw",
-          "count": 1
+          "count": 1,
+          "types": [
+            {
+              "type": {
+                "id": "card.standard.63x88",
+                "version": 1
+              },
+              "count": 1
+            }
+          ]
         },
         {
           "mode": "order",
@@ -686,8 +713,8 @@
       "ended": false,
       "played": true,
       "version": "v1",
-      "notes": [],
-      "turn": null
+      "turn": null,
+      "notes": []
     },
     "table": {
       "seq": 8,
@@ -737,7 +764,16 @@
           "dynamic": false,
           "visibility": "none",
           "count": 7,
-          "top": "r0"
+          "top": "r0",
+          "types": [
+            {
+              "type": {
+                "id": "card.standard.63x88",
+                "version": 1
+              },
+              "count": 7
+            }
+          ]
         },
         {
           "mode": "count",
@@ -755,7 +791,16 @@
           "visibility": "owner",
           "owner": "A",
           "returnTo": "draw",
-          "count": 1
+          "count": 1,
+          "types": [
+            {
+              "type": {
+                "id": "card.standard.63x88",
+                "version": 1
+              },
+              "count": 1
+            }
+          ]
         },
         {
           "mode": "count",
@@ -860,8 +905,8 @@
       "ended": false,
       "played": true,
       "version": "v1",
-      "notes": [],
-      "turn": null
+      "turn": null,
+      "notes": []
     },
     "observer": {
       "seq": 8,
@@ -1131,8 +1176,8 @@
       "ended": false,
       "played": true,
       "version": "v1",
-      "notes": [],
-      "turn": null
+      "turn": null,
+      "notes": []
     }
   }
 }

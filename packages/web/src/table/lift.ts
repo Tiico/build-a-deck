@@ -21,11 +21,15 @@ export type Box = { left: number; top: number; w: number; h: number }
 
 // `smallestPt`: the card's own smallest text (#523). A card whose words are smaller than the
 // wizard's frame is lifted larger, until they reach the desk's floor or the window's height.
-export function liftBox(card: Edges, window: { w: number; h: number }, smallestPt?: number | null): Box {
+// `foot` is what is lifted in the felt's millimetres: a card, or a tile (#1485), lifted at the
+// pixels per millimetre a card is lifted at, so its words read at a card's size and a coin stays
+// smaller than a hexagon, as it is in the hand.
+export function liftBox(card: Edges, window: { w: number; h: number }, smallestPt?: number | null, foot: { w: number; h: number } = CARD_MM): Box {
   const share = window.h * LIFT_SHARE
   const need = (readingWidth((share * CARD_MM.w) / CARD_MM.h, smallestPt, 'desk') * CARD_MM.h) / CARD_MM.w
-  const h = Math.min(need, window.h - 2 * LIFT_GAP)
-  const w = (h * CARD_MM.w) / CARD_MM.h
+  const perMm = Math.min(need, window.h - 2 * LIFT_GAP) / CARD_MM.h
+  const h = Math.min(foot.h * perMm, window.h - 2 * LIFT_GAP)
+  const w = (h * foot.w) / foot.h
   const onRight = window.w - card.right - LIFT_GAP >= w + LIFT_GAP
   const onLeft = card.left - LIFT_GAP >= w + LIFT_GAP
   const left = onRight ? card.right + LIFT_GAP : onLeft ? card.left - LIFT_GAP - w : (window.w - w) / 2
@@ -39,11 +43,13 @@ export function liftBox(card: Edges, window: { w: number; h: number }, smallestP
 // no room at either side. The lift stands over the card, centred on it and kept inside the window,
 // and leaves `line` pixels between itself and the card for the line that says what the hand
 // answers to. It is the size `liftBox` gives, or what the room over the card holds where that is less.
-export function liftOver(card: Edges, window: { w: number; h: number }, line: number, smallestPt?: number | null): Box {
+// A tile (`foot`, #1538) is lifted at the millimetres that card would be.
+export function liftOver(card: Edges, window: { w: number; h: number }, line: number, smallestPt?: number | null, foot: { w: number; h: number } = CARD_MM): Box {
   const share = window.h * LIFT_SHARE
   const need = (readingWidth((share * CARD_MM.w) / CARD_MM.h, smallestPt, 'desk') * CARD_MM.h) / CARD_MM.w
-  const h = Math.max(0, Math.min(need, card.top - 3 * LIFT_GAP - line))
-  const w = (h * CARD_MM.w) / CARD_MM.h
+  const perMm = Math.max(0, Math.min(need, card.top - 3 * LIFT_GAP - line)) / CARD_MM.h
+  const h = foot.h * perMm
+  const w = foot.w * perMm
   const left = Math.min(Math.max((card.left + card.right) / 2 - w / 2, LIFT_GAP), window.w - w - LIFT_GAP)
   return { left, top: card.top - 2 * LIFT_GAP - line - h, w, h }
 }

@@ -13,7 +13,9 @@ import type { Plans } from './quotas.js'
 // with; and `BYD_STRIPE_PRICES`, the price ids per tier, currency and interval, as JSON:
 //   {"pro":{"sek":{"month":"price_…","year":"price_…"},"eur":{"month":"price_…","year":"price_…"}}}
 // None of them is in the repo, and no price is a number in the code: what a tier costs is the
-// price Stripe holds under the id. Without any of them payments are off and the box starts as it
+// price Stripe holds under the id. Each price is set up in Stripe with VAT inside it (`tax_behavior:
+// inclusive`), and Stripe Tax reckons the VAT on the customer's country (#1521, ops/RUNBOOK.md §10);
+// a checkout at a price that is not is refused (`priceFault`). Without any of them payments are off and the box starts as it
 // always did. Half of them, or prices that cannot be read, stop the start: a box must never quietly
 // take money it cannot record, nor quietly fail to take it.
 
@@ -26,7 +28,7 @@ const Prices = z.record(PlanName, z.record(Currency, z.strictObject({ month: Pri
 type Prices = z.infer<typeof Prices>
 
 export type PriceOf = { plan: string; currency: string; interval: Interval }
-export type PaymentsConfig = { secretKey: string; webhookSecret: string; prices: Prices; byId: ReadonlyMap<string, PriceOf> }
+export type PaymentsConfig = { secretKey: string; webhookSecret: string; prices: Prices; byId: ReadonlyMap<string, PriceOf>; apiBase: string }
 
 export function paymentsFromEnv(env: Record<string, string | undefined>, plans: Plans): PaymentsConfig | null {
   const secretKey = (env['STRIPE_SECRET_KEY'] ?? '').trim()
@@ -61,7 +63,12 @@ export function paymentsFromEnv(env: Record<string, string | undefined>, plans: 
     }
   }
   if (byId.size === 0) throw new Error('BYD_STRIPE_PRICES names no price')
-  return { secretKey, webhookSecret, prices, byId }
+  // Where Stripe's API is: Stripe's own, unless the built app's journeys (#1494) point a test key at
+  // a Stripe of their own. Never with a live key, which would take real money past Stripe.
+  const base = (env['STRIPE_API_BASE'] ?? '').trim()
+  if (base !== '' && !secretKey.includes('_test_')) throw new Error('STRIPE_API_BASE is for a test key only')
+  if (base !== '' && !URL.canParse(base)) throw new Error('STRIPE_API_BASE is not an address')
+  return { secretKey, webhookSecret, prices, byId, apiBase: base === '' ? STRIPE_API : base.replace(/\/$/, '') }
 }
 
 // What the start says about payments (DRIFT §8): whether they are on, test or live, and which tiers
@@ -93,13 +100,14 @@ export function signatureHolds(body: string, header: string | undefined, secret:
   })
 }
 
-// A subscription as the box reads it: Stripe's status and the price ids it bills.
-export type Subscription = { status: string; prices: string[] }
+// A subscription as the box reads it: its id, Stripe's status and the price ids it bills, whether it
+// ends at the period's end instead of renewing (#1494), and when the period it is in ends.
+export type Subscription = { id: string; status: string; prices: string[]; cancelAtPeriodEnd: boolean; periodEnd: string | null }
 // The statuses in which the period is paid for: active, in a trial, or past due while Stripe still
 // retries the payment. Cancelled, unpaid, never paid and expired are not.
-const LIVE = new Set(['active', 'trialing', 'past_due'])
+export const LIVE: ReadonlySet<string> = new Set(['active', 'trialing', 'past_due'])
 // The tier a customer's subscriptions give: that of a live one at a price the box knows, or none.
-export function planOfSubscriptions(config: PaymentsConfig, subs: readonly Subscription[]): string | null {
+export function planOfSubscriptions(config: PaymentsConfig, subs: readonly Pick<Subscription, 'status' | 'prices'>[]): string | null {
   for (const sub of subs) {
     if (!LIVE.has(sub.status)) continue
     for (const price of sub.prices) {
@@ -111,20 +119,30 @@ export function planOfSubscriptions(config: PaymentsConfig, subs: readonly Subsc
 }
 
 // What the box asks of Stripe, and nothing else: a customer for an account, a Checkout page for a
-// price, and a customer's subscriptions as they stand. The suite answers it with a fake; the box
+// price, a customer's subscriptions as they stand, and a subscription cancelled at once (#1520);
+// for Profil (#1494), a price as Stripe holds it, a subscription set to end at its period's end or
+// taken back, and a session in Stripe's customer portal for receipts and the card. The suite answers it with a fake; the box
 // with `stripeApi`, Stripe's REST API over fetch.
 export type StripeApi = {
   createCustomer(input: { account: string; email: string }): Promise<string>
   createCheckout(input: { customer: string; account: string; price: string; successUrl: string; cancelUrl: string }): Promise<string>
   subscriptionsOf(customer: string): Promise<Subscription[]>
+  priceOf(id: string): Promise<StripePrice>
+  cancelNow(subscription: string): Promise<void>
+  setCancelAtPeriodEnd(subscription: string, cancel: boolean): Promise<void>
+  createPortal(input: { customer: string; returnUrl: string }): Promise<string>
 }
+// A price as Stripe holds it (#1521): its currency, its interval, and whether VAT is inside it
+// (`inclusive`), added on top (`exclusive`) or not said (`unspecified`), and what it costs in the
+// currency's smallest unit (öre, cent), which is what the card says (#1494).
+export type StripePrice = { id: string; currency: string; interval: string | null; taxBehavior: string; amount: number | null }
 
 export const STRIPE_API = 'https://api.stripe.com'
 // Stripe's REST API: form-encoded requests, bearer secret key, JSON answers. `base` is Stripe's
 // unless a test points it elsewhere. A request Stripe answers with an error throws, with Stripe's
 // message and never the key.
 export function stripeApi(secretKey: string, base = STRIPE_API, fetcher: typeof fetch = fetch): StripeApi {
-  const call = async (method: 'GET' | 'POST', path: string, params: Record<string, string>): Promise<Record<string, unknown>> => {
+  const call = async (method: 'GET' | 'POST' | 'DELETE', path: string, params: Record<string, string>): Promise<Record<string, unknown>> => {
     const query = new URLSearchParams(params).toString()
     const res = await fetcher(`${base}${path}${method === 'GET' && query ? `?${query}` : ''}`, {
       method,
@@ -149,13 +167,41 @@ export function stripeApi(secretKey: string, base = STRIPE_API, fetcher: typeof 
         'line_items[0][quantity]': '1',
         success_url: successUrl,
         cancel_url: cancelUrl,
+        // VAT through Stripe Tax (#1521, A2): reckoned on the customer's country, which Checkout asks
+        // for as Stripe Tax needs it, and keeps on the customer for the renewals.
+        'automatic_tax[enabled]': 'true',
+        billing_address_collection: 'auto',
+        'customer_update[address]': 'auto',
       })
       return String(body['url'])
     },
+    async priceOf(id) {
+      const body = await call('GET', `/v1/prices/${encodeURIComponent(id)}`, {})
+      const recurring = body['recurring'] as { interval?: unknown } | null | undefined
+      const amount = body['unit_amount']
+      return { id: String(body['id']), currency: String(body['currency']), interval: recurring?.interval ? String(recurring.interval) : null, taxBehavior: String(body['tax_behavior'] ?? 'unspecified'), amount: typeof amount === 'number' ? amount : null }
+    },
     async subscriptionsOf(customer) {
       const body = await call('GET', '/v1/subscriptions', { customer, status: 'all', limit: '100' })
-      const data = (body['data'] ?? []) as { status?: unknown; items?: { data?: { price?: { id?: unknown } }[] } }[]
-      return data.map((s) => ({ status: String(s.status), prices: (s.items?.data ?? []).map((i) => String(i.price?.id ?? '')) }))
+      type Item = { price?: { id?: unknown }; current_period_end?: unknown }
+      const data = (body['data'] ?? []) as { id?: unknown; status?: unknown; cancel_at_period_end?: unknown; current_period_end?: unknown; items?: { data?: Item[] } }[]
+      // The period's end is on the subscription in Stripe's older API versions and on its items in
+      // the newer ones (2025-03-31); whichever the account's version gives.
+      const end = (s: (typeof data)[number]): string | null => {
+        const at = [s.current_period_end, ...(s.items?.data ?? []).map((i) => i.current_period_end)].find((v): v is number => typeof v === 'number')
+        return at === undefined ? null : new Date(at * 1000).toISOString()
+      }
+      return data.map((s) => ({ id: String(s.id), status: String(s.status), prices: (s.items?.data ?? []).map((i) => String(i.price?.id ?? '')), cancelAtPeriodEnd: s.cancel_at_period_end === true, periodEnd: end(s) }))
+    },
+    async setCancelAtPeriodEnd(subscription, cancel) {
+      await call('POST', `/v1/subscriptions/${encodeURIComponent(subscription)}`, { cancel_at_period_end: String(cancel) })
+    },
+    async createPortal({ customer, returnUrl }) {
+      const body = await call('POST', '/v1/billing_portal/sessions', { customer, return_url: returnUrl })
+      return String(body['url'])
+    },
+    async cancelNow(subscription) {
+      await call('DELETE', `/v1/subscriptions/${encodeURIComponent(subscription)}`, {})
     },
   }
 }
@@ -208,4 +254,57 @@ export async function syncCustomer(stores: { accountPlans: AccountPlanStore; str
   if (!row || row.lapsed !== undefined) return 'unchanged'
   await (stores.lapse ?? ((a: string) => stores.accountPlans.lapse(a)))(account)
   return 'lapsed'
+}
+
+// Whether a price may be sold (#1521, beställarens beslut 2026-11-01): the price is with VAT, so
+// Stripe Tax takes the VAT out of it and never adds it on top, and it is the currency and interval
+// the configuration calls it. Says what is wrong, or null; the checkout asks it of Stripe before
+// it sends anyone there, so a price set up wrong in Dashboard is never sold.
+export function priceFault(price: StripePrice, expected: PriceOf | undefined): string | null {
+  if (!expected) return 'not in BYD_STRIPE_PRICES'
+  if (price.taxBehavior !== 'inclusive') return `tax_behavior is ${price.taxBehavior}, not inclusive`
+  if (price.currency !== expected.currency) return `currency is ${price.currency}, not ${expected.currency}`
+  if (price.interval !== expected.interval) return `interval is ${price.interval ?? 'none'}, not ${expected.interval}`
+  return null
+}
+
+// What an account that deletes itself does at Stripe (#1520, G6): every subscription of its customer
+// that Stripe could still bill is cancelled at once, not at the period's end, before the account
+// goes. The customer is queued first, where the account's erasure does not reach (`stripe_
+// cancellations`), and leaves the queue when Stripe has said yes; a Stripe that does not answer
+// leaves it there for `retryCancellations`, and never stops the erasure. Without payments on the
+// box nothing can be asked, and the customer waits in the queue for them.
+export type Cancelled = 'no-customer' | 'cancelled' | 'queued'
+export async function cancelForErasure(stores: { accountPlans: AccountPlanStore; stripe: StripeApi | null }, account: string): Promise<Cancelled> {
+  const customer = await stores.accountPlans.customerOf(account)
+  if (!customer) return 'no-customer'
+  await stores.accountPlans.queueCancellation(customer)
+  return (await cancelQueued(stores, customer)) === 'cancelled' ? 'cancelled' : 'queued'
+}
+
+// The statuses Stripe can no longer bill from: cancelled, or never paid and expired.
+const ENDED = new Set(['canceled', 'incomplete_expired'])
+async function cancelQueued(stores: { accountPlans: AccountPlanStore; stripe: StripeApi | null }, customer: string): Promise<'cancelled' | 'failed'> {
+  if (!stores.stripe) return 'failed'
+  try {
+    for (const sub of await stores.stripe.subscriptionsOf(customer)) if (!ENDED.has(sub.status)) await stores.stripe.cancelNow(sub.id)
+  } catch (err) {
+    await stores.accountPlans.cancellationFailed(customer)
+    console.error(JSON.stringify({ msg: 'stripe', cancel: 'failed', error: err instanceof Error ? err.message : String(err) }))
+    return 'failed'
+  }
+  await stores.accountPlans.unqueueCancellation(customer)
+  return 'cancelled'
+}
+
+// The queue tried again (#1520): at start and every hour beside the other sweeps, and by the
+// operator with `stripe sync` and no address. Says each customer and what came of it, which is for
+// the operator's eyes only; the box's log says how many.
+export async function retryCancellations(stores: { accountPlans: AccountPlanStore; stripe: StripeApi | null }): Promise<{ customer: string; outcome: 'cancelled' | 'failed'; queued: string; tries: number }[]> {
+  const out: { customer: string; outcome: 'cancelled' | 'failed'; queued: string; tries: number }[] = []
+  for (const pending of await stores.accountPlans.pendingCancellations()) {
+    const outcome = await cancelQueued(stores, pending.customer)
+    out.push({ customer: pending.customer, outcome, queued: pending.queued, tries: pending.tries + 1 })
+  }
+  return out
 }

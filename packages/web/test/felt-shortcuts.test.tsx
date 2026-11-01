@@ -318,7 +318,7 @@ describe('the discreet help (#224)', () => {
     // ask for it, and one sentence — not the same sentence read three times.
     // It begins with the felt's own rule — a drag moves, a click asks — and with the way a
     // keyboard reaches it (K16), before the shortcuts (#719).
-    expect([...help.querySelectorAll('kbd')].map((k) => k.textContent)).toEqual(['Dra', 'Klick', 'Tabb', 'Pilar', 'Enter', 'Cmd + klick', 'Dubbelklick', 'F', 'D', 'S', 'Esc', '?'])
+    expect([...help.querySelectorAll('kbd')].map((k) => k.textContent)).toEqual(['Dra', 'Klick', 'Tabb', 'Pilar', 'Enter', 'Cmd + klick', 'Dubbelklick', 'F', 'D', 'S', 'R', 'Skift + R', 'Esc', '?'])
     // The ring has one name, and it is «ringen» (#719).
     expect(help.textContent).toContain('Stäng ringen')
     expect(help.textContent).not.toContain('hjulet')
@@ -348,6 +348,8 @@ describe('the discreet help (#224)', () => {
       'F',
       'D',
       'S',
+      'R',
+      'Skift + R',
       'Hjul',
       '+',
       '−',

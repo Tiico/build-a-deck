@@ -7,9 +7,9 @@ import { compressible, encodedBytes, encodedCopy, precompressed, typeOf } from '
 import { sharedPage, type LinkPicture } from './share.js'
 import { WebSocketServer, type WebSocket } from 'ws'
 import { z } from 'zod'
-import { ASSET_MAX_BYTES, assetFormatsNamed, assetKindDeclared, ClientMessage, PHYSICAL_VERBS, codeOfAddress, REDACTED, SEATINGS, TABLE_PROTOCOL, hostKeyOfProtocols, offersTableProtocol, sniffAsset, tokenOfProtocols, type Applied, type Seating, type ServerMessage } from '@byd/protocol'
-import { CARD_STANDARD_63x88, validateSetup, type DeckFacts, type SetupDef, type TypeRegistry } from '@byd/engine'
-import { renderRules, Template, validateCard, type Motif } from '@byd/template'
+import { ASSET_MAX_BYTES, assetFormatsNamed, assetKindDeclared, ClientMessage, PHYSICAL_VERBS, codeOfAddress, REDACTED, SEATINGS, TABLE_PROTOCOL, hostKeyOfProtocols, offersTableProtocol, sniffAsset, tokenOfProtocols, type Applied, type Seating, type ServerMessage, type TypeRef } from '@byd/protocol'
+import { validateSetup, type DeckFacts, type SetupDef, type TypeRegistry } from '@byd/engine'
+import { renderRules, Template, validateCard, type FaceTemplate, type Motif, type Row } from '@byd/template'
 import { A5, bookletOf } from './booklet.js'
 import { contentHash, contentTypeOf, type ObjectStore, type RenderKind, type RenderRequest, type RenderStore } from '@byd/render/queue'
 import type { Subscriber, TableActor, TableHost } from './actor.js'
@@ -19,8 +19,10 @@ import { playable, setupFromProject } from './setup.js'
 import { changeOf, diffProjects, type DocDiff, type VersionChange } from './diff.js'
 import { ProjectHost, type EditorMessage, type Saved } from './project-actor.js'
 import { checkedName, type EditIntent } from './edits.js'
+import { decksOf, rowRef } from './decks.js'
 import { arrangementOf, fanFaces, namesOfProject, peekFace, type CardFace } from './names.js'
 import { boxIssues, coverOf, showsCover } from './box.js'
+import { markerRef } from './material.js'
 import { SurveyAsk, SurveyBody, sameSender, type SurveyAnswer, type SurveyStanding, type SurveyStore } from './surveys.js'
 import { playtestOf, type PlaytestSource } from './playtest.js'
 import { playtestWaiting, WAITING_VERBS, type GameWaiting, type Waiting, type WaitingTable } from './waiting.js'
@@ -48,9 +50,10 @@ import { AI_CAPS, ASK_MAX_BYTES, AiFlight, AskBody, answerQuestion, type AiCaps 
 import { PasskeyChallenges, login as passkeyLogin, loginOptions, register, registrationOptions, siteOf, viewOf, type Answer, type Ceremonies } from './passkeys.js'
 import { REFERRER_POLICY, UPLOAD_POLICY, pageNonce, pagePolicy, scriptHashesOf, socketOrigin } from './csp.js'
 import { DEFAULT_PLANS, QuotaReached, YOU, growth, limitOf, tableWindowFrom, type Bearer, type Limit, type Measure, type Plans, type QuotaMet, type TableCeilings } from './quotas.js'
-import { lapseAccount, planOf, readOnlyOf, usageOf, type AccountPlanStore } from './account-plans.js'
+import { lapseAccount, planOf, readOnlyOf, readOnlyWhyOf, usageOf, type AccountPlanStore } from './account-plans.js'
 import { ReadOnlyGame, gameWritten, type ReadOnlyCheck } from './read-only.js'
-import { INTERVALS, customerOfEvent, priceFor, signatureHolds, syncCustomer, type PaymentsConfig, type StripeApi } from './payments.js'
+import { INTERVALS, cancelForErasure, customerOfEvent, priceFault, priceFor, signatureHolds, syncCustomer, type PaymentsConfig, type StripeApi } from './payments.js'
+import { liveOfCustomer, setCancellation, subscriptionView } from './subscription.js'
 import { NO_CARDS, cardGrowth, cardsUsed, type CardMeasure } from './quota-cards.js'
 import { checkRegister, openToTheDue, termsInForce, termsStanding, type TermsRegister, type TermsStanding } from './terms.js'
 import { entry, isMasked, type ErasureStore } from './erase.js'
@@ -237,6 +240,9 @@ const DeckBody = z.object({
   template: Template,
   rows: z.record(z.string(), z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()]))),
   icons: z.record(z.string(), z.string()),
+  // The other templates a game's rows are drawn with (#1483, #1484): its markers' and its other decks'.
+  templates: z.record(z.string(), Template).optional(),
+  drawnWith: z.record(z.string(), z.string()).optional(),
 })
 
 // Buying admission (DRIFT §9): a name, and a seat to sit at or none to watch.
@@ -449,6 +455,11 @@ function originOf(value: string | undefined): string | null {
 }
 
 // The scheme the browser reached us by: what the proxy in front says, else what the public origin is.
+// Where a way back from Stripe lands (#1493, #1494): the app's page, else the public address, else
+// the address the request came to. An origin set to nothing is no origin.
+function appBase(opts: ServerOptions, req: IncomingMessage): string {
+  return opts.appOrigin || opts.publicOrigin || `${schemeOf(opts, req)}://${req.headers.host ?? 'localhost'}`
+}
 function schemeOf(opts: ServerOptions, req: IncomingMessage): string {
   const forwarded = String(req.headers['x-forwarded-proto'] ?? '').split(',')[0]?.trim()
   return forwarded || (originOf(opts.publicOrigin)?.startsWith('https:') ? 'https' : 'http')
@@ -528,7 +539,8 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
       const body = CreateSession.parse(JSON.parse(await readBody(req)))
       validateSetup(body.setup, opts.registry)
       const id = body.id ?? randomUUID()
-      const deck: Deck | undefined = body.deck
+      const { templates, drawnWith, ...plain } = body.deck ?? {}
+      const deck: Deck | undefined = body.deck && { ...(plain as Omit<Deck, 'templates' | 'drawnWith'>), ...(templates ? { templates } : {}), ...(drawnWith ? { drawnWith } : {}) }
       const room = admission(opts)
       // Held to the ceilings of the account that knocks, which bears the table.
       if (!(await openTable(opts, res, { id, version: body.version, setup: body.setup, ...(deck ? { deck } : {}), ...(bearer ? { accountId: bearer.id } : {}), ...room.record }, async () => YOU))) return
@@ -617,6 +629,58 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
     // card passes the box, with a Stripe customer of its own, made the first time and kept. Nothing
     // is a tier until Stripe's webhook says the subscription is paid. `back` is the path on the app
     // that Checkout returns to, never another site.
+    // What Profil's card «Abonnemang» reads (#1494, variant A): the tiers, Stripe's prices and the
+    // account's own subscription as Stripe has it (`subscription.ts`). 404 says payments are off,
+    // and the card is not there.
+    if (req.method === 'GET' && url.pathname === '/me/subscription') {
+      const payments = opts.payments
+      if (!payments || !opts.auth || !opts.accountPlans) return json(res, 404, { error: 'payments are off' })
+      const account = await accountOf(opts.auth, req)
+      if (!account) return json(res, 401, { error: 'log in first' })
+      try {
+        return json(res, 200, await subscriptionView({ accountPlans: opts.accountPlans, payments, plans: opts.plans ?? DEFAULT_PLANS }, account.id))
+      } catch (err) {
+        console.error(JSON.stringify({ msg: 'stripe', subscription: 'failed', error: err instanceof Error ? err.message : String(err) }))
+        return json(res, 502, { error: 'stripe unavailable' })
+      }
+    }
+    // «Säg upp Pro» and «Fortsätt med Pro» (#1494, variant A): at the period's end through Stripe's
+    // API, and taken back. 409 when the account has no live subscription; the answer is the card's
+    // new reading.
+    if (req.method === 'POST' && (url.pathname === '/me/subscription/cancel' || url.pathname === '/me/subscription/resume')) {
+      const payments = opts.payments
+      if (!payments || !opts.auth || !opts.accountPlans) return json(res, 404, { error: 'payments are off' })
+      const account = await accountOf(opts.auth, req)
+      if (!account) return json(res, 401, { error: 'log in first' })
+      const stores = { accountPlans: opts.accountPlans, payments, plans: opts.plans ?? DEFAULT_PLANS }
+      try {
+        if (!(await setCancellation(stores, account.id, url.pathname.endsWith('/cancel')))) return json(res, 409, { error: 'not subscribed' })
+        return json(res, 200, await subscriptionView(stores, account.id))
+      } catch (err) {
+        console.error(JSON.stringify({ msg: 'stripe', [url.pathname.endsWith('/cancel') ? 'cancel' : 'resume']: 'failed', error: err instanceof Error ? err.message : String(err) }))
+        return json(res, 502, { error: 'stripe unavailable' })
+      }
+    }
+    // «Kvitton och betalkort» and «Byt betalkort» (#1494): Stripe's customer portal, which keeps the
+    // receipts, the card and the address, and returns to `back` in the app. 409 for an account that
+    // never went to the checkout.
+    if (req.method === 'POST' && url.pathname === '/me/subscription/portal') {
+      const payments = opts.payments
+      if (!payments || !opts.auth || !opts.accountPlans) return json(res, 404, { error: 'payments are off' })
+      const account = await accountOf(opts.auth, req)
+      if (!account) return json(res, 401, { error: 'log in first' })
+      const body = PortalBody.safeParse(JSON.parse((await readBody(req)) || '{}') as unknown)
+      if (!body.success) return json(res, 400, { error: 'no such way back' })
+      const customer = await opts.accountPlans.customerOf(account.id)
+      if (!customer) return json(res, 409, { error: 'no stripe customer' })
+      try {
+        const returnUrl = new URL(body.data.back ?? '/', appBase(opts, req)).toString()
+        return json(res, 200, { url: await payments.stripe.createPortal({ customer, returnUrl }) })
+      } catch (err) {
+        console.error(JSON.stringify({ msg: 'stripe', portal: 'failed', error: err instanceof Error ? err.message : String(err) }))
+        return json(res, 502, { error: 'stripe unavailable' })
+      }
+    }
     if (req.method === 'POST' && url.pathname === '/me/subscription/checkout') {
       const payments = opts.payments
       if (!payments || !opts.auth || !opts.accountPlans) return json(res, 404, { error: 'payments are off' })
@@ -628,7 +692,7 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
       const own = await opts.accountPlans.planOf(account.id)
       if (own?.source === 'stripe' && own.lapsed === undefined && own.plan in payments.config.prices) return json(res, 409, { error: 'already subscribed' })
       const back = (outcome: string) => {
-        const to = new URL(body.data.back ?? '/', opts.appOrigin ?? opts.publicOrigin ?? `${schemeOf(opts, req)}://${req.headers.host ?? 'localhost'}`)
+        const to = new URL(body.data.back ?? '/', appBase(opts, req))
         to.searchParams.set('pro', outcome)
         return to.toString()
       }
@@ -636,10 +700,18 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
       // has them, never whose checkout it was (DRIFT §8).
       try {
         let customer = await opts.accountPlans.customerOf(account.id)
+        // Stripe sends the browser back before the webhook comes (#1494): a customer Stripe already
+        // bills is subscribed, whatever the account's tier says yet.
+        if (customer && (await liveOfCustomer(payments, customer))) return json(res, 409, { error: 'already subscribed' })
         if (!customer) {
           await opts.accountPlans.linkCustomer(account.id, await payments.stripe.createCustomer({ account: account.id, email: account.email }))
           // Two checkouts at once make two customers at Stripe and link the first: both use it.
           customer = await opts.accountPlans.customerOf(account.id)
+        }
+        const fault = priceFault(await payments.stripe.priceOf(price), payments.config.byId.get(price))
+        if (fault) {
+          console.error(JSON.stringify({ msg: 'stripe', checkout: 'refused', price, fault }))
+          return json(res, 502, { error: 'stripe unavailable' })
         }
         const checkoutUrl = await payments.stripe.createCheckout({ customer: customer ?? '', account: account.id, price, successUrl: back('paid'), cancelUrl: back('cancelled') })
         return json(res, 200, { url: checkoutUrl })
@@ -773,6 +845,9 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
         for (const table of await opts.store.sessionsOf(id)) await opts.host.end(table.id)
       }
       const shared = projects ? (await projects.list(account.id)).filter((p) => !owned.includes(p.id)).map((p) => p.id) : []
+      // Her subscription at Stripe ends at once, before the account goes (#1520); a Stripe that
+      // does not answer leaves it queued and never stops the erasure.
+      const cancelled = opts.accountPlans ? await cancelForErasure({ accountPlans: opts.accountPlans, stripe: opts.payments?.stripe ?? null }, account.id) : 'no-customer'
       const done = await opts.erasures.erase([entry({ kind: 'account', account: account.id }, 'request', now), ...owned.map((project) => entry({ kind: 'game', project }, 'removed', now))])
       await opts.host.reload(done.sessions)
       if (projects) {
@@ -788,7 +863,7 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
       } catch (err) {
         console.error(JSON.stringify({ msg: 'erased-mail-failed', error: err instanceof Error ? err.message : String(err) }))
       }
-      console.log(JSON.stringify({ msg: 'account-erased', games: owned.length, tables: done.sessions.length, lines: done.lines, guests: done.guests }))
+      console.log(JSON.stringify({ msg: 'account-erased', games: owned.length, tables: done.sessions.length, lines: done.lines, guests: done.guests, stripe: cancelled }))
       res.writeHead(200, { 'content-type': 'application/json', 'set-cookie': `${COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0` })
       res.end(JSON.stringify({ ok: true }))
       return
@@ -1494,7 +1569,15 @@ async function deckOf(opts: ServerOptions, rec: ProjectRecord): Promise<Deck> {
   const { rows, motifs } = await resolveAssets(rec.rows, opts.assets, rec.pictures ?? {})
   // The template's own pictures too (#320), keyed beside the rows' under the URL each now carries.
   const own = await resolveTemplate(rec.template, opts.assets, rec.pictures ?? {})
-  const doc = deckFromProject({ ...rec, rows, template: own.template, icons: await resolveIcons(rec.icons, opts.assets) })
+  // Every other deck's rows (#1484), as the document's own: a tile's picture is a card's.
+  const decks: NonNullable<ProjectRecord['decks']> = []
+  let dealt: Record<string, Motif> = {}
+  for (const deck of rec.decks ?? []) {
+    const resolved = await resolveAssets(deck.rows, opts.assets, rec.pictures ?? {})
+    decks.push({ ...deck, rows: resolved.rows })
+    dealt = { ...dealt, ...resolved.motifs }
+  }
+  const doc = deckFromProject({ ...rec, rows, template: own.template, icons: await resolveIcons(rec.icons, opts.assets), ...(rec.decks ? { decks } : {}) })
   // And each board's (#1479), as the template's: a board is drawn with the same tools as a card.
   const boards: Record<string, Template> = {}
   let boardMotifs: Record<string, Motif> = {}
@@ -1511,7 +1594,7 @@ async function deckOf(opts: ServerOptions, rec: ProjectRecord): Promise<Deck> {
     templates[name] = resolved.template
     drawn = { ...drawn, ...resolved.motifs }
   }
-  return { ...doc, ...(doc.boards ? { boards } : {}), ...(doc.templates ? { templates } : {}), motifs: { ...motifs, ...own.motifs, ...boardMotifs, ...drawn }, fonts: await resolveFonts(rec.fonts ?? {}, opts.assets) }
+  return { ...doc, ...(doc.boards ? { boards } : {}), ...(doc.templates ? { templates } : {}), motifs: { ...motifs, ...dealt, ...own.motifs, ...boardMotifs, ...drawn }, fonts: await resolveFonts(rec.fonts ?? {}, opts.assets) }
 }
 
 // The link's still of a game as it stands (#1417, L91), by the revision it was made of: a room's page
@@ -1604,16 +1687,33 @@ async function flaggedDecksOf(opts: ServerOptions, id: string, session: SessionR
 // be printed, and every face of the box the designer has drawn (#1459), at the box type's own print,
 // since no partner prints the box yet (F1). A remark on the box names its face as the canvas does,
 // `box.<face>`, and no card (`Finding`). An error on either stops an order.
+//
+// Every deck is checked (#1484), each row against its own deck's template and type, with that type's
+// smallest type and safe margin, and named by the name it goes by at the table (`rowRef`).
 function checkedCards(rec: ProjectRecord, opts: Pick<ServerOptions, 'registry' | 'printProviders'>, provider?: PrintProvider): Finding[] {
-  const ref = { id: CARD_STANDARD_63x88.id, version: CARD_STANDARD_63x88.version }
-  const type = opts.registry.get(ref)
-  const bleedMm = widestBleedMm(provider ? [provider] : (opts.printProviders ?? []), ref) ?? type.print.bleedMm
   const out: Finding[] = []
-  for (const row of rec.rows) {
-    for (const [face, template] of Object.entries(rec.template.faces)) {
-      for (const issue of validateCard({ type, face: template, row: row.fields, bleedMm, ...(rec.fonts ? { fonts: rec.fonts } : {}) })) out.push({ ...issue, cardRef: row.id, face })
+  for (const deck of decksOf(rec)) {
+    const type = opts.registry.get(deck.type)
+    const bleedMm = widestBleedMm(provider ? [provider] : (opts.printProviders ?? []), deck.type) ?? type.print.bleedMm
+    for (const row of deck.rows) {
+      for (const [face, template] of Object.entries(deck.template.faces)) {
+        for (const issue of validateCard({ type, face: template, row: row.fields, bleedMm, ...(rec.fonts ? { fonts: rec.fonts } : {}) })) out.push({ ...issue, cardRef: rowRef(deck.id, row.id), face })
+      }
     }
   }
+  // The printed parts (#1488): every side a board's or a marker's template draws, at the bleed that
+  // will be printed for its type, named by the name it goes by at the table, as a card's is. An error
+  // in a board stops an order as one in a card does.
+  const check = (ref: TypeRef, cardRef: string, faces: Record<string, FaceTemplate | undefined>, row: Row) => {
+    const type = opts.registry.get(ref)
+    const bleedMm = widestBleedMm(provider ? [provider] : (opts.printProviders ?? []), ref) ?? type.print.bleedMm
+    for (const [face, template] of Object.entries(faces)) {
+      if (!template) continue
+      for (const issue of validateCard({ type, face: template, row, bleedMm, ...(rec.fonts ? { fonts: rec.fonts } : {}) })) out.push({ ...issue, cardRef, face })
+    }
+  }
+  for (const board of rec.setup.boards ?? []) check(board.type, board.id, board.faces ?? {}, {})
+  for (const marker of rec.setup.markers ?? []) check(marker.type, markerRef(marker.id), marker.faces ?? {}, { title: marker.name })
   for (const { face, ...issue } of boxIssues(rec)) out.push({ ...issue, face: `box.${face}` })
   return out
 }
@@ -2261,6 +2361,25 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
   }
   // The history (B4): every save is a version, none of them is ever rewritten. It is presented
   // as versions with a date and, for the ones that meant something, a name — never as commits.
+  // Whether a game is read-only now (#1492, G5, L2), asked by the editor as it opens a game and again
+  // when an edit of its is refused for it. The owner hears why, with the free tier's ceiling it lies
+  // over; anyone else with a part in the game hears whose it is, by the owner's name, and never her
+  // tier nor her ceilings (A2, #1198). Null when the game works as usual.
+  const readOnly = /^\/projects\/([^/]+)\/read-only$/.exec(url.pathname)
+  if (readOnly && req.method === 'GET') {
+    const gate = await owned(decodeURIComponent(readOnly[1] ?? ''))
+    if (!('rec' in gate)) {
+      json(res, gate.status, { error: gate.error })
+      return true
+    }
+    const owner = gate.rec.owner
+    const accountPlans = opts.accountPlans
+    const why = owner === undefined || !opts.auth || !accountPlans ? undefined : (await readOnlyWhyOf({ projects, accountPlans, live: (game) => editors(opts, projects).live(game) }, plans, owner)).get(gate.rec.id)
+    if (!why || owner === undefined) json(res, 200, { readOnly: null })
+    else if (account?.id === owner) json(res, 200, { readOnly: { bearer: 'you', why, limit: limitOf(plans, plans.default, why) } })
+    else json(res, 200, { readOnly: await ownerBearer(opts, owner) })
+    return true
+  }
   const versions = /^\/projects\/([^/]+)\/versions$/.exec(url.pathname)
   if (versions && req.method === 'GET') {
     const gate = await owned(decodeURIComponent(versions[1] ?? ''))
@@ -2575,7 +2694,7 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     for (const job of printed.jobs) await opts.renders.enqueue(job, rec.owner)
     // The licences of every symbol the game uses go with the order (E4): the printer is handed
     // what the deck is made of, not only how it looks.
-    json(res, 202, { project: rec.id, rev: rec.rev, cards: printed.cards, hardware: printed.hardware, credits: creditsOf(rec), warnings: found })
+    json(res, 202, { project: rec.id, rev: rec.rev, cards: printed.cards, hardware: printed.hardware, leftOut: printed.leftOut, credits: creditsOf(rec), warnings: found })
     return true
   }
   // The print package (#1207, the page and the download are #1208): GET says what the provider would
@@ -3298,6 +3417,7 @@ const registerOf = (opts: ServerOptions): TermsRegister => opts.terms ?? []
 const TermsBody = z.object({ version: z.string().max(32) })
 // What a checkout asks for (#1493): a currency the box has prices in, month or year, and the path on
 // the app to come back to — a path, never another site.
+const PortalBody = z.object({ back: z.string().max(512).regex(/^\/(?![/\\])/).optional() })
 const CheckoutBody = z.object({
   currency: z.string().regex(/^[a-z]{3}$/),
   interval: z.enum(INTERVALS),

@@ -156,10 +156,30 @@ Byggt 2026-11-01 (#1493, skiva 4 av 5 i #1469, beställarens beslut 2026-11-01: 
 - `POST /stripe/webhook` godtar bara en kropp med giltig signatur, gjord inom fem minuter. Händelsen tas aldrig som sanningen: kundens abonnemang läses som de står hos Stripe och skrivs med `setPlan` eller `lapse` och källan `stripe` (`syncCustomer` i `packages/server/src/payments.ts`). Därför ändrar en händelse som kommer två gånger, sent eller i fel ordning ingenting fel, och ingenting skrivs när ingenting ändras.
 - Ett levande abonnemang (`active`, `trialing`, `past_due`) ger Pro och häver en utgång; inget levande abonnemang gör ett konto vars nivå Stripe gav utgånget, och läsläget från #1491 gäller.
 - En nivå med källan `operator` skrivs aldrig över av Stripe, tills operatören tar bort den med `plan clear`.
-- Moms är inte avgjord: priset är med moms som en EU-konsument ser det, och hur den tas ut bekräftar beställaren före de skarpa nycklarna (fråga 2 i #1469).
-- Ett konto som raderar sig själv säger ännu inte upp sitt abonnemang hos Stripe; RUNBOOK §10 säger hur det görs för hand tills det byggs.
-- Hur Pro köps, syns och sägs upp i webben är #1494, som prototypas först.
+- Momsen tas ut med Stripe Tax, och priset är inklusive moms (se nedan, #1521).
+- Ett konto som raderar sig själv säger upp sitt abonnemang hos Stripe direkt (#1520, se G6).
+- Hur Pro köps, syns och sägs upp i webben är #1494 (se nedan).
 - Grindarna är `packages/server/test/payments.test.ts` (konfigurationen, signaturen och vad abonnemangen ger), `stripe-subscription.test.ts` (kassan och webhooken mot båda lagren, med en fake för Stripe), `stripe-api.test.ts` (klienten mot en ställföreträdare på maskinen), `payments-at-start.test.ts` och `deploy.test.ts`. Inget anrop går till Stripe i `pnpm test`.
+
+Beslutat och byggt 2026-11-01 (#1521, beställarens beslut 2026-11-01 i #1469): **momsen tas ut med Stripe Tax, och priset är inklusive moms.**
+- 99 kr eller 9 € i månaden, och 990 kr eller 90 € om året, är vad kunden betalar. Stripe Tax räknar svensk moms och EU-moms via OSS efter kundens land och tar den ur priset, aldrig ovanpå.
+- Kassan skapas med automatisk skatt, frågar efter kundens land så som Stripe Tax kräver, och sparar adressen på kunden så att förnyelserna beskattas likadant.
+- Priserna sätts upp i Stripe med momsen inräknad (`tax_behavior: inclusive`, RUNBOOK §10). Kassan frågar Stripe om priset innan den skickar någon dit, och ett pris med moms ovanpå, utan besked om moms, eller i en annan valuta eller ett annat intervall än `BYD_STRIPE_PRICES` säger säljs aldrig (`priceFault` i `packages/server/src/payments.ts`).
+- Stripe Tax påslaget med registreringarna och beställarens OSS-registrering hos Skatteverket är förutsättningar för de skarpa nycklarna.
+- Grindarna är `packages/server/test/stripe-subscription.test.ts` (kassan mot Stripe-faken) och `stripe-api.test.ts` (kassans och prisets fält i klienten).
+
+Beslutat och byggt 2026-11-01 (#1494, skiva 5 av 5 i #1469, beställarens val av **variant A** 2026-11-01): **Pro köps, syns och sägs upp i ett kort i Profil.**
+Tre varianter prototypades i [`docs/ux-audits/2026-11-01-prisnivaer/prototyper/pro.html`](docs/ux-audits/2026-11-01-prisnivaer/prototyper/pro.html): kortet i Profil (A), en egen Pro-sida med Stripes kundportal för uppsägningen (B), och en dialog där taket nås (C).
+- Kortet «Abonnemang» står i Profil ovanför Förbrukning, med nivån som ett märke vid rubriken. Med Gratis jämförs Gratis och Pro på två rader, ur `BYD_PLANS` och aldrig ur koden, och köpet är «Uppgradera till Pro, 99 kr i månaden» med månad eller år som ett val; året säger hur många månader det ger gratis, räknat ur Stripes priser.
+- Beloppen är de Stripe har under `BYD_STRIPE_PRICES`' id:n, lästa med `GET /me/subscription` och aldrig siffror i koden. Valutan följer språket: kronor på svenska och euro på engelska.
+- Med Pro säger kortet vad det kostar och när det förnyas, «Säg upp Pro» lika stort som köpet var, och «Kvitton och betalkort», som öppnar Stripes kundportal (`POST /me/subscription/portal`).
+- **Uppsägningen sker i appen och vid periodens slut**, genom Stripes API (`cancel_at_period_end`, `POST /me/subscription/cancel`), inte i kundportalen: bara appen kan säga vilka spel som hamnar i läsläge. Frågan står i kortet, räknar upp spelen ur `ifLapsed` (#1511), och «Behåll Pro» har fokus. Pro gäller perioden ut, och Stripes webhook gör kontot utgånget när perioden är slut (#1491, #1518). «Fortsätt med Pro» tar tillbaka uppsägningen (`POST /me/subscription/resume`).
+- Tillbakavägen från kassan (`?pro=paid`) kommer före Stripes webhook. Kortet säger att betalningen är gjord och att beskedet väntar, visar inget köp under tiden, och frågar servern tills kontot är Pro. Servern vägrar dessutom en kassa till en kund som Stripe redan drar från, oavsett vad kontots nivå säger ännu, så att ingen betalar två gånger. `?pro=cancelled` säger att inget köptes.
+- En förnyelse som misslyckats (`past_due`) behåller Pro medan Stripe försöker igen, och kortet säger det och har «Byt betalkort» först.
+- Ett konto som fått Pro av operatören har inget abonnemang, och kortet säger att det inte finns något att betala eller säga upp.
+- **Takbeskedet erbjuder Pro** (beställarens beslut 2026-11-01, som reviderar #1198:s förbud): efter de tre delarna står en mening med Pro:s tak och månadspris, till exempel «Med Pro rymmer kontot obegränsat antal spel, för 99 kr i månaden.», och «Uppgradera till Pro», som leder till kortet. I Mina spel står den som en andra rad i rutan, i editorn i notisbandet före ×. Den sägs bara till den som bär taket (`bearer: 'you'`), bara när Pro rymmer mer, och inte alls när betalningen är avstängd eller kontot redan har Pro.
+- Köpknappen är rummets fyllda knapp (#44), alltså grön i kontots rum och inte blå som i prototypen.
+- Grindarna är `packages/server/test/stripe-subscription.test.ts` och `stripe-api.test.ts` (servern och klienten mot Stripe-faken), `packages/web/test/pro-profile.test.tsx` (kortet och takbeskeden mot Stripes ställföreträdare på maskinen, `packages/server/scripts/stripe-stand-in.ts`) och `packages/e2e/test/pro-journey.spec.ts` (hela resan i den byggda appen). Inget anrop går till Stripe i `pnpm test`.
 
 ### A3. Testarrekrytering: enbart delbar länk (fråga 22)
 
@@ -2676,6 +2696,19 @@ Beslutat och byggt 2026-11-01 (#1518, beställarens beslut i #1469): **läsläge
 - Utgången görs av `lapseAccount` i `packages/server/src/account-plans.ts`, som `plan lapse`, Stripes webhook och `stripe sync` (#1493) använder.
 - Grindarna är `packages/server/test/read-only-lapsed.test.ts` och `account-plans.test.ts`, mot båda lagren.
 
+Beslutat och byggt 2026-11-01 (#1492, beställarens beslut variant A efter [prototypen](docs/ux-audits/2026-11-01-prisnivaer/prototyper/laslaget.html)): **hur läsläget syns för designern.**
+- **Mina spel** säger det en gång, i bandet under rubriken, efter villkoren och före namnet och passkeyn: hur många spel som är i läsläge, att abonnemanget har gått ut och kontot rymmer det Gratis rymmer, att spelen går att öppna, läsa och exportera men inte ändra eller starta bord ur, att ingenting tas bort, och vägen tillbaka: ta bort kort, exemplar eller bilder, eller ta bort ett annat spel. «Stäng» håller för den utgången i den webbläsaren.
+- **Spelet i läsläge** bär märket «Läsläge» och taket det ligger över på sin rad eller i heron, i stället för när det senast spelades. Heron får «Exportera…» där «Starta bord» stod, och ⋯ behåller sina val, där «Starta bord», «Byt namn…» och «Duplicera» säger «Inte i läsläge». Spelen som ryms ser ut som i dag.
+- **Editorn** säger det i #489:s läsband, så läsläget har en form: till ägaren taket och vad spelet använder av det, till en medredigerare bara vems spelet är, med ägarens namn och aldrig hennes nivå. En redigering som inte bara gör spelet mindre avvisas i editorn innan den skickas, med regeln aktören håller den till (`onlyShrinks`, #1511), och bandet säger «Läsläge: bara att ta bort kort, sänka Antal och ta bort bilder sparas.». Kontrollerna står kvar, eftersom att ta bort kort, sänka Antal och ta bort bilder ska gå. «Starta bord» finns inte för ett spel i läsläge. När spelet ryms igen försvinner bandet.
+- Editorn frågar `GET /projects/<id>/read-only`, som svarar ägaren `{ bearer: 'you', why, limit }` och någon annan med en roll i spelet `{ bearer: 'owner', ownerName? }`, och `null` när spelet fungerar som vanligt.
+- Ordet «Pro», ett pris och «Förnya Pro» stod inte i läsläget förrän kassan fanns (#1493, #1494); sedan #1532 gör de det för ägaren, se nedan.
+- Grindarna är `packages/web/test/read-only-mode.test.tsx`, `packages/server/test/read-only-lapsed.test.ts` och `packages/e2e/test/read-only-mode.spec.ts`, där ett utgånget konto i den byggda appen möter läsläget.
+
+Beslutat och byggt 2026-11-01 (#1532, beställarens beslut samma dag, efter #1492 och #1494): **läslägets band erbjuder ägaren Pro igen, med priset.**
+- Bandet i Mina spel och editorns läsband säger till ägaren «Förnya Pro för 99 kr i månaden, så gäller Pros tak igen.» och har knappen «Förnya Pro», som leder till kortet «Abonnemang» i Profil, på samma sätt som takbeskedet (#1494).
+- Priset är det Stripe har, i läsarens valuta, läst med `GET /me/subscription`. En medredigerare ser fortfarande bara ägarens namn, aldrig hennes nivå eller ett pris, och med betalningen avstängd sägs inget pris och ingen väg till Pro.
+- Grinden är `packages/web/test/read-only-pro.test.tsx`, mot Stripes ställföreträdare på maskinen.
+
 ### G6. Personuppgifter: Deckster är ansvarig, och loggen maskas på plats (beslutat 2026-10-24, #1269)
 
 Beställarens beslut 2026-10-24 på frågorna F1–F7 i #1269.
@@ -2765,6 +2798,15 @@ Ett raderat inträde får bara lämna sin egen plats, eftersom det inte säger n
 Platsen står alltså kvar som tagen under «Utan namn» tills hon lämnar den eller värden sparkar den, men inget nytt skrivs från den.
 Och en sida som öppnas på en plats som redan är tagen räknar sig som sittande (`useSitDown`), eftersom dörren bara släpper in en plats till den token som håller den.
 Liggaren är tabellen `erasures`: id, när, vad (`guest`, `table` eller `game`), varför (`request`, `retention` eller `removed`), och bordet, platsen och stunden eller spelet; inget namn, ingen adress och ingen token.
+
+Byggt 2026-11-01 (#1520): **ett raderat konto säger upp sitt abonnemang hos Stripe.**
+Raderingen säger upp varje abonnemang kontots Stripe-kund har som Stripe fortfarande kan dra från, direkt och inte vid periodens slut, innan kontot försvinner, så att ingen dras för ett konto som inte finns.
+Kopplingen i `stripe_customers` är en uppgift om kontot och går med det i samma transaktion, som nivån.
+Kunden läggs först i en kö, `stripe_cancellations`, som bara har Stripes id för kunden och inget konto, och den tas ur kön när Stripe har sagt upp.
+Svarar Stripe inte stoppas raderingen inte: kunden står kvar i kön, lådan försöker igen vid start och varje timme, och operatören ser och tömmer kön med `stripe sync` utan adress (RUNBOOK §10).
+Stripe-kunden själv raderas inte hos Stripe: där står adressen kvar bredvid kvittona, som bokföringen kräver, och Stripe är biträde för betalningen.
+Registerutdraget säger kontots Stripe-kund och varje abonnemang Stripe har för den (`stripe`), eller `null` för ett konto som aldrig gick till kassan.
+Grindarna är `packages/server/test/stripe-subscription.test.ts` mot båda lagren med Stripe-faken, och `stripe-api.test.ts` för uppsägningen i klienten.
 Operatörsskriptet är `pnpm --filter @byd/server erase`, med `table <session> [--seat <plats> | --name <namn>]`, `game <id>`, `ledger` och `replay [--from <fil>]`, och det säger vad det gjorde i en rad utan namn.
 `erase game` maskar ett spels bord och lämnar spelet, som är designerns att ta bort; `replay` tar bort ett spel igen bara när designern hade tagit bort det.
 Ytorna säger ännu inte det maskade värdet med egna ord: en maskad plats visar platshållaren som den är, och det hör till kontots och gästens skivor (#1280, #1281).
@@ -5053,6 +5095,14 @@ En rad vars yta tas bort står kvar under Spelyta med ett besked och en väljare
 Varje rad har ett handtag i filten ur samma `layMaterial` som bordet läggs ur (K31), pilarna flyttar det 10 mm och Skift 50, och ett grepp är ett steg tillbaka (L14).
 En rad som läggs på en punkt ligger mitt på den i hela millimeter, med ett jämnt avstånd mellan bitarna: med det gamla avståndet låg en rad med två bitar en halv millimeter från sin punkt, och varje pil drog den en millimeter åt sidan.
 
+**Trycket** (#1478, beställarens beslut 5): en trädel är en lagervara som tärningen, `print.stock` i typen, och tryckeriet packar den i stället för att trycka den.
+Manifestet listar den efter typ, antal och platsens färg (`colour`, `#rrggbb`), så att två platsers meeples är två rader och aldrig en.
+Platsernas färger bor i `packages/engine` (`SEAT_COLOURS`) sedan dess, eftersom bordet ritar dem och trycket beställer i dem.
+Ett tryckeri anger en lagervara den har i färger med ett artikelnummer per färg (`colours`), och en del packas i den färg det har närmast platsens, räknat i RGB (beslut 2: trycket väljer partnerns närmaste färg).
+Testtryckeriet låtsas ha alla åtta platsfärger, «meeple-red» och så vidare; flerstegsfaken har sex träfärger och visar att den närmaste väljs.
+`hardware: false` lämnar trädelarna utanför som tärningarna, och `POST /print` säger då vad det lämnade i `leftOut`.
+Tryckpaketets sida listar en sort som en rad med antalet, och färgerna under den med var sitt antal och sin silhuett i platsens färg; LASMIG säger dem i ord, «3 × meeple, röd».
+
 **Aktivitetsraden** säger biten efter sort: «Ada flyttade en meeple till Spelyta», «Ada lade ned en meeple» och «Ada ställde upp en meeple».
 
 **Filten** (#1475, prototypen i #1472, beställarens val 2026-11-01: filten B).
@@ -5105,6 +5155,60 @@ Leken som bordet får bär markörens mall under det namnet (`templates` och `dr
 En sida utan mall ritas tom, eftersom en bricka har båda sidorna. Markörens namn är dess titel där dess framsida syns, och dold på samma villkor som ett korts (B6).
 Editorns ändring är `setMarkers`, hela listan med sidorna i en redigering som `setPieces`, och därmed ett steg tillbaka (B4). Raden i ＋-menyn och sidornas verktyg är #1487, filtens ritning #1485 och trycket #1488; tills trycket finns står brickor utanför tryckexporten och partnerns manifest (`printedYet`), där en partner som bara trycker kort annars vägrade hela ordern.
 
+**Spelet bär mer än en lek** (#1484, beställarens beslut 8 i #1470): sjuttiotvå landskapsbrickor ur en egen mall och en egen tabell, bredvid kortens.
+Dokumentets egen lek är den det alltid haft (`template`, `rows`, `columns`, standardkortet, i `setup.deckZone`), och varje annan lek står i `decks` med ett namn i dokumentet (`id`), vad den heter, sin typ (ett kort eller en bricka, B3), sin mall, sina rader, sin kolumnordning och högen den börjar i (`zone`).
+Ett dokument skrivet före lekarna är alltså precis det dokument det var: det läses tillbaka orört och lägger samma bord, och inget skrivs om (B4). `decksOf` läser alla lekar på samma sätt, den egna med `id` null.
+Vid bordet går en rad i en annan lek under lekens namn före sitt id (`landskap:skog`, `rowRef`), så två lekar kan ha var sin rad «1» utan att dela yta, titel eller textur; dokumentet vägrar en rad i den egna leken som skulle gå under samma namn.
+`setupFromProject` lägger varje lek i sin hög som sin typ, och en zons fråga (K21) gäller den lek den är ställd mot (`fillDeck`, den egna när den inte säger något). Radernas kolumner frågas vid bordet som kortens (B5).
+Bordets `Deck` bär varje leks mall i `templates` och `drawnWith`, som markörernas, och radens titel och tryckta text är dold information på kortets villkor (B6, #412), bevisat på råa frames (`wire.test.ts`).
+Versionernas diff (B4) säger vilken lek en ändrad rad hör till (`deck` på raden; Tabell visar den egna lekens), exporten och importen (G5) bär hela dokumentet och därmed alla lekar, Fysisk kontroll (E5) läser varje lek med dess typs minsta textstorlek och skyddsmarginal, och taken på kort per spel (#1195) räknar rader och exemplar i varje lek.
+Editorns ändring är `setDecks`, hela listan i en redigering och ett steg tillbaka; flikarna per lek i Kortvägg, Mall och Tabell (#1474, variant A) och finare redigeringar per rad är #1487.
+
+**Filten** (#1485, variant A i #1474).
+Brickan ritas i sin form, i typens millimetrar, med texturen inom konturen och kartongens kant under: en sexhörning med spetsen uppåt, en kvadrat med typens hörn, och en skiva.
+Kanten är 2,5 mm djup på filten så att den syns (C1), och den faller alltid nedåt på skärmen hur brickan än är vriden; i en hög läggs 0,9 mm kant till för varje bricka under, upp till åtta.
+En komponents `x` och `y` är det övre vänstra hörnet av dess egen ruta, kortets eller brickans, som setupen lägger en markör (`piecesAt`); en bricka som dras av en hög hamnar med sitt eget hörn där den bars, och den staplas på bara där den ligger.
+Ringen har «↺ Rotera 60°» och «↻ Rotera 60°» på var sin sida om «Vänd» (90° för kvadraten och de runda), och panelen har samma två rader (`turnActs`); ett kort har kvar sin enda «Rotera».
+Ett verb för både kort och bricka (beställarens beslut 2026-11-01): «Rotera», av samma skäl som #1134 valde det för kortet, eftersom «Vrid» bredvid «Vänd» var ett ord från samma bokstavsform; brickans knappar bär steget, pilen och vinkeln.
+Prototypens «Vrid» byggdes först i #1485 och ersattes i #1486.
+R vrider det som har tangentbordets fokus ett steg framåt, annars det pekaren vilar på, och Skift + R ett steg tillbaka; steget är typens (`turnStepOf`), så ett kort vrids ett kvarts varv.
+När en brickas vinkel ändras visas stegen en kort stund runt den på varje skärm, en prick för varje sätt den kan ligga och den den ligger i markerad, och under minskad rörelse utan att tona ut.
+Påsen är en dold hög som korten, ritad i brickans form: vyn säger nu vilka typer en dold zon håller och hur många av varje, den översta typen först (`types` på zonen), som en hög sexhörningar syns vara det över rummet; aldrig vilken bricka.
+Samma fält låter telefonen och TV:n rita brickornas baksidor i en hand (#1486).
+Korpusens projektioner härleddes om ur oförändrade loggar.
+Ett mynt är 18 px vid åtta platser och får räknarbrickans osynliga träffyta; en bricka som är mindre än ett finger på skärmen får den.
+Håll för att förstora (K8, K26) lyfter brickan i sin form och i ett lyft korts pixlar per millimeter, så att orden läses som på ett kort och ett mynt förblir mindre än en sexhörning; där en kortram står — «Titta», TV:ns scen, «Visa för alla» — står brickan mitt i ramen i sin sanna storlek mot kortet (`TileInCard`).
+Högen behåller kortets ruta, som dess namn, antal och handtag läggs kring och ett släpp mäts mot, och brickorna står mitt i den; antalet står på brickans överkant, eftersom ett mynt vid åtta platser annars låg helt under brickan med antalet.
+Loggen säger «Ada roterade Fjäll», eller «roterade en bricka» där läsaren inte ser vilken.
+Skärmläsaren hör «Rågåker, bricka i Spelyta, roterad 120°», «Bricka, baksida, i Spelyta» för en bricka vars framsida inte syns, och påsen som «Landskap, 3 brickor, överst: bricka, baksida».
+
+**Telefonen** (#1486, variant A i #1474).
+Brickorna står i handens rutnät efter korten, var grupp i sin ordning, i sin sanna storlek mot kortet och i sin form med kantens brun under; en markerad bricka får en stapel under sig, eftersom konturen skär bort ringen ett kort bär.
+Alt och en pil flyttar en bricka bara bland brickorna.
+TV:ns solfjäder ritar kortens baksidor och sedan brickornas i sin form, ur zonens `types`; vilken bricka det är går aldrig ut (#1485).
+I «Framför mig» har en bricka «↺ Rotera 60°» och «↻ Rotera 60°» bredvid «Ta upp», och i «Bordet» står samma två i den upplyfta brickans rad, i en yta som ingen plats äger eller som är ens egen; en annan plats yta läses bara (#414).
+Den dolda högen räknas i brickor, och dess knapp är den som redan står på varje hög, «Dra 1 till min hand».
+Brickans utseende skrivs i `tileLook.ts` och står i elementens stilattribut, inte i arket som första bilden väntar på: dess larm (#366, L40) ringde med 0,4 kB över, och en bricka ritas bara i ett spel som har en.
+
+**Skrivbordets hand** (#1538, variant A i #1474).
+På `/online` och i `/play`:s skrivbordsläge gör handen som telefonen: solfjädern, kolumnen, raden och «Visa alla» ritar brickorna efter korten, i sin form och i sin sanna storlek mot kortet, och en bricka bärs ut ur handen i sin form.
+I kolumnen, där korten överlappar nedifrån och bara remsan överst syns, står en bricka överst i sin ram, utom den sista som ritas hel.
+En bricka som lyfts för att läsas behåller konturens proportioner, i de millimeter ett kort lyfts i, som på filten.
+Panelen handen öppnar med Enter har «↺ Rotera 60°» och «↻ Rotera 60°» (90° för kvadrat och rund) i stället för kortets «Rotera».
+
+**Editorn: en flik per lek, och «Bricka» i Bord (#1487, variant A i #1474).**
+Huvudet är oförändrat.
+Mall och Tabell har en rad med en flik per lek först i sin krona, «Kort» för dokumentets egen och varje annan lek med sin form och sitt antal, och «＋ Lek»; i Mall står också varje markörs sidor som en flik.
+Raden ritas bara när spelet har mer än en lek eller en markör: den som bara har kort ser ingenting nytt.
+Kortväggen får ett huvud över den egna leken och ett avsnitt per annan lek, med form, antal och steg och vägen till lekens Mall och Tabell, bara när en andra lek finns.
+En leks flik redigerar med samma redigeringar som den egna leken, märkta `deck` med lekens id, och en markörs sidor med `deck: 'marker:<id>'` (`inDeck` i `edits.ts`): ingen redigering finns i två exemplar, och **inget nytt verb**. Ett steg tillbaka tar en cell eller ett lagers egenskap i en annan lek som i den egna (L14).
+«Brickan» står överst i Malls egenskaper för en bricka: formen (sexhörning, kvadrat, rund, och för den runda 44 eller 25 mm), och typens mått, kartong och steg, som läses och inte skrivs, eftersom en typ är en form i ett mått (B3). Formens kontur ritas över ytan som snittet, med det som stansas bort dämpat.
+I Bord har ＋-menyn på Spelyta, en yta och en hög raden «＋ Bricka», som öppnar två val sida vid sida med vad vart och ett kostar: **Markör** (en bild i n exemplar, en rad i Bord) och **Hög ur en lek** (en lek med mall och tabell, i högen menyn öppnades på eller i en ny hög). En hög har därmed ett ＋, med «Bricka» som enda rad.
+Markören och leken står som rader under zonen de ligger i, «30 × Guld · rund 25 mm, totalt», och öppnas till antal, namn och form, och vägen till sidorna i Mall eller lekens Mall och Tabell.
+Vid 1024 × 640 dras de två valen upp i kolumnen när de öppnas, så att båda syns med sin kostnad (#711).
+Fysisk kontroll mäter skyddsmarginalen mot sexhörningens och cirkelns kontur och inte mot den omskrivna rektangeln.
+Ett spel är spelbart när någon lek har en rad (beställarens beslut 2026-11-01 i #1470): `playable()` räknar alla lekar.
+
 Brickor i setupen, en egen lek och tabell per brickform, bordet, telefonen och trycket byggs i #1484–#1488.
 
 ### K35. Brädet: brädtyperna, brädet i dokumentet och dess textur (beslutat 2026-10-28 och 2026-11-01, #1470, #1473, #1479)
@@ -5128,14 +5232,46 @@ Ett bräde har ett namn (`id`), som är dess `cardRef` vid bordet och aldrig en 
 `x` och `y` är brädets övre vänstra hörn som det står innan det vrids, så att det vrids kring sin egen mitt till punkten, och `rot` är 0, 90, 180 eller 270 efter platsens kant.
 Ett dokument utan bräde har ingen post och läses tillbaka orört.
 
-**Texturen.** Typen säger `ownFaces`: dess sidor kommer ur dokumentets egen mall och inte ur en rad. `queueFaces` kompilerar varje sida med den enda kompilatorn och köar den som en textur i samma DPI som ett kort, så att filten ritar brädet i samma pixlar per millimeter, nycklad på innehållet (DRIFT §6): samma spelarbräde på åtta platser är en rendering, och en ändrad bild är en ny hash.
+**Texturen.** Typen säger `ownFaces`: dess sidor kommer ur dokumentets egen mall och inte ur en rad.
+`queueFaces` kompilerar varje sida med den enda kompilatorn och köar den som en textur nycklad på innehållet (DRIFT §6): samma spelarbräde på åtta platser är en rendering, och en ändrad bild är en ny hash.
 Hashen går till vyn genom `project` i `DeckFacts.ownFaces`, i fältet `faces` som ett korts, och läses bara för en typ som säger `ownFaces`, så att ett kort och ett bräde kan heta samma sak utan att dela yta.
 Ingen ändring i `packages/protocol`.
 Ett jobb för det största brädet, 610 × 457 mm i 150 DPI, är 3602 × 2699 px, och det ryms under renderns minnestak (1,5 GB, DRIFT §6).
 Mätt 2026-11-01 i #1479 som summan av Chromiums processers RSS medan jobbet ritades: 0,5 GB för en jämn bild över hela brädet, och 1,07 GB för det värsta fallet, en 3600 × 2700 px bild av brus, som också gav en textur på 28 MB.
-En textur så stor är filtens att hämta (#1480), och den hämtas bara av skärmar som ritar filten (C2).
+**Filtens egen variant** (beställarens beslut 2026-11-01, genom techleaden, #1480): en PNG i ett korts 150 DPI var för tung för varje skärm som ritar filten, så filten får en egen bild av brädet, en JPEG i kvalitet 90, högst 2048 px på den långa sidan och aldrig tätare än ett korts 150 DPI (`boardTextureKind`).
+Det stora brädet blir 2048 × 1534 px och spelarbrädet 1417 × 886 px; renderjobbet är `raster` med kvaliteten i jobbslaget, så en annan kvalitet är en annan nyckel.
+Mätt 2026-11-01 på det stora brädet med en bild över hela brädet: en jämn bild 0,17 MB som JPEG, och värsta fallet, brus, 2,25 MB mot 28 MB som PNG i 150 DPI.
+Den hämtas bara av skärmar som ritar filten (C2); trycket behåller typens upplösning (#1488).
 Brädets bilder går genom tillgångarna som kortets (#1028).
 Trycket i 300 DPI med utfall är #1488, och till dess hoppar tryckexporten över brädet i stället för att vägra spelet.
+
+**Filten** (#1480, variant A i #1473).
+Brädet ligger mitt på den gröna filten och spelarbrädet där «Framför» låg, och filten växer bara så mycket det kräver (`roomFor` i `recipe.ts`, K18 med brädet som en term till): en plats är handen 60, luften 10 och «Framför» 100 mm djup, med spelarbräden handen, luften och brädet; huvudbrädet har 20 mm luft mot platserna, och en hög bredvid det tar ett kort och 20 mm på var sida.
+Fyra platser med det kvadratiska brädet ger 1200 × 837 mm, med spelarbräden 1200 × 937 mm, och det rektangulära brädet med spelarbräden 1296 × 937 mm; åttaplatsbordets 1800 × 1400 mm rymmer redan brädet.
+`applyRecipe` lägger ut platserna på nytt när filten är för liten för bräden, flyttar en hög som huvudbrädet skulle ligga på ut på den sida den redan lutade åt, och gör «Framför» till spelarbrädets eget fotavtryck, så att ett kort som spelas framför en plats hamnar på dess bräde.
+Filten ritar bräden först och under allt annat, och ett bräde svarar aldrig pekaren: ett kort som släpps på det hamnar i zonen under, som på bar filt.
+Allt annat som läser bordet läser det utan bräden (`withoutBoards`): telefonen, tangentbordet och var ett kort läggs.
+En zon på ett bräde är krita på en bild: streckad i kritans färg med en mörk gloria och ett svagt mörkt lager inuti, och namnet på en mörk platta över zonens egen överkant, där det står kvar i stället för att flyttas ut som filtens namn (K19).
+En zon som är ett brädes hela fotavtryck, som «Framför» med spelarbrädet, ritar ingen kant runt brädet, bara sitt namn.
+Platsernas skyltar på TV:n står fria från bräden som från högarna.
+Kortets kortsida i vila med det kvadratiska brädet och spelarbräden, mätt 2026-11-01 i den byggda appen (`board-on-felt.spec.ts`): TV 1920 × 1080 57 px vid fyra platser och 45 vid åtta, som utan bräde (K9 håller), och bordsläget 1280 × 800 46 respektive 31 px.
+Högens bricka i bordsläget når några millimeter in över brädets kant; den är en platta som ligger över allt och läses ändå.
+
+**Editorn** (#1481, variant A i #1473).
+Brädet läggs i fliken Bord: «＋ Bräde» på Spelyta lägger huvudbrädet, och «＋ Spelarbräde» på Framför lägger ett spelarbräde per plats där det ligger; menyn erbjuder bara det som inte redan ligger.
+Brädets rad säger mått och att det ligger fast, öppnas till storleken (huvudbrädet i 457 × 457 eller 610 × 457 mm) och vägen till fliken «Bräde», och × tar bort det.
+Allt det är `setBoards`, hela listan i en redigering som tärningarna, och därmed ett steg tillbaka (B4); filten och platserna läggs ut för bräden i samma redigering, och var zonerna hamnade skrivs i raden som `setRecipe`:s `places` (#895).
+Fliken «Bräde» står efter Låda när spelet har ett bräde, och brädets sida ritas där med Mall:s duk, lager, verktyg och egenskaper, som lådans ytor (L91): kortets egna verb märkta `on: 'board'`, med ytan som brädets namn och sidan, `main.front`.
+Zonerna från Bord ligger ovanpå sidan som låsta konturer, så att bilden kan ritas runt dem.
+Sidan ritas av samma kompilator på brädet i Bords filt, innan något är sparat eller renderat, och huvudbrädet har en skylt på filten som öppnar dess rad.
+Fysisk kontroll (E5) mäter en ritad sida med brädtypens egen `print` i brädets eget mått (`boardIssues`).
+
+**Trycket** (#1488, beställarens beslut 12 i #1470): brädets och brickornas sidor går med i tryckpaketet och exporten redan i betan, som filer med utfall ur den enda renderaren (E2), efter tryckeriets krav som kortens.
+Ett bräde ritas ur sin egen mall under sitt namn och en markör ur sin (`printedSides`), aldrig ur en rad; ett bräde som ingen ritat har ingen fil.
+Varje exemplar är en post i manifestet som ett korts kopia, och likadana brickor delar sina filer, en per sida.
+Fysisk kontroll (E5) läser brädets och markörernas sidor vid det utfall som trycks, och ett fel i dem stoppar ordern som ett fel i ett kort, med brädets eller markörens namn.
+Testtryckeriet trycker dem som vektor-PDF; flerstegsfaken som raster i 300 DPI, där det stora brädet är 7 280 × 5 473 px och ritas inom render-containerns tak (DRIFT §6), mätt i kontraktssviten med de riktiga filerna.
+Sidan listar dem under leken som «Bräden och brickor», och den och LASMIG säger att stansark och vikning är ett steg 2 med en vald partner, som lådans filer (L91).
 
 ## L. Editorn (grillad 2026-09-06)
 

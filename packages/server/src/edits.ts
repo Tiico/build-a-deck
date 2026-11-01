@@ -1,13 +1,14 @@
 import type { AssetCrop as Crop, CardQuery, FaceId, ZoneAction, ZoneBeside } from '@byd/protocol'
 import { RuleBlock, isSymbolName, type Element, type FaceTemplate, type Variant } from '@byd/template'
 import { showsWholePicture } from '@byd/protocol'
-import { BOX_SIDES, BoxFace, type BoxClearance, type BoxSide } from '@byd/engine'
-import { AssetCrop, PictureName, ProjectBox, ProjectDice, ProjectMarkers, ProjectPieces } from './projects.js'
-import type { Cell, Picture, ProjectDie, ProjectMarker, ProjectPiece, ProjectCredit, ProjectDoc, ProjectFont, ProjectRow, ProjectTheme, RuleDoc } from './projects.js'
+import { BOARDS, BOX_SIDES, BoxFace, type BoxClearance, type BoxSide } from '@byd/engine'
+import { MARKER_REF, deckView, rowRef } from './decks.js'
+import { AssetCrop, PictureName, ProjectBoards, ProjectBox, ProjectDecks, ProjectDice, ProjectMarkers, ProjectPieces } from './projects.js'
+import type { Cell, Picture, ProjectBoard, ProjectDeck, ProjectDie, ProjectMarker, ProjectPiece, ProjectCredit, ProjectDoc, ProjectFont, ProjectRow, ProjectTheme, RuleDoc } from './projects.js'
 import { DEFAULT_BOX_TYPE } from './box.js'
 import { applyRevert, decideRevert, type Revert } from './undo.js'
 import { columnsOf } from './columns.js'
-import { applyRecipe, newAreaSpot, newPileSpot, seatZones, type Geometry, type Recipe, type RecipeWords, type SeatRole, type Setup, type Shortcut, type Zone } from './recipe.js'
+import { applyRecipe, newAreaSpot, recipeOf, newPileSpot, seatZones, type Geometry, type Recipe, type RecipeWords, type SeatRole, type Setup, type Shortcut, type Zone } from './recipe.js'
 
 // The columns are their own module so that `undo.ts` can ask about them without importing the edits
 // that import it (#1072).
@@ -71,9 +72,10 @@ export function checkedName(name: string): string {
 
 export type Clearable = 'name' | 'locked' | 'shadow' | 'pattern' | 'points' | 'fill'
 
-// Whose face a template edit writes (#1413): the card's, which is what an edit without it means, or
-// the box's.
-export type FaceOwner = 'box'
+// Whose face a template edit writes (#1413): the card's, which is what an edit without it means, the
+// box's, or a board's (#1481, L91). A board's face is named by the board and the side, `main.front`:
+// a board's name has no full stop in it, so the two are read apart without doubt.
+export type FaceOwner = 'box' | 'board'
 
 // Vad en kolumn är (#1085): en rad text, prosa med stycken och listor, eller en bild.
 export type ColumnKind = 'text' | 'prose' | 'image'
@@ -81,10 +83,14 @@ export type ColumnKind = 'text' | 'prose' | 'image'
 export type EditIntent =
   | { v: 'rename'; name: string }
   // The deck (L4)
-  | { v: 'setCell'; cardRef: string; field: string; value: Cell }
-  | { v: 'addRow'; cardRef: string; fields: Record<string, Cell> }
-  | { v: 'removeRow'; cardRef: string }
-  | { v: 'replaceRows'; rows: ProjectRow[] }
+  // `deck` names another deck of the game (#1484) than the document's own, and the edit is then made
+  // on that deck's template, rows and column order as it would be on the document's (#1487, #1474 A:
+  // a tab per deck in Mall and Tabell). `marker:<id>` names a marker's two sides, drawn with the same
+  // layers, which has no rows. Without it the edit is the document's own deck's, as it always was.
+  | { v: 'setCell'; deck?: string; cardRef: string; field: string; value: Cell }
+  | { v: 'addRow'; deck?: string; cardRef: string; fields: Record<string, Cell> }
+  | { v: 'removeRow'; deck?: string; cardRef: string }
+  | { v: 'replaceRows'; deck?: string; rows: ProjectRow[] }
   // A column of the deck (#32). One edit and not a rewritten table: that is what makes a new
   // column one version and one step back (B4), and it keeps a log entry for an empty column from
   // carrying every card in the game. `field` is the key as it stands in the document — an
@@ -97,8 +103,8 @@ export type EditIntent =
   // `kind` is what the column is made as (#1085): the table's door asks, and a column made as a
   // picture takes pictures at once instead of waiting for the template to draw it as one. Text is
   // what a column the template does not draw already is, so it writes nothing.
-  | { v: 'addField'; field: string; bind?: { face: string; id: string; group?: string | null }; kind?: ColumnKind }
-  | { v: 'removeField'; field: string }
+  | { v: 'addField'; deck?: string; field: string; bind?: { face: string; id: string; group?: string | null }; kind?: ColumnKind }
+  | { v: 'removeField'; deck?: string; field: string }
   // Kolumnen under ett annat namn. Nyckeln är designerns (#27, #308): det är hon som skriver över
   // det ord verktyget föreslår, och ett ord hon valde tidigt är ett ord hon kan vilja byta. Det
   // är **ett** namn på ett ställe i dokumentets mening och på ett halvdussin i dess text — varje
@@ -106,22 +112,22 @@ export type EditIntent =
   // och valet om prosa (L43) — så det är en redigering och inte sex, och ett steg tillbaka och
   // inte sex. En kolumn som bara flyttade hälften av sig är värre än en som inte kunde flytta
   // alls: det som lämnas kvar under det gamla namnet faller tillbaka på sitt förval, tyst.
-  | { v: 'renameField'; from: string; to: string }
+  | { v: 'renameField'; deck?: string; from: string; to: string }
   // Vad kolumnen är: prosa eller vanlig text (L43, #362). Rutans höjd i mallen föreslår, och det
   // här är designerns svar på förslaget — ett per kolumn, och `null` när hon lämnar tillbaka
   // frågan till höjden. Att «följer höjden» är frånvaro och inte ett tredje värde är vad som gör
   // att varje lek skriven före valet beter sig precis som den gjorde.
-  | { v: 'setProse'; field: string; prose: boolean | null }
+  | { v: 'setProse'; deck?: string; field: string; prose: boolean | null }
   // Vad kolumnen är: text, prosa eller bild (#1085). Mallen föreslår och det här är designerns
   // svar, skrivet i `images` och `prose` i en och samma redigering, så att ett val är en version
   // och ett steg tillbaka. `null` lämnar tillbaka frågan till mallen. `setProse` står kvar för
   // loggarna som skrevs före; den rör bara prosan, som den alltid gjort.
-  | { v: 'setColumnKind'; field: string; kind: ColumnKind | null }
+  | { v: 'setColumnKind'; deck?: string; field: string; kind: ColumnKind | null }
   // Where a column stands in the table (#46). The order is the document's and not the reader's:
   // everyone with the project open sees it, the CSV export writes it, and a step back takes it
   // back — which a view in one browser could do none of. `before` is the column it comes to
   // stand in front of, and `null` is the far end: last of all.
-  | { v: 'moveField'; field: string; before: string | null }
+  | { v: 'moveField'; deck?: string; field: string; before: string | null }
   // The template (L1, #13, #18)
   // `clear` takes properties off the element rather than setting them, which a patch cannot do:
   // `undefined` does not survive JSON, so a patch that means "this layer has no name any more"
@@ -134,24 +140,24 @@ export type EditIntent =
   // verbs, and the log says which surface each one wrote. A face of the box has no groups, since
   // there is one box and not one per kind of card. Without `on` the face is the card's, as it has
   // always been, so every line written before the box replays as it was written.
-  | { v: 'patchElement'; on?: FaceOwner; face: string; id: string; patch: Partial<Element>; clear?: Clearable[]; group?: string | null }
+  | { v: 'patchElement'; deck?: string; on?: FaceOwner; face: string; id: string; patch: Partial<Element>; clear?: Clearable[]; group?: string | null }
   // `icon` is the canvas's other door (#33), and it is the field door's twin: the designer asked
   // for an icon on the card, and an icon on the card is two things at once — a symbol the game did
   // not have, and an element that shows it. She did one thing, so it is one edit. Sent separately
   // they would be two versions and two steps back (B4), and between the two presses the card would
   // carry an element pointing at a name the icon set does not answer to.
-  | { v: 'addElement'; on?: FaceOwner; face: string; element: Element; group?: string | null; icon?: { name: string; url: string; credit?: ProjectCredit } }
-  | { v: 'removeElement'; on?: FaceOwner; face: string; id: string; group?: string | null }
-  | { v: 'moveElement'; on?: FaceOwner; face: string; id: string; to: number }
+  | { v: 'addElement'; deck?: string; on?: FaceOwner; face: string; element: Element; group?: string | null; icon?: { name: string; url: string; credit?: ProjectCredit } }
+  | { v: 'removeElement'; deck?: string; on?: FaceOwner; face: string; id: string; group?: string | null }
+  | { v: 'moveElement'; deck?: string; on?: FaceOwner; face: string; id: string; to: number }
   // A whole face at once (L17). Choosing one of the ready-made backs is one thing the designer
   // did, so it is one edit — the same reason `replaceRows` exists rather than a removal and an
   // addition per card. Sent as a removal and an addition per layer it would be a dozen versions
   // and a dozen steps back (B4), with a half-built back standing at every one of them.
   // `variants` is a whole face with its groups (#1005): a proposed template brings its own, and the
   // groups of the face it replaces go with it. Without them the groups stand, as they always have.
-  | { v: 'replaceFace'; on?: FaceOwner; face: string; base: Element[]; variants?: FaceTemplate['variants'] }
-  | { v: 'resetElement'; face: string; id: string; group: string }
-  | { v: 'setGroupColumn'; column: string | null }
+  | { v: 'replaceFace'; deck?: string; on?: FaceOwner; face: string; base: Element[]; variants?: FaceTemplate['variants'] }
+  | { v: 'resetElement'; deck?: string; face: string; id: string; group: string }
+  | { v: 'setGroupColumn'; deck?: string; column: string | null }
   // The table (B5, K2)
   // The words come with the edit, so the actor writes the same zone names the editor showed the
   // designer — their own language, not the tool's home one (A4).
@@ -166,9 +172,18 @@ export type EditIntent =
   | { v: 'setDice'; dice: ProjectDie[] }
   // The game's wooden pieces (#1471), the whole list at once as the dice: one version, one step back.
   | { v: 'setPieces'; pieces: ProjectPiece[] }
+  // The game's boards (#1481, #1480), the whole list at once as the dice: a board laid, resized or taken
+  // away is one version and one step back (B4). The felt and the seats are laid for them as the recipe
+  // lays them (`applyRecipe`, K18), and `places` is where that put every zone it moved, decided once
+  // when the edit is made, as `setRecipe` carries it (#895).
+  | { v: 'setBoards'; boards: ProjectBoard[]; places?: Places }
   // The game's markers (#1483), the whole list at once as the pieces, their sides with them: a marker
   // added, moved, counted again or drawn anew is one version and one step back (B4).
   | { v: 'setMarkers'; markers: ProjectMarker[] }
+  // The game's other decks (#1484), the whole list at once as the markers: a deck added or taken away,
+  // or a template or a row of one changed, is one version and one step back (B4). Where a deck is
+  // edited in the editor is #1487; the document's own deck keeps its own edits.
+  | { v: 'setDecks'; decks: ProjectDeck[] }
   // `geometry` is where the zone was born, decided once when the edit is made (`decideEdit`) and
   // written into the log with it (#894). Where a new zone goes is a rule that changes with a
   // deploy (#443, #480, #881), and a line that asked the rule again on replay would put the zone
@@ -309,7 +324,7 @@ export function decideEdit(doc: ProjectDoc, intent: EditIntent): EditIntent {
   // A step back that brings a cell back into a column someone has taken away since it was worked
   // out lets that cell go (#1072), and the line says so by not carrying it.
   if (intent.v === 'revert') return decideRevert(doc, intent)
-  if ((intent.v === 'setRecipe' || intent.v === 'addSeatZone') && !intent.places) {
+  if ((intent.v === 'setRecipe' || intent.v === 'addSeatZone' || intent.v === 'setBoards') && !intent.places) {
     // The answer is what applying the edit by today's rule moved or made. An edit the document
     // refuses has no answer, and passes on as it is for `applyEdit` to say why.
     let next: ProjectDoc
@@ -360,6 +375,9 @@ function placed(before: Setup, after: Setup, places: Places | undefined): Setup 
 }
 
 export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
+  // An edit of another deck, or of a marker's sides (#1487), is the same edit made on that deck.
+  const deck = (intent as { deck?: unknown }).deck
+  if (deck !== undefined) return inDeck(doc, String(deck), intent)
   switch (intent.v) {
     case 'rename':
       return { ...doc, name: checkedName(intent.name) }
@@ -554,8 +572,8 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
     case 'replaceFace': {
       // A face the template does not have yet is made rather than refused: an empty back is
       // exactly the back a gallery is for.
-      if (intent.on === 'box' && intent.variants && Object.keys(intent.variants).length > 0) throw new Error(groupless(intent.face))
-      const face = intent.on === 'box' ? faceOf(doc, intent.face, intent.on) : (doc.template.faces[intent.face] ?? { base: [], variants: {} })
+      if (intent.on !== undefined && intent.variants && Object.keys(intent.variants).length > 0) throw new Error(groupless(intent.face))
+      const face = intent.on !== undefined ? faceOf(doc, intent.face, intent.on) : (doc.template.faces[intent.face] ?? { base: [], variants: {} })
       return writeFace(doc, intent.face, { ...face, base: intent.base, ...(intent.variants ? { variants: intent.variants } : {}) }, intent.on)
     }
     case 'moveElement': {
@@ -597,10 +615,21 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
       const { dice: _gone, ...rest } = doc.setup
       return { ...doc, setup: dice.length > 0 ? { ...rest, dice } : rest }
     }
+    case 'setBoards': {
+      const boards = ProjectBoards.parse(intent.boards)
+      const { boards: _gone, ...rest } = doc.setup
+      const next: Setup = boards.length > 0 ? { ...rest, boards } : rest
+      return { ...doc, setup: placed(doc.setup, applyRecipe(next, recipeOf(next)), intent.places) }
+    }
     case 'setPieces': {
       const pieces = ProjectPieces.parse(intent.pieces)
       const { pieces: _gone, ...rest } = doc.setup
       return { ...doc, setup: pieces.length > 0 ? { ...rest, pieces } : rest }
+    }
+    case 'setDecks': {
+      const decks = ProjectDecks.parse(intent.decks)
+      const { decks: _gone, ...rest } = doc
+      return decks.length > 0 ? { ...rest, decks } : rest
     }
     case 'setMarkers': {
       const markers = ProjectMarkers.parse(intent.markers)
@@ -853,6 +882,44 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
 // inte längre säger något tas bort: ett upplåst mått, typens luft igen, en tom samling. En låda som
 // bara bär sin typ är ingen post alls, så att ett lås och dess upplåsning lämnar dokumentet som det
 // var. Hållen mot dokumentets schema här, eftersom ingen annan dörr prövar vad en redigering skriver.
+// The edits a deck's tab makes (#1487): the rows, the columns and the template. A marker has sides
+// and no rows, so only the template's are made on it.
+const FACE_EDITS: ReadonlySet<EditIntent['v']> = new Set(['patchElement', 'addElement', 'removeElement', 'moveElement', 'replaceFace'])
+const DECK_EDITS: ReadonlySet<EditIntent['v']> = new Set([...FACE_EDITS, 'setCell', 'addRow', 'removeRow', 'replaceRows', 'addField', 'removeField', 'renameField', 'setProse', 'setColumnKind', 'moveField', 'resetElement', 'setGroupColumn'])
+
+// An edit made on another deck than the document's own, or on a marker's sides (#1487). The deck is
+// put in the document's own place, the edit made there by the one `applyEdit`, and what came out
+// written back into the deck; so a deck's tab has every edit the card's has and no copy of any of
+// them. What the edit changes beyond the deck (a symbol a new icon layer brought in, a column's kind)
+// is the game's and stays where it was written.
+function inDeck(doc: ProjectDoc, ref: string, intent: EditIntent): ProjectDoc {
+  const { deck: _deck, ...inner } = intent as EditIntent & { deck?: string }
+  const edit = inner as EditIntent
+  if (!DECK_EDITS.has(edit.v)) throw new Error(`${edit.v} is not an edit of a deck`)
+  if ((edit as { on?: unknown }).on !== undefined) throw new Error('an edit of a deck is on its own faces')
+  if (ref.startsWith(MARKER_REF)) {
+    const id = ref.slice(MARKER_REF.length)
+    const markers = doc.setup.markers ?? []
+    if (!markers.some((m) => m.id === id)) throw new Error(`the game has no marker ${id}`)
+    if (!FACE_EDITS.has(edit.v)) throw new Error('a marker has sides and no rows')
+    const after = applyEdit(deckView(doc, ref), edit)
+    const drawn = markers.map((m) => (m.id === id ? { ...m, faces: after.template.faces } : m))
+    return { ...after, template: doc.template, rows: doc.rows, ...(doc.columns ? { columns: doc.columns } : {}), setup: { ...after.setup, markers: ProjectMarkers.parse(drawn) } }
+  }
+  const decks = doc.decks ?? []
+  const deck = decks.find((d) => d.id === ref)
+  if (!deck) throw new Error(`the game has no deck ${ref}`)
+  const after = applyEdit(deckView(doc, ref), edit)
+  const { columns, template, rows, decks: _decks, ...rest } = after
+  const { columns: _was, ...kept } = deck
+  const next: ProjectDeck = { ...kept, template, rows, ...(columns ? { columns } : {}) }
+  // At the table every row goes by one name (`rowRef`): a row of this deck may not take the name of
+  // one of the document's own.
+  const own = new Set(doc.rows.map((r) => r.id))
+  if (rows.some((r) => own.has(rowRef(ref, r.id)))) throw new Error('a row goes by the name of a card of the game')
+  return { ...rest, template: doc.template, rows: doc.rows, ...(doc.columns ? { columns: doc.columns } : {}), decks: decks.map((d) => (d.id === ref ? next : d)) }
+}
+
 function boxed(doc: ProjectDoc, change: (box: ProjectBox) => ProjectBox): ProjectDoc {
   const changed = change(doc.box ?? { type: { ...DEFAULT_BOX_TYPE } })
   const said = <T extends object>(part: T | undefined): T | undefined => {
@@ -934,16 +1001,38 @@ function faceOf(doc: ProjectDoc, face: string, on?: FaceOwner, group?: string | 
     if (group) throw new Error(groupless(face))
     return doc.box?.faces?.[face as BoxFace] ?? { base: [], variants: {} }
   }
-  if (on !== undefined) throw new Error(`a face belongs to the card or the box, not to ${String(on)}`)
+  if (on === 'board') {
+    // A board's side that has not been drawn is an empty one to draw on, as the box's is.
+    const { board, side } = boardFace(doc, face)
+    if (group) throw new Error(groupless(face))
+    return board.faces?.[side] ?? { base: [], variants: {} }
+  }
+  if (on !== undefined) throw new Error(`a face belongs to the card, the box or a board, not to ${String(on)}`)
   const found = doc.template.faces[face]
   if (!found) throw new Error(`template has no face ${face}`)
   return found
 }
-const groupless = (face: string) => `the box's ${face} has no group: there is one box, not one per kind of card`
+const groupless = (face: string) => `the ${face} has no group: there is one box and one board each, not one per kind of card`
+// The board and the side a board's face names (#1481): `main.front` is the board `main`, its `front`.
+function boardFace(doc: ProjectDoc, face: string): { board: ProjectBoard; side: string } {
+  const at = face.lastIndexOf('.')
+  const id = at < 0 ? face : face.slice(0, at)
+  const side = at < 0 ? '' : face.slice(at + 1)
+  const board = doc.setup.boards?.find((b) => b.id === id)
+  if (!board) throw new Error(`there is no board ${id}`)
+  const type = BOARDS.find((b) => b.id === board.type.id && b.version === board.type.version)
+  if (!type?.faces.includes(side)) throw new Error(`the board ${id} has no side ${side || '(none)'}: its sides are ${type?.faces.join(', ') ?? 'none'}`)
+  return { board, side }
+}
 // The one way a face of the template is written: every canvas edit leaves as one edit. A face of
 // the box is written into the box (#1413), beside its locks and its air.
 function writeFace(doc: ProjectDoc, face: string, next: FaceTemplate, on?: FaceOwner): ProjectDoc {
   if (on === 'box') return boxed(doc, (box) => ({ ...box, faces: { ...box.faces, [face]: next } }))
+  if (on === 'board') {
+    const { board, side } = boardFace(doc, face)
+    const boards = (doc.setup.boards ?? []).map((b) => (b.id === board.id ? { ...b, faces: { ...b.faces, [side]: next } } : b))
+    return { ...doc, setup: { ...doc.setup, boards } }
+  }
   return { ...doc, template: { ...doc.template, faces: { ...doc.template.faces, [face]: next } } }
 }
 function writeVariant(doc: ProjectDoc, faceId: string, face: FaceTemplate, group: string, change: (variant: Variant) => Variant): ProjectDoc {

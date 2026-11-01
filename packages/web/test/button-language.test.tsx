@@ -1420,6 +1420,7 @@ describe('every suite that measures a surface', () => {
   // har det, och inte därför att sviten kom ihåg att klistra in arket.
   it('finds every suite that lays a surface into a document, by name', () => {
     expect(mounting.map((s) => s.name).sort()).toEqual([
+      'board-felt.test.tsx',
       'button-state-contrast.test.tsx',
       'canvas-band.test.tsx',
       'canvas-pan.test.tsx',
@@ -1477,6 +1478,7 @@ describe('every suite that measures a surface', () => {
       'template-crown.test.tsx',
       'text-placement.test.tsx',
       'texture-layout.test.tsx',
+      'tile-paint.test.tsx',
       'tv-plate-names.test.tsx',
       'tv-show.test.tsx',
       'wall-card-look.test.tsx',

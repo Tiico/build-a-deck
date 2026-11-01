@@ -121,6 +121,12 @@ export type TemplateCanvasProps = {
   reading?: boolean
   // Another surface than a card's face (#1413): a face of the game's box. See `Surface`.
   surface?: Surface | undefined
+  // The deck being drawn, when the game has more than one (#1487, #1474 A): its tabs at the head of
+  // the strip, the type its cards or tiles are made as (the card's when absent), and what stands at
+  // the head of the properties, «Brickan» for a deck of tiles.
+  deckTabs?: ReactNode
+  type?: ComponentTypeDef | undefined
+  propsHead?: ReactNode
 }
 
 // A face of something else than the card, edited with the card's own layers, tools and properties
@@ -146,6 +152,21 @@ export type Surface = {
   showing?: boolean
 }
 
+// The cut of a tile (#1487, «Formen klipper varje lager»): the shape the punch follows, drawn over
+// the face, with what lies outside it dimmed as the cardboard that falls away. A card and a square
+// tile are cut along their rectangle, which the face's own edge already shows.
+function CutLine({ type }: { type: ComponentTypeDef }) {
+  const { widthMm: w, heightMm: h, shape } = type.physical
+  if (shape !== 'hex' && shape !== 'circle') return null
+  const outline = shape === 'hex' ? `M ${w / 2} 0 L ${w} ${h / 4} L ${w} ${(3 * h) / 4} L ${w / 2} ${h} L 0 ${(3 * h) / 4} L 0 ${h / 4} Z` : `M ${w / 2} 0 A ${w / 2} ${h / 2} 0 1 1 ${w / 2} ${h} A ${w / 2} ${h / 2} 0 1 1 ${w / 2} 0 Z`
+  return (
+    <svg className="byd-canvas-cut" data-cut={shape} viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" aria-hidden="true">
+      <path d={`M 0 0 H ${w} V ${h} H 0 Z ${outline}`} fillRule="evenodd" style={{ fill: 'rgb(21 23 28 / 80%)', stroke: 'none' }} />
+      <path d={outline} style={{ fill: 'none', stroke: '#ffd98a', strokeWidth: 0.3, strokeDasharray: '1.2 0.8' }} />
+    </svg>
+  )
+}
+
 // The measure the hand works in, the card's unless a surface says otherwise (#1413), and whether the
 // face is drawn upside down, which turns what the hand and the arrows mean.
 const SurfaceSize = createContext<CardSize>(CARD_STANDARD_63x88.physical)
@@ -154,9 +175,9 @@ const Turned = createContext(false)
 // Template mode (A): layers on the left, the card large in the middle with the selected element
 // outlined, and its properties on the right. Every change goes through `onPatch` and lands on
 // every card of the deck — there are no per-card exceptions (L3).
-export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onSelectFace, onReplaceFace, row, onPickRow, selectedElement, onSelectElement, onPatch, onCallOff, onRemove, onAdd, onReorder, onLock, onRename, group, onSelectGroup, onGroupColumn, onAddField, onReset, onOpenFonts, onCatalogFont, onCatalogIcon, onOwnIcon, onAddPicture, reading = false, surface }: TemplateCanvasProps) {
+export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onSelectFace, onReplaceFace, row, onPickRow, selectedElement, onSelectElement, onPatch, onCallOff, onRemove, onAdd, onReorder, onLock, onRename, group, onSelectGroup, onGroupColumn, onAddField, onReset, onOpenFonts, onCatalogFont, onCatalogIcon, onOwnIcon, onAddPicture, reading = false, surface, deckTabs, type, propsHead }: TemplateCanvasProps) {
   const t = useT()
-  const size = surface?.type.physical ?? CARD_STANDARD_63x88.physical
+  const size = surface?.type.physical ?? type?.physical ?? CARD_STANDARD_63x88.physical
   const faceTemplate = doc.template.faces[face]
   const column = groupColumn(doc)
   const groups = groupsOf(doc)
@@ -412,6 +433,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
           only stage any of it is about. */}
       {shows('canvas') && !surface && (
         <div className="byd-canvas-strip">
+          {deckTabs}
           <label className="byd-canvas-group-column">
             {t('canvas.groupBy')}
             <select value={column ?? ''} disabled={reading} onChange={(event) => onGroupColumn(event.target.value === '' ? null : event.target.value)}>
@@ -562,6 +584,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
         >
           <CardPreview
             id="canvas"
+            type={type}
             face={tabFace}
             row={rowData}
             icons={icons}
@@ -573,7 +596,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
             selectedElement={selectedElement}
             onSelectElement={onSelectElement}
             onMeasured={onMeasured}
-            overlay={<><DragLayer grid={grid ? gridStep(zoom.scale) : null} scale={zoom.scale} row={rowData} conditions={conditionFrames(shown, rowData, t)} onSelectCondition={onSelectElement} boxes={shown.filter(isBox)} selected={selectedElement} onSelect={onSelectElement} onPatch={patch} onCallOff={onCallOff} onRefused={setRefused} refused={refusedLayer ? <LockedNote layer={refusedLayer} onPutAway={putAway} /> : null} refusedId={refusedLayer?.id ?? null} point={pointAt} onPoint={setPointAt} reading={reading} /><OversetMarks found={oversetOf(tabFace, rowData, cut)} scale={zoom.scale} zoomed /></>}
+            overlay={<>{type && <CutLine type={type} />}<DragLayer grid={grid ? gridStep(zoom.scale) : null} scale={zoom.scale} row={rowData} conditions={conditionFrames(shown, rowData, t)} onSelectCondition={onSelectElement} boxes={shown.filter(isBox)} selected={selectedElement} onSelect={onSelectElement} onPatch={patch} onCallOff={onCallOff} onRefused={setRefused} refused={refusedLayer ? <LockedNote layer={refusedLayer} onPutAway={putAway} /> : null} refusedId={refusedLayer?.id ?? null} point={pointAt} onPoint={setPointAt} reading={reading} /><OversetMarks found={oversetOf(tabFace, rowData, cut)} scale={zoom.scale} zoomed /></>}
           />
         </section>
           <ZoomBand zoom={zoom} />
@@ -635,6 +658,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
       <SectionsOpen.Provider value={sections}>
       <aside className="byd-canvas-props" id={PROPS_COLUMN} aria-label={t('canvas.props')} inert={away}>
         {surface?.propsHead}
+        {propsHead}
         {/* The layer's one name (#699), as the designer wrote it and not set in capitals the way the
             word «Egenskaper» before it is: an id in capitals was a third name for the same layer. */}
         <h2>
@@ -1688,6 +1712,9 @@ export const BOX_FACE_NAMES: Record<string, Key> = {
   'box.right': 'box.face.right',
   'box.lid': 'box.face.lid',
   'box.bottom': 'box.face.bottom',
+  // A board's side (#1481), named by the board's role.
+  'board.main': 'board.face.main',
+  'board.player': 'board.face.player',
 }
 
 // A face by the name the reader's language gives it; a face the template invented keeps its own

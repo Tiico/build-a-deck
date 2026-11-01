@@ -117,9 +117,24 @@
 
 /* 4 · What is not printed. */
 .byd-print-stock { display: grid; gap: 10px; }
+/* The printed parts beside the deck (#1488): a name and what it is, a line each, under a small heading. */
+.byd-print-parts-list { display: grid; gap: 8px; margin-top: 16px; }
+.byd-print-parts-list h3 { margin: 0; font-size: 15px; color: #fff; }
+.byd-print-parts-list ul { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.byd-print-parts-list li { display: flex; flex-wrap: wrap; gap: 4px 12px; padding: 8px 12px; border-radius: 12px; background: var(--byd-print-well); border: 1px solid var(--byd-print-line); font-size: 15px; }
+.byd-print-parts-list li b { color: #fff; }
+.byd-print-parts-list p { margin: 0; }
 .byd-print-item { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 12px; align-items: center; padding: 12px; border-radius: 12px; background: var(--byd-print-well); border: 1px solid var(--byd-print-line); font-size: 15px; }
 .byd-print-item b { color: #fff; }
 .byd-print-die { display: grid; place-items: center; width: 44px; height: 44px; margin: 4px; border-radius: 10px; background: #f3efe6; color: #3a2a1a; font-size: 30px; }
+.byd-print-piece { width: 36px; height: 36px; margin: 8px; background: var(--piece); clip-path: polygon(50% 0, 64% 6%, 66% 24%, 100% 38%, 100% 50%, 70% 54%, 86% 100%, 58% 100%, 50% 80%, 42% 100%, 14% 100%, 30% 54%, 0 50%, 0 38%, 34% 24%, 36% 6%); }
+.byd-print-piece[data-piece='cube'] { width: 28px; height: 28px; margin: 12px; border-radius: 4px; clip-path: none; }
+.byd-print-piece[data-piece='disc'] { border-radius: 50%; clip-path: none; }
+/* Each seat's colour of a kind (#1478): a small silhouette and its count, in a row that wraps. */
+.byd-print-colours { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 4px 0; padding: 0; list-style: none; }
+.byd-print-colours li { display: inline-flex; gap: 4px; align-items: center; }
+.byd-print-colours .byd-print-piece { width: 16px; height: 16px; margin: 0; }
+.byd-print-colours .byd-print-piece[data-piece='cube'] { width: 12px; height: 12px; border-radius: 2px; }
 .byd-print-counter { display: grid; place-items: center; width: 36px; height: 36px; margin: 8px; border-radius: 50%; box-sizing: border-box; border: 2px dashed #6f7a90; background: #2c3242; color: var(--byd-print-soft); font-size: 14px; font-weight: 800; }
 
 /* 5 · The requirements. */

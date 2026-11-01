@@ -1,15 +1,15 @@
 import { matches } from '@byd/protocol'
-import { CARD_STANDARD_63x88, DICE, PIECES, TOKEN_COUNTER, type SetupDef } from '@byd/engine'
+import { DICE, PIECES, TOKEN_COUNTER, type SetupDef } from '@byd/engine'
 import { layBoards, layMarkers, layMaterial, markerRef } from './material.js'
 import type { ProjectDoc } from './projects.js'
+import { decksOf, rowRef } from './decks.js'
 
 // Imported by the editor as well as the server, so this module stays free of anything Node.
 // The table setup a project plays with (L5): every row becomes `antal` copies (default 1) of the
 // standard card, face down in the deck zone (L4). Row order is deck order until the first shuffle.
 // The editor's preview of the table is built from the same function, so the deck the designer
 // sees counted is the deck the players are dealt (#85).
-export function setupFromProject(doc: Pick<ProjectDoc, 'rows' | 'setup'>): SetupDef {
-  const type = { id: CARD_STANDARD_63x88.id, version: CARD_STANDARD_63x88.version }
+export function setupFromProject(doc: Pick<ProjectDoc, 'rows' | 'setup'> & Partial<Pick<ProjectDoc, 'template' | 'decks'>>): SetupDef {
   const components: SetupDef['components'] = []
   // The boards first (#1479), so that everything laid after them lies on them. A board is named by
   // its own name in the document, never by a row, and lies on its one side where the setup says.
@@ -20,11 +20,16 @@ export function setupFromProject(doc: Pick<ProjectDoc, 'rows' | 'setup'>): Setup
   // Where a row starts is the designer's question and not this function's opinion (B5): the
   // first zone whose question the row answers takes it, in the document's own order, and a row
   // no zone asks for lies in the deck's pile as every row used to.
-  const asked = doc.setup.zones.filter((z) => z.fill !== undefined && z.fill.length > 0)
-  for (const { id: cardRef, fields } of doc.rows) {
-    const copies = copiesOf(fields)
-    const zone = asked.find((z) => matches(z.fill ?? [], fields))?.id ?? doc.setup.deckZone
-    for (let i = 0; i < copies; i++) components.push({ type, cardRef, zone, face: 'back' })
+  // Every deck the same way (#1484): its rows as its type, in its own pile, and a zone's question is
+  // asked of the deck it names (K21), the document's own when it names none.
+  for (const deck of gameDecks(doc)) {
+    const type = { id: deck.type.id, version: deck.type.version }
+    const asked = doc.setup.zones.filter((z) => z.fill !== undefined && z.fill.length > 0 && (z.fillDeck ?? null) === deck.id)
+    for (const { id, fields } of deck.rows) {
+      const copies = copiesOf(fields)
+      const zone = asked.find((z) => matches(z.fill ?? [], fields))?.id ?? deck.zone
+      for (let i = 0; i < copies; i++) components.push({ type, cardRef: rowRef(deck.id, id), zone, face: 'back' })
+    }
   }
   // The game's material (#1292): every seat's counters (C4) at their start values, the dice
   // (K5, #1136) one side up, and the wooden pieces (#1471). The side is the document's and not a roll: a table is laid the same
@@ -78,8 +83,8 @@ export function setupFromProject(doc: Pick<ProjectDoc, 'rows' | 'setup'>): Setup
   // reading the table's own chips do — because that is what a question is written against. It is
   // as secret as the row's identity: nothing projects it (B6).
   const cards: NonNullable<SetupDef['cards']> = {}
-  for (const { id, fields } of doc.rows) {
-    cards[id] = Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, v === null || v === undefined ? '' : String(v).trim()]))
+  for (const deck of gameDecks(doc)) for (const { id, fields } of deck.rows) {
+    cards[rowRef(deck.id, id)] = Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, v === null || v === undefined ? '' : String(v).trim()]))
   }
   // Whether the game goes in turns (K30) is the designer's answer in Bord, and travels as it is.
   return { zones, seats: doc.setup.seats, floor: doc.setup.floor, components, cards, ...(doc.setup.turns ? { turns: doc.setup.turns } : {}) }
@@ -92,10 +97,17 @@ export function copiesOf(fields: Record<string, unknown>): number {
   return Math.max(0, Math.floor(Number(fields['antal'] ?? 1)) || 0)
 }
 
-// Whether the game is playable (#1415, L91, beställarens beslut 2026-10-27): its deck holds at least
-// one card. A table without one has nothing to deal and nothing to draw (#751), so this is the one
-// condition «Starta bord» stands on, in the editor, on Mina spel and at the server's door; and the
-// box's tab comes with it (#1406, beslut 3).
-export function playable(doc: Pick<ProjectDoc, 'rows'>): boolean {
-  return doc.rows.some((row) => copiesOf(row.fields) > 0)
+// Whether the game is playable (#1415, L91, beställarens beslut 2026-10-27): one of its decks holds at
+// least one card or tile. A table without one has nothing to deal and nothing to draw (#751), so this
+// is the one condition «Starta bord» stands on, in the editor, on Mina spel and at the server's door;
+// and the box's tab comes with it (#1406, beslut 3). Every deck counts (beslutet 2026-11-01 i #1470):
+// a game of tiles alone, without a single card, is a game.
+export function playable(doc: Pick<ProjectDoc, 'rows'> & Partial<Pick<ProjectDoc, 'decks'>>): boolean {
+  return [doc.rows, ...(doc.decks ?? []).map((d) => d.rows)].some((rows) => rows.some((row) => copiesOf(row.fields) > 0))
+}
+
+// The decks a table is laid with: every deck of the document (`decksOf`). The editor's preview asks
+// with only the rows and the setup, which is the document's own deck alone.
+function gameDecks(doc: Pick<ProjectDoc, 'rows' | 'setup'> & Partial<Pick<ProjectDoc, 'template' | 'decks'>>) {
+  return decksOf({ template: doc.template ?? { faces: {} }, rows: doc.rows, setup: doc.setup, ...(doc.decks ? { decks: doc.decks } : {}) })
 }

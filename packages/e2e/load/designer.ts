@@ -58,11 +58,24 @@ export class Designer {
    * illustration's size and the asked weight, and two typefaces. `seed` keeps two designers'
    * pictures apart, as two designers' art is.
    */
-  async uploadAssets(o: { pictures: number; pictureBytes: number; seed: number; fonts: { title: Uint8Array; body: Uint8Array } }): Promise<LoadAssets> {
+  //
+  // With `tiles` a tile deck's pictures too, one a tile at the same weight, and with `boardBytes` a
+  // main board's picture at a print photograph's size (#1533): what the render worker decodes for
+  // the felt's board is that bitmap, four bytes a pixel.
+  async uploadAssets(o: { pictures: number; pictureBytes: number; seed: number; fonts: { title: Uint8Array; body: Uint8Array }; tiles?: number; boardBytes?: number }): Promise<LoadAssets> {
     const pictures: string[] = []
     for (let i = 0; i < o.pictures; i++) pictures.push(await this.upload(picture(o.seed * 100_000 + i, { width: 900, height: 675, bytes: o.pictureBytes }), 'image/png'))
     const back = await this.upload(picture(o.seed * 100_000 + 99_999, { width: 750, height: 1050, bytes: o.pictureBytes }), 'image/png')
-    return { pictures, back, fonts: { title: await this.upload(o.fonts.title, 'font/ttf'), body: await this.upload(o.fonts.body, 'font/ttf') } }
+    const tiles: string[] = []
+    for (let i = 0; i < (o.tiles ?? 0); i++) tiles.push(await this.upload(picture(o.seed * 100_000 + 50_000 + i, { width: 600, height: 450, bytes: o.pictureBytes }), 'image/png'))
+    const board = o.boardBytes ? await this.upload(picture(o.seed * 100_000 + 99_998, { width: 3600, height: 2700, bytes: o.boardBytes }), 'image/png') : undefined
+    return {
+      pictures,
+      back,
+      fonts: { title: await this.upload(o.fonts.title, 'font/ttf'), body: await this.upload(o.fonts.body, 'font/ttf') },
+      ...(tiles.length > 0 ? { tiles } : {}),
+      ...(board ? { board } : {}),
+    }
   }
 
   /** A game saved `versions` times over, each save one row of history, as an afternoon's editing is. */
@@ -96,6 +109,40 @@ export class Designer {
     return done
   }
 
+  /** Uploads one file as it is, for a picture not drawn by `picture`, and answers with its hash. */
+  uploadFile(bytes: Uint8Array, type: string): Promise<string> {
+    return this.upload(bytes, type)
+  }
+
+  /** Saves a game once, as a new project. */
+  async saveDoc(doc: unknown): Promise<{ id: string; rev: number }> {
+    return (await this.call('POST', '/projects', doc)) as { id: string; rev: number }
+  }
+
+  /**
+   * The print package from «Mina spel» (#1208): asked for at Testtryckeriet, which queues every file
+   * it names, waited for until every file is drawn, and then fetched as the zip, which the app packs
+   * from the drawn files.
+   */
+  async printPackage(projectId: string, budgetMs: number): Promise<{ total: number; seconds: number; zipBytes: number }> {
+    const path = `/projects/${encodeURIComponent(projectId)}/print-package`
+    const query = `?provider=${TEST_PRINTER}&lang=sv`
+    const started = Date.now()
+    for (;;) {
+      const p = (await this.call('GET', `${path}${query}`)) as { files: { name: string; state: string }[]; errors: unknown[] }
+      if (p.errors.length > 0) throw new Error(`the print package has ${p.errors.length} findings that stop it`)
+      const failed = p.files.filter((f) => f.state === 'failed')
+      if (failed.length > 0) throw new Error(`print files failed: ${failed.map((f) => f.name).join(', ')}`)
+      if (p.files.every((f) => f.state === 'done')) {
+        const zip = await fetch(`${this.origin}${path}/zip${query}`, { headers: { cookie: this.cookie } })
+        if (zip.status !== 200) throw new Error(`the zip answered ${zip.status}: ${await zip.text()}`)
+        return { total: p.files.length, seconds: Math.round((Date.now() - started) / 1000), zipBytes: (await zip.arrayBuffer()).byteLength }
+      }
+      if (Date.now() - started > budgetMs) throw new Error(`print files still drawing after ${budgetMs / 1000} s`)
+      await new Promise((r) => setTimeout(r, 2000))
+    }
+  }
+
   private async poll(ask: () => Promise<unknown>, budgetMs: number): Promise<{ total: number; seconds: number }> {
     const started = Date.now()
     for (;;) {
@@ -107,6 +154,9 @@ export class Designer {
     }
   }
 }
+
+// The one print provider the box registers in the beta (F2, #1208).
+const TEST_PRINTER = 'testtryckeriet'
 
 // The newest login link to an address, out of the app's log as `ConsoleMailer` writes it.
 function linkTokenIn(log: string, email: string): string | null {

@@ -160,6 +160,49 @@
   box-shadow: inset 0 0 0 1px #00000073;
   border-radius: 10px;
 }
+
+/* A board (#1480, variant A of #1473): a sheet of greyboard lying fixed under everything, its side
+   the felt's own picture of it. Blank, or while the picture is on its way, it is the board's own
+   card colour and not the waiting state's dark box: a board is no card, and a table waiting for
+   its board is a table with a plain board on it. It never answers the pointer: what is dropped on
+   it lands in the zone under it, as on bare felt. */
+.byd-board {
+  position: absolute;
+  box-sizing: border-box;
+  border-radius: 3px;
+  background: #d8c49c;
+  box-shadow: 0 3px 8px rgb(0 0 0 / 0.45);
+  pointer-events: none;
+  overflow: hidden;
+}
+.byd-board > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: fill; }
+.byd-board > .byd-texture-state { display: none; }
+
+/* A zone on a board is chalk on a picture the designer chose, not an outline on green felt (#1473):
+   a dashed line in the chalk colour with a dark halo outside it and a faint dark wash inside, and its
+   name on a dark plate over the edge, so both read whatever the picture is. */
+.byd-zone[data-on-board] {
+  border: 2px dashed #f4efe2;
+  box-shadow: 0 0 0 2px rgb(8 10 14 / 0.7), inset 0 0 0 2px rgb(8 10 14 / 0.7), inset 0 0 0 999px rgb(10 14 22 / 0.16);
+  border-radius: 6px;
+}
+.byd-zone[data-on-board='whole'] { border: none; box-shadow: none; }
+/* The plate straddles the zone's own top edge from its left corner, as the prototype lays it: on a
+   board the zone is drawn on the picture, and a name pushed out past it (K19's felt rule) lands on
+   the next thing on the board or on the pile beside it. */
+[data-table] .byd-zone[data-on-board][data-rim] > span {
+  left: 0;
+  top: 0;
+  transform: translate(8px, -50%);
+  padding: 2px 8px;
+  border: 1px solid rgb(244 239 226 / 0.55);
+  border-radius: 4px;
+  background: rgb(16 19 26 / 0.9);
+  color: #f4efe2;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
 /* The name straddles the zone's border rather than lying inside it: a zone that fills up with
    cards would otherwise bury its own label (#20). Which border it straddles is K19's one rule —
    outside the zone's content, away from the felt's nearest rim, growing toward the middle of the
@@ -1011,6 +1054,9 @@
    part of any card: with it the back is laid out two pixels inside the card it is the back of,
    and the two on the other side are cut off. */
 .byd-card[data-back='own'], .byd-pile .byd-pile-top[data-back='own'], .byd-pile .byd-pile-bottom[data-back='own'], .byd-pile .byd-pile-fan-card[data-back='own'] { border: 0; background: none; }
+/* A tile's own face where nothing serves textures (#1487): drawn in its middle, with no word over it. */
+.byd-card-face { display: grid; place-items: center; background: transparent; }
+.byd-card-face ~ span:not([data-texture]) { visibility: hidden; }
 .byd-card > img ~ span:not([data-texture]), .byd-pile-top > img ~ span:not([data-texture]), .byd-pile-bottom > img ~ span:not([data-texture]) { visibility: hidden; }
 .byd-pile-top, .byd-pile-bottom, .byd-pile-fan-card { overflow: hidden; }
 
@@ -1482,3 +1528,17 @@
 .byd-seat-plate[data-edge='E'] > span, .byd-seat-plate[data-edge='W'] > span { padding-left: 46px; }
 .byd-seat-plate[data-form] { padding: 4px; }
 .byd-seat-plate[data-form] > span, .byd-seat-plate[data-form] > b > span { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); }
+
+/* Tiles (#1485, #1486, variant A of #1474): how a tile looks is written in `tileLook.ts` and not
+   here, since every byte of this sheet blocks the first frame and a tile is drawn only in a game
+   that has one. What is left is what a style attribute cannot say. The picture fills the printed
+   side, and the name under it is for a face still on its way. */
+.byd-tile-face > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 0; }
+.byd-tile-face > img ~ span:not([data-texture]) { visibility: hidden; }
+/* A pile's count stands on its tile's top edge and not its card box's: on a coin at eight seats the
+   card box's top put the badge over the whole pile. */
+.byd-table-frame[data-mode='tv'] .byd-pile[data-shape] .byd-pile-n { top: var(--tile-y); translate: -50% -70%; }
+/* The steps a tile was just turned through fade out; under reduced motion they only go. */
+.byd-detents { animation: byd-detents 1.4s ease-in forwards; }
+@keyframes byd-detents { 60% { opacity: 1; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .byd-detents { animation: none; } }

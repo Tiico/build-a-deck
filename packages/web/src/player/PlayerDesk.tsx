@@ -16,7 +16,8 @@ import { Help } from '../editor/HelpDrawer.js'
 import { Texture } from '../table/Texture.js'
 import { hue } from '../table/hue.js'
 import { cardName, cardWord, floorName } from '../table/keyboard.js'
-import { isMaterial } from '../components.js'
+import { isMaterial, tilesLast } from '../components.js'
+import { TileInCard } from '../table/TileInCard.js'
 import { seatColor } from '../table/seatColor.js'
 import { Refusal, type RefusalHandle } from '../status/Refusal.js'
 import { useT, type T } from '../i18n/index.js'
@@ -80,7 +81,7 @@ export function PlayerDesk(props: PlayerDeskProps) {
   const t = useT()
   const playing = !view.ended && !view.rewind
   // Drawn as the grid draws it, from the bottom up (#415): the card just drawn is the last.
-  const hand = view.components.filter((c) => c.zone === `hand:${seat}`).reverse()
+  const hand = tilesLast(view.components.filter((c) => c.zone === `hand:${seat}`).reverse())
   const groups = deskTargets(view, t)
   const [aimed, setAimed] = useState<string | null>(null)
   const targets = useRef<HTMLElement>(null)
@@ -329,7 +330,9 @@ function HandRow({ view, cards, faces, locked, turnedHand, onOpen, onAim, onPlay
         {cards.map((c) => (
           <div className="byd-desk-slot" key={c.id}>
             <button className="byd-hand-face byd-desk-card" {...hand.cardProps(c)}>
-              <HandFace faces={faces} c={c} turned={turned.has(c.id)} />
+              <TileInCard c={c}>
+                <HandFace faces={faces} c={c} turned={turned.has(c.id)} />
+              </TileInCard>
             </button>
           </div>
         ))}

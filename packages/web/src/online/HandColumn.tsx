@@ -3,6 +3,8 @@ import { HandFace } from '../player/HandFace.js'
 import { COLUMN_STYLE } from './fan.js'
 import type { HandDragOptions, HandPlay } from './handDrag.js'
 import { useHandGestures } from './handGestures.js'
+import { tilesLast } from '../components.js'
+import { TileInCard } from '../table/TileInCard.js'
 
 export type HandColumnProps = {
   cards: readonly VisibleComponentState[]
@@ -45,16 +47,20 @@ export type HandColumnProps = {
 // never does (L10).
 //
 // What a press does is `useHandGestures`, which the row along the foot of `/play` shares (#1310).
-export function HandColumn({ cards, faces, onPlay, locked = false, onCarry, aim, onOpen, turned, onTurn }: HandColumnProps) {
+export function HandColumn({ cards: held, faces, onPlay, locked = false, onCarry, aim, onOpen, turned, onTurn }: HandColumnProps) {
+  const cards = tilesLast(held)
   const n = cards.length
   const hand = useHandGestures({ cards, faces, onPlay, locked, onCarry, aim, onOpen, turned, onTurn, shape: 'column' })
   return (
     <>
       <div ref={hand.container} className="byd-hand-col" data-hand-fan data-hand-column role="group" aria-label={`Min hand, ${n} kort`} style={COLUMN_STYLE}>
-        {cards.map((c) => (
+        {cards.map((c, i) => (
           <div className="byd-col-slot" key={c.id}>
             <button className="byd-hand-face byd-col-card" {...hand.cardProps(c)}>
-              <HandFace faces={faces} c={c} turned={turned?.has(c.id) === true} />
+              {/* Overlapped from below, a tile stands at the top of its frame, where the strip shows (#1538). */}
+              <TileInCard c={c} top={i < n - 1}>
+                <HandFace faces={faces} c={c} turned={turned?.has(c.id) === true} />
+              </TileInCard>
             </button>
           </div>
         ))}

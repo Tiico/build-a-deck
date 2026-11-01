@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent, type ReactNode, type RefObject } from 'react'
 import { fieldLabel, nextCardRef } from './fields.js'
 import { DeckWall, type WallView } from './DeckWall.js'
 import { EditorTabs, modesFor, panelId, tabId, type Mode } from './EditorTabs.js'
@@ -12,7 +12,8 @@ import type { CatalogIcon } from './icon-catalog.js'
 import type { OwnIcon } from './IconCatalog.js'
 import { TemplateCanvas } from './TemplateCanvas.js'
 import { BoxTab } from './BoxTab.js'
-import type { BoxFace } from '@byd/engine'
+import { BoardTab } from './BoardTab.js'
+import type { BoxFace, ComponentTypeDef } from '@byd/engine'
 import { DataTable } from './DataTable.js'
 import { AiPanel, useAiKey } from './AiPanel.js'
 import { proposalView, rulesView, showsDeck, showsRules, showsTemplate, translated, type ProposalView, type ShownProposal } from './proposals.js'
@@ -24,7 +25,8 @@ import { MarkedProvider } from './marked.js'
 import { HistoryPanel } from './HistoryPanel.js'
 import { GameMore } from './GameMore.js'
 import { NoticeBand } from './NoticeBand.js'
-import { QuotaReached } from '../account/quota.js'
+import { QuotaReached, type Quota } from '../account/quota.js'
+import { proCardUrl, useProOffer, useRenewOffer } from '../account/pro.js'
 import { QuotaSaid, quotaWords, type QuotaWords } from '../account/quota-words.js'
 import { marked } from '../account/marked.js'
 import { RulesPanel } from './RulesPanel.js'
@@ -38,13 +40,16 @@ import { useProjectClient, type ProjectTiming } from './useProjectClient.js'
 import { Arriving } from './AssetImage.js'
 import { WithheldPictures, drawnEmpty, type Withheld } from './withheld.js'
 import type { ProjectDoc } from '@byd/server'
+import { MARKER_REF, copiesOf, deckTabs, deckView } from '@byd/server/doc'
+import { DeckTabs, TileProps, isTileType, typed } from './DeckTabs.js'
+import { OtherDecks, OwnDeckHead } from './WallDecks.js'
 import { useTableClient } from '../table/useTableClient.js'
 import { seatColor } from '../table/seatColor.js'
 import { roomAddress } from '../table/roomAddress.js'
 import type { Snapshot } from '@byd/protocol'
 import { TableEnded, type ProjectClient, type SaveFailure } from './ProjectClient.js'
 import { RENDER_STALLED_AFTER_MS, stillRendering, useStalled, type Textures } from '../table/textures.js'
-import { loginUrl, myAccount, removeProject } from '../account/api.js'
+import { loginUrl, myAccount, removeProject, type GameReadOnly } from '../account/api.js'
 import { HereFaces } from './HereDoor.js'
 import { StatusNotice } from '../status/StatusNotice.js'
 import { useSay } from '../status/StatusLive.js'
@@ -132,8 +137,10 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   // the same moment and not before (#1406, beslut 2 och 3, #1413), so the two are asked the one
   // question; until then the box only grows in the wall's foot.
   const startable = client?.startable === true
-  const modes = modesFor(startable)
-  const stages = room === 'desk' ? null : stagesFor(room, startable)
+  // The board's tab comes with the first board laid in Bord (#1481).
+  const boarded = (client?.doc.setup.boards?.length ?? 0) > 0
+  const modes = modesFor(startable, boarded)
+  const stages = room === 'desk' ? null : stagesFor(room, startable, boarded)
   // Below the desk «Spara» and «Uppdatera bordet» stand in the header while the header stands, as
   // they do at the desk, and the strip is the stages' own (#567, beslut B): at 820 px the two had
   // hidden Media, Regler and Bord behind them. In a low window the header scrolls away (#550), so
@@ -182,6 +189,10 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   // Which group the canvas edits (#13), or nothing for the base every card inherits.
   const [group, setGroup] = useState<string | null>(null)
   const [row, setRow] = useState<string | null>(null)
+  // Which deck Mall and Tabell show (#1487, #1474 A): null for the document's own, a deck's id, or a
+  // marker's sides as `marker:<id>`. One choice for both tabs, so the deck a row was opened from is
+  // the deck its template is drawn in.
+  const [deckRef, setDeckRef] = useState<string | null>(null)
   // An AI proposal laid on the wall among the deck's cards (#1002): its parts, translated against the
   // game as it stands every time the wall is drawn, so the ghosts take the ids the game has free now.
   // Held by what it was worked out from, so a wall drawn again over the same game draws the same cards.
@@ -193,6 +204,9 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   // so going between Mall and Låda leaves each where the designer left it.
   const [boxFace, setBoxFace] = useState<BoxFace>('front')
   const [boxElement, setBoxElement] = useState<string | null>(null)
+  // The board whose side the «Bräde» tab edits (#1481), by its name, and the layer chosen on it.
+  const [boardId, setBoardId] = useState<string | null>(null)
+  const [boardElement, setBoardElement] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   // What could not happen, and what just did. Two states, because they are two different pieces
   // of news and one slot could only ever hold the later of them (#35).
@@ -202,7 +216,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   // later, and the change it was about vanished without a word. Said again, the same words are a
   // new notice, so a save cannot put away a word it never stood in front of.
   // `lead` is what did not happen when a met ceiling is said (#1198, variant A), set off before the rest.
-  const [notice, setNotice] = useState<{ text: string; lead?: string } | null>(null)
+  const [notice, setNotice] = useState<{ text: string; lead?: string; quota?: Quota } | null>(null)
   const say = useCallback((text: string) => setNotice({ text }), [])
   // The terms (#1272): an account that has not accepted them holds its edits from the start, so the
   // first one opens the dialog rather than going to the actor and back. The server says so too, for
@@ -220,11 +234,20 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
       live = false
     }
   }, [client, http])
-  const sayQuota = useCallback((words: QuotaWords) => setNotice({ lead: words.what, text: [words.why, words.way].filter((part) => part !== '').join(' ') }), [])
+  const sayQuota = useCallback((words: QuotaWords, quota?: Quota) => setNotice({ lead: words.what, text: [words.why, words.way].filter((part) => part !== '').join(' '), ...(quota ? { quota } : {}) }), [])
+  // Pro beside a met ceiling of her own (#1494): the price and the way to Profil's card.
+  const offer = useProOffer(http, notice?.quota)
+  // The reading band offers the owner Pro again, with its price (#1532); a co-editor hears no tier.
+  const renew = useRenewOffer(http, client?.readOnly?.bearer === 'you')
+  const goPro = (e: MouseEvent<HTMLAnchorElement>) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return
+    e.preventDefault()
+    onNavigate(proCardUrl())
+  }
   // An icon chosen for a layer is bound at once and its bytes follow (#1093). Should they not arrive
   // the choice has been taken back whole, and the notice says so where every upload's failure is said.
   const iconSettled = ({ name, stored }: { name: string; stored: Promise<void> }): string => {
-    void stored.catch((err: unknown) => (err instanceof QuotaSaid ? sayQuota(err.words) : say(saidOr(err, t('icons.catalog.refused', { name })))))
+    void stored.catch((err: unknown) => (err instanceof QuotaSaid ? sayQuota(err.words, err.quota) : say(saidOr(err, t('icons.catalog.refused', { name })))))
     return name
   }
   const putAway = (standing: { text: string; lead?: string } | null) => setNotice((now) => (now === standing ? null : now))
@@ -463,7 +486,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
     // A ceiling is said as the ceiling (#1198): what did not happen, the numbers and the way out.
     const met = client?.refusedQuota
     if (heard.client === client && refusedEdits > heard.n) {
-      if (met) sayQuota(quotaWords(met.quota, { kind: 'edit', edit: met.edit, game: client.doc.name, grown: met.grown }, t))
+      if (met) sayQuota(quotaWords(met.quota, { kind: 'edit', edit: met.edit, game: client.doc.name, grown: met.grown }, t), met.quota)
       else say(t('editor.edit.refused'))
     }
     heardRefusals.current = { client, n: refusedEdits }
@@ -499,6 +522,14 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
     return () => clearTimeout(timer)
   }, [readingSaid])
   const sayReading = (text: string) => setReadingSaid(text)
+  // An edit refused here because the game is read-only (#1492) is answered in the reading band, as a
+  // shortcut with nothing to do is (#489): each refusal said once.
+  const refusedHere = client?.readOnlyRefused ?? 0
+  const heardRefused = useRef(0)
+  useEffect(() => {
+    if (refusedHere > heardRefused.current) setReadingSaid(t('editor.readOnly.refused'))
+    heardRefused.current = refusedHere
+  }, [refusedHere, t])
   if (!projectId) return <StatusNotice notice={unlinked('editor', t)} surface="page" links={links} />
   if (fault === 'unauthorized') {
     // Not logged in (G1): to the login card and back here after.
@@ -510,6 +541,34 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   if (fault && fault !== 'loggedOut' && !client) return <StatusNotice notice={noticeFor(fault, 'editor', t)} surface="page" links={links} onRetry={retry} />
   if (!client) return <StatusNotice notice={noticeFor(slow ? 'slow' : 'loading', 'editor', t)} surface="page" links={links} onRetry={retry} />
   const doc = client.doc
+  // The decks Mall and Tabell have a tab for (#1487), and the one each shows. Tabell has rows to show,
+  // so a marker's tab is Mall's alone, and Tabell then shows the document's own deck.
+  const tabs = deckTabs(doc)
+  const mallTab = tabs.find((x) => x.ref === deckRef) ?? tabs[0]
+  const mallRef = mallTab.ref
+  const dataTabs = tabs.filter((x) => x.kind === 'deck')
+  const dataTab = dataTabs.find((x) => x.ref === mallRef) ?? tabs[0]
+  const mallDoc = deckView(doc, mallTab.ref)
+  const dataDoc = deckView(doc, dataTab.ref)
+  const mallEdits = client.inDeck(mallTab.ref)
+  const dataEdits = client.inDeck(dataTab.ref)
+  const pickDeck = (ref: string | null) => {
+    setDeckRef(ref)
+    setRow(null)
+    setGroup(null)
+    setElement(null)
+    setFace('front')
+  }
+  const goDeck = (ref: string | null, where: 'template' | 'table') => {
+    pickDeck(ref)
+    setStage(where === 'template' ? 'canvas' : 'table')
+  }
+  const newDeck = client.mayEdit ? () => pickDeck(client.addTileDeck(null, t)) : undefined
+  // A deck of tiles' or a marker's shape (#1487), changed from «Brickan» in Mall.
+  const retype = (ref: string, type: ComponentTypeDef) => {
+    if (ref.startsWith(MARKER_REF)) client.setMarkers((doc.setup.markers ?? []).map((m) => (m.id === ref.slice(MARKER_REF.length) ? typed(m, type) : m)))
+    else client.setDecks((doc.decks ?? []).map((d) => (d.id === ref ? typed(d, type) : d)))
+  }
   const shownWall = (() => {
     if (!ghosts) return null
     const had = ghostWall.current
@@ -543,7 +602,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
     // Never the server's own words (#485), and never the table's (#1018): why a save made no
     // version is one of the client's closed set, and each is said in the editor's voice.
     if (result.ok) putAway(standing)
-    else if (result.quota) sayQuota(quotaWords(result.quota, { kind: 'save', game: client.doc.name }, t))
+    else if (result.quota) sayQuota(quotaWords(result.quota, { kind: 'save', game: client.doc.name }, t), result.quota)
     else say(t(SAVE_FAILED[result.reason]))
     return result.ok
   }
@@ -597,7 +656,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
       // A met ceiling (#1196) is said as one (#1198), with the tables of this game the reader can open.
       if (err instanceof QuotaReached) {
         const here = (await client.tables().catch(() => [])).filter((one) => !one.ended && one.code !== undefined).length
-        sayQuota(quotaWords(err.quota, { kind: 'table', rev: client.rev, here }, t))
+        sayQuota(quotaWords(err.quota, { kind: 'table', rev: client.rev, here }, t), err.quota)
       } else say(t('editor.table.error.start'))
       return null
     }
@@ -696,6 +755,9 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
     wall: () => (
       <DeckWall
         key={wallMount}
+        // Ett avsnitt per lek (#1487, #1474 A), och inget nytt alls i ett spel med en lek.
+        ownHead={<OwnDeckHead doc={doc} onGo={goDeck} />}
+        others={<OtherDecks doc={doc} assetBase={http} motifs={deckMotifs} onGo={goDeck} />}
         doc={shownWall?.doc ?? doc}
         proposed={shownWall?.added}
         changed={shownWall?.changed}
@@ -766,34 +828,40 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
     ),
     template: () => (
       <TemplateCanvas
+        // A deck's own canvas (#1487): its template, rows and groups are its own, so another deck's
+        // tab starts afresh rather than keeping a layer or a group of the one before.
+        key={mallTab.ref ?? ''}
         stage={canvasStage}
         reading={!client.mayEdit}
-        doc={doc}
+        doc={mallDoc}
+        deckTabs={<DeckTabs tabs={tabs} current={mallTab.ref} onPick={pickDeck} onNew={newDeck} />}
+        {...(mallTab.ref !== null ? { type: mallTab.type } : {})}
+        propsHead={mallRef !== null && isTileType(mallTab.type) ? <TileProps type={mallTab.type} reading={!client.mayEdit} onType={(type) => retype(mallRef, type)} /> : undefined}
         assetBase={http}
         motifs={deckMotifs}
         face={face}
         onSelectFace={setFace}
-        onReplaceFace={(base) => client.replaceFace(face, base)}
+        onReplaceFace={(base) => mallEdits.replaceFace(face, base)}
         row={row}
         onPickRow={setRow}
         selectedElement={element}
         onSelectElement={setElement}
-        onPatch={(id, patch, gesture) => client.patchElement(face, id, patch, group, gesture)}
+        onPatch={(id, patch, gesture) => mallEdits.patchElement(face, id, patch, group, gesture)}
         onCallOff={(gesture) => client.callOff(gesture)}
-        onAdd={(el) => client.addElement(face, el, group)}
+        onAdd={(el) => mallEdits.addElement(face, el, group)}
         // The symbol's bytes travel before anything is placed (E1), so this is the one tool in the
         // rail that can fail on the way. It says so where the editor says everything else.
-        onReorder={(id, to) => client.moveElement(face, id, to)}
+        onReorder={(id, to) => mallEdits.moveElement(face, id, to)}
         // Locking a layer and naming it are edits to the element (L15), so they go the way every
         // other change to an element goes — through the base, which is where the layer lives even
         // when a group is open, exactly as the order does.
-        onLock={(id, locked) => client.patchElement(face, id, { locked: locked ? true : undefined })}
-        onRename={(id, name) => client.patchElement(face, id, { name: name ?? undefined })}
+        onLock={(id, locked) => mallEdits.patchElement(face, id, { locked: locked ? true : undefined })}
+        onRename={(id, name) => mallEdits.patchElement(face, id, { name: name ?? undefined })}
         onRemove={(id) => {
-          client.removeElement(face, id, group)
+          mallEdits.removeElement(face, id, group)
           setElement(null)
         }}
-        onAddField={(field, bindTo) => client.addField(field, { face, id: bindTo, group })}
+        onAddField={(field, bindTo) => mallEdits.addField(field, { face, id: bindTo, group })}
         // The game's typefaces moved to Speltema (L57); the panel says so and takes the hand there,
         // with the section that holds them open.
         onOpenFonts={() => {
@@ -810,10 +878,10 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         group={group}
         onSelectGroup={setGroup}
         onGroupColumn={(column) => {
-          client.setGroupColumn(column)
+          mallEdits.setGroupColumn(column)
           setGroup(null)
         }}
-        onReset={(id) => group && client.resetElement(face, id, group)}
+        onReset={(id) => group && mallEdits.resetElement(face, id, group)}
       />
     ),
     // Lådan (#1413): the net, with the face chosen edited by Mall's own canvas.
@@ -856,32 +924,61 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         onAddPicture={(file) => client.addPicture(file, t)}
       />
     ),
+    // Brädet (#1481): the board's side, edited by Mall's own canvas as a face of the box is.
+    board: () => (
+      <BoardTab
+        doc={doc}
+        edit={client}
+        reading={!client.mayEdit}
+        assetBase={http}
+        motifs={deckMotifs}
+        board={boardId}
+        onSelectBoard={(id) => {
+          setBoardId(id)
+          setBoardElement(null)
+        }}
+        element={boardElement}
+        onSelectElement={setBoardElement}
+        onOpenFonts={() => {
+          revealThemeSection('fonts')
+          setStage('theme')
+        }}
+        {...(client.mayEdit ? { onCatalogFont: (family: CatalogFamily) => client.useCatalogFont(family, t) } : {})}
+        {...(client.mayEdit ? { onCatalogIcon: async (icon: CatalogIcon, gesture: string) => iconSettled(await client.chooseIcon(icon, t, gesture)) } : {})}
+        {...(client.mayEdit ? { onOwnIcon: async (own: OwnIcon, gesture: string) => iconSettled(await client.chooseOwnIcon(own.svg, own.name, own.credit, t, gesture)) } : {})}
+        onAddPicture={(file) => client.addPicture(file, t)}
+      />
+    ),
     table: () => (
       <DataTable
-        doc={doc}
+        // A deck's own table (#1487): its columns, widths and filters are its own.
+        key={dataTab.ref ?? ''}
+        doc={dataDoc}
+        deckTabs={<DeckTabs tabs={dataTabs} current={dataTab.ref} onPick={pickDeck} onNew={newDeck} />}
         reading={!client.mayEdit}
         project={projectId ?? undefined}
         assetBase={http}
         onUpload={(file, onto) => client.addPicture(file, t, onto)}
         onSymbol={(icon) => client.useIcon(icon, undefined, t)}
-        compareWith={compare ?? undefined}
+        // A version compared with and a proposal are the document's own deck's (#1484, #1003).
+        compareWith={dataTab.ref === null ? (compare ?? undefined) : undefined}
         onStopCompare={() => setCompare(null)}
         // An AI proposal shown in the table (#1003), through the same comparison in its own words —
         // but never one with a template, which is shown on the wall (#1005).
-        proposal={shownWall && !shownWall.templated ? shownWall : undefined}
+        proposal={dataTab.ref === null && shownWall && !shownWall.templated ? shownWall : undefined}
         onHideProposal={() => setGhosts(null)}
         onOpenTemplate={() => setStage('canvas')}
         selectedRow={row}
         onSelectRow={setRow}
-        onCell={(cardRef, field, value, gesture) => client.setCell(cardRef, field, value, gesture)}
-        onAddRow={(cardRef) => client.addRow(cardRef, { title: '', antal: 1 })}
-        onRemoveRow={(cardRef) => client.removeRow(cardRef)}
-        onReplaceRows={(rows) => client.replaceRows(rows)}
-        onAddField={(field, kind) => client.addField(field, undefined, kind)}
-        onRemoveField={(field) => client.removeField(field)}
-        onMoveField={(field, before) => client.moveField(field, before)}
-        onRenameField={(from, to) => client.renameField(from, to)}
-        onColumnKind={(field, kind) => client.setColumnKind(field, kind)}
+        onCell={(cardRef, field, value, gesture) => dataEdits.setCell(cardRef, field, value, gesture)}
+        onAddRow={(cardRef) => dataEdits.addRow(cardRef, { title: '', antal: 1 })}
+        onRemoveRow={(cardRef) => dataEdits.removeRow(cardRef)}
+        onReplaceRows={(rows) => dataEdits.replaceRows(rows)}
+        onAddField={(field, kind) => dataEdits.addField(field, undefined, kind)}
+        onRemoveField={(field) => dataEdits.removeField(field)}
+        onMoveField={(field, before) => dataEdits.moveField(field, before)}
+        onRenameField={(from, to) => dataEdits.renameField(from, to)}
+        onColumnKind={(field, kind) => dataEdits.setColumnKind(field, kind)}
       />
     ),
     // The three tabs whose work has no foot of its own are given one (#698, L67): the line what
@@ -896,7 +993,25 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
     // One panel and not two stacked (#126): the list of running tables stands in the setup's third
     // column, beside the felt, so the whole tab is one screen and the header stays where it was.
     // «Resultat» is a view of this tab (#1010), switched at the head of its first column.
-    tables: () => <BordTab doc={doc} client={client} assetBase={http} motifs={deckMotifs} server={params.get('server')} started={table?.kind === 'new' ? table.id : null} results={results} />,
+    tables: () => (
+      <BordTab
+        doc={doc}
+        client={client}
+        assetBase={http}
+        motifs={deckMotifs}
+        server={params.get('server')}
+        started={table?.kind === 'new' ? table.id : null}
+        results={results}
+        // From a tile's row to its deck's tab (#1487), or to a marker's sides in Mall.
+        onOpenDeck={goDeck}
+        // A board's row leads to the tab its side is drawn in, with that board chosen (#1481).
+        onDrawBoard={(id) => {
+          setBoardId(id)
+          setBoardElement(null)
+          setStage('board')
+        }}
+      />
+    ),
   }
 
   tableEndedRef.current = tableEnded
@@ -1052,7 +1167,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
           nothing routine may push it out of the way — but the designer may put it away (#1073).
           It is the first strip under the header, so it is in the same place whatever is up below
           it, and the header's row never gives it room: the game's name is never cut for it. */}
-      {notice && <NoticeBand text={notice.text} {...(notice.lead ? { lead: notice.lead } : {})} onClose={() => setNotice(null)} />}
+      {notice && <NoticeBand text={notice.text} {...(notice.lead ? { lead: notice.lead } : {})} {...(offer ? { offer: { text: offer, href: proCardUrl(), onGo: goPro } } : {})} onClose={() => setNotice(null)} />}
       {/* Said out loud, because a tool that is quietly missing reads as a tool that is broken: on
           a phone the editor is a reading and writing surface, and laying a card out waits for a
           wider screen (L10). */}
@@ -1265,13 +1380,29 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
           a band that says, once and in the same place on every tab, that this is read-only and
           why — and the one sentence a shortcut that has nothing to do is answered with. The tab
           panels point to it, so a keyboard entering one hears the reason too (L12). */}
-      {!client.mayEdit && (
-        <div className="byd-editor-readonly" id="byd-editor-reading" role="note" aria-label={t('editor.reading')} data-role-note>
+      {(!client.mayEdit || client.readOnly) && (
+        <div className="byd-editor-readonly" id="byd-editor-reading" role="note" aria-label={t('editor.reading')} {...(client.mayEdit ? { 'data-read-only': '' } : { 'data-role-note': '' })}>
           <BookGlyph />
-          <div>
-            <b>{t('editor.reading')}</b> — {t(client.role === 'tester' ? 'editor.role.tester' : 'editor.role.viewer')}
-            <small>{t('editor.reading.ask')}</small>
-          </div>
+          {/* The role's reading (#489) comes first: a viewer of a lapsed owner's game reads as a viewer.
+              Otherwise the game's own read-only mode (#1492, variant A), said to the owner with the
+              free tier's ceiling and to anyone else by the owner's name, never her tier. */}
+          {!client.mayEdit || !client.readOnly ? (
+            <div>
+              <b>{t('editor.reading')}</b> — {t(client.role === 'tester' ? 'editor.role.tester' : 'editor.role.viewer')}
+              <small>{t('editor.reading.ask')}</small>
+            </div>
+          ) : (
+            <div>
+              <b>{t('editor.reading')}</b> — {readOnlyLine(client.readOnly, client.doc, t)}
+              <small>{t(client.readOnly.bearer === 'you' ? 'editor.readOnly.you.ask' : 'editor.readOnly.owner.ask', ownerWords(client.readOnly, t))}</small>
+              {renew && <small>{renew}</small>}
+            </div>
+          )}
+          {client.mayEdit && client.readOnly && renew && (
+            <a className="byd-editor-notice-pro" href={proCardUrl()} onClick={goPro}>
+              {t('readOnly.pro.go')}
+            </a>
+          )}
           <span className="byd-editor-reading-said" role="status">
             {readingSaid ?? ''}
           </span>
@@ -1320,7 +1451,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         {(stages ?? modes).map(([key]) => (
           // One panel per tab, so every tab's `aria-controls` names a panel that exists; only the
           // open one carries content, so switching mode still mounts a single canvas.
-          <div key={key} id={panelId(key)} role="tabpanel" aria-labelledby={tabId(key)} {...(!client.mayEdit ? { 'aria-describedby': 'byd-editor-reading' } : {})} tabIndex={0} hidden={(stages ? here : mode) !== key}>
+          <div key={key} id={panelId(key)} role="tabpanel" aria-labelledby={tabId(key)} {...(!client.mayEdit || client.readOnly ? { 'aria-describedby': 'byd-editor-reading' } : {})} tabIndex={0} hidden={(stages ? here : mode) !== key}>
             {(stages ? here === key : mode === key) && panel[modeOf(key as Stage)]()}
           </div>
         ))}
@@ -1622,3 +1753,14 @@ function useLineState(down: boolean): { since: string | null; resumed: boolean }
   }, [resumed])
   return { since: stamp.current, resumed }
 }
+
+// The read-only mode's sentence in the reading band (#1492): to the owner, the ceiling the game lies
+// over, with what the game uses of it counted from the document; to anyone else, whose game it is.
+function readOnlyLine(held: GameReadOnly, doc: ProjectDoc, t: T): string {
+  const game = doc.name
+  if (held.bearer === 'owner') return t('editor.readOnly.owner', { game, ...ownerWords(held, t) })
+  const used = held.why === 'cardCopiesPerProject' ? doc.rows.reduce((n, row) => n + copiesOf(row.fields), 0) : doc.rows.length
+  return t(`editor.readOnly.you.${held.why}`, { game, used, limit: held.limit ?? 0 })
+}
+const ownerWords = (held: GameReadOnly, t: T): { owner: string; Owner: string } =>
+  held.bearer === 'owner' && held.ownerName ? { owner: held.ownerName, Owner: held.ownerName } : { owner: t('quota.owner'), Owner: t('quota.owner.start') }

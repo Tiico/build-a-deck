@@ -3,6 +3,9 @@ import { WireClient } from './client.js'
 import { createSession, registerRoom, start, twoSeatSetup, type Running } from './fixture.js'
 import { MemoryLogStore } from '../src/index.js'
 import { deck } from './deck.js'
+import { deckFromProject, ProjectDoc } from '../src/projects.js'
+import { openingSetup } from '../src/recipe.js'
+import { setupFromProject } from '../src/setup.js'
 import { MemoryObjectStore } from '@byd/render'
 import type { ObjectStore } from '@byd/render/queue'
 
@@ -848,6 +851,76 @@ describe('a hidden tile on the wire (#1482, B6)', () => {
     const tableFrames = table.frames.join('\n')
     expect(tableFrames).not.toMatch(SECRET)
     expect(tableFrames).not.toContain(shownFront)
+  }, 60_000)
+})
+
+// A tile from a deck of its own (#1484) is hidden on a card's terms (B6, #412): its row's title and
+// the words its own template prints leave nobody's wire while it lies face-down in a pile nobody may
+// look into, and the deck's name before its id tells nothing either. The table is laid from a game
+// document the way a project's table is (`setupFromProject`, `deckFromProject`).
+describe('a hidden tile of a tile deck on the wire (#1484, B6)', () => {
+  const HEX = { id: 'tile.hex.52', version: 1 }
+  const words = (id: string, field: string) => ({ kind: 'text' as const, id, x: 4, y: 10, w: 40, h: 8, bind: { field }, font: { family: 'sans-serif', sizePt: 9 }, color: '#111' })
+  const game = () => {
+    const setup = openingSetup({ players: 2, counters: [] })
+    return ProjectDoc.parse({
+      name: 'Landskap',
+      template: deck.template,
+      rows: [{ id: 'dragon', fields: { title: 'Drake' } }],
+      icons: {},
+      setup: { ...setup, zones: [...setup.zones, { id: 'bag', kind: 'pile', name: 'Påse', visibility: 'none', geometry: { x: 300, y: 0, w: 0, h: 0, rot: 0 } }] },
+      decks: [
+        {
+          id: 'landskap',
+          name: 'Landskap',
+          type: HEX,
+          template: { faces: { front: { base: [words('t', 'title'), words('r', 'resurs')], variants: {} }, back: { base: [], variants: {} } } },
+          rows: [
+            { id: 'granskog', fields: { title: 'Granskogen', resurs: 'Ger två trä' } },
+            { id: 'tjarn', fields: { title: 'Tjärnen', resurs: 'Ger en fisk' } },
+          ],
+          zone: 'bag',
+        },
+      ],
+    })
+  }
+  const SECRET = /granskog|tjarn|Granskogen|Tjärnen|Ger två trä|Ger en fisk/
+
+  it('leaves neither title nor text of a tile in the bag on any seat’s wire, and a drawn tile reaches its owner alone', async () => {
+    const doc = game()
+    const res = await fetch(`${run.http}/sessions`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', ...(await run.bearer()) },
+      body: JSON.stringify({ id: 'landskap', version: 'v1', setup: setupFromProject(doc), deck: deckFromProject(doc) }),
+    })
+    expect(res.status).toBe(201)
+    registerRoom('landskap', (await res.json()) as { code: string; hostKey: string })
+    const a = await connect('landskap', 'A')
+    const b = await connect('landskap', 'B')
+    const table = await connect('landskap', null)
+    const eva = await connect('landskap', null, { role: 'observer', name: 'Eva' })
+    for (const c of [a, b, table, eva]) await c.synced(0)
+
+    // The observer looks into every pile (C8): the tiles are there, titled and drawn with their deck.
+    const inBag = eva.view!.components.filter((c) => c.zone === 'bag')
+    expect(inBag.map((c) => c.title).sort()).toEqual(['Granskogen', 'Tjärnen'])
+    expect(inBag.flatMap((c) => c.text ?? []).sort()).toEqual(['Ger en fisk', 'Ger två trä'])
+    const fronts = inBag.map((c) => c.faces?.['front'])
+    for (const f of fronts) expect(f).toMatch(/^[0-9a-f]{64}$/)
+
+    for (const seat of [a, b, table]) {
+      const frames = seat.frames.join('\n')
+      expect(frames).not.toMatch(SECRET)
+      for (const f of fronts) expect(frames).not.toContain(f)
+      expect(componentsOnWire(seat).filter((c) => c.zone === 'bag')).toHaveLength(0)
+    }
+
+    await a.send('A', { v: 'draw', from: 'bag', to: 'hand:A', count: 1 })
+    for (const c of [a, b, table]) await c.synced(1)
+    const held = a.view!.components.find((c) => c.zone === 'hand:A')!
+    expect(held.cardRef).toMatch(/^landskap:(granskog|tjarn)$/)
+    expect(held.title).toMatch(/^(Granskogen|Tjärnen)$/)
+    for (const seat of [b, table]) expect(seat.frames.join('\n')).not.toMatch(SECRET)
   }, 60_000)
 })
 

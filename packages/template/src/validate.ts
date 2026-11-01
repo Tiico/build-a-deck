@@ -85,9 +85,12 @@ export function validateCard({ type, face, row, fonts, fitted, bleedMm = type.pr
     // The trim is where the knife falls, and it wanders. Content must stay inside the safe area;
     // a background that reaches the trim must carry on into the bleed, or the cut leaves a
     // white line along the edge.
-    const reaches = box.x <= 0 || box.y <= 0 || box.x + box.w >= widthMm || box.y + box.h >= heightMm
+    // A tile is cut in its own shape (#1487): a hexagon's or a circle's corners of the rectangle are
+    // cardboard punched away, so a word is measured against the contour and not the rectangle.
+    const inside = insideBy(type.physical, box)
+    const reaches = inside === null ? box.x <= 0 || box.y <= 0 || box.x + box.w >= widthMm || box.y + box.h >= heightMm : inside <= 0
     const bled = box.x <= -bleedMm && box.y <= -bleedMm && box.x + box.w >= widthMm + bleedMm && box.y + box.h >= heightMm + bleedMm
-    const near = box.x < safeMm || box.y < safeMm || box.x + box.w > widthMm - safeMm || box.y + box.h > heightMm - safeMm
+    const near = inside === null ? box.x < safeMm || box.y < safeMm || box.x + box.w > widthMm - safeMm || box.y + box.h > heightMm - safeMm : inside < safeMm
     const background = el.kind === 'shape' || el.kind === 'image'
     if (reaches && background && !bled) issues.push({ element: box.id, code: 'short-of-bleed', severity: 'error', values: { bleedMm } })
     else if (reaches && !background) issues.push({ element: box.id, code: 'outside-safe-area', severity: 'error', values: {} })
@@ -118,6 +121,36 @@ export function validateCard({ type, face, row, fonts, fitted, bleedMm = type.pr
   for (const o of oversetOf(face, row, fitted ?? []))
     issues.push({ element: o.element, code: 'text-overflow', severity: 'warning', values: { field: o.field, sizePt: o.sizePt, hidden: o.hidden, fit: o.fit } })
   return issues
+}
+
+// How far inside the cut a box lies, in millimetres, measured from its corner nearest the contour,
+// and below nothing when a corner is outside it. Null for a shape cut along its rectangle, which the
+// edges of the rectangle measure. The hexagon stands on a point (#1474): its flats are the left and
+// right edges, and its points are the middle of the top and the bottom.
+function insideBy(physical: ValidateInput['type']['physical'], box: { x: number; y: number; w: number; h: number }): number | null {
+  const { widthMm: w, heightMm: h } = physical
+  const corners = [
+    [box.x, box.y],
+    [box.x + box.w, box.y],
+    [box.x, box.y + box.h],
+    [box.x + box.w, box.y + box.h],
+  ] as const
+  if (physical.shape === 'circle') {
+    const r = Math.min(w, h) / 2
+    return Math.min(...corners.map(([x, y]) => r - Math.hypot(x - w / 2, y - h / 2)))
+  }
+  if (physical.shape !== 'hex') return null
+  const points: [number, number][] = [[w / 2, 0], [w, h / 4], [w, (3 * h) / 4], [w / 2, h], [0, (3 * h) / 4], [0, h / 4]]
+  // A convex outline clockwise on the page: a point's distance inside an edge is the cross product
+  // over the edge's length, and its distance inside the outline the least of the six.
+  const within = ([x, y]: readonly [number, number]) =>
+    Math.min(
+      ...points.map(([ax, ay], i) => {
+        const [bx, by] = points[(i + 1) % points.length] ?? [ax, ay]
+        return ((bx - ax) * (y - ay) - (by - ay) * (x - ax)) / Math.hypot(bx - ax, by - ay)
+      }),
+    )
+  return Math.min(...corners.map(within))
 }
 
 // A text box the renderer could not fit (#808), with what the designer calls it and where it stands

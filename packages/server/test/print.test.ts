@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { CARD_STANDARD_63x88, DICE, TOKEN_COUNTER, TypeRegistry, type SetupDef, STANDARD_TYPES } from '@byd/engine'
+import { CARD_STANDARD_63x88, DICE, MEEPLE, TOKEN_COUNTER, TypeRegistry, type SetupDef, STANDARD_TYPES } from '@byd/engine'
 import type { Deck } from '../src/faces.js'
 import { printExportOf } from '../src/faces.js'
 
@@ -104,6 +104,65 @@ describe('the print export (#14)', () => {
     it('leaves the hardware out when asked, and a game without dice has none', () => {
       expect(printExportOf(deck, withDice, registry, 123, { hardware: false }).hardware).toEqual([])
       expect(printExportOf(deck, setup, registry, 123).hardware).toEqual([])
+    })
+  })
+
+  // The export (G5) bears the printed parts as the package does (#1488): a board's side from its own
+  // template with the type's bleed, and a marker's sides once however many copies there are.
+  describe('boards and tiles (#1488)', () => {
+    const side = (fill: string) => ({ base: [{ kind: 'shape' as const, id: 'bg', x: -3, y: -3, w: 400, h: 400, shape: 'rect' as const, fill }], variants: {} })
+    const parts: Deck = {
+      ...deck,
+      boards: { Kartan: { faces: { front: side('#2e6b46') } }, Tom: { faces: {} } },
+      templates: { 'marker:guld': { faces: { front: side('#d99a1f'), back: side('#3a2a1a') } } },
+      drawnWith: { 'marker:guld': 'marker:guld' },
+      rows: { ...deck.rows, 'marker:guld': { title: 'Guld' } },
+    }
+    const hex = { id: 'tile.hex.52', version: 1 }
+    const withParts: SetupDef = {
+      ...setup,
+      components: [
+        ...setup.components,
+        { type: { id: 'board.player', version: 1 }, cardRef: 'Kartan', zone: 'table', face: 'front' },
+        { type: { id: 'board.player', version: 1 }, cardRef: 'Tom', zone: 'table', face: 'front' },
+        { type: hex, cardRef: 'marker:guld', zone: 'table', face: 'back' },
+        { type: hex, cardRef: 'marker:guld', zone: 'table', face: 'back' },
+      ],
+    }
+
+    it('prints the board\'s side and the markers\' sides, a board nobody drew not at all, and identical markers once', () => {
+      const printed = printExportOf(parts, withParts, registry, 123)
+      expect(printed.cards.map((card) => card.cardRef)).toEqual(['trap', 'dragon', 'trap', 'Kartan', 'marker:guld', 'marker:guld'])
+      expect(Object.keys(printed.cards[3]!.faces)).toEqual(['front'])
+      expect(printed.cards[4]!.faces).toEqual(printed.cards[5]!.faces)
+      const board = printed.jobs.find((j) => j.hash === printed.cards[3]!.faces['front'])!
+      expect(board.compiled.html).toContain('data-bleed="3"')
+      expect(new Set(printed.jobs.map((j) => j.hash)).size).toBe(printed.jobs.length)
+    })
+  })
+
+  // A meeple is stock as a die is (#1478, beställarens beslut 5 i #1470), in its seat's colour (L11).
+  describe('meeples (#1478)', () => {
+    const meeple = (seat: string) => ({ type: { id: MEEPLE.id, version: MEEPLE.version }, cardRef: seat, zone: 'table', face: 'standing' })
+    const withMeeples: SetupDef = { ...setup, seats: ['A', 'B'], components: [...setup.components, meeple('A'), meeple('B'), meeple('A')] }
+
+    it('lists each seat\'s meeples as hardware in the seat\'s colour, and prints none of them', () => {
+      const printed = printExportOf(deck, withMeeples, registry, 123)
+      expect(printed.cards.map((card) => card.cardRef)).toEqual(['trap', 'dragon', 'trap'])
+      expect(printed.hardware).toEqual([
+        { type: 'piece.meeple', count: 2, colour: '#e05a4f' },
+        { type: 'piece.meeple', count: 1, colour: '#3c8ce7' },
+      ])
+      expect(printed.leftOut).toEqual([])
+    })
+
+    it('leaves them out when asked, and says what it left', () => {
+      const printed = printExportOf(deck, withMeeples, registry, 123, { hardware: false })
+      expect(printed.hardware).toEqual([])
+      expect(printed.leftOut).toEqual([
+        { type: 'piece.meeple', count: 2, colour: '#e05a4f' },
+        { type: 'piece.meeple', count: 1, colour: '#3c8ce7' },
+      ])
     })
   })
 })

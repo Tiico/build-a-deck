@@ -7,6 +7,7 @@ import { compileCard, type Template } from '@byd/template'
 import { decodePng } from '../../../test-support/png.js'
 import type { Deck } from '../src/faces.js'
 import { printFileJobsOf, printManifestOf, renderedFiles } from '../src/print-files.js'
+import { testPrinterConfig } from '../src/print-providers.js'
 import { start, twoSeatSetup, type Running } from './fixture.js'
 
 // Print files after the partner's requirements (#1207): the files a provider's `prepare` names are
@@ -46,9 +47,9 @@ const setup: SetupDef = {
 }
 
 // Every file of the order drawn through the queue and the worker, as the render container would.
-async function drawn(order: PreparedOrder) {
+async function drawn(order: PreparedOrder, from: Deck = deck) {
   const renders = new MemoryRenderStore()
-  const jobs = printFileJobsOf(deck, registry, order, 1)
+  const jobs = printFileJobsOf(from, registry, order, 1)
   for (const { job } of jobs) await renders.enqueue(job)
   const renderer = await Renderer.launch()
   try {
@@ -68,6 +69,107 @@ describe('the game as a print partner is handed it', () => {
     // Both backs are the same picture, so they are one file to the partner.
     expect(manifest.cards[0]?.faces['back']).toBe(manifest.cards[1]?.faces['back'])
     expect(manifest.hardware).toEqual([{ type: { id: 'die.d6', version: 1 }, count: 1 }])
+  })
+
+  // A wooden piece is stock the partner packs, as a die is (#1478, beställarens beslut 5 i #1470),
+  // and it wears its seat's colour (L11): each seat's meeples are a line of their own, in the
+  // colour the table draws the seat in, and a piece of no seat has no colour.
+  it('lists each seat\'s meeples as hardware in the seat\'s colour, never as cards', () => {
+    const piece = (kind: string, seat: string) => ({ type: { id: `piece.${kind}`, version: 1 }, cardRef: seat, zone: 'table', face: kind === 'meeple' ? 'standing' : 'front' })
+    const seated: SetupDef = { ...setup, seats: ['A', 'B'], components: [...setup.components, piece('meeple', 'A'), piece('meeple', 'B'), piece('meeple', 'A'), piece('disc', ''), piece('meeple', 'A')] }
+    const manifest = printManifestOf(deck, seated, registry)
+    expect(manifest.cards.map((c) => c.cardRef)).toEqual(['drake', 'troll', 'drake'])
+    expect(manifest.hardware).toEqual([
+      { type: { id: 'die.d6', version: 1 }, count: 1 },
+      { type: { id: 'piece.meeple', version: 1 }, count: 3, colour: '#e05a4f' },
+      { type: { id: 'piece.meeple', version: 1 }, count: 1, colour: '#3c8ce7' },
+      { type: { id: 'piece.disc', version: 1 }, count: 1 },
+    ])
+  })
+})
+
+// The printed parts beyond the card (#1488, beställarens beslut 12 i #1470): a board's side is drawn
+// from the board's own template under its name, a marker's sides from the marker's template, and each
+// goes to the partner as a file of its own with the bleed the partner asks for. Identical markers are
+// one entry per copy, as copies of a card are, and one file per side.
+const reaching = (w: number, h: number, reach: number, fill: string): Template['faces'][string] => ({ base: [{ kind: 'shape', id: 'bg', x: -reach, y: -reach, w: w + 2 * reach, h: h + 2 * reach, shape: 'rect', fill }], variants: {} })
+const BOARD = { id: 'board.rect610', version: 1 }
+const HEX = { id: 'tile.hex.52', version: 1 }
+const parts: Deck = {
+  ...deck,
+  boards: { Kartan: { faces: { front: reaching(610, 457, 4, '#2e6b46') } } },
+  templates: { 'marker:guld': { faces: { front: reaching(52, 60.04, 4, '#d99a1f'), back: reaching(52, 60.04, 4, '#3a2a1a') } } },
+  drawnWith: { 'marker:guld': 'marker:guld' },
+  rows: { ...deck.rows, 'marker:guld': { title: 'Guld' } },
+}
+const withParts: SetupDef = {
+  ...setup,
+  components: [
+    ...setup.components,
+    { type: BOARD, cardRef: 'Kartan', zone: 'table', face: 'front' },
+    { type: HEX, cardRef: 'marker:guld', zone: 'table', face: 'back' },
+    { type: HEX, cardRef: 'marker:guld', zone: 'table', face: 'back' },
+  ],
+}
+
+describe('a board and tiles as a print partner is handed them (#1488)', () => {
+  it('lists the board and every marker as printed parts, each copy an entry and each side one picture', () => {
+    const manifest = printManifestOf(parts, withParts, registry)
+    expect(manifest.cards.map((c) => [c.cardRef, c.type.id])).toEqual([
+      ['drake', 'card.standard.63x88'],
+      ['troll', 'card.standard.63x88'],
+      ['drake', 'card.standard.63x88'],
+      ['Kartan', 'board.rect610'],
+      ['marker:guld', 'tile.hex.52'],
+      ['marker:guld', 'tile.hex.52'],
+    ])
+    expect(Object.keys(manifest.cards[3]!.faces)).toEqual(['front'])
+    expect(manifest.cards[4]!.faces).toEqual(manifest.cards[5]!.faces)
+  })
+
+  it('draws the board from its own template, in its own size and the partner\'s bleed, and the markers once', () => {
+    const order = multiStep().prepare(printManifestOf(parts, withParts, registry))
+    const jobs = printFileJobsOf(parts, registry, order, 1)
+    const board = jobs.find((j) => j.name === 'Kartan-front.png')!
+    const compiled = compileCard({ template: parts.boards!['Kartan']!, type: registry.get(BOARD), row: {}, icons: parts.icons, bleed: 3.175 })['front']!
+    expect(board.job.compiled).toEqual({ html: compiled.html, css: compiled.css })
+    expect(board.job.kind).toEqual({ kind: 'raster', format: 'png', widthPx: 7280, heightPx: 5473 })
+    expect(jobs.filter((j) => j.name.startsWith('marker_guld')).map((j) => j.name)).toEqual(['marker_guld-front.png', 'marker_guld-back.png'])
+  })
+
+  // DRIFT §6: the render container's cap is 1 500 MB, and the worker draws one page at a time. The
+  // largest raster any partner asks for is the big board at 300 DPI; decoded it is width × height ×
+  // 4 bytes, and Chromium holds the page's surface, the screenshot and the PNG being written, about
+  // four of it at once. That has to stand well under the cap with the browser's own ~255 MiB.
+  it('asks no partner for a board raster the render worker could not hold', () => {
+    const CAP_MB = 1500
+    const BROWSER_MB = 255
+    for (const provider of [multiStep(), singleOrder(), createFakeProvider(testPrinterConfig(STANDARD_TYPES))]) {
+      for (const def of STANDARD_TYPES.filter((t) => t.ownFaces)) {
+        const req = provider.supports(def) ? provider.requirements(def) : undefined
+        if (req?.kind !== 'printed' || req.file.kind !== 'raster') continue
+        const mb = (req.file.widthPx * req.file.heightPx * 4 * 4) / 1024 / 1024
+        expect(mb + BROWSER_MB, `${provider.id} ${def.id}`).toBeLessThan(CAP_MB)
+      }
+    }
+  })
+})
+
+// Testtryckeriet packs what the registry says is stock (#1140, #1478): a die by its kind, and a
+// wooden piece by its kind with a part number for each seat colour, since it pretends to stock them.
+describe('Testtryckeriet\'s stock (#1478)', () => {
+  it('packs a meeple as «meeple», in every seat colour', () => {
+    const config = testPrinterConfig(STANDARD_TYPES)
+    const stock = (id: string) => config.catalog.find((r) => r.type.id === id)
+    expect(stock('die.d6')).toMatchObject({ kind: 'stock', sku: 'd6' })
+    const meeple = stock('piece.meeple')
+    expect(meeple).toMatchObject({ kind: 'stock', sku: 'meeple' })
+    expect(meeple?.kind === 'stock' ? meeple.colours?.slice(0, 2) : null).toEqual([
+      { colour: '#e05a4f', sku: 'meeple-red' },
+      { colour: '#3c8ce7', sku: 'meeple-blue' },
+    ])
+    const prepared = createFakeProvider(config).prepare({ cards: [], hardware: [{ type: { id: 'piece.meeple', version: 1 }, count: 5, colour: '#3c8ce7' }] })
+    expect(prepared.hardware).toEqual([{ type: { id: 'piece.meeple', version: 1 }, sku: 'meeple-blue', count: 5, colour: '#3c8ce7' }])
   })
 })
 
@@ -129,6 +231,9 @@ for (const [name, provider] of [
   ['fake-provider i en order, med de riktiga filerna', singleOrder],
 ] as const) {
   printProviderContract(name, { provider, manifest: printManifestOf(deck, setup, registry), files: drawn })
+  // And a game with the big board and two identical markers (#1488): the board's 7 280 × 5 473 px
+  // raster is the largest any partner asks for, and the worker draws it inside its cap (DRIFT §6).
+  printProviderContract(`${name}, med ett bräde och brickor`, { provider, manifest: printManifestOf(parts, withParts, registry), files: (order) => drawn(order, parts) })
 }
 
 // The print package over HTTP (#1207, read by #1208): the order a provider would get for the game
@@ -190,7 +295,7 @@ describe('the print package of a game', () => {
     const book = await call('GET', '/projects/p1/print-package/files/regelhafte.pdf?provider=fake-multi-step')
     expect(book.headers.get('content-type')).toBe('application/pdf')
     expect((await call('GET', '/projects/p1/print-package/files/nothing.png?provider=fake-multi-step')).status).toBe(404)
-  }, 120_000)
+  }, 90_000)
 
   // A background that reaches the type's 3 mm reaches the bleed where no partner is asked, and
   // falls short for a partner that wants an eighth of an inch (E5, #1207): its card files are left

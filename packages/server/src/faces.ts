@@ -1,7 +1,7 @@
-import { TILES, isMaterial, type ComponentTypeDef, type SetupDef, type TypeRegistry } from '@byd/engine'
+import { isMaterial, seatColourOf, type ComponentTypeDef, type SetupDef, type TypeRegistry } from '@byd/engine'
 import type { CardTexts, CardTitles, FaceHashes } from '@byd/engine'
 import { compileCard, printedText, type Compiled, type Motif, type Row, type Template } from '@byd/template'
-import { contentHash, type RenderRequest } from '@byd/render/queue'
+import { contentHash, type RenderKind, type RenderRequest } from '@byd/render/queue'
 import { titleOfFields } from './names.js'
 
 // `fonts` is what the version is pinned to (B3), already resolved to something a page can load.
@@ -43,14 +43,27 @@ export function compileRow(deck: Deck, type: ComponentTypeDef, row: Row, bleed: 
   return compileCard({ template: deck.template, type, row, icons: deck.icons, ...(bleed === false ? {} : { bleed }), ...(deck.palette ? { palette: deck.palette } : {}), ...(deck.fonts ? { fonts: deck.fonts } : {}), ...(deck.motifs ? { motifs: deck.motifs } : {}) })
 }
 
-// A tile (#1482, #1483) goes to print as #1488 says: its own files, the identical ones once. Until
-// then it stands outside the print, where a partner that prints only cards would refuse the order.
-export const printedYet = (type: ComponentTypeDef): boolean => !TILES.some((t) => t.id === type.id)
+// Every printed side of one component, compiled for print (#1488): a card's or a tile's from its row
+// with the template the row is drawn with (a marker's own, #1483), and a board's from the board's own
+// template under its name (#1479), since it is no row. A board nobody has drawn yet has nothing to
+// print, and says so with null; a card whose row is gone is an error, as it always was.
+export function printedSides(deck: Deck, type: ComponentTypeDef, cardRef: string, bleed: boolean | number = false): Record<string, Compiled> | null {
+  if (type.ownFaces) {
+    const template = deck.boards?.[cardRef]
+    if (!template || Object.keys(template.faces).length === 0) return null
+    return compileRow({ ...deck, template }, type, {}, bleed)
+  }
+  const row = deck.rows[cardRef]
+  if (!row) throw new Error(`deck has no row "${cardRef}" for print`)
+  return compileRow(deckFor(deck, cardRef), type, row, bleed)
+}
 
 export type PrintCard = { cardRef: string; faces: Record<string, string> }
 // Hardware is what the partner packs rather than prints (#1140): a stock die, by type and count.
-export type PrintHardware = { type: string; count: number }
-export type PrintExport = { cards: PrintCard[]; jobs: RenderRequest[]; hardware: PrintHardware[] }
+// A wooden piece is said in its seat's colour (#1478, L11); a die has none.
+export type PrintHardware = { type: string; count: number; colour?: string }
+// `leftOut` is the hardware an order asked to go without (`hardware: false`), said rather than dropped.
+export type PrintExport = { cards: PrintCard[]; jobs: RenderRequest[]; hardware: PrintHardware[]; leftOut: PrintHardware[] }
 
 // Compiles every card in the setup once per face and keys the textures by content hash
 // (DRIFT §6): the same face on three copies is one rendering, and a card that did not change
@@ -72,14 +85,27 @@ export type CompiledFaces = { faces: FaceHashes; titles: CardTitles; texts: Card
 // compiled them all before handing any on held all of them at once, and took the app past its heap
 // at the start of a table. Each card's new jobs are yielded before the next card is compiled, so a
 // page lives only until it is queued.
+// The felt's own picture of a board (#1480, beställarens beslut 2026-11-01): a JPEG at quality 90,
+// at most 2048 px on its long side and never denser than a card's texture, so the felt draws it at
+// a card's pixels per millimetre or fewer. A big board in a card's 150 DPI was 3602 × 2699 px, and a
+// PNG of a photograph on it tens of megabytes for every screen that draws the felt. The print keeps
+// the type's own resolution (#1488); this is the table's.
+export const BOARD_TEXTURE_MAX_PX = 2048
+export const BOARD_TEXTURE_QUALITY = 90
+export function boardTextureKind(def: ComponentTypeDef, dpi: number): RenderKind {
+  const { widthMm, heightMm } = def.physical
+  const perMm = Math.min(dpi / 25.4, BOARD_TEXTURE_MAX_PX / Math.max(widthMm, heightMm))
+  return { kind: 'raster', format: 'jpg', quality: BOARD_TEXTURE_QUALITY, widthPx: Math.round(widthMm * perMm), heightPx: Math.round(heightMm * perMm) }
+}
+
 function* compiledCards(deck: Deck, setup: SetupDef, registry: TypeRegistry, dpi: number, now: number, out: CompiledFaces): Generator<RenderRequest> {
   const seen = new Set<string>()
-  const job = (page: Compiled, perFace: Record<string, string>, face: string): RenderRequest | undefined => {
-    const hash = contentHash(page, { kind: 'png', dpi })
+  const job = (page: Compiled, perFace: Record<string, string>, face: string, kind: RenderKind = { kind: 'png', dpi }): RenderRequest | undefined => {
+    const hash = contentHash(page, kind)
     perFace[face] = hash
     if (seen.has(hash)) return undefined
     seen.add(hash)
-    return { hash, kind: { kind: 'png', dpi }, priority: 'texture', compiled: { html: page.html, css: page.css }, requestedAt: now }
+    return { hash, kind, priority: 'texture', compiled: { html: page.html, css: page.css }, requestedAt: now }
   }
   for (const spec of setup.components) {
     const def = registry.get(spec.type)
@@ -89,7 +115,7 @@ function* compiledCards(deck: Deck, setup: SetupDef, registry: TypeRegistry, dpi
       const perFace: Record<string, string> = {}
       out.ownFaces[spec.cardRef] = perFace
       for (const [face, page] of Object.entries(compileRow({ ...deck, template }, def, {}))) {
-        const next = job(page, perFace, face)
+        const next = job(page, perFace, face, boardTextureKind(def, dpi))
         if (next) yield next
       }
       continue
@@ -138,28 +164,30 @@ export async function queueFaces(deck: Deck, setup: SetupDef, registry: TypeRegi
 // This is the print where no partner is asked, so the bleed is the type's own; a partner's files
 // are drawn after its own requirements in `print-files.ts` (#1207).
 //
-// A stock item, a die (#1140), is listed as hardware by kind in the order the game first names it,
-// and printed as nothing. Whoever orders may leave the hardware out (`hardware: false`): many
+// A stock item, a die (#1140) or a wooden piece (#1478), is listed as hardware by kind, and a piece
+// by its seat's colour too, in the order the game first names it, and printed as nothing.
+// Left out, it is said in `leftOut`, so that whoever ordered hears the game arrives without it. Whoever orders may leave the hardware out (`hardware: false`): many
 // partners will not pack it, and a game is still a game of cards without it.
 export function printExportOf(deck: Deck, setup: SetupDef, registry: TypeRegistry, now: number, opts: { hardware?: boolean } = {}): PrintExport {
   const cards: PrintCard[] = []
   const jobs = new Map<string, RenderRequest>()
-  const hardware = new Map<string, number>()
+  const hardware = new Map<string, PrintHardware>()
   for (const spec of setup.components) {
     if (registry.get(spec.type).print.stock) {
-      if (opts.hardware !== false) hardware.set(spec.type.id, (hardware.get(spec.type.id) ?? 0) + 1)
+      const colour = seatColourOf(setup.seats, spec.cardRef)
+      const key = `${spec.type.id} ${colour ?? ''}`
+      const seen = hardware.get(key)
+      if (seen) seen.count++
+      else hardware.set(key, { type: spec.type.id, count: 1, ...(colour !== undefined ? { colour } : {}) })
       continue
     }
     // A seat's counter is a token, not a card (C4): it names no row of the deck and there is
     // nothing card-shaped to print for it.
     if (spec.counter !== undefined) continue
-    if (!printedYet(registry.get(spec.type))) continue
-    // A board (#1479) is drawn from its own template, not a row, and goes to print as #1488 says.
-    if (registry.get(spec.type).ownFaces) continue
-    const row = deck.rows[spec.cardRef]
-    if (!row) throw new Error(`deck has no row "${spec.cardRef}" for print`)
-    // The type's own bleed: this is the print where no partner is asked (G5's export, #1207).
-    const compiled = compileRow(deckFor(deck, spec.cardRef), registry.get(spec.type), row, true)
+    // The type's own bleed: this is the print where no partner is asked (G5's export, #1207). A
+    // board and a tile go to print as a card does (#1488), each from what it is drawn with.
+    const compiled = printedSides(deck, registry.get(spec.type), spec.cardRef, true)
+    if (compiled === null) continue
     const faces: Record<string, string> = {}
     for (const [face, out] of Object.entries(compiled)) {
       const hash = contentHash(out, { kind: 'pdf' })
@@ -168,5 +196,6 @@ export function printExportOf(deck: Deck, setup: SetupDef, registry: TypeRegistr
     }
     cards.push({ cardRef: spec.cardRef, faces })
   }
-  return { cards, jobs: [...jobs.values()], hardware: [...hardware].map(([type, count]) => ({ type, count })) }
+  const stock = [...hardware.values()]
+  return { cards, jobs: [...jobs.values()], hardware: opts.hardware === false ? [] : stock, leftOut: opts.hardware === false ? stock : [] }
 }

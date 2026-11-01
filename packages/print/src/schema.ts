@@ -70,8 +70,19 @@ export const PrintedRequirements = z.object({
 })
 export type PrintedRequirements = z.infer<typeof PrintedRequirements>
 
-// A stock item the partner buys and packs (#1140): a die, as the partner's part number.
-export const StockRequirements = z.object({ kind: z.literal('stock'), type: TypeRef, sku: z.string().min(1) })
+// A colour as the platform says it, `#rrggbb`: a wooden piece wears its seat's (L11, #1478).
+export const Colour = z.string().regex(/^#[0-9a-f]{6}$/i, 'a colour is #rrggbb')
+export type Colour = z.infer<typeof Colour>
+
+// A stock item the partner buys and packs (#1140): a die or a wooden piece, as the partner's part
+// number. A piece it stocks in colours has a part number per colour (#1478), and an item asked for
+// in a colour is packed in the one of them nearest to it (beställarens beslut 2 i #1470).
+export const StockRequirements = z.object({
+  kind: z.literal('stock'),
+  type: TypeRef,
+  sku: z.string().min(1),
+  colours: z.array(z.object({ colour: Colour, sku: z.string().min(1) })).min(1).optional(),
+})
 export type StockRequirements = z.infer<typeof StockRequirements>
 
 export const PrintRequirements = z.discriminatedUnion('kind', [PrintedRequirements, StockRequirements])
@@ -85,7 +96,9 @@ export type PrintRequirements = z.infer<typeof PrintRequirements>
 // A front and its back stand in one entry and are never paired anywhere else (L3, L7).
 export const ManifestCard = z.object({ cardRef: z.string().min(1), type: TypeRef, faces: z.record(FaceId, z.string().min(1)) })
 export type ManifestCard = z.infer<typeof ManifestCard>
-export const ManifestHardware = z.object({ type: TypeRef, count: z.number().int().positive() })
+// A stock item by type and count, and for a wooden piece the colour it wears (#1478): two seats'
+// meeples are two lines, never one.
+export const ManifestHardware = z.object({ type: TypeRef, count: z.number().int().positive(), colour: Colour.optional() })
 export type ManifestHardware = z.infer<typeof ManifestHardware>
 export const PrintManifest = z.object({ cards: z.array(ManifestCard), hardware: z.array(ManifestHardware) })
 export type PrintManifest = z.infer<typeof PrintManifest>
@@ -114,10 +127,11 @@ export type PreparedFile = z.infer<typeof PreparedFile>
 export const PreparedCard = z.object({ cardRef: z.string().min(1), type: TypeRef, sku: z.string().min(1), files: z.record(FaceId, z.string().min(1)) })
 export type PreparedCard = z.infer<typeof PreparedCard>
 
-export const PreparedHardware = z.object({ type: TypeRef, sku: z.string().min(1), count: z.number().int().positive() })
+// `colour` is the one the game asked for; the partner's own is in its part number.
+export const PreparedHardware = z.object({ type: TypeRef, sku: z.string().min(1), count: z.number().int().positive(), colour: Colour.optional() })
 // A stock item the partner does not pack is left out of the order and said to be, never dropped
 // in silence: the designer is told the game arrives without it.
-export const OmittedHardware = z.object({ type: TypeRef, count: z.number().int().positive(), reason: z.literal('not-packed') })
+export const OmittedHardware = z.object({ type: TypeRef, count: z.number().int().positive(), colour: Colour.optional(), reason: z.literal('not-packed') })
 
 // One call the partner would get, in its own words, with its own body. A file stands in a
 // payload as `{ "file": name }`, a name from `files`: `submit` puts the upload or the URL there.

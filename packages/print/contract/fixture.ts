@@ -4,7 +4,7 @@ const CARD = { id: 'card.standard.63x88', version: 1 }
 
 // A small game that has everything a print order has to keep straight: cards on the base back,
 // a card group with a back of its own (L7), a card in two copies, card ids a file system would
-// not take as they are and that fold to one name, and dice the partner may or may not pack (#1140).
+// not take as they are and that fold to one name, dice the partner may or may not pack (#1140), and meeples in two seats' colours (#1478).
 export const CONTRACT_MANIFEST: PrintManifest = {
   cards: [
     { cardRef: 'eld', type: CARD, faces: { front: 'front:eld', back: 'back:bas' } },
@@ -15,9 +15,19 @@ export const CONTRACT_MANIFEST: PrintManifest = {
     { cardRef: 'troll', type: CARD, faces: { front: 'front:troll', back: 'back:skurk' } },
     // Folds to the same file name as «Älg på väg», and is another card.
     { cardRef: 'Alg på väg', type: CARD, faces: { front: 'front:alg-2', back: 'back:bas' } },
+    // A board and two kinds of tile (#1488): the board's one side, two identical hexagonal markers
+    // that are one picture each side, and a square tile of its own.
+    { cardRef: 'Kartan', type: { id: 'board.square457', version: 1 }, faces: { front: 'front:karta' } },
+    { cardRef: 'guld', type: { id: 'tile.hex.52', version: 1 }, faces: { front: 'front:guld', back: 'back:mark' } },
+    { cardRef: 'guld', type: { id: 'tile.hex.52', version: 1 }, faces: { front: 'front:guld', back: 'back:mark' } },
+    { cardRef: 'torn', type: { id: 'tile.square.45', version: 1 }, faces: { front: 'front:torn', back: 'back:mark-2' } },
   ],
   hardware: [
     { type: { id: 'die.d6', version: 1 }, count: 2 },
     { type: { id: 'die.d20', version: 1 }, count: 1 },
+    // Meeples in their seats' colours (#1478, L11): one line per colour, which a partner packs in
+    // the colour it stocks closest, or leaves out.
+    { type: { id: 'piece.meeple', version: 1 }, count: 5, colour: '#e05a4f' },
+    { type: { id: 'piece.meeple', version: 1 }, count: 5, colour: '#3c8ce7' },
   ],
 }

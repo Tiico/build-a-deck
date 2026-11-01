@@ -7,12 +7,12 @@ import { forTheRoom } from '../table/presence.js'
 import { CardPlays, HandBar } from './HandActions.js'
 import { HandGrid } from './HandGrid.js'
 import { CountersRow, MineActions, MineStrip, inFrontOf } from './SeatExtras.js'
-import { isMaterial } from '../components.js'
+import { isMaterial, isTile } from '../components.js'
 import { PlaySheet } from './PlaySheet.js'
 import { DicePill, DiceSheet, diceOf } from './Dice.js'
 import { MyPieces, PieceBar, PieceSheet, TablePieces } from './PhonePieces.js'
 import { standingRewind } from '../table/rewind.js'
-import { cardName } from '../table/keyboard.js'
+import { cardName, turnActs } from '../table/keyboard.js'
 import { TableSummary, RecentActivity } from './TableSummary.js'
 import { ExitButton, FlagButton, SessionOverlays, UndoButton, useSheetOpener, useToast, type Forget, type Sheet } from './SessionOverlays.js'
 import { RuleDrawer } from '../rules/RuleDrawer.js'
@@ -321,7 +321,7 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
               extra={diceOf(view).length > 0 ? <DicePill view={view} open={rolling} onOpen={() => setRolling(true)} /> : undefined}
             />
             <MyPieces view={view} seat={seat} chosen={pieceId} onChoose={choosePiece} />
-            <MineStrip refusal={quick} refusedCard={quickSource} refusedZone={quickTarget} onTake={card => void playDirect([card], `hand:${seat}`, 'top')} heading={false} view={view} faces={faces} onOpen={(card) => hold(card, 'mine')} pending={quickPending} onPlay={(card, zone, at) => void playDirect([card], zone, at)} />
+            <MineStrip refusal={quick} refusedCard={quickSource} refusedZone={quickTarget} onTake={card => void playDirect([card], `hand:${seat}`, 'top')} heading={false} view={view} faces={faces} onOpen={(card) => hold(card, 'mine')} pending={quickPending} onPlay={(card, zone, at) => void playDirect([card], zone, at)} onTurn={(intents) => void client.send(...intents)} />
             {quickSource !== 'hand' && <Refusal handle={quick} />}
           </section>
           <section {...panel('table')}>
@@ -471,6 +471,18 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
                 />
                 {share}
                 </>
+              ) : isTile(card) && sharedArea(view, card.zone) ? (
+                // A tile in an area that is everybody's turns from here in its shape's step
+                // (#1486, variant A of #1474): the felt's ring's two verbs. An area in front of
+                // another seat is read and never acted on (#414).
+                <>
+                  {turnActs(card, t).map((a) => (
+                    <button key={a.key} type="button" data-turn-tile={a.key} onClick={() => void client.send(...(a.intents ?? []))}>
+                      {a.label}
+                    </button>
+                  ))}
+                  {share}
+                </>
               ) : (share ?? undefined)
             }
           />
@@ -511,3 +523,10 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
 }
 
 type Tab = 'hand' | 'mine' | 'table' | 'more'
+
+// An area of the table that is everybody's to act in (#1486): no seat owns it, or this seat does.
+// The floor is not among the phone's tiles (C2), and an area in front of another seat is only read.
+function sharedArea(view: Snapshot, zone: string): boolean {
+  const z = view.zones.find((x) => x.id === zone)
+  return z !== undefined && z.kind === 'area' && (z.owner === undefined || z.owner === view.seat)
+}

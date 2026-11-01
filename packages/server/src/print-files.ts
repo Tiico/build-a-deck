@@ -1,7 +1,7 @@
-import { typeKey, type ComponentTypeDef, type SetupDef, type TypeRegistry } from '@byd/engine'
+import { seatColourOf, typeKey, type ComponentTypeDef, type SetupDef, type TypeRegistry } from '@byd/engine'
 import type { FileSource, PreparedFile, PreparedOrder, PrintManifest } from '@byd/print'
 import { contentHash, type RenderKind, type RenderRequest, type RenderStore } from '@byd/render/queue'
-import { compileRow, deckFor, printedYet, type Deck } from './faces.js'
+import { printedSides, type Deck } from './faces.js'
 
 // The platform's side of a print partner (F2, #1207): the game as a provider is handed it, and the
 // files the provider's `prepare` names, drawn after its `requirements()` by the one compiler and
@@ -12,7 +12,8 @@ export type PrintFileJob = { name: string; job: RenderRequest }
 
 // One entry per physical card, as `printExportOf` lists them, each side named by what it shows: the
 // hash of the face compiled without bleed, so two cards whose side is the same picture are one
-// file to the partner whatever bleed it asks for. A die is hardware, by type and count (#1140), and
+// file to the partner whatever bleed it asks for. A die is hardware, by type and count (#1140), a
+// wooden piece by type, colour and count (#1478), and
 // a seat's counter is a token and no card at all (C4).
 export function printManifestOf(deck: Deck, setup: SetupDef, registry: TypeRegistry): PrintManifest {
   const cards: PrintManifest['cards'] = []
@@ -20,18 +21,19 @@ export function printManifestOf(deck: Deck, setup: SetupDef, registry: TypeRegis
   for (const spec of setup.components) {
     const type = registry.get(spec.type)
     if (type.print.stock) {
-      const seen = hardware.get(typeKey(spec.type))
+      // A wooden piece wears its seat's colour (L11, #1478), so each seat's are a line of their own.
+      const colour = seatColourOf(setup.seats, spec.cardRef)
+      const key = `${typeKey(spec.type)} ${colour ?? ''}`
+      const seen = hardware.get(key)
       if (seen) seen.count++
-      else hardware.set(typeKey(spec.type), { type: { id: spec.type.id, version: spec.type.version }, count: 1 })
+      else hardware.set(key, { type: { id: spec.type.id, version: spec.type.version }, count: 1, ...(colour !== undefined ? { colour } : {}) })
       continue
     }
     if (spec.counter !== undefined) continue
-    if (!printedYet(type)) continue
-    // A board (#1479) is drawn from its own template, not a row, and goes to print as #1488 says.
-    if (type.ownFaces) continue
-    const row = deck.rows[spec.cardRef]
-    if (!row) throw new Error(`deck has no row "${spec.cardRef}" for print`)
-    const faces = Object.fromEntries(Object.entries(compileRow(deckFor(deck, spec.cardRef), type, row)).map(([face, page]) => [face, contentHash(page, { kind: 'pdf' })]))
+    // A board and a tile are printed parts as a card is (#1488), each side from what it is drawn with.
+    const sides = printedSides(deck, type, spec.cardRef)
+    if (sides === null) continue
+    const faces = Object.fromEntries(Object.entries(sides).map(([face, page]) => [face, contentHash(page, { kind: 'pdf' })]))
     cards.push({ cardRef: spec.cardRef, type: { id: spec.type.id, version: spec.type.version }, faces })
   }
   return { cards, hardware: [...hardware.values()] }
@@ -44,9 +46,7 @@ export function printFileJobsOf(deck: Deck, registry: TypeRegistry, order: Prepa
   return order.files.map((file) => {
     const type = registry.get(file.type)
     drawable(file, type)
-    const row = deck.rows[file.cardRef]
-    if (!row) throw new Error(`deck has no row "${file.cardRef}" for print`)
-    const page = compileRow(deckFor(deck, file.cardRef), type, row, file.bleedMm)[file.face]
+    const page = printedSides(deck, type, file.cardRef, file.bleedMm)?.[file.face]
     if (!page) throw new Error(`${typeKey(file.type)} has no face "${file.face}"`)
     const kind = kindOf(file)
     const compiled = { html: page.html, css: page.css }

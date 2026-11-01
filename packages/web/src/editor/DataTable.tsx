@@ -1,4 +1,4 @@
-import { useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent, type PointerEvent as ReactPointerEvent, type FocusEvent, type KeyboardEvent } from 'react'
+import { useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent, type PointerEvent as ReactPointerEvent, type FocusEvent, type KeyboardEvent, type ReactNode } from 'react'
 import { useWordSteps } from './word-steps.js'
 import type { ProjectDoc, ProjectRow } from './types.js'
 import { copiesOf, deckKeepsFields, fieldsOf, fieldLabel, takenNames, nextCardRef } from './fields.js'
@@ -54,6 +54,8 @@ type PinnedProps = { 'data-pinned'?: ''; 'data-pinned-last'?: ''; style?: CSSPro
 
 export type DataTableProps = {
   doc: ProjectDoc
+  // The tabs of the game's decks (#1487, #1474 A), first in the crown, when it has more than one.
+  deckTabs?: ReactNode
   // A role that may not change the game (#489, beslut C efter prototyp 35): the table is read,
   // searched, sorted, filtered and downloaded, and nothing in it is written.
   reading?: boolean
@@ -272,7 +274,7 @@ export function columnsOutside(box: Element): { left: string[]; right: string[] 
 // The table (B as a tab): one row per card, the template's fields as columns, `antal` on the rail
 // beside `id` (L55, #695).
 // This is where the designer already lives; a change here reaches every copy of the card.
-export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAddRow, onRemoveRow, onReplaceRows, onAddField, onRemoveField, onMoveField, onRenameField, onColumnKind, assetBase, onUpload, onSymbol, compareWith: versionCompare, onStopCompare, proposal, onHideProposal, onOpenTemplate, reading = false }: DataTableProps) {
+export function DataTable({ doc, deckTabs, project, selectedRow, onSelectRow, onCell, onAddRow, onRemoveRow, onReplaceRows, onAddField, onRemoveField, onMoveField, onRenameField, onColumnKind, assetBase, onUpload, onSymbol, compareWith: versionCompare, onStopCompare, proposal, onHideProposal, onOpenTemplate, reading = false }: DataTableProps) {
   // A proposal shown in the table takes the comparison's place (#1003).
   const compareWith = proposal ? undefined : versionCompare
   const t = useT()
@@ -644,7 +646,9 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
 
   // What moved since the version being compared with (B4), and the cards that are no longer
   // there — shown after the deck, since they have no place in it any more.
-  const diff = compareWith ? diffProjects(compareWith.doc, doc) : null
+  // The table is the document's own deck (#1484): a row of another deck that moved is not one of its.
+  const whole = compareWith ? diffProjects(compareWith.doc, doc) : null
+  const diff = whole && { ...whole, rows: whole.rows.filter((r) => r.deck === undefined) }
   const changeOf = (cardRef: string) => diff?.rows.find((r) => r.cardRef === cardRef)
   const goneRows: ProjectRow[] = compareWith && diff ? compareWith.doc.rows.filter((r) => diff.rows.some((c) => c.kind === 'removed' && c.cardRef === r.id)) : []
   const wasCell = (cardRef: string, field: string) => compareWith?.doc.rows.find((r) => r.id === cardRef)?.fields[field]
@@ -1443,6 +1447,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
           read without opening anything, which is what #130 kept the chips in the row for. What
           falls into a box is the import and the export. */}
       <Crown>
+        {deckTabs}
         <FilterField
           query={filter.query}
           tokens={tokens}

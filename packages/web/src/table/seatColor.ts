@@ -1,3 +1,5 @@
+import { seatColourAt } from '@byd/engine'
+
 // Seat colours by index, shared by hands, cursors and the dock. The order is prototypes B and
 // C's, which agreed on it: the first four seats are red, blue, green and yellow (K9).
 //
@@ -13,7 +15,8 @@
 // the yellow at the other side of the table rather than next to the green it would be mistaken
 // for. Both carry `--byd-seat-ink` at 5.91:1 and 8.35:1 and are read against the dark at the same
 // numbers, which `seat-contrast.test.ts` holds them to along with the other six (L11).
-const PALETTE = ['#e05a4f', '#3c8ce7', '#3aa76d', '#d99a1f', '#8e6bd9', '#2bb5b5', '#d9699f', '#9bb63c']
+// The palette itself lives in `@byd/engine` (#1478), since print orders a seat's meeples in it too.
+// A seat that is not one (an index below zero, or none) is grey, as it always was.
 export function seatColor(index: number): string {
-  return PALETTE[index % PALETTE.length] ?? '#666'
+  return Number.isInteger(index) && index >= 0 ? seatColourAt(index).hex : '#666'
 }

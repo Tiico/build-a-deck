@@ -1,5 +1,5 @@
-import { CARD_STANDARD_63x88, DICE, PIECES, TOKEN_COUNTER } from '@byd/engine'
-import type { VisibleComponentState } from '@byd/protocol'
+import { BOARDS, CARD_STANDARD_63x88, DICE, PIECES, STANDARD_TYPES, TILES, TOKEN_COUNTER, rotationStep } from '@byd/engine'
+import type { Snapshot, VisibleComponentState, ZoneView } from '@byd/protocol'
 import { CHIP_MM, DIE_MM, PIECE_MM, PIECE_PILE_MM } from '@byd/server/felt-sizes'
 
 // What a thing on the table is, as against where it is (`zones.ts`) or how it got there
@@ -49,6 +49,65 @@ export const isWoodenPiece = (c: { type: { id: string } }): boolean => PIECE_KIN
 // and never drawn as a card in a row of cards: the phone gives each a place of its own (the
 // counters' pills, the dice's sheet), and the felt draws each in its own form.
 export const isMaterial = (c: { type: { id: string } }): boolean => isCounter(c) || isDie(c) || isWoodenPiece(c)
+
+// A board (#1479, #1480): the main board or a seat's player board, lying fixed where the setup put it.
+// Its size is its type's, the engine's to own. It is no card and no piece: nobody picks it up, so the
+// felt draws it under everything and every other reader of the table leaves it out (`withoutBoards`).
+const BOARD_MM = new Map(BOARDS.map((b) => [b.id, { w: b.physical.widthMm, h: b.physical.heightMm }] as const))
+export const isBoard = (c: { type: { id: string } }): boolean => BOARD_MM.has(c.type.id)
+export const boardMm = (c: { type: { id: string } }): { w: number; h: number } | null => BOARD_MM.get(c.type.id) ?? null
+
+// The table as everything but the felt's floor reads it: without its boards (#1480). A board is in
+// the zone it lies in, as everything is, but it is not something lying there to count, lay a card
+// beside, name with the keyboard or list on the phone (C2): a seat's «Framför» with its player board
+// in it and nothing else holds no cards. Handed back as the very object when there is no board.
+export function withoutBoards(view: Snapshot): Snapshot {
+  const boards = new Set(view.components.filter(isBoard).map((c) => c.id))
+  if (boards.size === 0) return view
+  const per = new Map<string, number>()
+  for (const c of view.components) if (boards.has(c.id)) per.set(c.zone, (per.get(c.zone) ?? 0) + 1)
+  return {
+    ...view,
+    components: view.components.filter((c) => !boards.has(c.id)),
+    zones: view.zones.map((z) => {
+      const n = per.get(z.id)
+      if (!n) return z
+      return z.mode === 'order' ? { ...z, order: z.order.filter((id) => !boards.has(id)) } : { ...z, count: Math.max(0, z.count - n) }
+    }),
+  }
+}
+
+// A tile (#1482, #1485): a card in its own shape, the type's to say. What the felt draws is its
+// outline — a hexagon with a point up, a square with the type's corner, or a disc — at its own
+// millimetres, which are the type's and never written out again here.
+export type TileShape = 'hex' | 'square' | 'circle'
+export type Tile = { shape: TileShape; w: number; h: number; cornerMm: number }
+const shapeOf = (s: string): TileShape => (s === 'hex' ? 'hex' : s === 'circle' ? 'circle' : 'square')
+const TILE_OF = new Map(TILES.map((d) => [d.id, { shape: shapeOf(d.physical.shape), w: d.physical.widthMm, h: d.physical.heightMm, cornerMm: d.physical.cornerRadiusMm ?? 0 } satisfies Tile] as const))
+export const tileOf = (c: { type: { id: string } } | undefined): Tile | null => (c ? (TILE_OF.get(c.type.id) ?? null) : null)
+export const isTile = (c: { type: { id: string } }): boolean => TILE_OF.has(c.type.id)
+// A hand's tiles stand after its cards, each kind in its own order (#1486, #1538, variant A of
+// #1474): a tile is held as a card is, and a hand that mixed them looked like a deck dropped on the floor.
+export const tilesLast = <C extends { type: { id: string } }>(hand: readonly C[]): C[] => [...hand.filter((c) => !isTile(c)), ...hand.filter(isTile)]
+
+// The box a card or a tile lies in, in the felt's millimetres: the tile's own, or the card's. A
+// component's `x` and `y` are that box's top left corner, as the setup lays a marker (`piecesAt`).
+const CARD_FOOT = { w: CARD_STANDARD_63x88.physical.widthMm, h: CARD_STANDARD_63x88.physical.heightMm }
+export const footprintOf = (c: { type: { id: string } } | undefined): { w: number; h: number } => {
+  const t = tileOf(c)
+  return t ? { w: t.w, h: t.h } : CARD_FOOT
+}
+// What lies on top of a pile as far as this view knows: the top itself, or, for a hidden pile that
+// hands out none, the type the zone says lies on top (#1485). The shape is public; the tile is not.
+export const pileTopType = (z: ZoneView, top: { type: { id: string } } | undefined): { type: { id: string } } | undefined => top ?? (z.mode === 'count' ? z.types?.[0] : undefined)
+
+// The step a component turns in at the table (#1485, K34): its type's, a sixth of a turn for a
+// hexagon and a quarter for everything else, the card included. `rotate` takes any angle; the step
+// is what the ring and the keys ask for, read off the registry and nowhere else.
+const STEP_OF = new Map(STANDARD_TYPES.map((d) => [d.id, rotationStep(d)] as const))
+export const turnStepOf = (c: { type: { id: string } }): number => STEP_OF.get(c.type.id) ?? 90
+// One step on from where the component lies, either way, as a whole angle in [0, 360).
+export const turnedBy = (c: { rot: number; type: { id: string } }, steps: 1 | -1): number => (((c.rot + steps * turnStepOf(c)) % 360) + 360) % 360
 
 // A card the screen shows without the wire having handed it out (K23): a face-down bottom card
 // held up to look at. It knows only what the zone said — that there is a card, and the back it

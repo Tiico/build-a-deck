@@ -1,6 +1,6 @@
 import type { Intent, Snapshot, VisibleComponentState, ZoneView } from '@byd/protocol'
 import { translate, type Key, type T } from '../i18n/index.js'
-import { dieKind, isCounter, isDie, isMaterial, materialBox, pieceKind, standIn, type PieceKind } from '../components.js'
+import { dieKind, footprintOf, isCounter, isDie, isMaterial, isTile, materialBox, pieceKind, pileTopType, standIn, tileOf, turnStepOf, turnedBy, type PieceKind } from '../components.js'
 import { piecePiles } from './pieces.js'
 import { CARD_MM, besidePile, type DragTarget } from './drop.js'
 import { laidIn } from './lay.js'
@@ -54,7 +54,7 @@ export const cardWord = (c: VisibleComponentState | undefined): string | null =>
 
 // A card's own name is the designer's and is never translated (B5); the words for a card this
 // view may not see are the tool's.
-export const cardName = (c: VisibleComponentState | undefined, t: T = swedish): string => cardWord(c) ?? t('kbd.hidden')
+export const cardName = (c: VisibleComponentState | undefined, t: T = swedish): string => cardWord(c) ?? t(c && isTile(c) ? 'kbd.tile.back' : 'kbd.hidden')
 // A zone in a sentence: its designer's name, or — for a pile made on the felt, which has none of its
 // own (K1) — the area it lies in (#714). `pileTitle` is the same at the head of a label.
 export const zoneName = (view: Snapshot, id: string, t: T): string => {
@@ -83,7 +83,7 @@ export const topOf = (view: Snapshot, z: ZoneView): VisibleComponentState | unde
 
 // Laying the top card off a pile onto the felt. It lands beside the pile, clear of its label and on
 // the side the pile itself says (K21, #87).
-export const besideOne = (z: ZoneView): Extract<Intent, { v: 'split' }> => ({ v: 'split', pile: z.id, at: 1, ...besidePile(z.geometry, 1, z.beside) })
+export const besideOne = (z: ZoneView, view?: Snapshot): Extract<Intent, { v: 'split' }> => ({ v: 'split', pile: z.id, at: 1, ...besidePile(z.geometry, 1, z.beside, footprintOf(view ? pileTopType(z, topOf(view, z)) : undefined)) })
 
 // The ring's «Dra 1». On a screen with a hand of its own it draws to that hand (#746, beställarens
 // beslut 2026-10-03): laid beside the pile, as it was everywhere, a new player took the obvious
@@ -95,7 +95,7 @@ export function drawOne(view: Snapshot, z: ZoneView): Intent {
   // Without a hand of its own — the shared screen — the card lands face up beside the pile
   // (#719, K21): nobody's eyes alone may read it there, so the table reads it, and a draw is one
   // action rather than a draw and then a turn.
-  return hand ? { v: 'split', pile: z.id, at: 1, to: hand.id } : { ...besideOne(z), face: 'front' as const }
+  return hand ? { v: 'split', pile: z.id, at: 1, to: hand.id } : { ...besideOne(z, view), face: 'front' as const }
 }
 
 // A card's place on the felt, in table millimetres, for the reading order alone.
@@ -189,7 +189,15 @@ export function labelOf(view: Snapshot, thing: Thing, t: T = swedish): string {
   if (thing.kind === 'card') {
     const c = view.components.find((x) => x.id === thing.id)
     const turned = c !== undefined && c.rot % 360 !== 0
-    return t(turned ? 'kbd.card.rotated' : 'kbd.card', { name: thing.name, zone: zoneName(view, thing.zone, t) })
+    const zone = zoneName(view, thing.zone, t)
+    // A tile is heard as a tile (#1485): by its name while its face shows, and as a tile's back when
+    // it does not; and how far it is turned, since a hexagon has six ways to lie and not two.
+    if (c !== undefined && isTile(c)) {
+      const word = cardWord(c)
+      const said = word === null ? t('kbd.tile.hidden', { zone }) : t('kbd.tile', { name: word, zone })
+      return turned ? t('kbd.tile.turned', { said, deg: ((c.rot % 360) + 360) % 360 }) : said
+    }
+    return t(turned ? 'kbd.card.rotated' : 'kbd.card', { name: thing.name, zone })
   }
   if (thing.kind === 'pileTop') {
     const z = view.zones.find((x) => x.id === thing.pile)
@@ -199,7 +207,12 @@ export function labelOf(view: Snapshot, thing: Thing, t: T = swedish): string {
   const z = view.zones.find((x) => x.id === thing.pile)
   const zone = pileTitleOf(view, thing.pile, t)
   if (!z || countOf(z) === 0) return t('kbd.pile.empty', { zone })
-  return t(thing.count === 1 ? 'kbd.pile.one' : 'kbd.pile.other', { zone, n: thing.count, top: cardName(topOf(view, z), t) })
+  // A pile of tiles is counted in tiles, and its hidden top is a tile's back (#1485).
+  const top = topOf(view, z)
+  if (tileOf(pileTopType(z, top))) {
+    return t(thing.count === 1 ? 'kbd.pile.tiles.one' : 'kbd.pile.tiles.other', { zone, n: thing.count, top: cardWord(top) ?? t('kbd.tile.back') })
+  }
+  return t(thing.count === 1 ? 'kbd.pile.one' : 'kbd.pile.other', { zone, n: thing.count, top: cardName(top, t) })
 }
 
 // What every node on the felt is called, keyed the way the renderer knows it. The sentence ends
@@ -249,6 +262,19 @@ export function pieceActs(c: VisibleComponentState, t: T = swedish): Act[] {
   return [{ key: 'flip', label: t(lying ? 'ring.piece.raise' : 'ring.piece.lay'), intents: [{ v: 'flip', component: c.id, face: lying ? 'standing' : 'lying' }] }]
 }
 
+// How a card or a tile is turned (#1485, K34): a card a quarter turn, as it always has been; a tile
+// one step of its shape either way, «↺ Rotera 60°» and «↻ Rotera 60°» on a hexagon. The step is the
+// type's (`turnStepOf`), and every way of turning — the ring, the panel, R and Shift R — reads it here.
+export function turnActs(c: VisibleComponentState, t: T = swedish): Act[] {
+  const to = (steps: 1 | -1): Intent[] => [{ v: 'rotate', component: c.id, rot: turnedBy(c, steps) }]
+  if (!isTile(c)) return [{ key: 'rotate', label: t('kbd.verb.rotate'), intents: to(1) }]
+  const deg = turnStepOf(c)
+  return [
+    { key: 'turnBack', label: t('ring.turn.back', { deg }), intents: to(-1) },
+    { key: 'turnOn', label: t('ring.turn.on', { deg }), intents: to(1) },
+  ]
+}
+
 export function verbsFor(view: Snapshot, thing: Thing, t: T = swedish): Act[] {
   if (thing.kind === 'piece') {
     const c = view.components.find((x) => x.id === thing.id)
@@ -267,7 +293,7 @@ export function verbsFor(view: Snapshot, thing: Thing, t: T = swedish): Act[] {
     if (!c) return []
     return [
       { key: 'flip', label: t('ring.flip'), intents: [{ v: 'flip', component: c.id, face: c.face === 'front' ? 'back' : 'front' }] },
-      { key: 'rotate', label: t('kbd.verb.rotate'), intents: [{ v: 'rotate', component: c.id, rot: (c.rot + 90) % 360 }] },
+      ...turnActs(c, t),
       { key: 'reveal', label: t('ring.reveal'), hint: t('kbd.hint.reveal'), intents: c.cardRef === null ? [{ v: 'reveal', components: [c.id] }] : null },
       { key: 'look', label: t('ring.look'), hint: t('kbd.hint.look'), intents: [], look: c.id },
     ]
@@ -296,7 +322,7 @@ export function verbsFor(view: Snapshot, thing: Thing, t: T = swedish): Act[] {
     { key: 'draw', label: t('ring.draw'), intents: n > 0 ? [drawOne(view, z)] : null },
     // Where «Dra 1» goes to the hand, laying a card beside the pile is a row of its own, so the
     // keyboard keeps what the hand does by dragging (#746).
-    ...(view.seat === null ? [] : [{ key: 'beside', label: t('kbd.verb.beside'), intents: n > 0 ? [besideOne(z)] : null }]),
+    ...(view.seat === null ? [] : [{ key: 'beside', label: t('kbd.verb.beside'), intents: n > 0 ? [besideOne(z, view)] : null }]),
     { key: 'half', label: t('ring.half'), hint: t('kbd.hint.half'), intents: n > 1 ? [{ v: 'split', pile: z.id, at: Math.ceil(n / 2), ...besidePile(z.geometry, Math.ceil(n / 2), z.beside) }] : null },
     // The pile's bottom card (K23), let out under the pile on the felt and held up from here so
     // the keyboard sees what the pointer sees (K16). Only a pile that has one offers it.
@@ -527,9 +553,15 @@ export function flipUnder(view: Snapshot, target: DragTarget): Intent[] | null {
 // fastest a mouse can be, and it is why a pointer is what they need. A key over nothing asks for
 // nothing at all, and neither does one over something the command has nothing to say to — `D` and
 // `S` over anything that is not a pile, `F` over a chip that has no back to turn.
-export function shortcutIntents(view: Snapshot, key: string, at: DragTarget | null): Intent[] | null {
+export function shortcutIntents(view: Snapshot, key: string, at: DragTarget | null, shift = false): Intent[] | null {
   const letter = key.toLowerCase()
   if (at === null) return null
+  // R turns a card or a tile one step on, and Shift R one step back (#1485, variant A of #1474):
+  // the step is the type's (`turnedBy`), so a hexagon turns a sixth and a card a quarter.
+  if (letter === 'r') {
+    const c = at.kind === 'card' ? view.components.find((x) => x.id === at.id) : undefined
+    return c ? [{ v: 'rotate', component: c.id, rot: turnedBy(c, shift ? -1 : 1) }] : null
+  }
   // One flip, reached three ways: the modifier click, the double click and this key all ask
   // `flipUnder` and therefore cannot mean different things about the same card (K16).
   if (letter === 'f') return flipUnder(view, at)
@@ -565,6 +597,7 @@ export function feltShortcuts(t: T = swedish, platform: string = thisPlatform(),
     ...(hand ? [{ press: ['F'], what: t('felt.key.turnInHand') }] : []),
     { press: ['D'], what: t('felt.key.draw') },
     { press: ['S'], what: t('felt.key.shuffle') },
+    { press: ['R', t('felt.press.shiftR')], what: t('felt.key.turn') },
     // M is the focus's and not the pointer's, so the row says so where D and S say «under pekaren».
     ...(dice || pieces ? [{ press: ['M'], what: t(dice && pieces ? 'felt.key.moveMaterial' : dice ? 'felt.key.moveDie' : 'felt.key.movePiece') }] : []),
     // Kameran (#325), och bara där det finns en att köra: `/online` har ingen, och en lista som

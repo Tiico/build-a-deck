@@ -5,8 +5,12 @@ export * from './diff.js'
 export * from './names.js'
 export * from './recipe.js'
 export * from './edits.js'
+// The game's decks and markers as the editor's tabs see them (#1484, #1487).
+export * from './decks.js'
 // Spelets låda ur dokumentet (#1412): måtten, låsen och om leken ryms, för editorns Fysisk kontroll.
 export * from './box.js'
+// Spelets bräden (#1481): typen ett bräde pinnar och Fysisk kontroll på dess sidor.
+export * from './boards.js'
 // Personlig ångra (#1056): vad en redigering ändrade, och steget tillbaka från det.
 export { cellColumn, changeOf, joined, revertOf, type Change, type Reverted, type Revert } from './undo.js'
 export * from './setup.js'
@@ -14,6 +18,9 @@ export * from './setup.js'
 export * from './material.js'
 // The roles a project is shared in (D3): the editor speaks them too, and they are pure data.
 export * from './roles.js'
+// What a game in read-only mode may still have done to it (#1511): the editor refuses the rest
+// before it is sent (#1492), with the rule the actor holds it to.
+export { onlyShrinks, type ReadOnlyWhy } from './read-only.js'
 // What the profile page says about a designer's AI key (#999): the words only, never the vault.
 export type { AiProvider, AiKeyDescription } from './ai-keys.js'
 export type { AiFailure, AiModel } from './ai-providers.js'

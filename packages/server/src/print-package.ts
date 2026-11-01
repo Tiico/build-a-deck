@@ -1,4 +1,5 @@
 import { strToU8, zipSync, type Zippable } from 'fflate'
+import { SEAT_COLOURS } from '@byd/engine'
 import type { PreparedOrder, PrintRequirements } from '@byd/print'
 import type { Issue } from '@byd/template'
 import type { ProjectCredit } from './projects.js'
@@ -72,12 +73,36 @@ export function printPackageDisposition(name: string, rev: number, lang: 'sv' | 
   return `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(file)}`
 }
 
+// The stock in words (#1478): a die by its kind, «2 × d6», and a wooden piece by its kind and its
+// seat's colour, «3 × meeple, röd», as the manifest lists them. What the printer packs comes first,
+// then what it leaves out, so the reader knows what the box arrives without.
+const PIECE_WORDS = { sv: { meeple: 'meeple', cube: 'kub', disc: 'skiva' }, en: { meeple: 'meeple', cube: 'cube', disc: 'disc' } } as const
+const COLOUR_WORDS = {
+  sv: { red: 'röd', blue: 'blå', green: 'grön', yellow: 'gul', purple: 'lila', teal: 'turkos', pink: 'rosa', lime: 'limegrön' },
+  en: { red: 'red', blue: 'blue', green: 'green', yellow: 'yellow', purple: 'purple', teal: 'teal', pink: 'pink', lime: 'lime' },
+} as const
+function stockLine(lang: 'sv' | 'en', h: { type: { id: string }; count: number; colour?: string | undefined }): string {
+  const kind = h.type.id.replace(/^(die|piece)\./, '')
+  const word = (PIECE_WORDS[lang] as Record<string, string>)[kind] ?? kind
+  const named = SEAT_COLOURS.find((c) => c.hex === h.colour?.toLowerCase())
+  const colour = h.colour === undefined ? '' : `, ${named ? COLOUR_WORDS[lang][named.name] : h.colour}`
+  return `- ${h.count} × ${word}${colour}\n`
+}
+function stockSaid(lang: 'sv' | 'en', order: PrintPackageManifest['order']): string {
+  const packed = order.hardware.map((h) => stockLine(lang, h)).join('')
+  const left = order.omitted.map((h) => stockLine(lang, h)).join('')
+  const words = lang === 'en' ? { packed: 'The stock parts the printer buys ready-made and packs in the box:', left: 'The stock parts the printer does not pack, which the game is sent without:' } : { packed: 'Lagervarorna, som tryckeriet köper färdiga och packar i lådan:', left: 'Lagervarorna som tryckeriet inte packar, och som spelet skickas utan:' }
+  return `${packed ? `\n${words.packed}\n${packed}` : ''}${left ? `\n${words.left}\n${left}` : ''}`
+}
+
 const mm = (n: number, lang: 'sv' | 'en'): string => (lang === 'sv' ? String(n).replace('.', ',') : String(n))
 
 // What the package holds, said to whoever opens it, in the language it was asked for in (A4).
 export function printPackageReadme(lang: 'sv' | 'en', m: PrintPackageManifest): string {
   const when = m.createdAt.slice(0, 10)
-  const card = m.requirements.find((r) => r.kind === 'printed')
+  // The card's requirements say how a card is cut; a board's or a tile's are their own (#1488).
+  const card = m.requirements.find((r) => r.kind === 'printed' && r.type.id.startsWith('card.')) ?? m.requirements.find((r) => r.kind === 'printed')
+  const parts = m.order.cards.some((c) => !c.type.id.startsWith('card.'))
   const stopped = m.errors.length
   const box = boxSaid(lang, m.box, m.box.drawn.length, m.box.faces.length)
   if (lang === 'en') {
@@ -89,7 +114,7 @@ No order has been placed. The files are made after the requirements of ${m.provi
 
 - \`manifest.json\` — what is to be made: every physical card with its files (\`order.cards\`), the stock parts the printer packs (\`order.hardware\`) and those it does not (\`order.omitted\`), and the requirements the files are made after (\`requirements\`).
 - \`tryck/\` — one PDF per side of each card, with bleed. Copies of a card share their files. And the rulebook, \`${RULEBOOK_FILE}\`, as an A5 booklet.${stopped > 0 ? `\n  The card files are left out: the print checks found ${stopped} errors in this version, listed in \`errors\`. Fix them in Deckster and download the package again.` : ''}
-${cut}
+${cut}${parts ? `\nThe boards and the tiles are files with bleed too, a file per side, and identical tiles share theirs. Die-cut sheets and folding for the boards and the tiles come in a step 2, once a print partner is chosen, as the box's files do.\n` : ''}${stockSaid(lang, m.order)}
 The box is a tuckbox of ${box.size}${box.locked}. ${box.drawn}. Its measure, locks and net are in \`box\`.
 Not in the package yet: the box's print files, with the die line, and files in printing colours (CMYK). They come once a print partner is chosen.
 
@@ -104,7 +129,7 @@ Ingen beställning är lagd. Filerna är gjorda efter kraven från ${m.provider.
 
 - \`manifest.json\` — vad som ska tillverkas: varje fysiskt kort med sina filer (\`order.cards\`), lagervarorna som tryckeriet packar (\`order.hardware\`) och de det inte packar (\`order.omitted\`), och kraven filerna är gjorda efter (\`requirements\`).
 - \`tryck/\` — en PDF per sida av varje kort, med utfall. Kopior av ett kort delar filer. Och regelhäftet, \`${RULEBOOK_FILE}\`, som häfte i A5.${stopped > 0 ? `\n  Kortfilerna är utelämnade: tryckkontrollen hittade ${stopped} fel i den här versionen, listade i \`errors\`. Rätta dem i Deckster och ladda ner paketet igen.` : ''}
-${cut}
+${cut}${parts ? `\nBrädena och brickorna är också filer med utfall, en fil per sida, och likadana brickor delar sina. Stansark och vikning för brädet och brickorna kommer i ett steg 2, när en tryckpartner är vald, som lådans filer.\n` : ''}${stockSaid(lang, m.order)}
 Lådan är en tuckbox på ${box.size}${box.locked}. ${box.drawn}. Måtten, låsen och nätet står i \`box\`.
 Det här finns inte i paketet ännu: lådans tryckfiler, med stansform, och filer i tryckfärger (CMYK). De kommer när en tryckpartner är vald.
 

@@ -775,6 +775,28 @@ describe('a group rules what a card looks like on the table (#13)', () => {
     expect((await json('POST', `/projects/${id}/print`, { hardware: 'ja' })).status).toBe(400)
   })
 
+  // A meeple is stock as a die is (#1478, beställarens beslut 5 i #1470), each seat's in the seat's
+  // colour (L11). Left out by `hardware: false`, the order says what it went without.
+  it('hands a print order its meeples by seat colour, and says it left them out when asked', async () => {
+    const base = groupedProject()
+    const area = base.setup.zones.find((z: { kind: string }) => z.kind === 'area')!
+    const body = { ...base, setup: { ...base.setup, pieces: [{ kind: 'meeple', count: 2, zone: area.id, perSeat: true }] } }
+    const { id } = (await (await json('POST', '/projects', body)).json()) as { id: string }
+
+    type Hardware = { type: string; count: number; colour?: string }[]
+    const ordered = (await (await json('POST', `/projects/${id}/print`, {})).json()) as { cards: { cardRef: string }[]; hardware: Hardware; leftOut: Hardware }
+    expect(ordered.cards.map((card) => card.cardRef)).toEqual(['dragon', 'trap'])
+    expect(ordered.hardware.length).toBeGreaterThan(1)
+    expect(ordered.hardware[0]).toEqual({ type: 'piece.meeple', count: 2, colour: '#e05a4f' })
+    expect(ordered.hardware.every((h) => h.type === 'piece.meeple' && h.count === 2)).toBe(true)
+    expect(new Set(ordered.hardware.map((h) => h.colour)).size).toBe(ordered.hardware.length)
+    expect(ordered.leftOut).toEqual([])
+
+    const without = (await (await json('POST', `/projects/${id}/print`, { hardware: false })).json()) as { hardware: Hardware; leftOut: Hardware }
+    expect(without.hardware).toEqual([])
+    expect(without.leftOut).toEqual(ordered.hardware)
+  })
+
   it('keeps a project print export private to its owner', async () => {
     const { id } = (await (await json('POST', '/projects', groupedProject())).json()) as { id: string }
     expect((await fetch(`${run.http}/projects/${id}/print`, { method: 'POST' })).status).toBe(401)

@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode, type RefObject } from 'react'
-import { CARD_STANDARD_63x88, DICE, boxFaceType, tuckNet, type BoxFace, type BoxSide } from '@byd/engine'
+import { CARD_STANDARD_63x88, DICE, SEAT_COLOURS, boxFaceType, tuckNet, type BoxFace, type BoxSide } from '@byd/engine'
 import type { PreparedFile, PrintRequirements, Quote } from '@byd/print'
 import { boxFaceOf, boxOf, titleOfRow } from '@byd/server/doc'
 import type { Motif } from '@byd/template'
@@ -173,10 +173,33 @@ export function PrintPackagePage({ onNavigate = (url) => location.assign(url) }:
 // named; and each back once, with how many cards wear it.
 type DeckCard = { cardRef: string; title: string; count: number; files: Record<string, string> }
 type Back = { file: string; cardRef: string; count: number }
+// A printed part beyond the card (#1488): a board or a marker, by the name it goes by, how many, its
+// trim and how many files it is.
+type Part = { cardRef: string; title: string; kind: 'board' | 'tile'; count: number; trim: { widthMm: number; heightMm: number } | null; files: number }
+const isPart = (typeId: string): 'board' | 'tile' | null => (typeId.startsWith('board.') ? 'board' : typeId.startsWith('tile.') ? 'tile' : null)
+function partsOf(doc: Doc, pkg: PrintPackage): Part[] {
+  const parts = new Map<string, Part>()
+  for (const card of pkg.order.cards) {
+    const kind = isPart(card.type.id)
+    if (kind === null) continue
+    const seen = parts.get(card.cardRef)
+    if (seen) {
+      seen.count++
+      continue
+    }
+    const req = pkg.requirements.find((r) => r.kind === 'printed' && r.type.id === card.type.id && r.type.version === card.type.version)
+    const marker = doc.setup.markers?.find((m) => `marker:${m.id}` === card.cardRef)
+    parts.set(card.cardRef, { cardRef: card.cardRef, title: marker?.name ?? card.cardRef, kind, count: 1, trim: req?.kind === 'printed' ? req.trim : null, files: Object.keys(card.files).length })
+  }
+  return [...parts.values()]
+}
+
+// The deck is the cards (#1488): a board and a tile are printed parts beside it, never cards of it.
 function deckOf(doc: Doc, pkg: PrintPackage): { cards: DeckCard[]; backs: Back[]; total: number } {
   const cards = new Map<string, DeckCard>()
   const backs = new Map<string, Back>()
-  for (const card of pkg.order.cards) {
+  const all = pkg.order.cards.filter((card) => isPart(card.type.id) === null)
+  for (const card of all) {
     const seen = cards.get(card.cardRef)
     if (seen) seen.count++
     else {
@@ -190,7 +213,7 @@ function deckOf(doc: Doc, pkg: PrintPackage): { cards: DeckCard[]; backs: Back[]
       else backs.set(back, { file: back, cardRef: card.cardRef, count: 1 })
     }
   }
-  return { cards: [...cards.values()], backs: [...backs.values()], total: pkg.order.cards.length }
+  return { cards: [...cards.values()], backs: [...backs.values()], total: all.length }
 }
 
 type Chosen = { cardRef: string; face: string; title: string }
@@ -198,12 +221,17 @@ type Chosen = { cardRef: string; face: string; title: string }
 function Package({ doc, pkg, http, project, motifs, backLink, editor, go }: { doc: Doc; pkg: PrintPackage; http: string; project: string; motifs: Record<string, Motif>; backLink: ReactNode; editor: string; go(url: string): (e: MouseEvent<HTMLAnchorElement>) => void }) {
   const t = useT()
   const deck = useMemo(() => deckOf(doc, pkg), [doc, pkg])
-  const card = pkg.requirements.find((r): r is Extract<PrintRequirements, { kind: 'printed' }> => r.kind === 'printed') ?? null
+  // The card's requirements cut a card; a board's and a tile's are their own (#1488).
+  const card = pkg.requirements.find((r): r is Extract<PrintRequirements, { kind: 'printed' }> => r.kind === 'printed' && isPart(r.type.id) === null) ?? null
+  const parts = useMemo(() => partsOf(doc, pkg), [doc, pkg])
+  const printedParts = parts.reduce((n, p) => n + p.count, 0)
   const first = deck.cards[0]
   const [chosen, setChosen] = useState<Chosen | null>(first ? { cardRef: first.cardRef, face: 'front', title: first.title } : null)
   const drawing = useDrawing(doc, http, motifs)
   const errors = pkg.errors
-  const dice = pkg.order.hardware.reduce((n, h) => n + h.count, 0)
+  // The parts the printer packs, dice and wooden pieces apart (#1478), as its answer counts them.
+  const dice = pkg.order.hardware.filter((h) => isDie(h.type.id)).reduce((n, h) => n + h.count, 0)
+  const pieces = pkg.order.hardware.filter((h) => !isDie(h.type.id)).reduce((n, h) => n + h.count, 0)
   const fronts = new Set(Object.values(deck.cards).map((c) => c.files['front']).filter((f) => f !== undefined)).size
   const part = (n: number, id: string, title: string, lead: string, body: ReactNode) => (
     <section className="byd-print-part" aria-labelledby={`byd-print-${id}`}>
@@ -242,7 +270,10 @@ function Package({ doc, pkg, http, project, motifs, backLink, editor, go }: { do
             'deck',
             t(deck.total === 1 ? 'print.deck.title.one' : 'print.deck.title.other', { n: deck.total }),
             t('print.deck.lead', { cards: deck.total, pairs: deck.cards.length }),
-            <DeckPart deck={deck} fronts={fronts} errors={errors} chosen={chosen} onChoose={setChosen} drawing={drawing} editor={editor} go={go} />,
+            <>
+              <DeckPart deck={deck} fronts={fronts} errors={errors} chosen={chosen} onChoose={setChosen} drawing={drawing} editor={editor} go={go} />
+              {parts.length > 0 && <Parts parts={parts} />}
+            </>,
           )}
           {part(3, 'box', t('print.box.title'), t('print.box.lead'), <BoxPart drawing={drawing} editor={editor} go={go} />)}
           {part(4, 'stock', t('print.stock.title'), t('print.stock.lead'), <Stock doc={doc} pkg={pkg} />)}
@@ -256,10 +287,17 @@ function Package({ doc, pkg, http, project, motifs, backLink, editor, go }: { do
             <dd>{deck.total}</dd>
             <dt>{t('print.slip.fronts')}</dt>
             <dd>{fronts}</dd>
-            {pkg.order.hardware.map((h) => (
-              <Fragment key={`${h.type.id}@${h.type.version}`}>
-                <dt>{t('print.slip.dice', { faces: facesOf(h.type.id) })}</dt>
-                <dd>{h.count}</dd>
+            {printedParts > 0 && (
+              <>
+                <dt>{t('print.parts.title')}</dt>
+                <dd>{printedParts}</dd>
+              </>
+            )}
+            {/* A kind of wooden piece is one line, its seats' colours together, as part 4 lists it (#1478). */}
+            {[...pkg.order.hardware.reduce((kinds, h) => kinds.set(h.type.id, (kinds.get(h.type.id) ?? 0) + h.count), new Map<string, number>())].map(([id, count]) => (
+              <Fragment key={id}>
+                <dt>{isDie(id) ? t('print.slip.dice', { faces: facesOf(id) }) : capital(t(`print.stock.piece.${pieceOf(id)}` as Key))}</dt>
+                <dd>{count}</dd>
               </Fragment>
             ))}
             <dt>{t('print.slip.checks')}</dt>
@@ -267,7 +305,7 @@ function Package({ doc, pkg, http, project, motifs, backLink, editor, go }: { do
               {errors.length === 0 ? t('print.slip.checks.clean') : t(errors.length === 1 ? 'print.slip.checks.errors.one' : 'print.slip.checks.errors.other', { n: errors.length })}
             </dd>
           </dl>
-          {pkg.quote && <Answer quote={pkg.quote} cards={deck.total} kinds={deck.cards.length} dice={dice} refused={errors.length > 0} />}
+          {pkg.quote && <Answer quote={pkg.quote} cards={deck.total} kinds={deck.cards.length} printed={printedParts} dice={dice} pieces={pieces} refused={errors.length > 0} />}
           {download}
           <p className="byd-print-beta">
             <InfoMark />
@@ -292,6 +330,18 @@ function InfoMark() {
 }
 
 const facesOf = (typeId: string): number => Number(/^die\.d(\d+)$/.exec(typeId)?.[1] ?? 0)
+const isDie = (typeId: string): boolean => typeId.startsWith('die.')
+// A wooden piece of no seat's colour, in the wood it is cut from.
+const WOOD = '#c8a46a'
+// A line of the slip starts with a capital, «Meeple, röd», as «Tärningar d6» does.
+const capital = (word: string): string => word.charAt(0).toUpperCase() + word.slice(1)
+// A wooden piece's kind, «meeple» of `piece.meeple` (#1478).
+const pieceOf = (typeId: string): string => typeId.replace(/^piece\./, '')
+// A seat's colour said in a word (L11, #1478): the table's eight by name, any other as it is written.
+function colourWord(hex: string | undefined, t: ReturnType<typeof useT>): string {
+  const named = SEAT_COLOURS.find((c) => c.hex === hex?.toLowerCase())
+  return named ? t(`print.stock.colour.${named.name}` as Key) : (hex ?? '')
+}
 
 // What it takes to draw the game's cards, resolved once and held by identity: a fresh object is a
 // fresh compile of every card on the page (#320).
@@ -532,6 +582,35 @@ function DeckPart({ deck, fronts, errors, chosen, onChoose, drawing, editor, go 
   )
 }
 
+// The printed parts beside the deck (#1488, beställarens beslut 12 i #1470): a board's side and a
+// tile's sides go to the printer as files with bleed, as the cards' do, identical tiles once; die-cut
+// sheets and folding are a partner's, and come with a chosen one, as the box's files do (L91).
+function Parts({ parts }: { parts: Part[] }) {
+  const t = useT()
+  const mm = (n: number) => String(Math.round(n * 10) / 10).replace('.', ',')
+  return (
+    <div className="byd-print-parts-list">
+      <h3 id="byd-print-parts-heading">{t('print.parts.title')}</h3>
+      <ul aria-labelledby="byd-print-parts-heading">
+        {parts.map((p) => (
+          <li key={p.cardRef}>
+            <b>{p.title}</b>
+            <span>
+              {t('print.parts.line', {
+                n: p.count,
+                kind: t(p.kind === 'board' ? 'print.parts.board' : 'print.parts.tile'),
+                size: p.trim ? t('print.parts.size', { w: mm(p.trim.widthMm), h: mm(p.trim.heightMm) }) : '',
+                files: t(p.files === 1 ? 'print.parts.files.one' : 'print.parts.files.other'),
+              })}
+            </span>
+          </li>
+        ))}
+      </ul>
+      <p className="byd-muted">{t('print.parts.later')}</p>
+    </div>
+  )
+}
+
 // 3 · The box (#1418, L91, runda 2 steg 5): the game's tuckbox as `boxOf` measures it, neutral until
 // the designer draws it, with its net and every face in it drawn by the one renderer (E2) as the Låda
 // tab draws them. Its print files are a partner's, with the die line and in CMYK, and come with a
@@ -593,8 +672,8 @@ function editorWith(editor: string, open: string): string {
   return `${path}?${q.toString()}`
 }
 
-// 4 · What is not printed: the dice the printer packs (#1140), those it does not, and the counters
-// that exist only on the table (C4).
+// 4 · What is not printed: the dice and the wooden pieces the printer packs (#1140, #1478), those it
+// does not, and the counters that exist only on the table (C4). A piece is said in its seat's colour.
 function Stock({ doc, pkg }: { doc: Doc; pkg: PrintPackage }) {
   const t = useT()
   const counters = doc.setup.seats.length > 0 ? (doc.setup.counters ?? []) : []
@@ -615,11 +694,40 @@ function Stock({ doc, pkg }: { doc: Doc; pkg: PrintPackage }) {
       </div>
     )
   }
+  // A kind of wooden piece is one row (#1478), however many seats' colours it comes in: the count in
+  // all, then each colour with its own count and its silhouette in that colour. Eight rows saying
+  // the same sentence for eight seats' meeples was a list nobody reads to the end.
+  type Line = { type: { id: string }; count: number; colour?: string | undefined }
+  const piece = (typeId: string, lines: Line[], body: string) => (
+    <div key={typeId} className="byd-print-item">
+      <span className="byd-print-piece" data-piece={pieceOf(typeId)} aria-hidden="true" style={{ ['--piece' as string]: WOOD }} />
+      <div>
+        <b>{t('print.stock.piece', { n: lines.reduce((n, l) => n + l.count, 0), kind: t(`print.stock.piece.${pieceOf(typeId)}` as Key) })}</b>
+        {lines.some((l) => l.colour !== undefined) && (
+          <ul className="byd-print-colours" aria-label={t('print.stock.piece.colours')}>
+            {lines.map((l) => (
+              <li key={l.colour ?? ''}>
+                <span className="byd-print-piece" data-piece={pieceOf(typeId)} aria-hidden="true" style={{ ['--piece' as string]: l.colour ?? WOOD }} />
+                {l.colour === undefined ? t('print.stock.piece.plain', { n: l.count }) : t('print.stock.piece.colour', { n: l.count, colour: colourWord(l.colour, t) })}
+              </li>
+            ))}
+          </ul>
+        )}
+        <p className="byd-muted">{body}</p>
+      </div>
+    </div>
+  )
+  const listed = (list: readonly Line[], packed: boolean) => {
+    const omitted = t('print.stock.omitted', { provider: t('print.provider') })
+    const kinds = new Map<string, Line[]>()
+    for (const h of list) if (!isDie(h.type.id)) kinds.set(h.type.id, [...(kinds.get(h.type.id) ?? []), h])
+    return [...list.filter((h) => isDie(h.type.id)).map((h) => die(h.type.id, h.count, packed ? t('print.stock.packed') : omitted)), ...[...kinds].map(([id, lines]) => piece(id, lines, packed ? t('print.stock.piece.packed') : omitted))]
+  }
   const none = pkg.order.hardware.length === 0 && pkg.order.omitted.length === 0 && counters.length === 0
   return (
     <div className="byd-print-stock">
-      {pkg.order.hardware.map((h) => die(h.type.id, h.count, t('print.stock.packed')))}
-      {pkg.order.omitted.map((h) => die(h.type.id, h.count, t('print.stock.omitted', { provider: t('print.provider') })))}
+      {listed(pkg.order.hardware, true)}
+      {listed(pkg.order.omitted, false)}
       {counters.map((c) => (
         <div key={c.name} className="byd-print-item" data-left="">
           <span className="byd-print-counter" aria-hidden="true">
@@ -710,8 +818,18 @@ function ZipTree({ doc, pkg, deck }: { doc: Doc; pkg: PrintPackage; deck: Return
 
 // What the printer would answer (F3's cost answer, for a printer that does not exist): stamped as an
 // example, every amount «≈», and a total only when every part of it is known.
-function Answer({ quote, cards, kinds, dice, refused }: { quote: Quote; cards: number; kinds: number; dice: number; refused: boolean }) {
+function Answer({ quote, cards, kinds, printed, dice, pieces, refused }: { quote: Quote; cards: number; kinds: number; printed: number; dice: number; pieces: number; refused: boolean }) {
   const t = useT()
+  // The parts beside the cards, dice and wooden pieces (#1478), said as one list.
+  // The printed boards and tiles (#1488) are priced as cards are, so they are said beside them.
+  const parts = [
+    ...(printed > 0 ? [t(printed === 1 ? 'print.answer.parts.printed.one' : 'print.answer.parts.printed.other', { n: printed })] : []),
+    ...(dice > 0 ? [t('print.answer.parts.dice', { n: dice })] : []),
+    ...(pieces > 0 ? [t(pieces === 1 ? 'print.answer.parts.pieces.one' : 'print.answer.parts.pieces.other', { n: pieces })] : []),
+  ]
+  const head = parts.slice(0, -1).join(', ')
+  const last = parts.at(-1) ?? ''
+  const listed = parts.length > 1 ? t('print.answer.parts.both', { a: head, b: last }) : last
   const { lang } = useLang()
   const money = (minor: number, currency: string) => t('print.answer.about', { amount: new Intl.NumberFormat(lang === 'sv' ? 'sv-SE' : 'en-GB', { style: 'currency', currency, minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(minor / 100) })
   const duties = quote.duties
@@ -725,11 +843,11 @@ function Answer({ quote, cards, kinds, dice, refused }: { quote: Quote; cards: n
           <b>{t('print.answer.refused')}</b> {t('print.answer.refused.why')}
         </p>
       ) : (
-        <p>{t('print.answer.taken', { cards, kinds, dice: dice > 0 ? t('print.answer.taken.dice', { n: dice }) : '' })}</p>
+        <p>{t('print.answer.taken', { cards, kinds, dice: parts.length > 0 ? t('print.answer.taken.with', { parts: listed }) : '' })}</p>
       )}
       <div className="byd-print-answer-rows">
         <div className="byd-print-answer-row">
-          <span>{dice > 0 ? t('print.answer.copy.dice', { cards, n: dice }) : t('print.answer.copy', { cards })}</span>
+          <span>{parts.length === 0 ? t('print.answer.copy', { cards }) : parts.length === 1 ? t('print.answer.copy.with', { cards, parts: listed }) : t('print.answer.copy.with.both', { cards, a: head, b: last })}</span>
           <span>{money(quote.unitPrice.amountMinor, quote.unitPrice.currency)}</span>
         </div>
         <div className="byd-print-answer-row">
