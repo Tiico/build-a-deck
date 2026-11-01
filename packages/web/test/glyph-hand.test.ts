@@ -114,6 +114,7 @@ const ALLOWED: Allowed[] = [
     { file: `src/i18n/${lang}.editor.ts`, char: '×', in: '{w} × {h} mm', why: SIZE },
     { file: `src/i18n/${lang}.editor.ts`, char: '×', in: '{n}×', why: `how many of an icon a cell holds: ${FIGURE}` },
     { file: `src/i18n/${lang}.editor.ts`, char: '×', in: '{count} × d{faces}', why: `how many dice a line lays, «2 × d6» (#1403): ${FIGURE}` },
+    { file: `src/i18n/${lang}.editor.ts`, char: '×', in: '{count} × {kind}', why: `how many wooden pieces a line lays, «5 × meeple» (#1477): ${FIGURE}` },
     { file: `src/i18n/${lang}.editor.ts`, char: '×', in: '{w} × {h}', why: `a face of the box and the box itself (#1413): ${SIZE}` },
     { file: `src/i18n/${lang}.editor.ts`, char: '×', in: '2 × {air}', why: `the box's measure worked out, «kortet 63 + 2 × 1 luft», read as «times» (#1413): ${FIGURE}` },
     { file: `src/i18n/${lang}.editor.ts`, char: '×', in: '× {t}', why: `the deck's thickness worked out, «108 × 0,3», read as «times» (#1413): ${FIGURE}` },
