@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { STANDARD_TYPES, TILE_COIN, TypeRegistry } from '@byd/engine'
 import type { FaceTemplate } from '@byd/template'
-import { queueFaces } from '../src/faces.js'
+import { printExportOf, queueFaces } from '../src/faces.js'
+import { printManifestOf } from '../src/print-files.js'
 import { markerRef } from '../src/material.js'
 import { deckFromProject, ProjectDoc } from '../src/projects.js'
 import { openingSetup } from '../src/recipe.js'
@@ -52,6 +53,14 @@ describe('markörens texturer (#1483)', () => {
     const after = (await faces(game('5 guld'))).faces[markerRef('mynt')]
     expect(after?.['front']).not.toBe(before?.['front'])
     expect(after?.['back']).toBe(before?.['back'])
+  })
+
+  it('lämnar markörerna utanför trycket tills #1488 ger dem sina filer, och kortet trycks som förut', () => {
+    const doc = game('1 guld')
+    const exported = printExportOf(deckFromProject(doc), setupFromProject(doc), registry, 0)
+    expect(exported.cards.map((c) => c.cardRef)).toEqual(['mynt'])
+    const manifest = printManifestOf(deckFromProject(doc), setupFromProject(doc), registry)
+    expect(manifest.cards.map((c) => c.cardRef)).toEqual(['mynt'])
   })
 
   it('ritar en sida utan mall som en tom sida i stället för att vägra bordet', async () => {

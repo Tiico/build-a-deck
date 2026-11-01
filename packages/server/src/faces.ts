@@ -1,4 +1,4 @@
-import { isMaterial, type ComponentTypeDef, type SetupDef, type TypeRegistry } from '@byd/engine'
+import { TILES, isMaterial, type ComponentTypeDef, type SetupDef, type TypeRegistry } from '@byd/engine'
 import type { CardTexts, CardTitles, FaceHashes } from '@byd/engine'
 import { compileCard, printedText, type Compiled, type Motif, type Row, type Template } from '@byd/template'
 import { contentHash, type RenderRequest } from '@byd/render/queue'
@@ -38,6 +38,10 @@ export function deckFor(deck: Deck, cardRef: string): Deck {
 export function compileRow(deck: Deck, type: ComponentTypeDef, row: Row, bleed: boolean | number = false): Record<string, Compiled> {
   return compileCard({ template: deck.template, type, row, icons: deck.icons, ...(bleed === false ? {} : { bleed }), ...(deck.palette ? { palette: deck.palette } : {}), ...(deck.fonts ? { fonts: deck.fonts } : {}), ...(deck.motifs ? { motifs: deck.motifs } : {}) })
 }
+
+// A tile (#1482, #1483) goes to print as #1488 says: its own files, the identical ones once. Until
+// then it stands outside the print, where a partner that prints only cards would refuse the order.
+export const printedYet = (type: ComponentTypeDef): boolean => !TILES.some((t) => t.id === type.id)
 
 export type PrintCard = { cardRef: string; faces: Record<string, string> }
 // Hardware is what the partner packs rather than prints (#1140): a stock die, by type and count.
@@ -125,6 +129,7 @@ export function printExportOf(deck: Deck, setup: SetupDef, registry: TypeRegistr
     // A seat's counter is a token, not a card (C4): it names no row of the deck and there is
     // nothing card-shaped to print for it.
     if (spec.counter !== undefined) continue
+    if (!printedYet(registry.get(spec.type))) continue
     const row = deck.rows[spec.cardRef]
     if (!row) throw new Error(`deck has no row "${spec.cardRef}" for print`)
     // The type's own bleed: this is the print where no partner is asked (G5's export, #1207).

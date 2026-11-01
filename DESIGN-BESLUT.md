@@ -5048,7 +5048,7 @@ I en yta ligger de på rad kring punkten, eller kring ytans mitt; i en yta per p
 **En markör ritas en gång.** Vid bordet heter varje exemplar markören (`marker:<id>` som `cardRef`), aldrig en rad, så ett kort och en markör som delar ett ord delar varken yta, titel eller textur.
 Leken som bordet får bär markörens mall under det namnet (`templates` och `drawnWith` i `Deck`), och den enda kompilatorn ritar sidorna en gång per innehållshash: trettio mynt är två texturer, och en ändrad framsida ger alla trettio en ny hash.
 En sida utan mall ritas tom, eftersom en bricka har båda sidorna. Markörens namn är dess titel där dess framsida syns, och dold på samma villkor som ett korts (B6).
-Editorns ändring är `setMarkers`, hela listan med sidorna i en redigering som `setPieces`, och därmed ett steg tillbaka (B4). Raden i ＋-menyn och sidornas verktyg är #1487, filtens ritning #1485 och trycket #1488.
+Editorns ändring är `setMarkers`, hela listan med sidorna i en redigering som `setPieces`, och därmed ett steg tillbaka (B4). Raden i ＋-menyn och sidornas verktyg är #1487, filtens ritning #1485 och trycket #1488; tills trycket finns står brickor utanför tryckexporten och partnerns manifest (`printedYet`), där en partner som bara trycker kort annars vägrade hela ordern.
 
 Brickor i setupen, en egen lek och tabell per brickform, bordet, telefonen och trycket byggs i #1484–#1488.
 
