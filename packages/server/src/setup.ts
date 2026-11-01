@@ -33,9 +33,11 @@ export function setupFromProject(doc: Pick<ProjectDoc, 'rows' | 'setup'>): Setup
     }
     if (piece.line.kind === 'piece') {
       // A wooden piece (#1471) wears its seat's colour (L11): the seat is its `cardRef`, as a counter's
-      // name is, and a piece of no seat has none. It is laid on its first face, a meeple standing.
+      // name is, and a piece of no seat has none. It is laid on its first face, a meeple standing,
+      // unless its line says it starts lying (#1477).
       const def = PIECES.find((t) => t.id === `piece.${piece.kind ?? ''}`)
-      if (def) components.push({ type: { id: def.id, version: def.version }, cardRef: piece.owner ?? '', zone: piece.zone, face: def.contentFace, ...at })
+      const lying = doc.setup.pieces?.[piece.line.index]?.lying === true && def?.faces.includes('lying')
+      if (def) components.push({ type: { id: def.id, version: def.version }, cardRef: piece.owner ?? '', zone: piece.zone, face: lying ? 'lying' : def.contentFace, ...at })
       continue
     }
     const def = DICE.find((t) => t.behaviours.rollable !== false && t.behaviours.rollable.faces === piece.faces)

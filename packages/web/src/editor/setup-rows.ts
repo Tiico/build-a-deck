@@ -88,15 +88,18 @@ export function diePlaces(setup: Setup): { table: DiePlace[]; seats: DiePlace[] 
   const seats = rowsOf(setup.zones).flatMap((row) => (row.kind === 'family' && row.family.first.kind === 'area' ? [{ value: `role:${row.family.role}`, name: row.family.name }] : []))
   return { table, seats }
 }
-export const placeOf = (die: Die): string => (die.role !== undefined ? `role:${die.role}` : `zone:${die.zone ?? ''}`)
+// A line of material that lies in a place: a die, or a wooden piece (#1477), which says where it
+// lies the way a die does (K33).
+type Placed = Pick<Die, 'zone' | 'role' | 'at' | 'perSeat'>
+export const placeOf = (die: Placed): string => (die.role !== undefined ? `role:${die.role}` : `zone:${die.zone ?? ''}`)
 // A die moved to another place keeps what its count meant: «per spelare» in a seat's area is
 // «per spelare» on the table too, and a seat's area has no other meaning to carry back. The point
 // it was dragged to was a point in the old zone (#1292), so the new one lays it where it finds room.
-export function movedTo(die: Die, value: string): Die {
+export function movedTo<L extends Placed>(die: L, value: string): L {
   const { zone: _zone, role: _role, at: _at, perSeat, ...rest } = die
-  if (value.startsWith('role:')) return { ...rest, role: value.slice('role:'.length) }
+  if (value.startsWith('role:')) return { ...rest, role: value.slice('role:'.length) } as L
   const seated = die.role !== undefined || perSeat === true
-  return { ...rest, zone: value.slice('zone:'.length), ...(seated ? { perSeat: true } : {}) }
+  return { ...rest, zone: value.slice('zone:'.length), ...(seated ? { perSeat: true } : {}) } as L
 }
 
 // A new counter: the first is the score, the rest are lives — under a name no counter has yet, the

@@ -73,8 +73,12 @@ export const ProjectPiece = z
     zone: z.string().min(1).optional(),
     role: z.string().min(1).optional(),
     at: MaterialAt.optional(),
+    // A meeple laid down from the start (#1477), as the farmer in Carcassonne: the row's «Börjar
+    // liggande». Absent, it stands. Only a meeple has a side to lie on (K33).
+    lying: z.literal(true).optional(),
   })
   .refine((d) => (d.zone === undefined) !== (d.role === undefined), { message: 'a piece lies in a zone or in a role, and only one' })
+  .refine((d) => d.lying === undefined || d.kind === 'meeple', { message: 'only a meeple lies down' })
 export type ProjectPiece = z.infer<typeof ProjectPiece>
 export const ProjectPieces = z.array(ProjectPiece)
 export const ProjectSetup = z.object({
