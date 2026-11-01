@@ -1,4 +1,4 @@
-import { TILES, isMaterial, type ComponentTypeDef, type SetupDef, type TypeRegistry } from '@byd/engine'
+import { TILES, isMaterial, seatColourOf, type ComponentTypeDef, type SetupDef, type TypeRegistry } from '@byd/engine'
 import type { CardTexts, CardTitles, FaceHashes } from '@byd/engine'
 import { compileCard, printedText, type Compiled, type Motif, type Row, type Template } from '@byd/template'
 import { contentHash, type RenderKind, type RenderRequest } from '@byd/render/queue'
@@ -49,8 +49,10 @@ export const printedYet = (type: ComponentTypeDef): boolean => !TILES.some((t) =
 
 export type PrintCard = { cardRef: string; faces: Record<string, string> }
 // Hardware is what the partner packs rather than prints (#1140): a stock die, by type and count.
-export type PrintHardware = { type: string; count: number }
-export type PrintExport = { cards: PrintCard[]; jobs: RenderRequest[]; hardware: PrintHardware[] }
+// A wooden piece is said in its seat's colour (#1478, L11); a die has none.
+export type PrintHardware = { type: string; count: number; colour?: string }
+// `leftOut` is the hardware an order asked to go without (`hardware: false`), said rather than dropped.
+export type PrintExport = { cards: PrintCard[]; jobs: RenderRequest[]; hardware: PrintHardware[]; leftOut: PrintHardware[] }
 
 // Compiles every card in the setup once per face and keys the textures by content hash
 // (DRIFT §6): the same face on three copies is one rendering, and a card that did not change
@@ -151,16 +153,21 @@ export async function queueFaces(deck: Deck, setup: SetupDef, registry: TypeRegi
 // This is the print where no partner is asked, so the bleed is the type's own; a partner's files
 // are drawn after its own requirements in `print-files.ts` (#1207).
 //
-// A stock item, a die (#1140), is listed as hardware by kind in the order the game first names it,
-// and printed as nothing. Whoever orders may leave the hardware out (`hardware: false`): many
+// A stock item, a die (#1140) or a wooden piece (#1478), is listed as hardware by kind, and a piece
+// by its seat's colour too, in the order the game first names it, and printed as nothing.
+// Left out, it is said in `leftOut`, so that whoever ordered hears the game arrives without it. Whoever orders may leave the hardware out (`hardware: false`): many
 // partners will not pack it, and a game is still a game of cards without it.
 export function printExportOf(deck: Deck, setup: SetupDef, registry: TypeRegistry, now: number, opts: { hardware?: boolean } = {}): PrintExport {
   const cards: PrintCard[] = []
   const jobs = new Map<string, RenderRequest>()
-  const hardware = new Map<string, number>()
+  const hardware = new Map<string, PrintHardware>()
   for (const spec of setup.components) {
     if (registry.get(spec.type).print.stock) {
-      if (opts.hardware !== false) hardware.set(spec.type.id, (hardware.get(spec.type.id) ?? 0) + 1)
+      const colour = seatColourOf(setup.seats, spec.cardRef)
+      const key = `${spec.type.id} ${colour ?? ''}`
+      const seen = hardware.get(key)
+      if (seen) seen.count++
+      else hardware.set(key, { type: spec.type.id, count: 1, ...(colour !== undefined ? { colour } : {}) })
       continue
     }
     // A seat's counter is a token, not a card (C4): it names no row of the deck and there is
@@ -181,5 +188,6 @@ export function printExportOf(deck: Deck, setup: SetupDef, registry: TypeRegistr
     }
     cards.push({ cardRef: spec.cardRef, faces })
   }
-  return { cards, jobs: [...jobs.values()], hardware: [...hardware].map(([type, count]) => ({ type, count })) }
+  const stock = [...hardware.values()]
+  return { cards, jobs: [...jobs.values()], hardware: opts.hardware === false ? [] : stock, leftOut: opts.hardware === false ? stock : [] }
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { CARD_STANDARD_63x88, DICE, TOKEN_COUNTER, TypeRegistry, type SetupDef, STANDARD_TYPES } from '@byd/engine'
+import { CARD_STANDARD_63x88, DICE, MEEPLE, TOKEN_COUNTER, TypeRegistry, type SetupDef, STANDARD_TYPES } from '@byd/engine'
 import type { Deck } from '../src/faces.js'
 import { printExportOf } from '../src/faces.js'
 
@@ -104,6 +104,31 @@ describe('the print export (#14)', () => {
     it('leaves the hardware out when asked, and a game without dice has none', () => {
       expect(printExportOf(deck, withDice, registry, 123, { hardware: false }).hardware).toEqual([])
       expect(printExportOf(deck, setup, registry, 123).hardware).toEqual([])
+    })
+  })
+
+  // A meeple is stock as a die is (#1478, beställarens beslut 5 i #1470), in its seat's colour (L11).
+  describe('meeples (#1478)', () => {
+    const meeple = (seat: string) => ({ type: { id: MEEPLE.id, version: MEEPLE.version }, cardRef: seat, zone: 'table', face: 'standing' })
+    const withMeeples: SetupDef = { ...setup, seats: ['A', 'B'], components: [...setup.components, meeple('A'), meeple('B'), meeple('A')] }
+
+    it('lists each seat\'s meeples as hardware in the seat\'s colour, and prints none of them', () => {
+      const printed = printExportOf(deck, withMeeples, registry, 123)
+      expect(printed.cards.map((card) => card.cardRef)).toEqual(['trap', 'dragon', 'trap'])
+      expect(printed.hardware).toEqual([
+        { type: 'piece.meeple', count: 2, colour: '#e05a4f' },
+        { type: 'piece.meeple', count: 1, colour: '#3c8ce7' },
+      ])
+      expect(printed.leftOut).toEqual([])
+    })
+
+    it('leaves them out when asked, and says what it left', () => {
+      const printed = printExportOf(deck, withMeeples, registry, 123, { hardware: false })
+      expect(printed.hardware).toEqual([])
+      expect(printed.leftOut).toEqual([
+        { type: 'piece.meeple', count: 2, colour: '#e05a4f' },
+        { type: 'piece.meeple', count: 1, colour: '#3c8ce7' },
+      ])
     })
   })
 })

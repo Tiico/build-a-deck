@@ -1,4 +1,4 @@
-import type { ComponentTypeDef } from '@byd/engine'
+import { SEAT_COLOURS, type ComponentTypeDef } from '@byd/engine'
 import { createFakeProvider, type FakeConfig, type PrintProvider, type PrintRequirements } from '@byd/print'
 
 // The print providers the platform registers (F2, #1208). In the beta there is no real partner, so
@@ -25,7 +25,12 @@ export function testPrinterConfig(types: readonly ComponentTypeDef[]): FakeConfi
   const catalog: PrintRequirements[] = []
   for (const def of types) {
     const type = { id: def.id, version: def.version }
-    if (def.print.stock) catalog.push({ kind: 'stock', type, sku: def.id.replace(/^die\./, '') })
+    // A die is its kind, «d6»; a wooden piece is its kind, «meeple», and it pretends to stock one in
+    // every seat colour, a part number each (#1478), so a game is packed in the colours it is played in.
+    if (def.print.stock) {
+      const sku = def.id.replace(/^(die|piece)\./, '')
+      catalog.push({ kind: 'stock', type, sku, ...(def.id.startsWith('piece.') ? { colours: SEAT_COLOURS.map((c) => ({ colour: c.hex, sku: `${sku}-${c.name}` })) } : {}) })
+    }
     else if (!def.behaviours.counter) {
       catalog.push({
         kind: 'printed',

@@ -51,7 +51,7 @@ import { REFERRER_POLICY, UPLOAD_POLICY, pageNonce, pagePolicy, scriptHashesOf, 
 import { DEFAULT_PLANS, QuotaReached, YOU, growth, limitOf, tableWindowFrom, type Bearer, type Limit, type Measure, type Plans, type QuotaMet, type TableCeilings } from './quotas.js'
 import { lapseAccount, planOf, readOnlyOf, readOnlyWhyOf, usageOf, type AccountPlanStore } from './account-plans.js'
 import { ReadOnlyGame, gameWritten, type ReadOnlyCheck } from './read-only.js'
-import { INTERVALS, customerOfEvent, priceFor, signatureHolds, syncCustomer, type PaymentsConfig, type StripeApi } from './payments.js'
+import { INTERVALS, cancelForErasure, customerOfEvent, priceFault, priceFor, signatureHolds, syncCustomer, type PaymentsConfig, type StripeApi } from './payments.js'
 import { NO_CARDS, cardGrowth, cardsUsed, type CardMeasure } from './quota-cards.js'
 import { checkRegister, openToTheDue, termsInForce, termsStanding, type TermsRegister, type TermsStanding } from './terms.js'
 import { entry, isMasked, type ErasureStore } from './erase.js'
@@ -646,6 +646,11 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
           // Two checkouts at once make two customers at Stripe and link the first: both use it.
           customer = await opts.accountPlans.customerOf(account.id)
         }
+        const fault = priceFault(await payments.stripe.priceOf(price), payments.config.byId.get(price))
+        if (fault) {
+          console.error(JSON.stringify({ msg: 'stripe', checkout: 'refused', price, fault }))
+          return json(res, 502, { error: 'stripe unavailable' })
+        }
         const checkoutUrl = await payments.stripe.createCheckout({ customer: customer ?? '', account: account.id, price, successUrl: back('paid'), cancelUrl: back('cancelled') })
         return json(res, 200, { url: checkoutUrl })
       } catch (err) {
@@ -778,6 +783,9 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
         for (const table of await opts.store.sessionsOf(id)) await opts.host.end(table.id)
       }
       const shared = projects ? (await projects.list(account.id)).filter((p) => !owned.includes(p.id)).map((p) => p.id) : []
+      // Her subscription at Stripe ends at once, before the account goes (#1520); a Stripe that
+      // does not answer leaves it queued and never stops the erasure.
+      const cancelled = opts.accountPlans ? await cancelForErasure({ accountPlans: opts.accountPlans, stripe: opts.payments?.stripe ?? null }, account.id) : 'no-customer'
       const done = await opts.erasures.erase([entry({ kind: 'account', account: account.id }, 'request', now), ...owned.map((project) => entry({ kind: 'game', project }, 'removed', now))])
       await opts.host.reload(done.sessions)
       if (projects) {
@@ -793,7 +801,7 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
       } catch (err) {
         console.error(JSON.stringify({ msg: 'erased-mail-failed', error: err instanceof Error ? err.message : String(err) }))
       }
-      console.log(JSON.stringify({ msg: 'account-erased', games: owned.length, tables: done.sessions.length, lines: done.lines, guests: done.guests }))
+      console.log(JSON.stringify({ msg: 'account-erased', games: owned.length, tables: done.sessions.length, lines: done.lines, guests: done.guests, stripe: cancelled }))
       res.writeHead(200, { 'content-type': 'application/json', 'set-cookie': `${COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0` })
       res.end(JSON.stringify({ ok: true }))
       return
@@ -2611,7 +2619,7 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     for (const job of printed.jobs) await opts.renders.enqueue(job, rec.owner)
     // The licences of every symbol the game uses go with the order (E4): the printer is handed
     // what the deck is made of, not only how it looks.
-    json(res, 202, { project: rec.id, rev: rec.rev, cards: printed.cards, hardware: printed.hardware, credits: creditsOf(rec), warnings: found })
+    json(res, 202, { project: rec.id, rev: rec.rev, cards: printed.cards, hardware: printed.hardware, leftOut: printed.leftOut, credits: creditsOf(rec), warnings: found })
     return true
   }
   // The print package (#1207, the page and the download are #1208): GET says what the provider would

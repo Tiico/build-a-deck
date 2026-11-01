@@ -128,7 +128,8 @@ Målet är att en grupp kan spela vilket kortspel som helst utan att sakna någo
   Beställaren beslutade 2026-10-28 att release är "kort- och brädspel": typerna byggs nu, parallellt med betan, med en PRD och en prototyp per synlig yta (#1470).
   Trädelarna är i registret och i setupen (K33, #1471): `piece.meeple`, `piece.cube` och `piece.disc`, en meeple läggs ned med `flip`, och att material aldrig hålls deklareras i typen. Fliken Bord lägger till dem med en «＋ Pjäs» och drar dem på plats (#1477).
   Bordet ritar och flyttar dem (K33, #1475): det som inte flyttats är en bricka med antalet per plats, en flyttad pjäs är sin silhuett i platsens färg med ett band av krita, och en liggande meeple ligger på sidan.
-  Meeplen är byggd när telefonen (#1476) också är klar; trycket (#1478), brädet och brickan återstår.
+  Tryckpaketet listar dem som lagervaror per platsfärg (#1478).
+  Meeplen är byggd när telefonen (#1476) också är klar; brädet och brickan återstår.
   Brickorna är i registret och i motorn (K34, #1482): `tile.hex.52`, `tile.square.45`, `tile.round.44` och `tile.round.25`, som kortet i sin form, hållbara på handen, med vridsteget som typdata och den dolda brickan bevisad på tråden. Identiska markörer är i dokumentet och setupen (K34, #1483): `setup.markers` med en mall per sida, i en hög eller på rad kring en punkt, ritade en gång per innehållshash. Spelet bär mer än en lek (K34, #1484): `decks` bredvid dokumentets egen, var och en med typ, mall, rader och hög, i setupen, texturerna, diffen, exporten, Fysisk kontroll och taken. Bordet, telefonen, editorn och trycket återstår (#1485–#1488).
   Brädet är byggt utom trycket (K35, #1479–#1481): `board.square457`, `board.rect610` och `board.player` i registret, fasta där setupen lade dem; filten ritar brädet under allt med zonerna som krita och växer för det; editorn lägger brädet i Bord och ritar dess sida i fliken «Bräde». Brädets PDF i tryckpaketet återstår (#1488).
 
