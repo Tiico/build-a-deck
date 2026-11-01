@@ -51,7 +51,19 @@ describe('the client for Stripe’s API', () => {
       'line_items[0][quantity]': '1',
       success_url: 'http://app/p?pro=paid',
       cancel_url: 'http://app/p?pro=cancelled',
+      // VAT through Stripe Tax (#1521): reckoned on the customer's country, which Checkout asks for
+      // and keeps on the customer, so the next invoice is taxed the same way.
+      'automatic_tax[enabled]': 'true',
+      billing_address_collection: 'auto',
+      'customer_update[address]': 'auto',
     })
+  })
+
+  it('reads a price: its currency, its interval and whether VAT is inside it (#1521)', async () => {
+    answers.set('GET /v1/prices/price_m', { status: 200, body: { id: 'price_m', object: 'price', currency: 'sek', unit_amount: 9900, tax_behavior: 'inclusive', recurring: { interval: 'month', interval_count: 1 } } })
+    expect(await stripeApi('sk_test_k', base).priceOf('price_m')).toEqual({ id: 'price_m', currency: 'sek', interval: 'month', taxBehavior: 'inclusive' })
+    answers.set('GET /v1/prices/price_once', { status: 200, body: { id: 'price_once', object: 'price', currency: 'eur', unit_amount: 900, tax_behavior: 'unspecified', recurring: null } })
+    expect(await stripeApi('sk_test_k', base).priceOf('price_once')).toEqual({ id: 'price_once', currency: 'eur', interval: null, taxBehavior: 'unspecified' })
   })
 
   it('reads every subscription of a customer, cancelled ones too, with the prices each bills', async () => {

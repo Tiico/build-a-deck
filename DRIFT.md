@@ -518,7 +518,10 @@ Ett levande abonnemang (`active`, `trialing`, eller `past_due` medan Stripe för
 En nivå som operatören satt (källan `operator`) skrivs aldrig över av Stripe: operatörens ord står tills hon tar bort det med `plan clear`, och nästa händelse eller `stripe sync` gäller då.
 Varje webhook loggar en rad med händelsens typ och vad som blev av den, till exempel `{"msg":"stripe","type":"customer.subscription.deleted","outcome":"lapsed"}`, aldrig vem som betalar, kunden eller adressen (§8).
 En webhook som inte kom fram läses om med `pnpm --filter @byd/server stripe sync <adress>`, med lådans variabler (RUNBOOK §10).
-Moms är inte avgjord: priset är med moms som en konsument i EU ser det (fråga 2 i #1469), och hur momsen tas ut, till exempel med Stripe Tax, bekräftar beställaren innan de skarpa nycklarna läggs in.
+Byggt 2026-11-01 (#1521, beställarens beslut samma dag): **momsen tas ut med Stripe Tax**, och priset 99 kr eller 9 € är inklusive moms.
+Kassan skapas med automatisk skatt (`automatic_tax[enabled]`), Stripes kassa frågar efter kundens land så som Stripe Tax kräver, och adressen sparas på kunden så att förnyelserna beskattas likadant; Stripe Tax räknar svensk moms och EU-moms via OSS efter landet.
+Varje pris i `BYD_STRIPE_PRICES` sätts upp i Stripe med momsen inräknad (`tax_behavior: inclusive`), och kassan frågar Stripe om priset innan den skickar någon dit: ett pris med moms ovanpå, utan besked om moms, eller i en annan valuta eller ett annat intervall än variabeln säger säljs aldrig, svaret är `502` och loggen säger vilket pris och varför.
+Stripe Tax påslaget med registreringarna, och beställarens OSS-registrering hos Skatteverket, är förutsättningar för de skarpa nycklarna (RUNBOOK §10).
 Ett konto som raderar sig själv tar bort kopplingen till Stripe-kunden, men säger ännu inte upp abonnemanget hos Stripe; det görs för hand i Dashboard tills det byggs (RUNBOOK §10).
 
 Nivåerna och deras tak bor inte heller i koden (#1193, A2, #1192): de är `BYD_PLANS` i lådans `.env`, JSON på en rad inom enkla citattecken, och stacken skickar variabeln till appen.

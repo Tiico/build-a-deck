@@ -1,9 +1,9 @@
 import { createHmac } from 'node:crypto'
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { MemoryAuthStore, MemoryLogStore, MemoryProjectStore, PostgresLogStore, type AuthStore, type LogStore } from '../src/index.js'
 import { MemoryAccountPlanStore, type AccountPlanStore } from '../src/account-plans.js'
 import type { ProjectStore } from '../src/projects.js'
-import { paymentsFromEnv, syncByAddress, type StripeApi, type Subscription } from '../src/payments.js'
+import { paymentsFromEnv, syncByAddress, type StripeApi, type StripePrice, type Subscription } from '../src/payments.js'
 import { plansFromEnv } from '../src/quotas.js'
 import { start, twoSeatSetup, type Running } from './fixture.js'
 import { template } from './deck.js'
@@ -62,6 +62,15 @@ class FakeStripe implements StripeApi {
   async createCheckout(input: { customer: string; account: string; price: string; successUrl: string; cancelUrl: string }): Promise<string> {
     this.checkouts.push(input)
     return `https://checkout.stripe.com/c/pay/cs_test_${this.checkouts.length}`
+  }
+  // Every price of the box's configuration, as the RUNBOOK sets them up: VAT inside (#1521).
+  readonly prices = new Map<string, StripePrice>(
+    [...config.byId].map(([id, p]) => [id, { id, currency: p.currency, interval: p.interval, taxBehavior: 'inclusive' }]),
+  )
+  async priceOf(id: string): Promise<StripePrice> {
+    const price = this.prices.get(id)
+    if (!price) throw new Error(`stripe GET /v1/prices/${id}: 404 No such price`)
+    return price
   }
   async subscriptionsOf(customer: string): Promise<Subscription[]> {
     this.asked += 1
@@ -150,6 +159,29 @@ for (const backend of backends) {
       const ada = await someone('ada')
       expect((await checkout(ada.cookie, body)).status).toBe(400)
       expect(stripe.checkouts).toHaveLength(0)
+    })
+
+    // The price is 99 kr or 9 € with VAT inside (#1521, beställarens beslut 2026-11-01): a price
+    // that Stripe would add VAT on top of, or one that is not what the configuration calls it, is
+    // never sold, and the log says which.
+    it.each([
+      ['VAT on top', { taxBehavior: 'exclusive' }],
+      ['no word on VAT', { taxBehavior: 'unspecified' }],
+      ['another currency', { currency: 'eur' }],
+      ['another interval', { interval: 'year' as const }],
+    ])('refuse a checkout at a price with %s', async (_what, change) => {
+      await open()
+      stripe.prices.set('price_sek_m', { ...stripe.prices.get('price_sek_m')!, ...change })
+      const ada = await someone('ada')
+      const error = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+      const res = await checkout(ada.cookie, { currency: 'sek', interval: 'month' })
+      const said = error.mock.calls.map((c) => String(c[0]))
+      error.mockRestore()
+      expect(res.status).toBe(502)
+      expect(stripe.checkouts).toHaveLength(0)
+      expect(said.join('\n')).toContain('price_sek_m')
+      // The other prices still sell.
+      expect((await checkout(ada.cookie, { currency: 'sek', interval: 'year' })).status).toBe(200)
     })
 
     it('write Pro with the source stripe when Stripe says the subscription is paid', async () => {
