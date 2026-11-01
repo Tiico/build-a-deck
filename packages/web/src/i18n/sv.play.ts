@@ -180,6 +180,8 @@ export const svPlay = {
   'felt.key.draw': 'Dra översta kortet från högen under pekaren',
   'felt.key.shuffle': 'Blanda högen under pekaren',
   'felt.key.moveDie': 'Flytta tärningen som har fokus',
+  'felt.key.movePiece': 'Flytta pjäsen som har fokus',
+  'felt.key.moveMaterial': 'Flytta tärningen eller pjäsen som har fokus',
   'felt.key.escape': 'Stäng ringen · avbryt draget',
   'felt.key.help': 'Visa den här listan',
 
@@ -223,6 +225,20 @@ export const svPlay = {
   // den direkt i stället för att öppna en panel, så meningen säger det och inte «öppnar handlingar».
   'kbd.die': '{kind}, visar {n}, i {zone}. Enter slår tärningen, M flyttar den.',
   'kbd.verb.roll': 'Slå',
+  // En trädel (#1475) heter sin sort och bär sin plats färg. Toppen av en hög säger hur många som
+  // ligger där, eftersom högen är ett enda stopp (#1472 B).
+  'kbd.piece': '{what}, i {zone}. Enter öppnar handlingar, M flyttar den.',
+  'kbd.piece.many': '{n} {kinds}',
+  'kbd.piece.whose': '{owner:s}',
+  'kbd.piece.lying': 'liggande',
+  'piece.kind.meeple': 'meeple',
+  'piece.kind.cube': 'kub',
+  'piece.kind.disc': 'skiva',
+  'piece.kinds.meeple': 'meeples',
+  'piece.kinds.cube': 'kuber',
+  'piece.kinds.disc': 'skivor',
+  'ring.piece.lay': 'Lägg ner',
+  'ring.piece.raise': 'Res upp',
   'kbd.pile.top': 'Översta kortet i {zone}: {name}',
   'kbd.pile.empty': '{zone}, tom',
   // En hög är ett stopp (#572): namnet, hur mycket som ligger i den, och vad som ligger överst.

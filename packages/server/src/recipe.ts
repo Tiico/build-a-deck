@@ -1,8 +1,8 @@
 import { CARD_STANDARD_63x88 } from '@byd/engine'
 import type { ProjectDoc } from './projects.js'
-import { CHIP_MM, DIE_MM, PIECE_MM } from './felt-sizes.js'
+import { CHIP_MM, DIE_MM, PIECE_MM, PIECE_PILE_MM } from './felt-sizes.js'
 
-export { CHIP_MM, DIE_MM, PIECE_MM }
+export { CHIP_MM, DIE_MM, PIECE_MM, PIECE_PILE_MM }
 
 // Imported by the editor as well as the server, so this module stays free of anything Node.
 // The setup as the editor holds it (B5, K2), and the recipe behind it.
@@ -520,8 +520,10 @@ export function counterSpots(zone: Geometry, counters: number): { x: number; y: 
 // every zone standing in it — a pile with its card back and the band its name and table-mode
 // handle hang in (#881). A zone that holds this one, as the floor holds every zone, stands around
 // it and not in it. Only when no such stretch exists does the row lie across the middle anyway.
-export function diceSpots(zone: Geometry, dice: number, others: Zone[] = []): { x: number; y: number }[] {
-  const pitch = DIE_MM * 1.3
+// `size` is the room a slot is spaced for: a die's, unless the zone also holds the chip a pile of
+// wooden pieces is drawn as (#1475), which is wider.
+export function diceSpots(zone: Geometry, dice: number, others: Zone[] = [], size: number = DIE_MM): { x: number; y: number }[] {
+  const pitch = size * 1.3
   const perRow = Math.max(1, Math.min(dice, Math.floor(zone.w / pitch)))
   const rows = Math.ceil(dice / perRow)
   const want = { w: perRow * pitch, h: rows * pitch }
@@ -529,15 +531,15 @@ export function diceSpots(zone: Geometry, dice: number, others: Zone[] = []): { 
   const holds = (g: Geometry): boolean => g.x <= zone.x && g.y <= zone.y && g.x + g.w >= zone.x + zone.w && g.y + g.h >= zone.y + zone.h
   // A die keeps from its neighbours the gap two dice keep between them: half of it is the margin
   // the row already has inside its pitch, the other half is grown onto what it lies beside.
-  const gap = (pitch - DIE_MM) / 2
+  const gap = (pitch - size) / 2
   const grown = (g: Geometry): Geometry => rect(g.x - gap, g.y - gap, g.w + 2 * gap, g.h + 2 * gap)
   const taken = others.filter((z) => !holds(z.geometry)).map((z) => grown(roomOf(z, HANDLE_BELOW_MM)))
   const block = freeIn(zone, taken, want, middle) ?? middle
   return Array.from({ length: Math.max(0, dice) }, (_, i) => {
     const row = Math.floor(i / perRow)
     const inRow = Math.min(perRow, dice - row * perRow)
-    const x = block.x - zone.x + (want.w - inRow * pitch) / 2 + (i % perRow) * pitch + (pitch - DIE_MM) / 2
-    const y = block.y - zone.y + row * pitch + (pitch - DIE_MM) / 2
+    const x = block.x - zone.x + (want.w - inRow * pitch) / 2 + (i % perRow) * pitch + (pitch - size) / 2
+    const y = block.y - zone.y + row * pitch + (pitch - size) / 2
     return { x: Math.round(Math.max(0, Math.min(zone.w, x))), y: Math.round(Math.max(0, Math.min(zone.h, y))) }
   })
 }

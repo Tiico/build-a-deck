@@ -1,6 +1,6 @@
 import type { Snapshot, ZoneView } from '@byd/protocol'
-import { isDie, isPiece } from '../components.js'
-import { CARD_MM, DIE_MM, TOKEN_MM } from './drop.js'
+import { isMaterial, materialBox } from '../components.js'
+import { CARD_MM } from './drop.js'
 import { FAN_MAX, HAND_STEP_MM } from './hand.js'
 
 // Var ett kort hamnar i en yta när den som spelar inte har pekat, och i vilken ordning det målas
@@ -81,7 +81,7 @@ export function laidIn(view: Snapshot, zone: string, nth = 0, piece = false): La
   const g = z.geometry
   const along = alongIsWidth(g)
   const here = view.components.filter((c) => c.zone === zone)
-  const fanned = piece ? here : here.filter((c) => !isPiece(c))
+  const fanned = piece ? here : here.filter((c) => !isMaterial(c))
   // Hur långt fjädern har kommit: allt i ytan, utom brickorna när det är ett kort som läggs. En
   // dold yta visar inte sina kort, men en bricka syns alltid, så de som syns dras från antalet.
   const counted = piece ? held : held - (here.length - fanned.length)
@@ -90,7 +90,7 @@ export function laidIn(view: Snapshot, zone: string, nth = 0, piece = false): La
   const across = along ? mm((g.h - CARD_MM.h) / 2) : mm((g.w - CARD_MM.w) / 2)
   const at = (s: number): Rect => (along ? { x: s, y: across, ...CARD_MM } : { x: across, y: s, ...CARD_MM })
   // Brickorna kortet inte får täcka; en bricka som läggs frågar inte efter dem.
-  const pieces = piece ? [] : here.filter(isPiece).map(rectOf)
+  const pieces = piece ? [] : here.filter(isMaterial).map(rectOf)
   const clear = (s: number): boolean => pieces.every((p) => !overlaps(at(s), p))
   let step = 0
   for (let k = 0; k <= nth; k++) {
@@ -176,8 +176,8 @@ function beforeSeat(view: Snapshot, floor: ZoneView, nth: number): { x: number; 
     return { x: mm(first.x + s * across.x + d * toward.x - g.x), y: mm(first.y + s * across.y + d * toward.y - g.y), ...CARD_MM }
   }
   const here = view.components.filter((c) => c.zone === floor.id)
-  const taken = here.filter((c) => !isPiece(c)).map((c) => ({ x: c.x, y: c.y }))
-  const pieces = here.filter(isPiece).map(rectOf)
+  const taken = here.filter((c) => !isMaterial(c)).map((c) => ({ x: c.x, y: c.y }))
+  const pieces = here.filter(isMaterial).map(rectOf)
   // A pile and the words that hang under it, which a card in front of a seat is not laid on.
   const piles = view.zones
     .filter((z) => z.kind === 'pile')
@@ -223,10 +223,7 @@ function bounds(boxes: readonly Rect[]): Rect | null {
 }
 
 type Rect = { x: number; y: number; w: number; h: number }
-const rectOf = (c: { x: number; y: number; type: { id: string } }): Rect => {
-  const size = isDie(c) ? DIE_MM : TOKEN_MM
-  return { x: c.x, y: c.y, w: size, h: size }
-}
+const rectOf = (c: { x: number; y: number; type: { id: string } }): Rect => materialBox(c, true)
 const overlaps = (a: Rect, b: Rect): boolean => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h
 
 // Nästa plats i fjädern där inget kort redan ligger (K16, #560 P-11). Antalet säger var fjädern
