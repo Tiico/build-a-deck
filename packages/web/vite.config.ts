@@ -1,4 +1,7 @@
 /// <reference types="vitest/config" />
+// Playwright's browsers are the repo's own, in .playwright-browsers/ (#1508): imported first, so
+// every worker is born knowing, and checked before the run (`test-support/playwright-browsers.ts`).
+import '../../test-support/playwright-browsers.js'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -240,5 +243,5 @@ export default defineConfig({
   // vitest's own timeout is a ceiling and not the budget (#848): `test/setup.ts` holds every test
   // to `JSDOM_TEST_BUDGET` of the worker's own time, which a machine that stops running the
   // worker cannot spend for it. `test-support/own-time.ts` has what was measured.
-  test: { testTimeout: TEST_CEILING, setupFiles: ['./test/setup.ts'], globalSetup: ['../../test-support/one-suite-at-a-time.ts'], ...reporting() },
+  test: { testTimeout: TEST_CEILING, setupFiles: ['./test/setup.ts'], globalSetup: ['../../test-support/playwright-browsers.ts', '../../test-support/one-suite-at-a-time.ts'], ...reporting() },
 })

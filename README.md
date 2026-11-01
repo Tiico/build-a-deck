@@ -21,7 +21,8 @@ Arbetssättet för agenter står i [CLAUDE.md](CLAUDE.md).
 ## Kör lokalt
 
 Kräver Node 26 och pnpm 11.
-Chromium hämtas av Playwright vid första `pnpm install` i `packages/render` (`npx playwright install chromium` om den saknas).
+Repots Chromium ligger i worktreens egen `.playwright-browsers/`, inte i den cache som andra projekt på datorn delar (#1508).
+`pnpm install` hämtar den, och `pnpm browsers` hämtar den igen om den saknas; testerna säger till om det behövs.
 
 ```bash
 pnpm install

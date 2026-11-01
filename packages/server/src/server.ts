@@ -1420,6 +1420,14 @@ async function deckOf(opts: ServerOptions, rec: ProjectRecord): Promise<Deck> {
   // The template's own pictures too (#320), keyed beside the rows' under the URL each now carries.
   const own = await resolveTemplate(rec.template, opts.assets, rec.pictures ?? {})
   const doc = deckFromProject({ ...rec, rows, template: own.template, icons: await resolveIcons(rec.icons, opts.assets) })
+  // And each board's (#1479), as the template's: a board is drawn with the same tools as a card.
+  const boards: Record<string, Template> = {}
+  let boardMotifs: Record<string, Motif> = {}
+  for (const [id, board] of Object.entries(doc.boards ?? {})) {
+    const resolved = await resolveTemplate(board, opts.assets, rec.pictures ?? {})
+    boards[id] = resolved.template
+    boardMotifs = { ...boardMotifs, ...resolved.motifs }
+  }
   // And every other template the deck draws with, a marker's sides (#1483), as the template's own.
   const templates: Record<string, Template> = {}
   let drawn: Record<string, Motif> = {}
@@ -1428,7 +1436,7 @@ async function deckOf(opts: ServerOptions, rec: ProjectRecord): Promise<Deck> {
     templates[name] = resolved.template
     drawn = { ...drawn, ...resolved.motifs }
   }
-  return { ...doc, ...(doc.templates ? { templates } : {}), motifs: { ...motifs, ...own.motifs, ...drawn }, fonts: await resolveFonts(rec.fonts ?? {}, opts.assets) }
+  return { ...doc, ...(doc.boards ? { boards } : {}), ...(doc.templates ? { templates } : {}), motifs: { ...motifs, ...own.motifs, ...boardMotifs, ...drawn }, fonts: await resolveFonts(rec.fonts ?? {}, opts.assets) }
 }
 
 // The link's still of a game as it stands (#1417, L91), by the revision it was made of: a room's page
@@ -1487,8 +1495,8 @@ async function linkedProjectOf(opts: ServerOptions, projects: ProjectStore, path
 // What a deck knows about its cards — texture hashes, titles and printed text — without queueing a
 // render: the textures were queued when the table was dealt them.
 async function factsOf(deck: Deck, setup: SetupDef, registry: TypeRegistry): Promise<DeckFacts> {
-  const { faces, titles, texts } = await queueFaces(deck, setup, registry, TEXTURE_DPI, Date.now(), () => Promise.resolve())
-  return { faces, titles, texts }
+  const { faces, titles, texts, ownFaces } = await queueFaces(deck, setup, registry, TEXTURE_DPI, Date.now(), () => Promise.resolve())
+  return { faces, titles, texts, ownFaces }
 }
 
 // The decks of the versions a table raised a flag about a card on (#1142), each with the cards the

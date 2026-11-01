@@ -16,6 +16,10 @@ export type Deck = {
   palette?: Record<string, string>
   fonts?: Record<string, { stack: string; src?: string }>
   motifs?: Record<string, Motif>
+  // The boards' own templates (#1479, L91), a face per side, under the board's name in the document,
+  // which is its `cardRef` at the table. Drawn with the deck's icons, palette, fonts and motifs, since
+  // a board is designed with the same tools as a card.
+  boards?: Record<string, Template>
   // Rows drawn with another template than the deck's own (#1483): a marker's sides, a template of
   // its own under the name `drawnWith` gives it, as the box carries its faces (L91). Drawn with the
   // deck's icons, palette, fonts and motifs, since it is designed with the same tools as a card. A
@@ -56,7 +60,11 @@ export type PrintExport = { cards: PrintCard[]; jobs: RenderRequest[]; hardware:
 // per table, so the word and the picture are taken from the same row of the same compiled deck
 // and cannot drift apart; `project` then filters both against the seat (B6). What the card prints
 // beside its title (#551) is read in the same pass, off the face the texture is drawn from.
-export type CompiledFaces = { faces: FaceHashes; titles: CardTitles; texts: CardTexts }
+//
+// A board's side (#1479) is compiled in the same pass, from its own template and in the board's own
+// size, at the same dpi as a card's, so the felt draws it at the same pixels per millimetre. It goes
+// in `ownFaces`, never `faces`: a row and a board may share a word without sharing a face.
+export type CompiledFaces = { faces: FaceHashes; titles: CardTitles; texts: CardTexts; ownFaces: FaceHashes }
 
 // One card at a time, and only as fast as it is asked for (#1012). A page names the deck's pictures
 // and typefaces by hash since #1028, and is kilobytes; but a deck made before that carries them as
@@ -66,7 +74,26 @@ export type CompiledFaces = { faces: FaceHashes; titles: CardTitles; texts: Card
 // page lives only until it is queued.
 function* compiledCards(deck: Deck, setup: SetupDef, registry: TypeRegistry, dpi: number, now: number, out: CompiledFaces): Generator<RenderRequest> {
   const seen = new Set<string>()
+  const job = (page: Compiled, perFace: Record<string, string>, face: string): RenderRequest | undefined => {
+    const hash = contentHash(page, { kind: 'png', dpi })
+    perFace[face] = hash
+    if (seen.has(hash)) return undefined
+    seen.add(hash)
+    return { hash, kind: { kind: 'png', dpi }, priority: 'texture', compiled: { html: page.html, css: page.css }, requestedAt: now }
+  }
   for (const spec of setup.components) {
+    const def = registry.get(spec.type)
+    if (def.ownFaces) {
+      const template = deck.boards?.[spec.cardRef]
+      if (out.ownFaces[spec.cardRef] || !template || Object.keys(template.faces).length === 0) continue
+      const perFace: Record<string, string> = {}
+      out.ownFaces[spec.cardRef] = perFace
+      for (const [face, page] of Object.entries(compileRow({ ...deck, template }, def, {}))) {
+        const next = job(page, perFace, face)
+        if (next) yield next
+      }
+      continue
+    }
     if (out.faces[spec.cardRef]) continue
     // Material is no card (K32, #1471): a meeple's `cardRef` is its seat and a counter's its name, so
     // a row that shares the word is not theirs, and has no face of theirs to draw.
@@ -85,11 +112,8 @@ function* compiledCards(deck: Deck, setup: SetupDef, registry: TypeRegistry, dpi
     const perFace: Record<string, string> = {}
     out.faces[spec.cardRef] = perFace
     for (const [face, page] of Object.entries(compiled)) {
-      const hash = contentHash(page, { kind: 'png', dpi })
-      perFace[face] = hash
-      if (seen.has(hash)) continue
-      seen.add(hash)
-      yield { hash, kind: { kind: 'png', dpi }, priority: 'texture', compiled: { html: page.html, css: page.css }, requestedAt: now }
+      const next = job(page, perFace, face)
+      if (next) yield next
     }
   }
 }
@@ -97,7 +121,7 @@ function* compiledCards(deck: Deck, setup: SetupDef, registry: TypeRegistry, dpi
 // Every card's faces, each new job handed to `queue` — and waited for — before the next card is
 // compiled (#1012). `hashes` is every texture the deck needs, in the order they were queued.
 export async function queueFaces(deck: Deck, setup: SetupDef, registry: TypeRegistry, dpi: number, now: number, queue: (job: RenderRequest) => Promise<unknown>): Promise<CompiledFaces & { hashes: string[] }> {
-  const out: CompiledFaces = { faces: {}, titles: {}, texts: {} }
+  const out: CompiledFaces = { faces: {}, titles: {}, texts: {}, ownFaces: {} }
   const hashes: string[] = []
   for (const job of compiledCards(deck, setup, registry, dpi, now, out)) {
     hashes.push(job.hash)
@@ -130,6 +154,8 @@ export function printExportOf(deck: Deck, setup: SetupDef, registry: TypeRegistr
     // nothing card-shaped to print for it.
     if (spec.counter !== undefined) continue
     if (!printedYet(registry.get(spec.type))) continue
+    // A board (#1479) is drawn from its own template, not a row, and goes to print as #1488 says.
+    if (registry.get(spec.type).ownFaces) continue
     const row = deck.rows[spec.cardRef]
     if (!row) throw new Error(`deck has no row "${spec.cardRef}" for print`)
     // The type's own bleed: this is the print where no partner is asked (G5's export, #1207).

@@ -1,3 +1,6 @@
+// Playwright's browsers are the repo's own, in .playwright-browsers/ (#1508): imported first, so
+// every worker is born knowing, and checked before the run (`test-support/playwright-browsers.ts`).
+import '../../test-support/playwright-browsers.js'
 import { defineConfig } from '@playwright/test'
 import { playwrightReporting } from '../../test-support/report.js'
 

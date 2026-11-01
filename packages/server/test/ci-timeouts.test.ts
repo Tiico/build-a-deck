@@ -53,7 +53,8 @@ describe("CI's time limits (#1421)", () => {
   it('gives the apt and Playwright install its own shorter clock, and one more try', () => {
     const install = setup()
     // A composite action's step cannot say timeout-minutes, so the clock is coreutils' `timeout`.
-    expect(install).toMatch(/timeout [^\n]*pnpm exec playwright install --with-deps chromium/)
+    // The install is `pnpm browsers`, into the repo's own cache (#1508).
+    expect(install).toMatch(/timeout [^\n]*pnpm browsers --with-deps/)
     expect(install).toMatch(/for attempt in 1 2\b/)
   })
 })

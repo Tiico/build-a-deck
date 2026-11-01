@@ -10,8 +10,8 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "worker": "tsx src/main.ts",
-    "shot": "tsx scripts/shot.ts"
+    "worker": "tsx --import ../../test-support/playwright-browsers.ts src/main.ts",
+    "shot": "tsx --import ../../test-support/playwright-browsers.ts scripts/shot.ts"
   },
   "dependencies": {
     "@byd/engine": "workspace:*",

@@ -1,6 +1,6 @@
 import { matches } from '@byd/protocol'
 import { CARD_STANDARD_63x88, DICE, PIECES, TOKEN_COUNTER, type SetupDef } from '@byd/engine'
-import { layMarkers, layMaterial, markerRef } from './material.js'
+import { layBoards, layMarkers, layMaterial, markerRef } from './material.js'
 import type { ProjectDoc } from './projects.js'
 
 // Imported by the editor as well as the server, so this module stays free of anything Node.
@@ -11,6 +11,12 @@ import type { ProjectDoc } from './projects.js'
 export function setupFromProject(doc: Pick<ProjectDoc, 'rows' | 'setup'>): SetupDef {
   const type = { id: CARD_STANDARD_63x88.id, version: CARD_STANDARD_63x88.version }
   const components: SetupDef['components'] = []
+  // The boards first (#1479), so that everything laid after them lies on them. A board is named by
+  // its own name in the document, never by a row, and lies on its one side where the setup says.
+  for (const laid of layBoards(doc.setup)) {
+    const { type, id } = laid.board
+    components.push({ type: { id: type.id, version: type.version }, cardRef: id, zone: laid.zone, face: 'front', x: laid.x, y: laid.y, rot: laid.rot })
+  }
   // Where a row starts is the designer's question and not this function's opinion (B5): the
   // first zone whose question the row answers takes it, in the document's own order, and a row
   // no zone asks for lies in the deck's pile as every row used to.
@@ -33,9 +39,11 @@ export function setupFromProject(doc: Pick<ProjectDoc, 'rows' | 'setup'>): Setup
     }
     if (piece.line.kind === 'piece') {
       // A wooden piece (#1471) wears its seat's colour (L11): the seat is its `cardRef`, as a counter's
-      // name is, and a piece of no seat has none. It is laid on its first face, a meeple standing.
+      // name is, and a piece of no seat has none. It is laid on its first face, a meeple standing,
+      // unless its line says it starts lying (#1477).
       const def = PIECES.find((t) => t.id === `piece.${piece.kind ?? ''}`)
-      if (def) components.push({ type: { id: def.id, version: def.version }, cardRef: piece.owner ?? '', zone: piece.zone, face: def.contentFace, ...at })
+      const lying = doc.setup.pieces?.[piece.line.index]?.lying === true && def?.faces.includes('lying')
+      if (def) components.push({ type: { id: def.id, version: def.version }, cardRef: piece.owner ?? '', zone: piece.zone, face: lying ? 'lying' : def.contentFace, ...at })
       continue
     }
     const def = DICE.find((t) => t.behaviours.rollable !== false && t.behaviours.rollable.faces === piece.faces)

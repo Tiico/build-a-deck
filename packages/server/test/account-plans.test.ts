@@ -156,7 +156,7 @@ for (const backend of backends) {
       const line = report.find((l) => l.email === 'hal@example.com')!
       expect(line).toMatchObject({ plan: 'free', lapsed: { plan: 'pro' }, measures: { projects: { used: 3, limit: 2 } } })
       expect(line.readOnly).toHaveLength(1)
-      expect(games).toContain(line.readOnly[0])
+      expect(games).toContain(line.readOnly[0]?.id)
       expect(report.find((l) => l.email === 'bo@example.com')).toMatchObject({ readOnly: [] })
       expect(report.find((l) => l.email === 'bo@example.com')?.lapsed).toBeUndefined()
       for (const id of games) await db.projects.remove(id)
