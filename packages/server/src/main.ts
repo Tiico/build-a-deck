@@ -18,6 +18,7 @@ import { MemoryRenderStore, PostgresRenderStore, assetsFromEnv, type RenderStore
 import { MemoryAccountPlanStore, plansAtStart, type AccountPlanStore } from './account-plans.js'
 import { plansFromEnv, plansLine } from './quotas.js'
 import { printProvidersOf } from './print-providers.js'
+import { paymentsFromEnv, paymentsLine, stripeApi, type PaymentsConfig } from './payments.js'
 import { CURRENT_CLASSIFIER } from '@byd/screening'
 import { inviteKeepFrom, sweepSpent } from './sweep.js'
 import { sweepErasures, type ErasureStore } from './erase.js'
@@ -63,6 +64,11 @@ try {
 //                    number or null, and a measure a tier does not name is unlimited. Unset or empty,
 //                    nothing is limited — the beta's state. Set and unreadable, or missing a tier an
 //                    account has, the app does not start, and the log says why
+//   STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, BYD_STRIPE_PRICES — subscriptions through Stripe
+//                    (#1493, DRIFT §12): the API's secret key, the webhook's signing secret, and the
+//                    price ids per tier, currency and interval as JSON on one line:
+//                    {"pro":{"sek":{"month":"price_…","year":"price_…"},"eur":{…}}}. All unset,
+//                    payments are off. Some set, or unreadable, the app does not start
 //   INVITE_KEEP_MS — how long an invitation is kept after it was used or ran out (#1277, G6);
 //                    default and most 30 days. Unreadable, the app does not start, and the log
 //                    says why
@@ -180,6 +186,18 @@ if (corpus) console.log(JSON.stringify({ msg: 'corpus', accounts: corpus.account
 // the default and whether any ceiling is set at all; never who has which (DRIFT §8).
 const plans = await plansAtStart(process.env, accountPlans).catch(refusePlans)
 console.log(JSON.stringify(plansLine(plans)))
+// Subscriptions through Stripe (#1493, DRIFT §12): read once from the box's `.env`. Without the
+// variables payments are off and nothing else changes; half of them stop the start. The line says
+// test or live and which tiers can be bought, never a key nor who pays (§8).
+let paymentsConfig: PaymentsConfig | null = null
+try {
+  paymentsConfig = paymentsFromEnv(process.env, plans)
+} catch (e) {
+  console.error(JSON.stringify({ msg: 'payments', error: (e as Error).message }))
+  process.exit(1)
+}
+console.log(JSON.stringify(paymentsLine(paymentsConfig)))
+const payments = paymentsConfig ? { payments: { config: paymentsConfig, stripe: stripeApi(paymentsConfig.secretKey) } } : {}
 // What can no longer be used (#1277): swept once before the door opens, and every hour with the
 // stale tables below. The line says how many went from each table, never which (DRIFT §8). A sweep
 // that fails is said and does not keep the door shut: the next one comes within the hour.
@@ -199,7 +217,7 @@ const printProviders = printProvidersOf(STANDARD_TYPES)
 // Screening in shadow mode (F4, beslut 10; #1273): every new picture is queued for the render
 // worker's classifier, where there is a worker to drain the queue. Nothing waits for it or sees it.
 const screening = databaseUrl ? { screening: { classifier: CURRENT_CLASSIFIER } } : {}
-const server = createServer({ host, store, registry, renders, projects, assets, surveys, auth, mailer, authBypass, ai, printProviders, terms: TERMS,...(objects ? { objects } : {}), ...(staticDir ? { staticDir } : {}), ...(publicOrigin ? { publicOrigin } : {}), ...(appOrigin ? { appOrigin } : {}), ...(release ? { release } : {}), ...(contact ? { contact } : {}), ...(corpus ? { corpus } : {}), plans, accountPlans, erasures, reports, ...screening })
+const server = createServer({ host, store, registry, renders, projects, assets, surveys, auth, mailer, authBypass, ai, printProviders, terms: TERMS,...(objects ? { objects } : {}), ...(staticDir ? { staticDir } : {}), ...(publicOrigin ? { publicOrigin } : {}), ...(appOrigin ? { appOrigin } : {}), ...(release ? { release } : {}), ...(contact ? { contact } : {}), ...(corpus ? { corpus } : {}), plans, accountPlans, erasures, reports, ...screening, ...payments })
 server.listen(port, () => console.log(JSON.stringify({ msg: 'listening', port })))
 
 const evictor = setInterval(() => {

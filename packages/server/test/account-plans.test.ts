@@ -121,12 +121,12 @@ for (const backend of backends) {
     it('lapses, is held to the default while lapsed, and is as before when lifted or given a tier again', async () => {
       const gus = await db.auth.ensureAccount('gus@example.com')
       const stores = { auth: db.auth, accountPlans: db.plans }
-      expect(await lapsePlanByAddress(stores, 'gus@example.com')).toEqual({ ok: false, why: 'no tier of its own' })
-      expect(await lapsePlanByAddress(stores, 'nobody@example.com')).toEqual({ ok: false, why: 'no such account' })
+      expect(await lapsePlanByAddress({ ...stores, projects: db.projects, plans: tiers }, 'gus@example.com')).toEqual({ ok: false, why: 'no tier of its own' })
+      expect(await lapsePlanByAddress({ ...stores, projects: db.projects, plans: tiers }, 'nobody@example.com')).toEqual({ ok: false, why: 'no such account' })
       await setPlanByAddress({ ...stores, plans: tiers }, 'gus@example.com', 'pro')
       expect(await planOf(db.plans, tiers, gus.id)).toBe('pro')
 
-      expect(await lapsePlanByAddress(stores, ' Gus@Example.com ')).toEqual({ ok: true })
+      expect(await lapsePlanByAddress({ ...stores, projects: db.projects, plans: tiers }, ' Gus@Example.com ')).toEqual({ ok: true })
       expect(await db.plans.planOf(gus.id)).toMatchObject({ plan: 'pro', source: 'operator', lapsed: expect.any(String) })
       expect(Date.parse((await db.plans.planOf(gus.id))!.lapsed!)).not.toBeNaN()
       expect(await planOf(db.plans, tiers, gus.id)).toBe('free')
@@ -139,7 +139,7 @@ for (const backend of backends) {
       expect(await unlapsePlanByAddress(stores, 'gus@example.com')).toEqual({ ok: false, why: 'not lapsed' })
 
       // A tier given again ends the lapse.
-      await lapsePlanByAddress(stores, 'gus@example.com')
+      await lapsePlanByAddress({ ...stores, projects: db.projects, plans: tiers }, 'gus@example.com')
       await setPlanByAddress({ ...stores, plans: tiers }, 'gus@example.com', 'pro')
       expect(await planOf(db.plans, tiers, gus.id)).toBe('pro')
       await db.plans.clearPlan(gus.id)
@@ -165,6 +165,27 @@ for (const backend of backends) {
 
     // The print package is a property of the tier (#1490), and the report says whether each account
     // has it, so the operator sees it beside the ceilings; the beta's standard has it.
+    // Which Stripe customer is which account (#1493): written once, when the account first asks for
+    // a checkout, and read both ways — by the account for the next checkout, by the customer for
+    // Stripe's webhooks. One customer is one account and the other way round.
+    it('links an account to one Stripe customer, read both ways', async () => {
+      const ivy = await db.auth.ensureAccount('ivy@example.com')
+      const jo = await db.auth.ensureAccount('jo@example.com')
+      expect(await db.plans.customerOf(ivy.id)).toBeNull()
+      expect(await db.plans.accountOfCustomer(`cus_ivy_${backend.name}`)).toBeNull()
+      await db.plans.linkCustomer(ivy.id, `cus_ivy_${backend.name}`)
+      expect(await db.plans.customerOf(ivy.id)).toBe(`cus_ivy_${backend.name}`)
+      expect(await db.plans.accountOfCustomer(`cus_ivy_${backend.name}`)).toBe(ivy.id)
+      // A second link for the same account keeps the first: the customer is made once.
+      await db.plans.linkCustomer(ivy.id, `cus_ivy2_${backend.name}`)
+      expect(await db.plans.customerOf(ivy.id)).toBe(`cus_ivy_${backend.name}`)
+      await expect(db.plans.linkCustomer(jo.id, `cus_ivy_${backend.name}`)).rejects.toThrow()
+      expect(await db.plans.customerOf(jo.id)).toBeNull()
+      // The link is no tier: taking the tier away leaves it.
+      await db.plans.clearPlan(ivy.id)
+      expect(await db.plans.customerOf(ivy.id)).toBe(`cus_ivy_${backend.name}`)
+    })
+
     it('says whether each account has the print package, by its tier', async () => {
       const withPrint = plansFromEnv({ BYD_PLANS: JSON.stringify({ default: 'free', plans: { free: { projects: 2 }, pro: { print: true } } }) })
       const eve = await db.auth.ensureAccount('eve@example.com')

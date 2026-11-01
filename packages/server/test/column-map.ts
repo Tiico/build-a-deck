@@ -88,6 +88,11 @@ export const COLUMNS: Readonly<Record<string, Class>> = {
   'account_plans.since': 'none',
   'account_plans.source': 'none',
   'account_plans.lapsed_at': 'none',
+  // The account's games in the order locked at a lapse (#1518): game ids, which say who nobody is.
+  'account_plans.lapsed_order': 'pseudonymous',
+  'stripe_customers.account_id': 'pseudonymous',
+  'stripe_customers.customer_id': 'pseudonymous',
+  'stripe_customers.created_at': 'none',
   // The games: the designer's own content, and who may open it.
   'projects.id': 'pseudonymous',
   'projects.rev': 'none',

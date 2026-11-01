@@ -5,6 +5,7 @@ import { HomePage } from '../src/account/HomePage.js'
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { StatusLive } from '../src/status/StatusLive.js'
 import { plansFromEnv } from '../../server/src/quotas.js'
+import { lapseAccount } from '../../server/src/account-plans.js'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
 
@@ -44,7 +45,8 @@ const lapsed = async (games: [string, number][] = FOUR) => {
   await run.accountPlans!.setPlan(ada.id, 'pro', 'operator')
   const ids: Record<string, string> = {}
   for (const [name, rows] of games) ids[name] = await made(name, rows)
-  await run.accountPlans!.lapse(ada.id)
+  // As the operator's script and Stripe lapse it (#1518): the order of her games locked with it.
+  await lapseAccount({ projects: run.projects, accountPlans: run.accountPlans! }, tiers, ada.id)
   return { ada, hamnen: ids['Hamnen']!, kajen: ids['Kajen']!, fyren: ids['Fyren']!, skogen: ids['Skogens herrar']! }
 }
 const home = (): void => {
