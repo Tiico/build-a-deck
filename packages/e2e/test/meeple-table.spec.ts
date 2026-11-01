@@ -1,6 +1,6 @@
 import { join, withQuery } from '../support/api.js'
 import { pastTheWaitingRoom } from '../support/waiting.js'
-import { DESK } from '../support/devices.js'
+import { DESK, PHONE, TV } from '../support/devices.js'
 import { expect, test } from '../support/test.js'
 
 // Meeples on the felt (#1475, prototype #1472 felt B), in the built app: a game with three meeples a
@@ -42,5 +42,32 @@ test.describe('a meeple moved on the felt (#1475)', () => {
       await expect(screen.locator('[data-piece-pile]').filter({ has: screen.locator('[data-piece-count]', { hasText: '2' }) })).toHaveCount(1)
     }
     await expect(page.locator(`[data-piece="${id}"]`)).toHaveAttribute('aria-label', 'meeple, Adas, i Spelyta. Enter öppnar handlingar, M flyttar den.')
+  })
+})
+
+// The phone (#1476, prototype #1472 telefonen A): a player with only her phone beside the
+// television chooses a meeple in «Framför mig» and moves it with «Flytta till…», and the room's
+// screen draws it moved. The phone never draws the table (C2): it moves to a zone, not to a point.
+test.describe('a meeple moved from the phone (#1476)', () => {
+  test('lands where the sheet said, and the television draws it there', async ({ tableOf, open, request }) => {
+    const table = await tableOf({ players: 2, counters: [], cards: 4, pieces: [{ kind: 'meeple', count: 3, role: 'mine' }] })
+    const seat = await join(request, table, { name: 'Ada', seat: 'A' })
+    const { page: tv } = await open(TV, withQuery(table.tvUrl, 'lang=sv'))
+    const { page: phone } = await open(PHONE, withQuery(seat.playUrl, 'lang=sv'))
+    await expect(tv.locator('[data-piece-pile]')).toHaveCount(2)
+
+    await phone.getByRole('tab', { name: /^Framför mig/ }).click()
+    const mine = phone.getByRole('region', { name: 'Dina meeples · 3' })
+    const first = mine.getByRole('button', { name: 'meeple, Adas, i Framför A' }).first()
+    const id = (await first.getAttribute('data-phone-piece'))!
+    await first.click()
+    await phone.getByRole('region', { name: 'Pjäsens handlingar' }).getByRole('button', { name: 'Flytta till…' }).click()
+    await phone.getByRole('dialog', { name: 'Flytta din meeple till' }).getByRole('button', { name: /^Spelyta/ }).click()
+
+    await expect(phone.getByRole('status').filter({ hasText: /flyttade en meeple/ })).toHaveText(/^Du flyttade en meeple till Spelyta$/)
+    await expect(mine.getByRole('button', { name: 'meeple, Adas, i Spelyta' })).toHaveCount(1)
+    // On the television it is out of the pile, by itself, and the pile says two.
+    await expect(tv.locator(`[data-piece="${id}"]`)).not.toHaveAttribute('data-piece-pile', /./)
+    await expect(tv.locator('[data-piece-pile] [data-piece-count]', { hasText: '2' })).toHaveCount(1)
   })
 })

@@ -5068,6 +5068,14 @@ Ett klick på en pjäs slår den aldrig: det öppnar ringen med «Lägg ner» el
 M öppnar «Flytta till» med filtens ytor och ingen hand och inget kort, eftersom en pjäs aldrig staplas (K16, K32).
 Skärmläsaren hör sort, platsens namn i genitiv, om den ligger, och var: «meeple, Adas, i Spelyta» och för högen «3 meeples, Adas, i Framför A».
 
+**Telefonen** (#1476, prototypen i #1472, beställarens val 2026-11-01: telefonen A).
+Telefonen ritar aldrig bordet (C2), så en pjäs nås genom ytan den ligger i.
+«Framför mig» visar platsens egna pjäser var de än ligger, en ruta per yta med en knapp per pjäs; «Bordet» visar det som ligger på Spelytan, vems det än är, och de andra platsernas pjäser.
+Ett tryck väljer en pjäs, vems som helst (B5), och raden över flikarna säger vilken och var och har «Lägg ner» eller «Res upp» för en meeple och «Flytta till…».
+Arket listar Spelytan och filtens ytor med det som redan ligger i varje, och aldrig en hand, en hög eller en plats räknare (K32).
+Det är handens väg (#1147) och tangentbordets lista (K16): `move` till ytan på den plats `laidIn` ger, och `flip`; ingen ny gest och inget nytt verb.
+En ytas antal räknar kort, både i telefonens «Bordet» och i tangentbordets «Flytta till», så pjäser i en yta blir aldrig «kort».
+
 ### K34. Brickor: kortet i sin egen form, och steget är typens (beslutat 2026-10-28 och 2026-11-01, #1470, #1474, #1482)
 
 Beställarens beslut i #1470 den 2026-10-28: formerna är kvadrat, sexhörning och rund (fråga 9), och en bricka kan hållas dold på handen som ett kort (fråga 10).

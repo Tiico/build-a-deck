@@ -159,16 +159,22 @@ const saysKind = (name: string, kind: string): boolean => {
   return (name.toLocaleLowerCase().match(/[\p{L}\p{N}]+/gu) ?? []).some((word) => word.startsWith(k))
 }
 
+// What a wooden piece is called before where it lies (#1475, #1476): its kind, or the count of a
+// pile, whose seat's colour it wears, and whether it lies down. The felt's stop and the phone's tile
+// say it alike.
+export function pieceWhat(t: T, kind: PieceKind, owner: string | null, lying: boolean, count = 1): string {
+  return [
+    count > 1 ? t('kbd.piece.many', { n: count, kinds: t(`piece.kinds.${kind}`) }) : t(`piece.kind.${kind}`),
+    ...(owner !== null ? [t('kbd.piece.whose', { owner })] : []),
+    ...(lying ? [t('kbd.piece.lying')] : []),
+  ].join(', ')
+}
+
 // The sentence a reader hears when focus lands on a thing.
 export function labelOf(view: Snapshot, thing: Thing, t: T = swedish): string {
   if (thing.kind === 'piece') {
     // «meeple, Adas, i Spelyta», «4 meeples, Adas, i Framför A», «meeple, Bos, liggande, i Spelyta».
-    const what = [
-      thing.count > 1 ? t('kbd.piece.many', { n: thing.count, kinds: t(`piece.kinds.${thing.piece}`) }) : thing.name,
-      ...(thing.owner !== null ? [t('kbd.piece.whose', { owner: thing.owner })] : []),
-      ...(thing.lying ? [t('kbd.piece.lying')] : []),
-    ].join(', ')
-    return t('kbd.piece', { what, zone: zoneName(view, thing.zone, t) })
+    return t('kbd.piece', { what: pieceWhat(t, thing.piece, thing.owner, thing.lying, thing.count), zone: zoneName(view, thing.zone, t) })
   }
   if (thing.kind === 'die') return t('kbd.die', { kind: thing.name, n: thing.value, zone: zoneName(view, thing.zone, t) })
   if (thing.kind === 'counter') {

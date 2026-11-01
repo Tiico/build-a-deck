@@ -10,6 +10,7 @@ import { CountersRow, MineActions, MineStrip, inFrontOf } from './SeatExtras.js'
 import { isMaterial } from '../components.js'
 import { PlaySheet } from './PlaySheet.js'
 import { DicePill, DiceSheet, diceOf } from './Dice.js'
+import { MyPieces, PieceBar, PieceSheet, TablePieces } from './PhonePieces.js'
 import { standingRewind } from '../table/rewind.js'
 import { cardName } from '../table/keyboard.js'
 import { TableSummary, RecentActivity } from './TableSummary.js'
@@ -143,6 +144,16 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
   const [toast, setToast] = useToast()
   // The dice's sheet (K28, #1138), opened from its pill among the counters.
   const [rolling, setRolling] = useState(false)
+  // The wooden piece chosen on «Framför mig» or «Bordet» (#1476), and whether its sheet of zones is
+  // open. Anybody's piece can be chosen (B5); one that has left the table lets go of the choice.
+  const [pieceId, setPieceId] = useState<string | null>(null)
+  const [placing, setPlacing] = useState(false)
+  const piece = pieceId === null ? undefined : view.components.find((c) => c.id === pieceId)
+  const choosePiece = (c: VisibleComponentState) => setPieceId((was) => (was === c.id ? null : c.id))
+  const letGoOfPiece = () => {
+    setPlacing(false)
+    setPieceId(null)
+  }
 
   const hand = view.components.filter((c) => c.zone === `hand:${seat}`)
   // The marked cards in the order they were marked, which is the order they are played in.
@@ -309,6 +320,7 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
               onSet={(c, value) => void client.send({ v: 'setCounter', component: c.id, value })}
               extra={diceOf(view).length > 0 ? <DicePill view={view} open={rolling} onOpen={() => setRolling(true)} /> : undefined}
             />
+            <MyPieces view={view} seat={seat} chosen={pieceId} onChoose={choosePiece} />
             <MineStrip refusal={quick} refusedCard={quickSource} refusedZone={quickTarget} onTake={card => void playDirect([card], `hand:${seat}`, 'top')} heading={false} view={view} faces={faces} onOpen={(card) => hold(card, 'mine')} pending={quickPending} onPlay={(card, zone, at) => void playDirect([card], zone, at)} />
             {quickSource !== 'hand' && <Refusal handle={quick} />}
           </section>
@@ -319,6 +331,7 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
                 hand's tab, where the draw is, and no tile stands in two places (#465). The area in
                 front of another seat is public since #414, so it is read here — and never acted on. */}
             <TableSummary view={view} activity={activity} zones="areas" history={false} faces={faces} onRead={(_, card) => hold(card, { zone: card.zone })} />
+            <TablePieces view={view} seat={seat} chosen={pieceId} onChoose={choosePiece} />
             <h2 className="byd-panel-title">{t('play.latest')}</h2>
             <RecentActivity view={view} activity={activity} />
           </section>
@@ -360,6 +373,12 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
               onClear={marks.clear}
             />
             {quickSource === 'hand' && <Refusal handle={quick} />}
+          </div>
+        )}
+        {/* The chosen piece's verbs, over the tabs where it was chosen: the hand's path (#1147). */}
+        {piece && (tab === 'mine' || tab === 'table') && (
+          <div className="byd-bar" {...behind}>
+            <PieceBar view={view} seat={seat} c={piece} onFlip={(intents) => void client.send(...intents)} onMove={() => setPlacing(true)} onClear={letGoOfPiece} />
           </div>
         )}
         <div role="tablist" aria-label={t('player.tabs')} className="byd-tabs" {...behind}>
@@ -471,6 +490,18 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
           }}
           refusal={refusal}
           refusedZone={refusedZone}
+        />
+      )}
+      {over && piece && placing && (
+        <PieceSheet
+          view={view}
+          seat={seat}
+          c={piece}
+          onMove={(intents) => {
+            letGoOfPiece()
+            void client.send(...intents)
+          }}
+          onClose={() => setPlacing(false)}
         />
       )}
       {over && rolling && <DiceSheet view={view} activity={activity} send={(...intents) => client.send(...intents)} onClose={() => setRolling(false)} />}
