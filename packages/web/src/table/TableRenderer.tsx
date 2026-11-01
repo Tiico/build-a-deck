@@ -2714,6 +2714,11 @@ function Hand({ zone, color, rot, countAt, countIn = false, counted = true, fold
   const count = zone.mode === 'count' ? zone.count : zone.order.length
   const fan = folded ? 0 : Math.min(count, FAN_MAX)
   const shown = cards ? Math.min(cards.length, FAN_MAX) : fan
+  // What the backs are backs of (#1486, variant A of #1474): a hand held up shows its tiles among
+  // its cards by their shape, and only by it. The zone says which types it holds; the cards' backs
+  // come first and the tiles' after them, as the hand's owner holds them.
+  const backs = zone.mode === 'count' && zone.types ? [...zone.types].sort((a, b) => Number(isTile(a)) - Number(isTile(b))).flatMap((k) => Array.from({ length: k.count }, () => k)) : []
+  const held = cards ? [...cards.filter((c) => !isTile(c)), ...cards.filter(isTile)] : undefined
   const box = { left: px(HAND_CARD_BOX.x), top: px(HAND_CARD_BOX.y), width: px(HAND_CARD_BOX.w), height: px(HAND_CARD_BOX.h) }
   const place = (i: number, spread: boolean) => {
     const { step, tilt } = fanPlace(i, shown, spread)
@@ -2732,22 +2737,33 @@ function Hand({ zone, color, rot, countAt, countIn = false, counted = true, fold
       style={{ left, top, transform: `rotate(${rot}deg)`, ['--seat' as string]: color, ['--hand-unrot' as string]: `${-rot}deg`, ['--hand-drop' as string]: `${px(HAND_COUNT_MM)}px`, ['--hand-lift' as string]: `${px(HAND_COUNT_ABOVE_MM)}px` }}
     >
       <div className="byd-hand-fan">
-        {folded ? null : cards ? (
-          cards.slice(0, FAN_MAX).map((c, i) => (
+        {folded ? null : held ? (
+          held.slice(0, FAN_MAX).map((c, i) => (
               <i
                 key={c.id}
                 className="byd-hand-card"
                 data-component={c.id}
+                data-shape={tileOf(c)?.shape}
                 data-face={c.cardRef === null ? 'back' : 'front'}
-                style={{ ...box, transform: place(i, true), ...(c.cardRef === null ? {} : { ['--hue' as string]: hue(c.cardRef) }) }}
+                style={{ ...box, transform: place(i, true), ...(c.cardRef === null ? {} : { ['--hue' as string]: hue(c.cardRef) }), ...(isTile(c) ? HOLDS_A_TILE : {}) }}
                 {...(reach?.(c) ?? {})}
               >
-                <Texture faces={faces} c={c} />
-                <span>{cardWord(c) ?? ''}</span>
+                <TileInCard c={c}>
+                  <Texture faces={faces} c={c} />
+                  <span>{cardWord(c) ?? ''}</span>
+                </TileInCard>
               </i>
           ))
         ) : (
-          Array.from({ length: fan }, (_, i) => <i key={i} className="byd-back" style={{ ...box, transform: place(i, false) }} />)
+          Array.from({ length: fan }, (_, i) => {
+            const back = backs[i]
+            const tile = tileOf(back)
+            return (
+              <i key={i} className="byd-back" data-shape={tile?.shape} style={{ ...box, transform: place(i, false), ...(tile ? HOLDS_A_TILE : {}) }}>
+                {tile && back && <TileInCard c={{ type: back.type, cardRef: null }} />}
+              </i>
+            )
+          })
         )}
       </div>
       {/* How much the hand holds, and — while a card is on its way into it — how much it is

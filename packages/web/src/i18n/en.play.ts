@@ -6,6 +6,8 @@ export const enPlay: Record<keyof typeof svPlay, string> = {
   'play.session.seat.missing': 'No table or seat given.',
   'play.cards.one': '{n} card',
   'play.cards.other': '{n} cards',
+  'play.tiles.one': '{n} tile',
+  'play.tiles.other': '{n} tiles',
   'play.latest': 'Latest moves',
   'play.table': 'The table',
   'play.peer.table': 'the table',
