@@ -531,6 +531,7 @@ export const svEditor = {
   'undo.what.font': 'en ändring bland typsnitten',
   'undo.what.theme': 'temabytet',
   'undo.what.box': 'en ändring av lådan',
+  'undo.what.board': 'en ändring av brädet',
   'undo.what.version': 'en tillbakatagen version',
   'undo.what.several': 'flera ändringar',
   'undo.what.proposal': 'det godtagna förslaget',

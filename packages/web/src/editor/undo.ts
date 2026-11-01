@@ -37,10 +37,13 @@ export function whatOf(intent: EditIntent): Key {
     case 'removeElement':
     case 'moveElement':
     case 'replaceFace':
-      return intent.on === 'box' ? 'undo.what.box' : 'undo.what.template'
+      return intent.on === 'box' ? 'undo.what.box' : intent.on === 'board' ? 'undo.what.board' : 'undo.what.template'
     case 'resetElement':
     case 'setGroupColumn':
       return 'undo.what.template'
+    // Ett bräde som läggs, byter storlek eller tas bort, och dess sida (#1481).
+    case 'setBoards':
+      return 'undo.what.board'
     case 'setRecipe':
     case 'setDice':
     case 'setPieces':

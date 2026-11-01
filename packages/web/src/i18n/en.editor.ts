@@ -479,6 +479,7 @@ export const enEditor = {
   'undo.what.font': 'a change among the typefaces',
   'undo.what.theme': 'the change of theme',
   'undo.what.box': 'a change to the box',
+  'undo.what.board': 'a change to the board',
   'undo.what.version': 'a version taken back',
   'undo.what.several': 'several changes',
   'undo.what.proposal': 'the accepted proposal',
