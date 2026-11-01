@@ -1,0 +1,110 @@
+/* PROTOTYP för #1492 och #1494, 2026-11-01. Slängs när besluten står i DESIGN-BESLUT (G5, A2).
+   Mina spel som det står efter #1204 (variant B, Arbetsbänken: heron, raderna, högerspalten), Profil
+   som efter #1198, och editorns krom. Ritat för hand efter account.css, profile.css och editor.css.
+   Ingenting här importeras av appen. bas.css är natt-tak-prototypens ytor (#1198), rakt av. */
+
+.sida { background: #0f1117; }
+.sida[data-bredd='390'] { font-size: 14px; }
+.ph { text-decoration: underline dashed #e8c06a 1px; text-underline-offset: 3px; }
+.ph-not { color: #c8b98d; }
+
+/* ── Mina spel (#1204, beslut B) ───────────────────────────────────────────────────────────────── */
+.hm { --card: #171a23; --edge: #262a35; --muted: #9aa3b8; height: 100%; overflow: auto; background: #0f1117; color: #e6e6e6; font: 14px system-ui, sans-serif; padding: 0 20px 40px; }
+.hm-bar { display: flex; align-items: center; gap: 10px; min-height: 102px; border-bottom: 1px solid #262a35; flex-wrap: wrap; }
+.hm-mark { display: inline-flex; align-items: center; gap: 10px; font-weight: 800; font-size: 17px; color: #fff; margin-right: auto; }
+.hm-mark i { width: 26px; height: 18px; border-radius: 3px; background: linear-gradient(100deg, #7dd3a0 0 30%, #f3ead8 30% 62%, #e8c06a 62%); transform: skewX(-8deg); }
+.hm-knapp { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 14px; border: 1px solid #6f7a90; border-radius: 12px; background: transparent; color: #fff; font-weight: 700; font-size: 15px; }
+.hm-who { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); font-size: 13px; }
+.hm-who .ikon { min-width: 44px; min-height: 44px; display: inline-grid; place-items: center; color: var(--muted); }
+.hm-chip { display: inline-flex; align-items: center; min-height: 24px; padding: 0 8px; border-radius: 999px; border: 1px solid #4a4230; background: #2a2418; color: #ffd98a; font-size: 12px; font-weight: 700; }
+.hm-grid { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 32px; padding-top: 24px; align-items: start; }
+.hm-main { display: grid; gap: 18px; min-width: 0; }
+.hm-main h1 { margin: 6px 0 0; font-size: 28px; color: #e6e6e6; }
+.hm-h2 { margin: 6px 0 0; font-size: 13px; text-transform: uppercase; letter-spacing: 2px; color: #7d8597; font-weight: 700; }
+.hero { position: relative; display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 24px; padding: 28px 28px 28px 12px; border-radius: 18px; border: 1px solid #262a35; background: radial-gradient(120% 120% at 0% 100%, rgb(var(--rgb) / 22%), transparent 55%), #171a23; }
+.hero .fan { position: relative; height: 210px; }
+.hero .fan i { position: absolute; left: 60px; top: 10px; width: 140px; height: 196px; border-radius: 6px; background: #f3ead8; box-shadow: 0 2px 8px rgb(0 0 0 / 50%); }
+.hero .fan i::before { content: ''; position: absolute; inset: 6px 6px auto; height: 24px; border-radius: 3px; background: var(--c); }
+.hero .fan i:nth-child(1) { transform: rotate(-9deg) translateX(-42px); background: #e7dcc4; }
+.hero .fan i:nth-child(2) { transform: rotate(8deg) translateX(42px); background: #e7dcc4; }
+.hero-text { display: grid; gap: 12px; align-content: start; min-width: 0; }
+.hero-text strong { font-size: 32px; color: #fff; line-height: 1.1; }
+.hero-text .rad { color: var(--muted); }
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.stats div { padding: 10px 12px; border: 1px solid #262a35; border-radius: 12px; background: #11131a; }
+.stats b { display: block; font-size: 20px; color: #fff; }
+.stats span { color: var(--muted); font-size: 12px; }
+.stats [data-over] { border-color: #6b5a2e; }
+.stats [data-over] b { color: #f0d48a; }
+.knapprad { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.k-prim { min-height: 46px; padding: 0 18px; border: 0; border-radius: 12px; background: #7dd3a0; color: #0b2a18; font-weight: 750; font-size: 16px; }
+.k-sek { min-height: 46px; padding: 0 18px; border: 1px solid #6f7a90; border-radius: 12px; background: transparent; color: #fff; font-weight: 700; font-size: 16px; }
+.k-sek.liten, .k-prim.liten { min-height: 44px; font-size: 14px; padding: 0 14px; }
+.k-sek[aria-disabled='true'] { color: #7d8597; border-color: #3b414e; }
+.k-lank { min-height: 44px; padding: 0 4px; border: 0; background: none; color: #9cc6ff; font-weight: 650; font-size: 14px; text-decoration: underline; text-underline-offset: 3px; }
+.mer { position: absolute; right: 8px; top: 8px; min-width: 44px; min-height: 44px; border: 0; border-radius: 8px; background: transparent; color: var(--muted); font-size: 16px; }
+.rader { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 14px; }
+.spelrad { position: relative; display: grid; grid-template-columns: 66px minmax(0, 1fr); gap: 16px; padding: 12px 14px; border-radius: 14px; border: 1px solid #262a35; background: #171a23; min-height: 124px; }
+.tumme { width: 66px; height: 92px; border-radius: 4px; background: #f3ead8; position: relative; box-shadow: 0 1px 2px rgb(0 0 0 / 50%); }
+.tumme::before { content: ''; position: absolute; inset: 4px 4px auto; height: 12px; border-radius: 2px; background: var(--c); }
+.spelrad .txt { display: grid; gap: 4px; align-content: start; min-width: 0; padding-right: 36px; }
+.spelrad strong { color: #fff; font-size: 17px; }
+.spelrad .rad { color: var(--muted); font-size: 13px; line-height: 1.45; }
+.ny-ruta { display: grid; place-items: center; min-height: 124px; border: 1px dashed #3b414e; border-radius: 14px; color: var(--muted); font-size: 16px; background: #13151c; }
+.pagar { display: grid; gap: 14px; align-content: start; }
+.bordkort { display: grid; gap: 12px; padding: 16px; border-radius: 14px; background: #183022; }
+.bordkort header { display: flex; justify-content: space-between; color: #fff; font-weight: 700; }
+.bordkort header b { font: 700 20px ui-monospace, Menlo, monospace; letter-spacing: 4px; }
+.bordkort button { min-height: 44px; border: 0; border-radius: 10px; background: #7dd3a0; color: #0b2a18; font-weight: 750; font-size: 16px; }
+.rumskod label { display: block; font-weight: 700; font-size: 14px; margin-bottom: 8px; color: #e6e6e6; }
+.rumskod div { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; }
+.rumskod input { min-height: 52px; border: 1px solid #3b414e; border-radius: 12px; background: #0f1117; }
+.rumskod button { min-height: 52px; padding: 0 18px; border: 1px solid #6f7a90; border-radius: 12px; background: none; color: #fff; font-weight: 700; font-size: 16px; }
+.meny2 { position: absolute; z-index: 5; right: 8px; top: 52px; display: grid; padding: 6px; border-radius: 10px; background: #1b1f2a; border: 1px solid #3b4358; box-shadow: 0 12px 28px rgb(0 0 0 / 50%); min-width: 250px; }
+.meny2 button { min-height: 44px; border: 0; border-radius: 7px; padding: 8px 12px; background: transparent; color: #e6ecfa; text-align: left; display: grid; font-size: 14px; }
+.meny2 button:hover { background: #262a35; }
+.meny2 button[aria-disabled='true'] { color: #8a93a8; }
+.meny2 button small { color: #e8c06a; font-size: 12px; line-height: 1.4; }
+.meny2 hr { width: 100%; border: 0; border-top: 1px solid #262a35; margin: 4px 0; }
+.hm-notice { margin: 0; padding: 12px 16px; border-radius: 12px; background: #2a1b1b; color: #ffd8d8; line-height: 1.5; }
+.hm-notice b { color: #fff; }
+.hm-notice .rad2 { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+.hm-ok { margin: 0; padding: 12px 16px; border-radius: 12px; background: #16281f; color: #d8ffe8; line-height: 1.5; border: 1px solid #2c5a40; }
+.hm-ok b { color: #fff; }
+
+/* Telefonbredd: högerspalten först, som i appen (#1204). */
+.sida[data-bredd='390'] .hm { padding: 0 16px 32px; }
+.sida[data-bredd='390'] .hm-bar { min-height: 64px; gap: 4px; padding: 8px 0; }
+.sida[data-bredd='390'] .hm-bar .hm-knapp span.ord, .sida[data-bredd='390'] .hm-who .adr { display: none; }
+.sida[data-bredd='390'] .hm-knapp { padding: 0 10px; }
+.sida[data-bredd='390'] .hm-grid { grid-template-columns: minmax(0, 1fr); gap: 20px; padding-top: 16px; }
+.sida[data-bredd='390'] .hm-side { order: -1; }
+.sida[data-bredd='390'] .hero { grid-template-columns: minmax(0, 1fr); padding: 16px; gap: 12px; }
+.sida[data-bredd='390'] .hero .fan { height: 150px; }
+.sida[data-bredd='390'] .hero .fan i { width: 96px; height: 134px; left: calc(50% - 48px); }
+.sida[data-bredd='390'] .hero-text strong { font-size: 26px; }
+.sida[data-bredd='390'] .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.sida[data-bredd='390'] .rader { grid-template-columns: minmax(0, 1fr); }
+.sida[data-bredd='1024'] .hm-grid { grid-template-columns: minmax(0, 1fr) 300px; gap: 24px; }
+.sida[data-bredd='1024'] .hero { grid-template-columns: 200px minmax(0, 1fr); }
+.sida[data-bredd='1024'] .hero .fan i { left: 36px; }
+
+/* ── Profil (profile.css, och Förbrukning efter #1198) ─────────────────────────────────────────── */
+.pf { height: 100%; overflow: auto; background: #0f1117; color: #e6e6e6; font: 14px system-ui, sans-serif; padding: 40px 20px; display: grid; justify-content: center; align-content: start; }
+.pf .profil { width: 640px; max-width: 100%; }
+.pf .pkort { position: relative; }
+.pf .pkort[data-fram] { border-color: #4a6fd4; box-shadow: 0 0 0 1px #4a6fd4; }
+.sida[data-bredd='390'] .pf { padding: 20px 16px; }
+.sida[data-bredd='390'] .pf .pkort { padding: 18px; }
+.sida[data-bredd='390'] .forbr { grid-template-columns: minmax(0, 1fr) auto; }
+.sida[data-bredd='390'] .forbr .bar { grid-column: 1 / -1; order: 3; }
+
+/* ── Editorns krom ─────────────────────────────────────────────────────────────────────────────── */
+.ed .t-data td .cell { display: block; width: 100%; min-height: 44px; padding: 12px 10px; color: #ddd; font-size: 12px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.ed .t-data td .cell[data-tal] { text-align: right; }
+.ed .t-data td input.cell { border: 0; background: transparent; font: inherit; font-size: 12px; }
+.ed .t-data td input.cell:focus { outline: none; box-shadow: inset 0 0 0 2px #9cc6ff; }
+.ed .t-data td input.cell[readonly] { cursor: default; }
+.ed .t-vy { padding: 0 16px 8px; }
+.ed-huvud .knapp-av { opacity: 1; color: #7d8597; border-color: #3b414e; background: transparent; }
+.sida[data-bredd='390'] .ed { display: none; }

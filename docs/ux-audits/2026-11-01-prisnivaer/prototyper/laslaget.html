@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp: läsläget (#1492)</title>
+<link rel="stylesheet" href="proto.css">
+<link rel="stylesheet" href="bas.css">
+<link rel="stylesheet" href="ytor.css">
+<style>
+  /* ── Frågan ──────────────────────────────────────────────────────────────────────────────
+     #1492 (Prisnivåer 3/5): hur läsläget L2 syns för designern när Pro har gått ut.
+     Servern är byggd i #1491: GET /me/usage säger plan, lapsed { plan, at } och readOnly (spelen),
+     en skrivning svarar 402 { error: 'read-only' }, editorns linje refused { why: 'read-only' }.
+     Ett spel är i läsläge när det har fler kort än Gratis rymmer, eller när det ligger utöver Gratis
+     antal spel räknat från det senast ändrade. Läsa, exportera och ta bort går alltid.
+     Tre varianter:
+       A  Märket och bandet: ett märke på spelet i Mina spel, ett band under rubriken, och #489:s
+          läsband i editorn med en ny mening.
+       B  Två hyllor: spelen i läsläge står i en egen sektion med orsaken och tre knappar; i editorn
+          ett märke i huvudet som öppnar förklaringen, och svaret på en ändring i notisbandet.
+       C  Kontots ruta och dörren: en ruta i högerspalten säger allt på ett ställe; i editorn en
+          dörr innan spelet öppnas, och ett tyst märke efter.
+     Gratisnivåns siffror är platshållare (fråga 3 i #1469): streckade under.
+     PROTOTYP. Slängs när beslutet står i DESIGN-BESLUT (G5).
+     ────────────────────────────────────────────────────────────────────────────────────── */
+  .g.stor { width: 18px; height: 18px; }
+  /* A: märket på spelet, och bandet. Samma bärnsten som #489:s läsband och #1073:s notisband. */
+  .lasmarke { display: inline-flex; align-items: center; gap: 5px; justify-self: start; min-height: 24px; padding: 0 8px 0 6px; border-radius: 999px; border: 1px solid #4a4230; background: #2a2418; color: #ffd98a; font-size: 12px; font-weight: 700; }
+  .lasmarke .g { width: 14px; height: 14px; }
+  .orsak { color: #e0cfa3; font-size: 13px; line-height: 1.45; }
+  .kontoband { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 12px; padding: 14px 16px; border-radius: 12px; background: #2a2418; border: 1px solid #4a4230; color: #ffe4b0; line-height: 1.5; }
+  .kontoband > .g { width: 20px; height: 20px; color: #ffd98a; margin-top: 2px; }
+  .kontoband p { margin: 0; }
+  .kontoband b { color: #fff; }
+  .kontoband .rad2 { grid-column: 2; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 6px; }
+  .kontoband .k-prim { background: #ffd98a; color: #2a2417; }
+  .kontoband .k-sek { border-color: #8a7a52; color: #ffe4b0; }
+  .kontoband small { display: block; color: #e0cfa3; font-size: 13px; }
+  /* B: sektionen I läsläge */
+  .hylla { display: grid; gap: 12px; padding: 18px; border-radius: 16px; border: 1px solid #4a4230; background: #1a1812; }
+  .hylla header { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+  .hylla header h2 { margin: 0; flex: 1 1 auto; display: flex; align-items: center; gap: 8px; font-size: 13px; text-transform: uppercase; letter-spacing: 2px; color: #ffd98a; }
+  .hylla > p { margin: 0; color: #e0cfa3; line-height: 1.5; }
+  .hylla .k-prim { background: #ffd98a; color: #2a2417; }
+  .lasrad { display: grid; grid-template-columns: 52px minmax(0, 1fr) auto; gap: 14px; align-items: center; padding: 10px 12px; border-radius: 12px; background: #171a23; border: 1px solid #2f2b20; }
+  .lasrad .tumme { width: 52px; height: 72px; }
+  .lasrad strong { color: #fff; font-size: 16px; display: block; }
+  .lasrad .orsak { display: block; margin-top: 2px; }
+  .lasrad .knapprad { gap: 8px; justify-content: flex-end; }
+  .sida[data-bredd='390'] .lasrad { grid-template-columns: 52px minmax(0, 1fr); }
+  .sida[data-bredd='390'] .lasrad .knapprad { grid-column: 1 / -1; justify-content: flex-start; }
+  /* C: kontots ruta i högerspalten, och spelet nedtonat */
+  .kontoruta { display: grid; gap: 10px; padding: 16px; border-radius: 14px; border: 1px solid #4a4230; background: #1a1812; color: #e6e6e6; }
+  .kontoruta h2 { margin: 0; font-size: 13px; text-transform: uppercase; letter-spacing: 2px; color: #ffd98a; }
+  .kontoruta p { margin: 0; line-height: 1.5; color: #e0cfa3; }
+  .kontoruta p b { color: #fff; }
+  .kontoruta ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+  .kontoruta li { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 8px; align-items: start; line-height: 1.4; }
+  .kontoruta li .g { width: 16px; height: 16px; margin-top: 2px; }
+  .kontoruta li[data-ok] .g { color: #7dd3a0; }
+  .kontoruta li[data-las] .g { color: #ffd98a; }
+  .kontoruta li small { display: block; color: #c8b98d; font-size: 12px; }
+  .kontoruta .k-prim { background: #ffd98a; color: #2a2417; }
+  .kontoruta .vagar { display: grid; gap: 8px; }
+  .spelrad[data-dim] .tumme, .hero[data-dim] .fan { filter: grayscale(0.85) brightness(0.7); }
+  .tumme .las-ikon, .hero .fan .las-ikon { position: absolute; right: -6px; bottom: -6px; z-index: 2; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: #2a2418; border: 1px solid #8a7a52; color: #ffd98a; filter: none; }
+  .hero .fan .las-ikon { right: 40px; bottom: 0; width: 36px; height: 36px; }
+  /* Editorn: läsbandet (#489) med ny mening, märket i huvudet (B) och dörren (C) */
+  .lasband { flex: none; display: flex; align-items: center; gap: 12px; padding: 10px 16px; background: #2a2418; border-bottom: 1px solid #4a4230; color: #ffe4b0; font-size: 13px; line-height: 1.45; }
+  .lasband > .g { width: 18px; height: 18px; color: #ffd98a; flex: none; }
+  .lasband > div { flex: 1 1 auto; min-width: 0; }
+  .lasband b { color: #ffd98a; }
+  .lasband small { display: block; color: #e0cfa3; font-size: 12px; }
+  .lasband .knappar { flex: none; display: flex; gap: 8px; align-items: center; }
+  .lasband .ed-knapp { min-height: 40px; font-size: 12px; background: transparent; border-color: #8a7a52; color: #ffe4b0; }
+  .lasband .ed-knapp.fylld { background: #ffd98a; border-color: #ffd98a; color: #2a2417; }
+  .lasband .sagt { flex: none; color: #ffd98a; font-weight: 700; font-size: 12px; white-space: nowrap; }
+  .huvudmarke { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 12px; border: 1px solid #8a7a52; border-radius: 8px; background: #2a2418; color: #ffd98a; font: inherit; font-weight: 700; }
+  .huvudmarke[aria-expanded='true'] { box-shadow: 0 0 0 2px #ffd98a inset; }
+  .popover { position: absolute; z-index: 9; right: 16px; top: 60px; width: 380px; display: grid; gap: 10px; padding: 16px; border-radius: 12px; background: #1b1f2a; border: 1px solid #4a4230; box-shadow: 0 18px 40px rgb(0 0 0 / 55%); color: #e6ecfa; font-size: 13px; line-height: 1.5; }
+  .popover h2 { margin: 0; font-size: 15px; color: #ffd98a; display: flex; gap: 8px; align-items: center; }
+  .popover p { margin: 0; }
+  .popover .muted { color: #9aa3b8; }
+  .popover .knapprad { gap: 8px; }
+  .popover .ed-knapp.fylld { background: #ffd98a; border-color: #ffd98a; color: #2a2417; }
+  .tyst-marke { display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px; border-radius: 999px; border: 1px solid #4a4230; background: #2a2418; color: #ffd98a; font-size: 11px; font-weight: 700; }
+  .tyst-marke .g { width: 13px; height: 13px; }
+  .ed[data-las-c] { box-shadow: inset 0 3px 0 #c8a24a; }
+  .dorr-skymning { position: absolute; inset: 0; z-index: 8; display: grid; place-items: center; padding: 16px; background: rgb(5 7 12 / 72%); }
+  .dorr-skymning .dialog { width: min(540px, 100%); }
+  .dorr-skymning .dialog h2 { display: flex; gap: 10px; align-items: center; }
+  .dorr-skymning .dialog h2 .g { width: 20px; height: 20px; color: #ffd98a; }
+  .dorr-skymning .dialog .rad3 { display: grid; gap: 4px; margin: 12px 0; padding: 12px 14px; border-radius: 10px; background: #11131a; border: 1px solid #262a35; font-size: 14px; }
+  .dorr-skymning .dialog .rad3 span { color: #9aa3b8; }
+  .dorr-skymning .dialog .knappar .prim { background: #1f6fd0; color: #fff; border-radius: 8px; }
+  .dorr-skymning .dialog .knappar .sek { border-radius: 8px; }
+  .ed-not { padding: 40px 20px; color: #c8b98d; font-size: 14px; line-height: 1.6; }
+</style>
+</head>
+<body>
+<div class="protorad" role="region" aria-label="Prototypens rad (inte en del av förslaget)">
+  <div class="fraga">
+    <p><b>PROTOTYP #1492: läsläget.</b> Kontot hade Pro, som gick ut 28 okt, och hålls nu till Gratis. Fyra spel: två ryms, två är i läsläge (ett har för många kort, ett ligger utöver antalet spel).</p>
+    <p>Växla variant med A/B/C eller ← →. I editorn: tryck «Ändra en cell» för att se svaret på en ändring. Gratisnivåns siffror är platshållare (<span class="ph">streckade</span>, fråga 3 i #1469).</p>
+  </div>
+  <div class="vaxlare" role="group" aria-label="Variant" id="vaxlare"></div>
+  <div class="grupp"><span>Yta</span><div class="flikar" id="ytor"></div></div>
+  <div class="grupp"><span>Heron</span><div class="flikar" id="heron"></div></div>
+  <div class="grupp"><span>Vägen ut</span><div class="flikar" id="pro"></div></div>
+  <div class="grupp"><span>Bredd</span><div class="flikar" id="bredd"></div></div>
+  <button type="button" id="andra">Ändra en cell</button>
+  <button type="button" id="omstart">Börja om ytan</button>
+  <p class="anteckning" id="anteckning"></p>
+</div>
+<main class="scen"><div id="ram"><p class="etikett" id="etikett"></p><div class="sida" id="sida"></div></div></main>
+
+<script>
+// ── Glyferna: #1083:s hand, 16-rutnät, 1,6 rund linje ────────────────────────────────────────────
+const P = {
+  book: 'M8 4.25C6.75 3.25 4.75 2.75 2.25 3v9.5c2.5-.25 4.5.25 5.75 1.25 1.25-1 3.25-1.5 5.75-1.25V3c-2.5-.25-4.5.25-5.75 1.25zM8 4.25v9.5',
+  lock: 'M4 7.25h8a.75.75 0 0 1 .75.75v5a.75.75 0 0 1-.75.75H4a.75.75 0 0 1-.75-.75V8A.75.75 0 0 1 4 7.25zM5.25 7.25V5.5a2.75 2.75 0 0 1 5.5 0v1.75',
+  check: 'M3 8.5 6.5 12 13 4.5',
+  import: 'M8 2.5v7.25M5 6.75l3 3 3-3M3 12.75h10',
+  person: 'M3.25 13.75c0-2.75 2.1-4.25 4.75-4.25s4.75 1.5 4.75 4.25',
+  exit: 'M9.5 2.75H4a1 1 0 0 0-1 1v8.5a1 1 0 0 0 1 1h5.5M6.5 8h7M11 5.25 13.75 8 11 10.75',
+  undo: 'M5.5 3.75 2.75 6.5 5.5 9.25M3 6.5h6.25a3.5 3.5 0 0 1 0 7H7',
+  redo: 'M10.5 3.75l2.75 2.75-2.75 2.75M13 6.5H6.75a3.5 3.5 0 0 0 0 7H9',
+  warn: 'M8 2.25 14.25 13.25H1.75zM8 6.5v3.25M8 11.6v.01',
+}
+const C = { person: [[8, 5.25, 2.5]] }
+const g = (n, k = '') => `<svg class="g ${k}" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="${P[n]}"/>${(C[n] ?? []).map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}"/>`).join('')}</svg>`
+const ph = (x) => `<span class="ph" title="Platshållare: gratisnivåns siffror är inte beslutade (fråga 3 i #1469)">${x}</span>`
+
+// ── Läget ────────────────────────────────────────────────────────────────────────────────────────
+const V = {
+  A: { namn: 'A: märket och bandet · rekommenderas',
+    not: '<b>Allt står där det redan står.</b> Spelet i läsläge får ett märke och sin orsak på sin rad (eller i heron), och dess knappar blir de som fungerar: öppna, exportera, ta bort. Ett band under rubriken, i bandplatsen som villkoren och passkeyn redan delar (#1254), säger varför en gång och har vägarna ut. I editorn är det <b>#489:s läsband</b> med en ny mening, så läsläget har en form och inte tre. <span class="plus">+ återanvänder läsbandet, notisbandets plats och menyns orsaksrad; ingen ny komponent; samma för ägare och medredigerare med olika meningar</span> <span class="minus">− bandet konkurrerar om platsen med villkoren och namnet (ett i taget); en designer som stänger bandet har bara märkena kvar</span>' },
+  B: { namn: 'B: två hyllor',
+    not: '<b>Spelen i läsläge står för sig.</b> Mina spel får en sektion «I läsläge» under Övriga spel, med varje spels orsak och tre knappar direkt på raden. Heron tar det senaste spelet som <i>ryms</i>. I editorn står ett märke i huvudet i stället för Spara, och det öppnar förklaringen; en ändring svaras i notisbandet (#1073). <span class="plus">+ tydligast vilka spel det gäller och varför; inga menyer att leta i; heron är alltid ett spel man kan arbeta i</span> <span class="minus">− spelen byter plats på sidan när Pro går ut och tillbaka när det förnyas; heron visar inte det spel man senast arbetade i; märket i huvudet är en ny form</span>' },
+  C: { namn: 'C: kontots ruta och dörren',
+    not: '<b>En ruta säger allt.</b> Högerspalten får överst en ruta «Ditt konto» med vilka spel som ryms, vilka som är i läsläge och varför, och vägarna ut. Spelen i läsläge är nedtonade med ett lås. Editorn visar en <b>dörr</b> innan ett spel i läsläge öppnas, och efter den bara ett tyst märke och en bärnstensfärgad kant. <span class="plus">+ en plats att läsa hela läget; dörren gör att ingen börjar arbeta i ett spel som inte kan sparas</span> <span class="minus">− nedtonat och lås läses som trasigt eller låst, fast spelet går att läsa och exportera; dörren är ett modalt steg varje gång; ett nytt mönster i editorn</span>' },
+}
+const YTOR = { hem: 'Mina spel', ed: 'Editorn (ägaren)', medred: 'Editorn (medredigerare)' }
+const HERON = { ryms: 'ryms', las: 'i läsläge' }
+const PRO = { med: 'med Pro', utan: 'utan Pro' }
+
+const q = new URLSearchParams(location.search)
+let v = (q.get('v') || 'A').toUpperCase()
+let yta = q.get('yta') || 'hem'
+let heron = q.get('heron') || 'ryms'
+let pro = q.get('pro') || 'med'
+let bredd = q.get('bredd') || '1280'
+let st = {}
+const omstart = () => { st = { andrat: q.get('andrat') === '1', meny: q.get('meny') === '1', pop: q.get('pop') === '1', dorr: q.get('dorr') !== '0' }; q.delete('andrat'); q.delete('meny'); q.delete('pop'); q.delete('dorr') }
+omstart()
+
+// Spelen, senast ändrat först. «las» är orsaken till läsläget, eller null när spelet ryms.
+const FRI = { spel: 2, kort: 150, mb: 300 }
+const ALLA = {
+  kvall: { namn: 'Kvällsmarknaden', c: '#7a4a2a', rgb: '125 211 160', v: 3, kort: 146, spelare: 4, bord: 2, spelat: 'i går', sparat: 'i dag' },
+  drak: { namn: 'Drakhamnen', c: '#2a4a7a', rgb: '120 150 220', v: 5, kort: 212, spelare: 5, bord: 6, spelat: '24 okt', sparat: '26 okt', las: 'kort' },
+  skog: { namn: 'Skogens herrar', c: '#3f6f45', rgb: '125 211 160', v: 2, kort: 88, spelare: 3, bord: 1, spelat: '19 okt', sparat: '20 okt' },
+  sal: { namn: "Sal's Saloon", c: '#8a3a3a', rgb: '220 140 120', v: 1, kort: 120, spelare: 4, bord: 0, spelat: 'aldrig', sparat: '12 okt', las: 'antal' },
+}
+const ordning = () => heron === 'las' ? ['drak', 'kvall', 'skog', 'sal'] : ['kvall', 'drak', 'skog', 'sal']
+const spel = () => ordning().map((k) => ({ k, ...ALLA[k] }))
+const iLas = () => spel().filter((s) => s.las)
+// Spelet editorn visar: det i läsläge som heron eller raden pekar på
+const edSpel = () => ALLA.drak
+
+const orsak = (s, kort = false) => s.las === 'kort'
+  ? (kort ? `${s.kort} kort, Gratis rymmer ${ph(FRI.kort)}` : `Har ${s.kort} kort, och Gratis rymmer ${ph(FRI.kort)} per spel.`)
+  : (kort ? `Spel nummer 3, Gratis rymmer ${ph(FRI.spel)}` : `Gratis rymmer ${ph(FRI.spel)} spel, och de ${ph(FRI.spel)} senast ändrade ryms.`)
+const PRIS = '99 kr i månaden'
+const proKnapp = (k = 'k-prim liten') => pro === 'med' ? `<button class="${k}">Förnya Pro, ${PRIS}</button>` : ''
+const vagarText = () => pro === 'med'
+  ? `Förnya Pro, eller ta bort ett spel så att ett annat ryms. Exportera går alltid.`
+  : `Ta bort ett spel så att ett annat ryms, eller exportera det och ta det med dig. Exportera går alltid.`
+
+// ── Mina spel ───────────────────────────────────────────────────────────────────────────────────
+function bar() {
+  return `<div class="hm-bar"><span class="hm-mark"><i></i>Deckster</span>
+    ${v === 'C' ? '' : ''}
+    <button class="hm-knapp" aria-label="Importera spel…">${g('import')}<span class="ord">Importera</span></button>
+    <button class="hm-knapp">+ <span class="ord">Nytt spel</span></button>
+    <span class="hm-who"><span class="adr">nicklas@example.com</span><span class="ikon" title="Profil">${g('person')}</span><span class="ikon" title="Logga ut">${g('exit')}</span></span></div>`
+}
+function heroOf(s) {
+  const las = !!s.las
+  const dim = v === 'C' && las
+  const marke = las && v === 'A' ? `<span class="lasmarke">${g('book')}Läsläge</span>` : ''
+  const orsakRad = las && v === 'A' ? `<span class="orsak">${orsak(s)} Du kan öppna, läsa och exportera det, men inte ändra det eller starta bord ur det.</span>` : ''
+  const knappar = las && v !== 'B'
+    ? `<button class="k-prim">Öppna editorn</button><button class="k-sek">Exportera…</button>`
+    : `<button class="k-prim">Öppna editorn</button><button class="k-sek">Starta bord</button>`
+  return `<section class="hero" style="--rgb:${s.rgb}" ${dim ? 'data-dim' : ''} aria-labelledby="hero-h">
+    <div class="fan" style="--c:${s.c}"><i></i><i></i><i></i>${dim ? `<span class="las-ikon" title="Läsläge">${g('lock')}</span>` : ''}</div>
+    <div class="hero-text"><h2 id="hero-h" class="hm-h2">Fortsätt där du slutade</h2>
+      <strong>${s.namn}</strong>${marke}
+      <span class="rad">Version ${s.v} sparad ${s.sparat}</span>
+      <div class="stats"><div ${las && s.las === 'kort' && v !== 'C' ? 'data-over' : ''}><b>${s.kort}</b><span>kort</span></div><div><b>${s.spelare}</b><span>spelare</span></div><div><b>${s.bord}</b><span>bord</span></div><div><b>${s.spelat}</b><span>senast spelat</span></div></div>
+      ${orsakRad}
+      <div class="knapprad">${knappar}</div>
+    </div>
+    <button class="mer" aria-label="Spelets val">⋯</button>
+  </section>`
+}
+function rad(s, i) {
+  const las = !!s.las
+  const dim = v === 'C' && las
+  let tredje = s.bord ? `${s.bord} bord · senast ${s.spelat}` : 'inte spelat'
+  let extra = ''
+  if (las && v === 'A') extra = `<span class="lasmarke">${g('book')}Läsläge</span><span class="orsak">${orsak(s, true)}</span>`
+  const meny = st.meny && i === 0 && las ? menyLas() : ''
+  return `<div class="spelrad" ${dim ? 'data-dim' : ''}><span class="tumme" style="--c:${s.c}">${dim ? `<span class="las-ikon" title="Läsläge">${g('lock')}</span>` : ''}</span>
+    <div class="txt"><strong>${s.namn}</strong><span class="rad">v${s.v} · ${s.kort} kort · ${s.spelare} spelare</span>${las && v === 'A' ? '' : `<span class="rad">${tredje}</span>`}${extra}</div>
+    <button class="mer" aria-label="Val för ${s.namn}" ${st.meny && i === 0 && las ? 'aria-expanded="true"' : 'aria-expanded="false"'} data-do="meny">⋯</button>${meny}</div>`
+}
+function menyLas() {
+  // Menyns val är de som finns i dag (#909). De som skriver säger varför de inte går, med orsaksraden (#1198).
+  return `<div class="meny2" role="menu"><button role="menuitem">Öppna editorn</button><button role="menuitem" aria-disabled="true">Starta bord<small>Inte i läsläge</small></button>
+    <button role="menuitem" aria-disabled="true">Byt namn…<small>Inte i läsläge</small></button><button role="menuitem" aria-disabled="true">Dubblera<small>Inte i läsläge</small></button><button role="menuitem">Exportera…</button><hr><button role="menuitem">Ta bort spelet…</button></div>`
+}
+function kontobandA() {
+  const n = iLas().length
+  return `<div class="kontoband" role="region" aria-label="Läsläge">${g('book')}<div>
+    <p><b>${n === 2 ? 'Två' : n} spel är i läsläge.</b> ${pro === 'med' ? 'Ditt Pro gick ut 28 okt, och kontot rymmer nu det som Gratis rymmer' : 'Kontot rymmer nu det som Gratis rymmer'}: ${ph(FRI.spel)} spel med högst ${ph(FRI.kort)} kort och ${ph(FRI.mb + ' MB')}. Spelen i läsläge går att öppna, läsa och exportera, men inte ändra eller starta bord ur.</p>
+    <small>Ingenting tas bort. ${vagarText()}</small></div>
+    <div class="rad2">${proKnapp()}<button class="k-sek liten">Stäng</button></div></div>`
+}
+function hylla() {
+  const lista = iLas()
+  return `<section class="hylla" aria-labelledby="hylla-h"><header><h2 id="hylla-h">${g('book')}I läsläge</h2>${proKnapp()}</header>
+    <p>${pro === 'med' ? 'Ditt Pro gick ut 28 okt. ' : ''}Gratis rymmer ${ph(FRI.spel)} spel med högst ${ph(FRI.kort)} kort och ${ph(FRI.mb + ' MB')}. De här spelen går att öppna, läsa och exportera, men inte ändra eller starta bord ur. Ingenting tas bort.</p>
+    ${lista.map((s) => `<div class="lasrad"><span class="tumme" style="--c:${s.c}"></span><div><strong>${s.namn}</strong><span class="orsak">${orsak(s)}</span></div>
+      <div class="knapprad"><button class="k-sek liten">Öppna och läs</button><button class="k-sek liten">Exportera…</button><button class="k-lank">Ta bort…</button></div></div>`).join('')}
+  </section>`
+}
+function kontoruta() {
+  const alla = spel()
+  return `<section class="kontoruta" aria-labelledby="konto-h"><h2 id="konto-h">Ditt konto</h2>
+    <p><b>Gratis sedan 28 okt</b>${pro === 'med' ? ', när Pro gick ut' : ''}. Gratis rymmer ${ph(FRI.spel)} spel med högst ${ph(FRI.kort)} kort och ${ph(FRI.mb + ' MB')}.</p>
+    <ul>${alla.map((s) => s.las ? `<li data-las>${g('lock')}<span>${s.namn}: läsläge<small>${orsak(s, true)}</small></span></li>` : `<li data-ok>${g('check')}<span>${s.namn}: ryms</span></li>`).join('')}</ul>
+    <p>Spelen i läsläge går att öppna, läsa och exportera, men inte ändra. Ingenting tas bort.</p>
+    <div class="vagar">${pro === 'med' ? `<button class="k-prim liten">Förnya Pro, ${PRIS}</button>` : ''}<button class="k-sek liten">Exportera ett spel…</button></div>
+  </section>`
+}
+function minaSpel() {
+  let alla = spel()
+  let hero = alla[0]
+  if (v === 'B') hero = alla.find((s) => !s.las)
+  const ovriga = alla.filter((s) => s !== hero && (v !== 'B' || !s.las))
+  return `<div class="hm">${bar()}<div class="hm-grid"><div class="hm-main">
+      <h1>Mina spel</h1>
+      ${v === 'A' ? kontobandA() : ''}
+      ${heroOf(hero)}
+      <h2 class="hm-h2">Övriga spel</h2>
+      <div class="rader">${ovriga.map(rad).join('')}<div class="ny-ruta">+ Nytt spel</div></div>
+      ${v === 'B' ? hylla() : ''}
+    </div>
+    <aside class="hm-side pagar">
+      ${v === 'C' ? kontoruta() : ''}
+      <h2 class="hm-h2">Pågår nu</h2>
+      <div class="bordkort"><header><span>Kvällsmarknaden</span><b>P3XNJH</b></header><button>Öppna bordet</button></div>
+      <div class="rumskod"><label for="kod">Har du en rumskod?</label><div><input id="kod"><button>Gå med</button></div></div>
+    </aside></div></div>`
+}
+
+// ── Editorn ─────────────────────────────────────────────────────────────────────────────────────
+const KORT = [['drake-1', 'Hamnens drake', 'Ta två guld från en granne.', 1], ['fyr', 'Fyrvaktaren', 'Titta på de tre översta.', 2], ['kaj', 'Kajen', 'Lägg ett kort under leken.', 3], ['storm', 'Stormnatt', 'Alla kastar ett kort.', 2], ['smuggel', 'Smugglaren', 'Byt ett kort med handen.', 1], ['tull', 'Tullhuset', 'Betala 1 guld per kort.', 2], ['nat', 'Fisknätet', 'Dra tills du får ett skepp.', 2], ['skepp', 'Handelsskeppet', 'Få 3 guld.', 3], ['ankare', 'Ankaret', 'Hoppa över nästa drag.', 1], ['brygga', 'Bryggan', 'Flytta en spelare ett steg.', 2]]
+function huvud(medred) {
+  const s = edSpel()
+  const FLIKAR = ['Kortvägg', 'Mall', 'Tabell', 'Speltema', 'Media', 'Regler', 'Bord']
+  const las = true
+  // Höger sida av huvudet: vad varianten gör av Spara och Starta
+  let hoger
+  if (v === 'A') hoger = `<button class="ed-knapp kantad">Exportera…</button><button class="ed-knapp knapp-av" aria-disabled="true" title="Inte i läsläge">Starta</button>`
+  else if (v === 'B') hoger = `<button class="huvudmarke" aria-expanded="${st.pop}" aria-controls="las-pop" data-do="pop">${g('book')}Läsläge</button><button class="ed-knapp kantad">Exportera…</button>`
+  else hoger = `<button class="ed-knapp kantad">Exportera…</button>`
+  const angra = v === 'C' ? '' : `<span class="angra"><button aria-label="Ångra" aria-disabled="true">${g('undo')}</button><button aria-label="Gör om" aria-disabled="true">${g('redo')}</button></span>`
+  return `<header class="ed-huvud"><span class="hem">Mina spel</span><span class="namn">${s.namn}</span>${v === 'C' ? `<span class="tyst-marke">${g('book')}Läsläge</span>` : ''}<button class="dorr" aria-label="Spelets val">⋯</button><span class="ver">v${s.v}</span>
+    ${angra}<span class="spacer"></span>
+    <nav class="ed-flikar" role="tablist">${FLIKAR.map((n) => `<button role="tab" aria-selected="${n === 'Tabell'}" aria-describedby="las-varfor">${n}</button>`).join('')}</nav><span class="spacer"></span>
+    <span class="dela"><i>${medred ? 'S' : 'N'}</i><span>Dela</span></span>${hoger}</header>`
+}
+function lasMening(medred) {
+  const s = edSpel()
+  if (medred) return {
+    huvud: `${s.namn} ligger över det Nicklas konto rymmer just nu, så ingen kan ändra det.`,
+    sma: 'Du kan läsa, söka, jämföra versioner och exportera. Nicklas kan göra spelet ändringsbart igen.',
+  }
+  return {
+    huvud: `${s.namn} har ${s.kort} kort, och Gratis rymmer ${ph(FRI.kort)} per spel${pro === 'med' ? ' sedan ditt Pro gick ut 28 okt' : ''}.`,
+    sma: `Du kan läsa, söka, jämföra versioner och exportera. ${pro === 'med' ? 'Förnya Pro, eller ta bort kort i en kopia efter exporten, så går det att ändra igen.' : 'Spelet går att ändra igen när det ryms; exportera det om du vill ta det med dig.'}`,
+  }
+}
+function lasbandA(medred) {
+  const m = lasMening(medred)
+  return `<div class="lasband" id="las-varfor" role="note" aria-label="Läsläge">${g('book')}<div><b>Läsläge</b>: ${m.huvud}<small>${m.sma}</small></div>
+    <span class="sagt" role="status">${st.andrat ? 'Läsläge: inget sparas.' : ''}</span>
+    <span class="knappar">${!medred && pro === 'med' ? `<button class="ed-knapp fylld">Förnya Pro</button>` : ''}</span></div>`
+}
+function popB(medred) {
+  if (!st.pop) return ''
+  const m = lasMening(medred)
+  return `<div class="popover" id="las-pop" role="dialog" aria-labelledby="pop-h"><h2 id="pop-h">${g('book')}Läsläge</h2><p>${m.huvud}</p><p class="muted">${m.sma}</p>
+    <div class="knapprad">${!medred && pro === 'med' ? `<button class="ed-knapp fylld">Förnya Pro, ${PRIS}</button>` : ''}<button class="ed-knapp kantad">Exportera…</button></div></div>`
+}
+function notisB() {
+  if (!st.andrat) return ''
+  return `<div class="notisband">${g('warn')}<p role="alert"><b>Ändringen sparades inte.</b> ${edSpel().namn} är i läsläge: det går att läsa och exportera, men inte ändra. Läs varför under «Läsläge» i huvudet.</p><button class="stang" aria-label="Stäng meddelandet">×</button></div>`
+}
+function dorrC(medred) {
+  if (!st.dorr) return ''
+  const s = edSpel()
+  return `<div class="dorr-skymning"><div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dorr-h" aria-describedby="dorr-p">
+    <h2 id="dorr-h">${g('book')}${s.namn} är i läsläge</h2>
+    <p id="dorr-p">${medred ? `Spelet ligger över det Nicklas konto rymmer just nu. Du kan läsa det, söka, jämföra versioner och exportera, men ingen kan ändra det förrän Nicklas gör det ändringsbart igen.` : `Spelet har ${s.kort} kort, och Gratis rymmer ${ph(FRI.kort)} per spel${pro === 'med' ? ' sedan ditt Pro gick ut 28 okt' : ''}. Du kan läsa det, söka, jämföra versioner och exportera, men inte ändra det eller starta bord ur det.`}</p>
+    ${medred ? '' : `<div class="rad3"><b>${s.kort} kort</b><span>Gratis rymmer ${ph(FRI.kort)} per spel. Ingenting tas bort.</span></div>`}
+    <div class="knappar">${!medred && pro === 'med' ? `<button class="sek">Förnya Pro, ${PRIS}</button>` : ''}<button class="sek">Exportera…</button><button class="prim" data-do="las">Läs spelet</button></div></div></div>`
+}
+function editor(medred) {
+  if (bredd === '390') return `<div class="ed-not">Editorn är ett skrivbordsverktyg (L12) och ritas här från 1024. Välj en bredare bredd.</div>`
+  const ro = true
+  const rader = KORT.map((k) => `<tr><td class="bock"><input type="checkbox" aria-label="${k[1]}"></td><td class="id">${k[0]}</td><td><input class="cell" value="${k[1]}" readonly aria-readonly="true" aria-describedby="las-varfor"></td><td><input class="cell" value="${k[2]}" readonly aria-readonly="true" aria-describedby="las-varfor"></td><td><input class="cell" data-tal value="${k[3]}" readonly aria-readonly="true"></td><td class="spar">${v === 'C' ? '' : `<button aria-label="Ta bort ${k[1]}" aria-disabled="true">×</button>`}</td></tr>`).join('')
+  const nyKort = v === 'C' ? '' : `<button class="t-ny" aria-disabled="true" aria-describedby="las-varfor" style="color:#7d8597">+ Nytt kort</button>`
+  const band = v === 'A' ? lasbandA(medred) : v === 'B' ? notisB() : ''
+  const cBand = v === 'C' ? `<p class="off" id="las-varfor">Läsläge: spelet går att läsa och exportera men inte ändra.</p>` : ''
+  const bSkarm = v === 'B' ? `<p class="off" id="las-varfor">Läsläge. Läs varför under «Läsläge» i huvudet.</p>` : ''
+  const cSagt = v === 'C' && st.andrat && !st.dorr ? `<div class="notisband">${g('warn')}<p role="alert"><b>Ändringen sparades inte.</b> Spelet är i läsläge.</p><button class="stang" aria-label="Stäng meddelandet">×</button></div>` : ''
+  return `<div class="ed byd-editor" ${v === 'C' ? 'data-las-c' : ''} style="position:relative">${huvud(medred)}${band}${cBand}${bSkarm}${cSagt}<div class="arbete">
+    <div class="t-krona"><input class="t-sok" placeholder="Sök i alla fält…" aria-label="Sök i alla fält"><span class="t-chips"></span>${v === 'C' ? '' : `<button class="t-box" aria-disabled="true" style="color:#7d8597">Importera ▾</button>`}</div>
+    <div class="t-vy"><div class="t-rulla" style="overflow:hidden"><table class="t-data"><colgroup><col style="width:44px"><col style="width:130px"><col style="width:220px"><col><col style="width:80px"><col style="width:44px"></colgroup>
+      <thead><tr><th class="bock"><input type="checkbox" aria-label="Markera alla"></th><th class="id"><span class="sort"><span>ID</span></span></th><th><span class="sort"><span>Namn</span></span></th><th><span class="sort"><span>Text</span></span></th><th><span class="sort"><span>Antal</span></span></th><th class="spar">${v === 'C' ? '' : '<button aria-disabled="true">+</button>'}</th></tr></thead>
+      <tbody><tr><td colspan="6" style="height:24px;color:#868ea3;padding:0 10px;font-size:11px">⋮ ${edSpel().kort - KORT.length} kort till ovanför</td></tr>${rader}</tbody></table>${nyKort}</div></div>
+    <p class="fot"><span>${edSpel().kort} kort</span><span class="tyst">Sorterat efter ID</span></p>
+  </div>${v === 'B' ? popB(medred) : ''}${v === 'C' ? dorrC(medred) : ''}</div>`
+}
+
+// ── Ritningen ───────────────────────────────────────────────────────────────────────────────────
+const sida = document.getElementById('sida')
+function flikar(id, alt, cur, set) {
+  const el = document.getElementById(id)
+  el.innerHTML = Object.entries(alt).map(([k, n]) => `<button type="button" aria-pressed="${k === cur}" data-k="${k}">${n}</button>`).join('')
+  el.onclick = (e) => { const b = e.target.closest('button'); if (b) { set(b.dataset.k); omstart(); rita() } }
+}
+function rita() {
+  document.getElementById('vaxlare').innerHTML = Object.keys(V).map((k) => `<button type="button" aria-pressed="${k === v}" data-v="${k}">${k}</button>`).join('')
+  flikar('ytor', YTOR, yta, (k) => (yta = k))
+  flikar('heron', HERON, heron, (k) => (heron = k))
+  flikar('pro', PRO, pro, (k) => (pro = k))
+  flikar('bredd', { 1440: '1440', 1280: '1280', 1024: '1024', 390: '390' }, bredd, (k) => (bredd = k))
+  document.getElementById('anteckning').innerHTML = V[v].not
+  document.getElementById('etikett').innerHTML = `<b>${V[v].namn}</b> · ${YTOR[yta]} · ${bredd} px`
+  const w = +bredd, h = bredd === '390' ? 844 : 800
+  sida.style.width = w + 'px'; sida.style.height = h + 'px'; sida.dataset.bredd = bredd
+  sida.innerHTML = yta === 'hem' ? minaSpel() : editor(yta === 'medred')
+  const p = new URLSearchParams({ v, yta, heron, pro, bredd })
+  history.replaceState(null, '', '?' + p)
+}
+document.getElementById('vaxlare').onclick = (e) => { const b = e.target.closest('button'); if (b) { v = b.dataset.v; omstart(); rita() } }
+document.getElementById('omstart').onclick = () => { omstart(); rita() }
+document.getElementById('andra').onclick = () => { if (yta === 'hem') yta = 'ed'; st.andrat = true; st.dorr = false; rita() }
+sida.onclick = (e) => {
+  const b = e.target.closest('[data-do]'); if (!b) return
+  const d = b.dataset.do
+  if (d === 'meny') st.meny = !st.meny
+  if (d === 'pop') st.pop = !st.pop
+  if (d === 'las') st.dorr = false
+  rita()
+}
+addEventListener('keydown', (e) => {
+  if (e.target.closest('input, textarea, [contenteditable]')) return
+  const ks = Object.keys(V), i = ks.indexOf(v)
+  if (e.key === 'ArrowRight') { v = ks[(i + 1) % ks.length]; omstart(); rita() }
+  if (e.key === 'ArrowLeft') { v = ks[(i + ks.length - 1) % ks.length]; omstart(); rita() }
+})
+rita()
+</script>
+</body>
+</html>
