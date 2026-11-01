@@ -1,5 +1,5 @@
 import { createRequire } from 'node:module'
-const require = createRequire('/Users/nioc/Development/build-your-deck/.claude/worktrees/agent-a8b7dd4f99474fbc2/packages/web/package.json')
+const require = createRequire(new URL('../../../../packages/web/package.json', import.meta.url))
 const { chromium } = require('playwright')
 const out = process.argv[2]
 const list = process.argv.slice(3)

@@ -69,4 +69,4 @@ C ger större kort än i dag vid fyra platser, men går under golvet vid åtta.
 | A, telefonen 390 | ![](bilder/A-telefon.png) |
 | Produktbilden | ![](bilder/produkt.png) |
 
-Beslutet är inte fattat.
+**Beslut 2026-11-01:** beställaren valde variant A, och brädets sida designas i en egen flik «Bräde», som «Låda» (L91). Byggskivorna #1480 och #1481 följer A.
