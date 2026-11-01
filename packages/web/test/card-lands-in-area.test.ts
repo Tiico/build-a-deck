@@ -8,7 +8,7 @@ import { FAN_MAX, HAND_STEP_MM } from '../src/table/hand.js'
 import { playIntents } from '../src/player/play.js'
 import { intentsForPlace, placesFor, type Thing } from '../src/table/keyboard.js'
 import { fanIn, laidIn } from '../src/table/lay.js'
-import { isCounter, isDie, isPiece } from '../src/components.js'
+import { isCounter, isDie, isMaterial } from '../src/components.js'
 import { tableOf } from './scene.js'
 
 // Var ett kort hamnar i en yta när den som spelar inte har pekat (L47, #449).
@@ -463,7 +463,7 @@ describe('ett kort i en yta med en bricka i (#1202)', () => {
     if (!moved) throw new Error('den försvann')
     return moved
   }
-  const card = (c: Seen) => c.zone === 'hand:A' && !isPiece(c)
+  const card = (c: Seen) => c.zone === 'hand:A' && !isMaterial(c)
   const loose = (kind: 'counter' | 'die') => (c: Seen) => c.zone === 'table' && (kind === 'counter' ? isCounter(c) : isDie(c))
 
   // Rutan en komponent tar i ytan, i ytans egna millimetrar: en bricka efter sin egen storlek.
@@ -472,7 +472,7 @@ describe('ett kort i en yta med en bricka i (#1202)', () => {
     return size === null ? { x: c.x, y: c.y, ...CARD_MM } : { x: c.x, y: c.y, w: size, h: size }
   }
   const overlaps = (a: Rect, b: Rect): boolean => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h
-  const piecesIn = (view: Snapshot) => view.components.filter((c) => c.zone === 'mine:A' && isPiece(c))
+  const piecesIn = (view: Snapshot) => view.components.filter((c) => c.zone === 'mine:A' && isMaterial(c))
   // Fjäderns första steg där ett kort inte täcker någon av brickorna: där kortet ska ligga.
   const firstClear = (view: Snapshot, y: number): number => {
     const pieces = piecesIn(view).map(rectOf)
