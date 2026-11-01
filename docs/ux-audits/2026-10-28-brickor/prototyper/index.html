@@ -1,0 +1,136 @@
+<!doctype html>
+<!-- PROTOTYP (#1474). Kastas när beställaren har valt. ?yta=filt|telefon|editor|kopia&v=A|B|C, ←/→ byter variant. -->
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Brickor — prototyp #1474</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+:root {
+  --plate: #171a23; --edge: #0d0f14; --chalk: #f3e9d6; --chalk-off: #9b968e; --accent: #f0b64a; --on-accent: #1c1c1c; --plate-off: #2d2f35;
+  --felt-font: 'Roboto Condensed', system-ui, sans-serif;
+}
+body { display: flex; flex-direction: column; height: 100vh; height: 100dvh; }
+.ytor { display: flex; gap: 4px; padding: 3px; border-radius: 9px; background: #1f1b12; border: 1px solid #4a4230; }
+.protorad .ytor button { border: 0; min-height: 30px; font-weight: 700; }
+.protorad .ytor button[aria-pressed='true'] { background: #ffd98a; color: #2a2417; }
+.protorad .rek { color: #b7dca0; font-weight: 700; }
+.protorad .extra { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; }
+.protorad .extra button[aria-pressed='true'] { background: #ffd98a; color: #2a2417; }
+.protorad .anteckning { min-height: calc(4 * 1.5em + 14px); }
+.scen { position: relative; flex: 1 1 auto; min-height: 0; overflow: auto; background: #0b0c10; }
+.bit { display: block; }
+.hexi { display: inline-block; width: .8em; height: .92em; background: currentColor; clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); vertical-align: -1px; font-style: normal; }
+.dreh { transform: rotate(var(--r)); transform-box: fill-box; transform-origin: center; transition: transform .35s cubic-bezier(.3,.7,.3,1); }
+.lugn .dreh, .lugn * { transition: none !important; animation: none !important; }
+
+/* ── TV:n och filten ───────────────────────────────────────────────────────── */
+.tv { display: grid; grid-template-columns: minmax(0, 1fr) 260px; grid-template-rows: 44px minmax(0, 1fr); height: 100%; min-height: 420px; background: var(--edge); color: var(--chalk); font-family: var(--felt-font); }
+.tv-huvud { grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; padding: 0 16px; border-bottom: 1px solid #1e2129; font-size: 15px; }
+.tv-huvud b { font-size: 17px; } .tv-huvud .kod { margin-left: auto; letter-spacing: .2em; font-weight: 700; color: var(--accent); }
+.filt-hus { position: relative; min-width: 0; min-height: 0; overflow: auto; display: grid; place-items: center; padding: 12px; }
+.filt { position: relative; flex: none; background: var(--plate); border: 1px solid #22262f; border-radius: 14px; box-shadow: inset 0 0 0 1px #0004, 0 20px 50px #0008; }
+.filt .zon { position: absolute; border: 1px solid #3a3f4b; border-radius: 6px; }
+.filt .zon.hand { border-style: dashed; border-color: #2f3440; }
+.filt .zn { position: absolute; left: 50%; transform: translateX(-50%); white-space: nowrap; font-weight: 700; color: var(--chalk-off); font-size: max(11px, calc(11 * var(--mm))); pointer-events: none; }
+.filt .platsnamn { position: absolute; transform: translate(-50%, -50%); display: flex; align-items: center; gap: 6px; padding: 2px 8px 2px 2px; border-radius: 6px; background: #12141b; border-left: 3px solid var(--c); font-weight: 700; font-size: 13px; white-space: nowrap; pointer-events: none; }
+.filt .platsnamn i { width: 20px; height: 20px; border-radius: 50%; background: var(--c); display: grid; place-items: center; font-style: normal; color: #fff; font-size: 11px; }
+.filt .lagd { position: absolute; transform: translate(-50%, -50%); cursor: grab; touch-action: none; border-radius: 6px; }
+.filt .lagd:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+.filt .lagd.vald { filter: drop-shadow(0 0 0 var(--accent)) drop-shadow(0 0 4px #f0b64acc); z-index: 5; }
+.filt .lagd.dras { cursor: grabbing; z-index: 8; filter: drop-shadow(0 10px 10px #000a); }
+.filt .lagd.ny { animation: ny 1.2s ease-out; }
+@keyframes ny { from { filter: drop-shadow(0 0 10px #f0b64a); } }
+.filt .hog { position: absolute; transform: translate(-50%, -50%); cursor: pointer; border-radius: 8px; }
+.filt .hog:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+.filt .hog .zn { top: calc(100% + 4px); }
+.filt .natt { position: absolute; pointer-events: none; opacity: .25; }
+.filt .snapp { position: absolute; transform: translate(-50%, -50%); pointer-events: none; }
+.filt .detent { position: absolute; transform: translate(-50%, -50%); pointer-events: none; transition: opacity .6s; }
+.filt .vred { position: absolute; transform: translate(-50%, -50%); width: 30px; height: 30px; border-radius: 50%; background: var(--accent); border: 3px solid #1c1c1c; cursor: grab; touch-action: none; z-index: 9; display: grid; place-items: center; color: #1c1c1c; font: 800 14px system-ui; }
+.filt .vred:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+.filt .vinkel { position: absolute; transform: translate(-50%, -100%); padding: 2px 8px; border-radius: 6px; background: #000c; font: 700 13px system-ui; color: #fff; pointer-events: none; z-index: 9; white-space: nowrap; }
+.ring { position: absolute; z-index: 10; pointer-events: none; }
+.ring button { position: absolute; transform: translate(-50%, -50%); pointer-events: auto; min-width: 44px; min-height: 44px; padding: 0 12px; border-radius: 999px; border: 1px solid #000; background: #f3e9d6; color: #1c1c1c; font: 700 14px var(--felt-font); white-space: nowrap; cursor: pointer; box-shadow: 0 6px 16px #000a; }
+.ring button:hover { background: #fff; }
+.ring button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.ring button small { font-weight: 400; color: #555; margin-left: 4px; }
+.fan { position: absolute; transform: translate(-50%, -50%); display: flex; align-items: center; pointer-events: none; }
+.fan > * { margin-left: calc(-20px * var(--mm)); }
+.fan > *:first-child { margin-left: 0; }
+.tv-sida { padding: 14px 14px 16px; border-left: 1px solid #1e2129; background: #101219; overflow: auto; display: flex; flex-direction: column; gap: 14px; }
+.tv-sida h3 { margin: 0 0 4px; font-size: 12px; letter-spacing: .12em; color: var(--chalk-off); }
+.senast { list-style: none; margin: 0; padding: 0; }
+.senast li { padding: 6px 0; border-bottom: 1px solid #1e2129; line-height: 1.35; font-size: 15px; }
+.senast li b { color: var(--c); }
+.senast li.ny { animation: nyrad 1.2s ease-out; }
+@keyframes nyrad { from { background: #f0b64a33; } }
+.matt-tab { width: 100%; border-collapse: collapse; font: 12px system-ui; color: #c9cfdc; font-variant-numeric: tabular-nums; }
+.matt-tab th, .matt-tab td { padding: 3px 4px; text-align: right; border-bottom: 1px solid #1e2129; }
+.matt-tab th:first-child, .matt-tab td:first-child { text-align: left; }
+.matt-tab .under { color: #f0a58a; font-weight: 700; }
+.tv-sida .kbd { font: 12px/1.5 system-ui; color: #9aa3b8; }
+.tv-sida kbd { display: inline-block; min-width: 20px; padding: 0 4px; border: 1px solid #3a3f4b; border-radius: 4px; color: #e6ecfa; text-align: center; }
+.protorad .omnot { display: none; }
+@media (max-width: 600px) {
+  .protorad .fraga p + p, .protorad .anteckning, .protorad .extra { display: none; }
+  .protorad .omnot { display: inline-block; }
+  body.visa-not .protorad .anteckning, body.visa-not .protorad .extra { display: flex; flex-wrap: wrap; }
+  body.visa-not .protorad .anteckning { display: block; }
+}
+@media (max-width: 760px) { .tv { grid-template-columns: minmax(0, 1fr); grid-template-rows: 44px auto minmax(300px, 1fr) auto; } .tv-sida { border-left: 0; border-top: 1px solid #1e2129; } }
+</style>
+</head>
+<body>
+<div class="protorad">
+  <div class="fraga">
+    <p><b>Prototyp #1474 · Brickor</b> på filten, i telefonen och i editorn. Slit och släng. <span class="rek">A är rekommendationen på varje yta.</span></p>
+    <p>«Skogens råd» har en lek kort, en lek med 18 unika landskapsbrickor (en rad var i en egen tabell) och en identisk markör, guldmyntet. Inga nya verb: allt är <code>move</code>, <code>rotate</code>, <code>flip</code>, <code>draw</code>, <code>shuffle</code>.</p>
+  </div>
+  <div class="ytor" role="group" aria-label="Yta">
+    <button data-yta="filt">Filten</button><button data-yta="telefon">Telefonen</button><button data-yta="editor">Editorn</button><button data-yta="kopia">Fysisk kopia</button>
+  </div>
+  <div class="vaxlare" role="group" aria-label="Variant"><button data-v="A">A</button><button data-v="B">B</button><button data-v="C">C</button></div>
+  <button class="omnot" id="omnot" aria-expanded="false">Om varianten</button>
+  <div class="extra" id="extra"></div>
+  <p class="anteckning" id="anteckning" aria-live="polite"></p>
+</div>
+<main class="scen" id="scen"></main>
+<script src="ritning.js"></script>
+<script src="filt.js"></script>
+<script src="telefon.js"></script>
+<script src="editor.js"></script>
+<script src="kopia.js"></script>
+<script>
+const qs = new URLSearchParams(location.search)
+const YTOR = { filt: window.Filt, telefon: window.Telefon, editor: window.Editor, kopia: window.Kopia }
+let yta = YTOR[qs.get('yta')] ? qs.get('yta') : 'filt'
+let v = ['A', 'B', 'C'].includes(qs.get('v')) ? qs.get('v') : 'A'
+const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches
+document.body.classList.toggle('lugn', reduced())
+function visa() {
+  const Y = YTOR[yta]
+  if (!Y) return
+  if (!Y.notes[v]) v = 'A'
+  for (const b of document.querySelectorAll('[data-yta]')) b.setAttribute('aria-pressed', String(b.dataset.yta === yta))
+  for (const b of document.querySelectorAll('[data-v]')) { b.setAttribute('aria-pressed', String(b.dataset.v === v)); b.hidden = !Y.notes[b.dataset.v]; b.textContent = b.dataset.v + (Y.names?.[b.dataset.v] ? ' · ' + Y.names[b.dataset.v] : '') }
+  document.getElementById('anteckning').innerHTML = Y.notes[v]
+  const u = new URL(location.href); u.searchParams.set('yta', yta); u.searchParams.set('v', v); history.replaceState(null, '', u)
+  document.getElementById('extra').innerHTML = ''
+  Y.render(document.getElementById('scen'), v, document.getElementById('extra'))
+}
+document.querySelectorAll('[data-yta]').forEach((b) => b.onclick = () => { yta = b.dataset.yta; v = 'A'; visa() })
+document.querySelectorAll('[data-v]').forEach((b) => b.onclick = () => { v = b.dataset.v; visa() })
+addEventListener('keydown', (e) => {
+  if (e.target.closest('input, select, textarea, [contenteditable], .filt, .tel, .byd-editor')) return
+  const vs = ['A', 'B', 'C'].filter((x) => YTOR[yta].notes[x])
+  if (e.key === 'ArrowRight') { v = vs[(vs.indexOf(v) + 1) % vs.length]; visa() }
+  if (e.key === 'ArrowLeft') { v = vs[(vs.indexOf(v) + vs.length - 1) % vs.length]; visa() }
+})
+document.getElementById('omnot').onclick = (e) => { const on = document.body.classList.toggle('visa-not'); e.currentTarget.setAttribute('aria-expanded', String(on)); YTOR[yta].resize?.() }
+addEventListener('resize', () => YTOR[yta].resize?.())
+visa()
+</script>
+</body>
+</html>
