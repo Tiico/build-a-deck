@@ -1460,7 +1460,7 @@ export const enEditor = {
   'setup.piece.count': 'Count for piece {n}',
   'setup.piece.mode': 'How the count is read for piece {n}',
   'setup.piece.begins': 'Starts',
-  'setup.piece.start': 'How piece {n} starts',
+  'setup.piece.start': 'Start position of piece {n}',
   'setup.piece.standing': 'Standing',
   'setup.piece.lying': 'Lying',
   'setup.piece.place': 'Area for piece {n}',
