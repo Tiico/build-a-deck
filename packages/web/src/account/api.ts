@@ -353,6 +353,10 @@ export async function importGame(http: string, file: Blob): Promise<{ ok: true; 
 // lies over, and `lapsed` its own tier and when it lapsed; both absent from a server before them.
 export type ReadOnlyWhy = 'cardRowsPerProject' | 'cardCopiesPerProject' | 'projects' | 'storageBytes'
 export type Usage = {
+  // The tier the account is held to, and the games that would become read-only if its own tier
+  // went (#1511), which is what cancelling Pro says (#1494).
+  plan?: string
+  ifLapsed?: { id: string }[]
   measures: Record<string, { used: number; limit: number | null; projects?: { id: string; used: number }[] }>
   readOnly?: { id: string; why: ReadOnlyWhy }[]
   lapsed?: { plan: string; at: string }
@@ -472,4 +476,41 @@ export async function myDeletion(http: string): Promise<Deletion> {
 export async function deleteAccount(http: string, lang: string): Promise<void> {
   const res = await fetch(`${http}/me?lang=${encodeURIComponent(lang)}`, withCredentials({ method: 'DELETE' }))
   if (!res.ok) throw new Error(`could not delete the account: ${res.status}`)
+}
+
+// Pro as Profil's card «Abonnemang» reads it (#1494): the tier the account is held to, the free tier
+// and the paid one with their ceilings, Stripe's prices per currency and interval in the currency's
+// smallest unit (null when Stripe could not say), and the account's own subscription as Stripe has
+// it. Null when the box takes no payments, or does not answer: then there is no card.
+export type Tier = { plan: string; limits: Record<string, number | null>; print: boolean }
+export type Interval = 'month' | 'year'
+export type OwnSubscription = { status: string; currency: string; interval: Interval; amount: number | null; periodEnd: string | null; cancelAtPeriodEnd: boolean }
+export type ProStanding = { plan: string; free: Tier; paid: Tier; prices: Record<string, Partial<Record<Interval, number>>> | null; subscription: OwnSubscription | null }
+export async function proStanding(http: string): Promise<ProStanding | null> {
+  const res = await fetch(`${http}/me/subscription`, withCredentials()).catch(() => null)
+  if (!res?.ok) return null
+  return (await res.json().catch(() => null)) as ProStanding | null
+}
+
+// To Stripe's Checkout (#1493): its address, or why not — `subscribed` when Stripe already bills
+// the account (a webhook not yet come), `stripe` when Stripe or a price is not to be had.
+export async function proCheckout(http: string, want: { currency: string; interval: Interval; back: string }): Promise<{ url: string } | { error: 'subscribed' | 'stripe' }> {
+  const res = await fetch(`${http}/me/subscription/checkout`, withCredentials({ method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(want) })).catch(() => null)
+  if (res?.status === 409) return { error: 'subscribed' }
+  const body = res?.ok ? ((await res.json().catch(() => null)) as { url?: unknown } | null) : null
+  return typeof body?.url === 'string' ? { url: body.url } : { error: 'stripe' }
+}
+
+// «Säg upp» and «Fortsätt med Pro» (#1494): the card's new reading, or null when it did not happen.
+export async function proChange(http: string, change: 'cancel' | 'resume'): Promise<ProStanding | null> {
+  const res = await fetch(`${http}/me/subscription/${change}`, withCredentials({ method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' })).catch(() => null)
+  if (!res?.ok) return null
+  return (await res.json().catch(() => null)) as ProStanding | null
+}
+
+// «Kvitton och betalkort» (#1494): a session in Stripe's customer portal, or null.
+export async function proPortal(http: string, back: string): Promise<string | null> {
+  const res = await fetch(`${http}/me/subscription/portal`, withCredentials({ method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ back }) })).catch(() => null)
+  const body = res?.ok ? ((await res.json().catch(() => null)) as { url?: unknown } | null) : null
+  return typeof body?.url === 'string' ? body.url : null
 }

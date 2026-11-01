@@ -42,6 +42,15 @@ describe('the payments the box is given', () => {
     expect(() => paymentsFromEnv(given, tiers)).toThrow(why)
   })
 
+  // The built app's journeys (#1494) point the box at a Stripe of their own; with a live key that
+  // would be a way round Stripe for real money, so only a test key may.
+  it('take another address for Stripe’s API only with a test key', () => {
+    expect(paymentsFromEnv(env, tiers)!.apiBase).toBe('https://api.stripe.com')
+    expect(paymentsFromEnv({ ...env, STRIPE_API_BASE: 'http://127.0.0.1:4242' }, tiers)!.apiBase).toBe('http://127.0.0.1:4242')
+    expect(() => paymentsFromEnv({ ...env, STRIPE_SECRET_KEY: 'sk_live_abc', STRIPE_API_BASE: 'http://127.0.0.1:4242' }, tiers)).toThrow(/STRIPE_API_BASE/)
+    expect(() => paymentsFromEnv({ ...env, STRIPE_API_BASE: 'not a url' }, tiers)).toThrow(/STRIPE_API_BASE/)
+  })
+
   it('refuse prices on the built-in standard, which has no paid tier', () => {
     expect(() => paymentsFromEnv(env, DEFAULT_PLANS)).toThrow(/pro/)
   })

@@ -61,16 +61,27 @@ describe('the client for Stripe’s API', () => {
 
   it('reads a price: its currency, its interval and whether VAT is inside it (#1521)', async () => {
     answers.set('GET /v1/prices/price_m', { status: 200, body: { id: 'price_m', object: 'price', currency: 'sek', unit_amount: 9900, tax_behavior: 'inclusive', recurring: { interval: 'month', interval_count: 1 } } })
-    expect(await stripeApi('sk_test_k', base).priceOf('price_m')).toEqual({ id: 'price_m', currency: 'sek', interval: 'month', taxBehavior: 'inclusive' })
+    expect(await stripeApi('sk_test_k', base).priceOf('price_m')).toEqual({ id: 'price_m', currency: 'sek', interval: 'month', taxBehavior: 'inclusive', amount: 9900 })
     answers.set('GET /v1/prices/price_once', { status: 200, body: { id: 'price_once', object: 'price', currency: 'eur', unit_amount: 900, tax_behavior: 'unspecified', recurring: null } })
-    expect(await stripeApi('sk_test_k', base).priceOf('price_once')).toEqual({ id: 'price_once', currency: 'eur', interval: null, taxBehavior: 'unspecified' })
+    expect(await stripeApi('sk_test_k', base).priceOf('price_once')).toEqual({ id: 'price_once', currency: 'eur', interval: null, taxBehavior: 'unspecified', amount: 900 })
   })
 
-  it('reads every subscription of a customer, cancelled ones too, with the prices each bills', async () => {
-    answers.set('GET /v1/subscriptions', { status: 200, body: { object: 'list', data: [{ id: 'sub_1', status: 'canceled', items: { data: [{ price: { id: 'price_m' } }] } }, { id: 'sub_2', status: 'active', items: { data: [{ price: { id: 'price_y' } }] } }] } })
+  // The period's end stands on the subscription in Stripe's older API versions and on its items in
+  // the newer ones (#1494); either is read.
+  it('reads every subscription of a customer, cancelled ones too, with the prices each bills and when its period ends', async () => {
+    answers.set('GET /v1/subscriptions', {
+      status: 200,
+      body: {
+        object: 'list',
+        data: [
+          { id: 'sub_1', status: 'canceled', cancel_at_period_end: false, current_period_end: 1764583200, items: { data: [{ price: { id: 'price_m' } }] } },
+          { id: 'sub_2', status: 'active', cancel_at_period_end: true, items: { data: [{ price: { id: 'price_y' }, current_period_end: 1796119200 }] } },
+        ],
+      },
+    })
     expect(await stripeApi('sk_test_k', base).subscriptionsOf('cus_123')).toEqual([
-      { id: 'sub_1', status: 'canceled', prices: ['price_m'] },
-      { id: 'sub_2', status: 'active', prices: ['price_y'] },
+      { id: 'sub_1', status: 'canceled', prices: ['price_m'], cancelAtPeriodEnd: false, periodEnd: '2025-12-01T10:00:00.000Z' },
+      { id: 'sub_2', status: 'active', prices: ['price_y'], cancelAtPeriodEnd: true, periodEnd: '2026-12-01T10:00:00.000Z' },
     ])
     expect(Object.fromEntries(seen.at(-1)!.query)).toEqual({ customer: 'cus_123', status: 'all', limit: '100' })
   })
@@ -80,6 +91,21 @@ describe('the client for Stripe’s API', () => {
     await stripeApi('sk_test_k', base).cancelNow('sub_2')
     expect(seen.at(-1)).toMatchObject({ method: 'DELETE', path: '/v1/subscriptions/sub_2', auth: 'Bearer sk_test_k' })
     await expect(stripeApi('sk_test_k', base).cancelNow('sub_gone')).rejects.toThrow(/404/)
+  })
+
+  it('sets a subscription to end at its period’s end, and takes it back (#1494)', async () => {
+    answers.set('POST /v1/subscriptions/sub_2', { status: 200, body: { id: 'sub_2', status: 'active' } })
+    await stripeApi('sk_test_k', base).setCancelAtPeriodEnd('sub_2', true)
+    expect(seen.at(-1)).toMatchObject({ method: 'POST', path: '/v1/subscriptions/sub_2' })
+    expect(Object.fromEntries(seen.at(-1)!.form)).toEqual({ cancel_at_period_end: 'true' })
+    await stripeApi('sk_test_k', base).setCancelAtPeriodEnd('sub_2', false)
+    expect(Object.fromEntries(seen.at(-1)!.form)).toEqual({ cancel_at_period_end: 'false' })
+  })
+
+  it('opens a session in the customer portal that returns to the app (#1494)', async () => {
+    answers.set('POST /v1/billing_portal/sessions', { status: 200, body: { id: 'bps_1', url: 'https://billing.stripe.com/p/session/bps_1' } })
+    expect(await stripeApi('sk_test_k', base).createPortal({ customer: 'cus_123', returnUrl: 'http://app/profile' })).toBe('https://billing.stripe.com/p/session/bps_1')
+    expect(Object.fromEntries(seen.at(-1)!.form)).toEqual({ customer: 'cus_123', return_url: 'http://app/profile' })
   })
 
   it('throws Stripe’s message when Stripe refuses, never the key', async () => {

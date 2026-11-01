@@ -197,7 +197,7 @@ try {
   process.exit(1)
 }
 console.log(JSON.stringify(paymentsLine(paymentsConfig)))
-const payments = paymentsConfig ? { payments: { config: paymentsConfig, stripe: stripeApi(paymentsConfig.secretKey) } } : {}
+const payments = paymentsConfig ? { payments: { config: paymentsConfig, stripe: stripeApi(paymentsConfig.secretKey, paymentsConfig.apiBase) } } : {}
 // What can no longer be used (#1277): swept once before the door opens, and every hour with the
 // stale tables below. The line says how many went from each table, never which (DRIFT §8). A sweep
 // that fails is said and does not keep the door shut: the next one comes within the hour.
