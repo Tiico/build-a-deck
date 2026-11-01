@@ -21,7 +21,8 @@ export type PngOptions = { dpi: number }
 // A picture drawn to be screened (#1271): RGBA bytes row by row, as a canvas reads them.
 export type PicturePixels = { width: number; height: number; data: Uint8ClampedArray }
 // A partner's raster (#1207): the whole page, bleed and all, in exactly these pixels.
-export type RasterOptions = { format: 'png' | 'jpg'; widthPx: number; heightPx: number }
+// `quality` is a JPEG's own, when the kind names one: the felt's board is drawn at 90 (#1480).
+export type RasterOptions = { format: 'png' | 'jpg'; widthPx: number; heightPx: number; quality?: number | undefined }
 // A partner asking for a JPEG gets one that keeps what a press can tell apart; the file is the
 // partner's to print and not the table's to load, so size is not what it is weighed against.
 const JPEG_QUALITY = 95
@@ -118,7 +119,7 @@ export class Renderer {
       await page.addStyleTag({ content: `html{overflow:hidden}[data-card]{transform-origin:0 0;transform:scale(${widthPx / painted.width},${heightPx / painted.height})}` })
       await page.setViewportSize({ width: widthPx, height: heightPx })
       const clip = { x: 0, y: 0, width: widthPx, height: heightPx }
-      return await capture(page, { ...(opts.format === 'jpg' ? { type: 'jpeg', quality: JPEG_QUALITY } : { type: 'png' }), clip, animations: 'disabled', caret: 'hide' })
+      return await capture(page, { ...(opts.format === 'jpg' ? { type: 'jpeg', quality: opts.quality ?? JPEG_QUALITY } : { type: 'png' }), clip, animations: 'disabled', caret: 'hide' })
     } finally {
       await context.close()
     }

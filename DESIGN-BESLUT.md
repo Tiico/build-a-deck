@@ -2676,6 +2676,14 @@ Beslutat och byggt 2026-11-01 (#1518, beställarens beslut i #1469): **läsläge
 - Utgången görs av `lapseAccount` i `packages/server/src/account-plans.ts`, som `plan lapse`, Stripes webhook och `stripe sync` (#1493) använder.
 - Grindarna är `packages/server/test/read-only-lapsed.test.ts` och `account-plans.test.ts`, mot båda lagren.
 
+Beslutat och byggt 2026-11-01 (#1492, beställarens beslut variant A efter [prototypen](docs/ux-audits/2026-11-01-prisnivaer/prototyper/laslaget.html)): **hur läsläget syns för designern.**
+- **Mina spel** säger det en gång, i bandet under rubriken, efter villkoren och före namnet och passkeyn: hur många spel som är i läsläge, att abonnemanget har gått ut och kontot rymmer det Gratis rymmer, att spelen går att öppna, läsa och exportera men inte ändra eller starta bord ur, att ingenting tas bort, och vägen tillbaka: ta bort kort, exemplar eller bilder, eller ta bort ett annat spel. «Stäng» håller för den utgången i den webbläsaren.
+- **Spelet i läsläge** bär märket «Läsläge» och taket det ligger över på sin rad eller i heron, i stället för när det senast spelades. Heron får «Exportera…» där «Starta bord» stod, och ⋯ behåller sina val, där «Starta bord», «Byt namn…» och «Duplicera» säger «Inte i läsläge». Spelen som ryms ser ut som i dag.
+- **Editorn** säger det i #489:s läsband, så läsläget har en form: till ägaren taket och vad spelet använder av det, till en medredigerare bara vems spelet är, med ägarens namn och aldrig hennes nivå. En redigering som inte bara gör spelet mindre avvisas i editorn innan den skickas, med regeln aktören håller den till (`onlyShrinks`, #1511), och bandet säger «Läsläge: bara att ta bort kort, sänka Antal och ta bort bilder sparas.». Kontrollerna står kvar, eftersom att ta bort kort, sänka Antal och ta bort bilder ska gå. «Starta bord» finns inte för ett spel i läsläge. När spelet ryms igen försvinner bandet.
+- Editorn frågar `GET /projects/<id>/read-only`, som svarar ägaren `{ bearer: 'you', why, limit }` och någon annan med en roll i spelet `{ bearer: 'owner', ownerName? }`, och `null` när spelet fungerar som vanligt.
+- Ordet «Pro», ett pris och «Förnya Pro» står inte i läsläget förrän kassan finns (#1493, #1494).
+- Grindarna är `packages/web/test/read-only-mode.test.tsx`, `packages/server/test/read-only-lapsed.test.ts` och `packages/e2e/test/read-only-mode.spec.ts`, där ett utgånget konto i den byggda appen möter läsläget.
+
 ### G6. Personuppgifter: Deckster är ansvarig, och loggen maskas på plats (beslutat 2026-10-24, #1269)
 
 Beställarens beslut 2026-10-24 på frågorna F1–F7 i #1269.
@@ -5106,6 +5114,15 @@ Leken som bordet får bär markörens mall under det namnet (`templates` och `dr
 En sida utan mall ritas tom, eftersom en bricka har båda sidorna. Markörens namn är dess titel där dess framsida syns, och dold på samma villkor som ett korts (B6).
 Editorns ändring är `setMarkers`, hela listan med sidorna i en redigering som `setPieces`, och därmed ett steg tillbaka (B4). Raden i ＋-menyn och sidornas verktyg är #1487, filtens ritning #1485 och trycket #1488; tills trycket finns står brickor utanför tryckexporten och partnerns manifest (`printedYet`), där en partner som bara trycker kort annars vägrade hela ordern.
 
+**Spelet bär mer än en lek** (#1484, beställarens beslut 8 i #1470): sjuttiotvå landskapsbrickor ur en egen mall och en egen tabell, bredvid kortens.
+Dokumentets egen lek är den det alltid haft (`template`, `rows`, `columns`, standardkortet, i `setup.deckZone`), och varje annan lek står i `decks` med ett namn i dokumentet (`id`), vad den heter, sin typ (ett kort eller en bricka, B3), sin mall, sina rader, sin kolumnordning och högen den börjar i (`zone`).
+Ett dokument skrivet före lekarna är alltså precis det dokument det var: det läses tillbaka orört och lägger samma bord, och inget skrivs om (B4). `decksOf` läser alla lekar på samma sätt, den egna med `id` null.
+Vid bordet går en rad i en annan lek under lekens namn före sitt id (`landskap:skog`, `rowRef`), så två lekar kan ha var sin rad «1» utan att dela yta, titel eller textur; dokumentet vägrar en rad i den egna leken som skulle gå under samma namn.
+`setupFromProject` lägger varje lek i sin hög som sin typ, och en zons fråga (K21) gäller den lek den är ställd mot (`fillDeck`, den egna när den inte säger något). Radernas kolumner frågas vid bordet som kortens (B5).
+Bordets `Deck` bär varje leks mall i `templates` och `drawnWith`, som markörernas, och radens titel och tryckta text är dold information på kortets villkor (B6, #412), bevisat på råa frames (`wire.test.ts`).
+Versionernas diff (B4) säger vilken lek en ändrad rad hör till (`deck` på raden; Tabell visar den egna lekens), exporten och importen (G5) bär hela dokumentet och därmed alla lekar, Fysisk kontroll (E5) läser varje lek med dess typs minsta textstorlek och skyddsmarginal, och taken på kort per spel (#1195) räknar rader och exemplar i varje lek.
+Editorns ändring är `setDecks`, hela listan i en redigering och ett steg tillbaka; flikarna per lek i Kortvägg, Mall och Tabell (#1474, variant A) och finare redigeringar per rad är #1487.
+
 Brickor i setupen, en egen lek och tabell per brickform, bordet, telefonen och trycket byggs i #1484–#1488.
 
 ### K35. Brädet: brädtyperna, brädet i dokumentet och dess textur (beslutat 2026-10-28 och 2026-11-01, #1470, #1473, #1479)
@@ -5129,14 +5146,30 @@ Ett bräde har ett namn (`id`), som är dess `cardRef` vid bordet och aldrig en 
 `x` och `y` är brädets övre vänstra hörn som det står innan det vrids, så att det vrids kring sin egen mitt till punkten, och `rot` är 0, 90, 180 eller 270 efter platsens kant.
 Ett dokument utan bräde har ingen post och läses tillbaka orört.
 
-**Texturen.** Typen säger `ownFaces`: dess sidor kommer ur dokumentets egen mall och inte ur en rad. `queueFaces` kompilerar varje sida med den enda kompilatorn och köar den som en textur i samma DPI som ett kort, så att filten ritar brädet i samma pixlar per millimeter, nycklad på innehållet (DRIFT §6): samma spelarbräde på åtta platser är en rendering, och en ändrad bild är en ny hash.
+**Texturen.** Typen säger `ownFaces`: dess sidor kommer ur dokumentets egen mall och inte ur en rad.
+`queueFaces` kompilerar varje sida med den enda kompilatorn och köar den som en textur nycklad på innehållet (DRIFT §6): samma spelarbräde på åtta platser är en rendering, och en ändrad bild är en ny hash.
 Hashen går till vyn genom `project` i `DeckFacts.ownFaces`, i fältet `faces` som ett korts, och läses bara för en typ som säger `ownFaces`, så att ett kort och ett bräde kan heta samma sak utan att dela yta.
 Ingen ändring i `packages/protocol`.
 Ett jobb för det största brädet, 610 × 457 mm i 150 DPI, är 3602 × 2699 px, och det ryms under renderns minnestak (1,5 GB, DRIFT §6).
 Mätt 2026-11-01 i #1479 som summan av Chromiums processers RSS medan jobbet ritades: 0,5 GB för en jämn bild över hela brädet, och 1,07 GB för det värsta fallet, en 3600 × 2700 px bild av brus, som också gav en textur på 28 MB.
-En textur så stor är filtens att hämta (#1480), och den hämtas bara av skärmar som ritar filten (C2).
+**Filtens egen variant** (beställarens beslut 2026-11-01, genom techleaden, #1480): en PNG i ett korts 150 DPI var för tung för varje skärm som ritar filten, så filten får en egen bild av brädet, en JPEG i kvalitet 90, högst 2048 px på den långa sidan och aldrig tätare än ett korts 150 DPI (`boardTextureKind`).
+Det stora brädet blir 2048 × 1534 px och spelarbrädet 1417 × 886 px; renderjobbet är `raster` med kvaliteten i jobbslaget, så en annan kvalitet är en annan nyckel.
+Mätt 2026-11-01 på det stora brädet med en bild över hela brädet: en jämn bild 0,17 MB som JPEG, och värsta fallet, brus, 2,25 MB mot 28 MB som PNG i 150 DPI.
+Den hämtas bara av skärmar som ritar filten (C2); trycket behåller typens upplösning (#1488).
 Brädets bilder går genom tillgångarna som kortets (#1028).
 Trycket i 300 DPI med utfall är #1488, och till dess hoppar tryckexporten över brädet i stället för att vägra spelet.
+
+**Filten** (#1480, variant A i #1473).
+Brädet ligger mitt på den gröna filten och spelarbrädet där «Framför» låg, och filten växer bara så mycket det kräver (`roomFor` i `recipe.ts`, K18 med brädet som en term till): en plats är handen 60, luften 10 och «Framför» 100 mm djup, med spelarbräden handen, luften och brädet; huvudbrädet har 20 mm luft mot platserna, och en hög bredvid det tar ett kort och 20 mm på var sida.
+Fyra platser med det kvadratiska brädet ger 1200 × 837 mm, med spelarbräden 1200 × 937 mm, och det rektangulära brädet med spelarbräden 1296 × 937 mm; åttaplatsbordets 1800 × 1400 mm rymmer redan brädet.
+`applyRecipe` lägger ut platserna på nytt när filten är för liten för bräden, flyttar en hög som huvudbrädet skulle ligga på ut på den sida den redan lutade åt, och gör «Framför» till spelarbrädets eget fotavtryck, så att ett kort som spelas framför en plats hamnar på dess bräde.
+Filten ritar bräden först och under allt annat, och ett bräde svarar aldrig pekaren: ett kort som släpps på det hamnar i zonen under, som på bar filt.
+Allt annat som läser bordet läser det utan bräden (`withoutBoards`): telefonen, tangentbordet och var ett kort läggs.
+En zon på ett bräde är krita på en bild: streckad i kritans färg med en mörk gloria och ett svagt mörkt lager inuti, och namnet på en mörk platta över zonens egen överkant, där det står kvar i stället för att flyttas ut som filtens namn (K19).
+En zon som är ett brädes hela fotavtryck, som «Framför» med spelarbrädet, ritar ingen kant runt brädet, bara sitt namn.
+Platsernas skyltar på TV:n står fria från bräden som från högarna.
+Kortets kortsida i vila med det kvadratiska brädet och spelarbräden, mätt 2026-11-01 i den byggda appen (`board-on-felt.spec.ts`): TV 1920 × 1080 57 px vid fyra platser och 45 vid åtta, som utan bräde (K9 håller), och bordsläget 1280 × 800 46 respektive 31 px.
+Högens bricka i bordsläget når några millimeter in över brädets kant; den är en platta som ligger över allt och läses ändå.
 
 ## L. Editorn (grillad 2026-09-06)
 

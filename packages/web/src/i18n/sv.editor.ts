@@ -182,6 +182,16 @@ export const svEditor = {
   'editor.reading': 'Läsläge',
   'editor.reading.ask': 'Be ägaren om rätt att ändra. Sökning, zoom, visning, historik och jämförelse fungerar som vanligt.',
   'editor.reading.nothing': 'Läsläge: inget att spara.',
+  // Läsläget när ägarens abonnemang har gått ut (#1492, variant A): läsbandets mening, för ägaren och
+  // för en medredigerare, som får ägarens namn men aldrig hennes nivå.
+  'editor.readOnly.you.cardRowsPerProject': '{game} har {used} kort, och Gratis rymmer {limit} per spel.',
+  'editor.readOnly.you.cardCopiesPerProject': '{game} har {used} exemplar, och Gratis rymmer {limit} per spel.',
+  'editor.readOnly.you.projects': 'Gratis rymmer {limit} spel, och {game} ligger utöver dem.',
+  'editor.readOnly.you.storageBytes': 'Bilderna i {game} ryms inte i det Gratis rymmer.',
+  'editor.readOnly.you.ask': 'Du kan läsa, söka, jämföra versioner och exportera, och ta bort kort, exemplar och bilder. Spelet går att ändra igen när det ryms.',
+  'editor.readOnly.owner': '{game} ligger över det {owner:s} konto rymmer just nu, så ingen kan ändra det.',
+  'editor.readOnly.owner.ask': 'Du kan läsa, söka, jämföra versioner och exportera. {Owner} kan göra spelet ändringsbart igen.',
+  'editor.readOnly.refused': 'Läsläge: bara att ta bort kort, sänka Antal och ta bort bilder sparas.',
   'editor.readonly.refused': 'Läsläge: du kan läsa spelet men inte ändra det.',
   'editor.seats.at': 'vid bordet',
   'editor.seats.kick': 'Ta bort {name}',

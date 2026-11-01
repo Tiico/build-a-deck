@@ -14,6 +14,9 @@ export * from './setup.js'
 export * from './material.js'
 // The roles a project is shared in (D3): the editor speaks them too, and they are pure data.
 export * from './roles.js'
+// What a game in read-only mode may still have done to it (#1511): the editor refuses the rest
+// before it is sent (#1492), with the rule the actor holds it to.
+export { onlyShrinks, type ReadOnlyWhy } from './read-only.js'
 // What the profile page says about a designer's AI key (#999): the words only, never the vault.
 export type { AiProvider, AiKeyDescription } from './ai-keys.js'
 export type { AiFailure, AiModel } from './ai-providers.js'
