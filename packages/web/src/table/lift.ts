@@ -43,11 +43,13 @@ export function liftBox(card: Edges, window: { w: number; h: number }, smallestP
 // no room at either side. The lift stands over the card, centred on it and kept inside the window,
 // and leaves `line` pixels between itself and the card for the line that says what the hand
 // answers to. It is the size `liftBox` gives, or what the room over the card holds where that is less.
-export function liftOver(card: Edges, window: { w: number; h: number }, line: number, smallestPt?: number | null): Box {
+// A tile (`foot`, #1538) is lifted at the millimetres that card would be.
+export function liftOver(card: Edges, window: { w: number; h: number }, line: number, smallestPt?: number | null, foot: { w: number; h: number } = CARD_MM): Box {
   const share = window.h * LIFT_SHARE
   const need = (readingWidth((share * CARD_MM.w) / CARD_MM.h, smallestPt, 'desk') * CARD_MM.h) / CARD_MM.w
-  const h = Math.max(0, Math.min(need, card.top - 3 * LIFT_GAP - line))
-  const w = (h * CARD_MM.w) / CARD_MM.h
+  const perMm = Math.max(0, Math.min(need, card.top - 3 * LIFT_GAP - line)) / CARD_MM.h
+  const h = foot.h * perMm
+  const w = foot.w * perMm
   const left = Math.min(Math.max((card.left + card.right) / 2 - w / 2, LIFT_GAP), window.w - w - LIFT_GAP)
   return { left, top: card.top - 2 * LIFT_GAP - line - h, w, h }
 }

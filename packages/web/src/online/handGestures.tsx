@@ -10,6 +10,8 @@ import { useRoving } from '../editor/roving.js'
 import { handLabel } from '../table/keyboard.js'
 import { useT, type Key } from '../i18n/index.js'
 import { HandGhost, useHandDrag, type HandDragOptions, type HandPlay } from './handDrag.js'
+import { footprintOf, isTile, tileOf } from '../components.js'
+import { HOLDS_A_TILE } from '../table/tileLook.js'
 import { DragDoor } from '../editor/DragDoor.js'
 
 export type HandGestureOptions = {
@@ -120,8 +122,10 @@ export function useHandGestures({ cards, faces, onPlay, locked = false, onCarry,
       'data-hand-card': c.id,
       'data-lifted': drag?.id === c.id ? 'true' : undefined,
       'data-turned': down ? 'true' : undefined,
+      // A tile's frame draws nothing of its own, and the tile stands in it in its shape (`TileInCard`).
+      'data-shape': tileOf(c)?.shape,
       'aria-label': handLabel(c, false, t, down),
-      style: { ['--hue' as string]: hue(c.cardRef ?? ''), ...(down ? TURNED_GROUND : {}) } as CSSProperties,
+      style: { ['--hue' as string]: hue(c.cardRef ?? ''), ...(down && !isTile(c) ? TURNED_GROUND : {}), ...(isTile(c) ? HOLDS_A_TILE : {}) } as CSSProperties,
       tabIndex: item.tabIndex,
       ref: item.ref,
       onFocus: (e: { currentTarget: HTMLElement }) => {
@@ -199,7 +203,9 @@ function Read({ reading, card, faces, pt, turned, over, says: words, onAsk }: { 
   const room = { w: window.innerWidth, h: window.innerHeight }
   // The column lifts the card beside itself; the row lifts it over itself, with the line between
   // the lift and the card it is of (#1310, prototype A).
-  const box: Box = over ? liftOver(edges(reading.at), room, SAYS_PX, pt) : liftBox(edges(reading.at), room, pt)
+  // A tile is lifted in its own outline, at the millimetres a card would be (#1538), as the felt lifts one.
+  const foot = footprintOf(card)
+  const box: Box = over ? liftOver(edges(reading.at), room, SAYS_PX, pt, foot) : liftBox(edges(reading.at), room, pt, foot)
   const below = box.top + box.h + LIFT_GAP + SAYS_PX <= window.innerHeight
   const mouse = words ?? { mouse: 'online.hand.says.mouse', turned: 'online.hand.says.mouse.turned' }
   const says = reading.by === 'mouse' ? t(turned ? mouse.turned : mouse.mouse) : reading.by === 'key' ? t('online.hand.says.key') : null

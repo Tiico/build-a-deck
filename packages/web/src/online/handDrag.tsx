@@ -4,6 +4,9 @@ import { hue } from '../table/hue.js'
 import { Texture } from '../table/Texture.js'
 import { HandFace, TURNED_GROUND } from '../player/HandFace.js'
 import { FAN_AIM_PX } from './fan.js'
+import { isTile, tileOf } from '../components.js'
+import { TileInCard } from '../table/TileInCard.js'
+import { HOLDS_A_TILE } from '../table/tileLook.js'
 
 export type Held = { id: string; x: number; y: number }
 export type HandPlay = (card: VisibleComponentState, clientX: number, clientY: number) => void
@@ -102,17 +105,21 @@ export function useHandDrag(plays: 'up' | 'across', onPlay: HandPlay, { locked =
 // Over the table it is the card it will become (#484 fynd 4, beslut C): `size` is a card on the felt,
 // in pixels, and the ghost takes it, so what is seen before the release is what lies there after.
 // A card turned over in the hand is carried as its back, the way it will land (#1133, K24).
+// A tile is carried in its shape (#1538), its shadow cast by its outline and not by the card's frame.
 export function HandGhost({ at, card, faces, size, turned = false }: { at: Held; card: VisibleComponentState; faces?: string | undefined; size?: { w: number } | null | undefined; turned?: boolean }) {
+  const tile = isTile(card)
   return (
-    <div className="byd-fan-ghost" data-on-felt={size ? '' : undefined} data-turned={turned ? 'true' : undefined} style={{ left: at.x, top: at.y, ['--hue' as string]: hue(card.cardRef ?? ''), ...(turned ? TURNED_GROUND : {}), ...(size ? { ['--fan-card' as string]: `${size.w}px` } : {}) }}>
-      {turned ? (
-        <HandFace faces={faces} c={card} turned />
-      ) : (
-        <>
-          <Texture faces={faces} c={card} />
-          <span>{card.cardRef}</span>
-        </>
-      )}
+    <div className="byd-fan-ghost" data-on-felt={size ? '' : undefined} data-turned={turned ? 'true' : undefined} data-shape={tileOf(card)?.shape} style={{ left: at.x, top: at.y, ['--hue' as string]: hue(card.cardRef ?? ''), ...(turned && !tile ? TURNED_GROUND : {}), ...(size ? { ['--fan-card' as string]: `${size.w}px` } : {}), ...(tile ? { ...HOLDS_A_TILE, filter: 'drop-shadow(0 0 12px rgba(0, 0, 0, 0.6))' } : {}) }}>
+      <TileInCard c={card}>
+        {turned ? (
+          <HandFace faces={faces} c={card} turned />
+        ) : (
+          <>
+            <Texture faces={faces} c={card} />
+            <span>{card.cardRef}</span>
+          </>
+        )}
+      </TileInCard>
     </div>
   )
 }

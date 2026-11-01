@@ -8,6 +8,9 @@ import { useT } from '../i18n/index.js'
 import { fanPlace, fanStyle } from './fan.js'
 import { HandGhost, useHandDrag, type HandDragOptions, type HandPlay } from './handDrag.js'
 import { DragDoor } from '../editor/DragDoor.js'
+import { isTile, tileOf, tilesLast } from '../components.js'
+import { TileInCard } from '../table/TileInCard.js'
+import { HOLDS_A_TILE } from '../table/tileLook.js'
 
 export type HandFanProps = {
   cards: readonly VisibleComponentState[]
@@ -39,8 +42,9 @@ export type HandFanProps = {
 //
 // In a landscape window this is not the shape the hand takes: there the band cost the felt the one
 // axis it was bound by, and the hand stands beside it as `HandColumn` instead (#77).
-export function HandFan({ cards, faces, onPlay, locked = false, onCarry, aim, onOpen, turned, onTurn }: HandFanProps) {
+export function HandFan({ cards: held, faces, onPlay, locked = false, onCarry, aim, onOpen, turned, onTurn }: HandFanProps) {
   const t = useT()
+  const cards = tilesLast(held)
   const scroller = useRef<HTMLDivElement>(null)
   const n = cards.length
   const roving = useRoving({ ids: cards.map((c) => c.id), selected: null, orientation: 'horizontal' })
@@ -66,7 +70,8 @@ export function HandFan({ cards, faces, onPlay, locked = false, onCarry, aim, on
                   data-lifted={drag?.id === c.id ? 'true' : undefined}
                   aria-label={handLabel(c, false, t, turned?.has(c.id) === true)}
                   data-turned={turned?.has(c.id) === true ? 'true' : undefined}
-                  style={{ ['--hue' as string]: hue(c.cardRef ?? ''), ...(turned?.has(c.id) === true ? TURNED_GROUND : {}), ['--i' as string]: `${i}`, ['--fan' as string]: `${tilt}deg`, ['--dip' as string]: `${dip}` }}
+                  data-shape={tileOf(c)?.shape}
+                  style={{ ['--hue' as string]: hue(c.cardRef ?? ''), ...(turned?.has(c.id) === true && !isTile(c) ? TURNED_GROUND : {}), ['--i' as string]: `${i}`, ['--fan' as string]: `${tilt}deg`, ['--dip' as string]: `${dip}`, ...(isTile(c) ? HOLDS_A_TILE : {}) }}
                   tabIndex={item.tabIndex}
                   ref={item.ref}
                   onFocus={(e) => {
@@ -92,7 +97,9 @@ export function HandFan({ cards, faces, onPlay, locked = false, onCarry, aim, on
                   }}
                   {...handlers(c)}
                 >
-                  <HandFace faces={faces} c={c} turned={turned?.has(c.id) === true} />
+                  <TileInCard c={c}>
+                    <HandFace faces={faces} c={c} turned={turned?.has(c.id) === true} />
+                  </TileInCard>
                 </button>
               )
             })}

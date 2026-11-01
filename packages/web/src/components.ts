@@ -86,6 +86,9 @@ const shapeOf = (s: string): TileShape => (s === 'hex' ? 'hex' : s === 'circle' 
 const TILE_OF = new Map(TILES.map((d) => [d.id, { shape: shapeOf(d.physical.shape), w: d.physical.widthMm, h: d.physical.heightMm, cornerMm: d.physical.cornerRadiusMm ?? 0 } satisfies Tile] as const))
 export const tileOf = (c: { type: { id: string } } | undefined): Tile | null => (c ? (TILE_OF.get(c.type.id) ?? null) : null)
 export const isTile = (c: { type: { id: string } }): boolean => TILE_OF.has(c.type.id)
+// A hand's tiles stand after its cards, each kind in its own order (#1486, #1538, variant A of
+// #1474): a tile is held as a card is, and a hand that mixed them looked like a deck dropped on the floor.
+export const tilesLast = <C extends { type: { id: string } }>(hand: readonly C[]): C[] => [...hand.filter((c) => !isTile(c)), ...hand.filter(isTile)]
 
 // The box a card or a tile lies in, in the felt's millimetres: the tile's own, or the card's. A
 // component's `x` and `y` are that box's top left corner, as the setup lays a marker (`piecesAt`).
