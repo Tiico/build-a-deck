@@ -17,7 +17,7 @@ import { TableTree } from './TableTree.js'
 import { Reading, familyRole, fixed, movedTo, newCounter } from './setup-rows.js'
 import type { MaterialKey } from './MaterialRow.js'
 import { recipeWords } from './fields.js'
-import { newMarker } from './tiles.js'
+import { newMarker, tileFaceOf } from './tiles.js'
 import { useGesture } from './gesture.js'
 import { CardPreview } from './CardPreview.js'
 import { ZoneActions } from './ZoneActions.js'
@@ -798,6 +798,26 @@ function Felt({
               )
             : undefined
         }
+        // A tile's face up on the felt (#1487), drawn from its own template by the same one renderer:
+        // a marker's front, or a row of a deck of tiles. A face with nothing on it yet keeps the
+        // stand-in, as an undrawn back does.
+        front={(fit, at, cardRef) => {
+          const drawn = tileFaceOf(doc, cardRef, 'front')
+          return drawn ? (
+            <CardPreview
+              face={drawn.face}
+              row={drawn.row}
+              type={drawn.type}
+              icons={icons}
+              fonts={fonts}
+              id={`byd-setup-face-${at}`}
+              scale={fit.px(1) / CSS_MM_PX}
+              assetBase={assetBase}
+              motifs={motifs}
+              palette={doc.palette}
+            />
+          ) : null
+        }}
         seatNames
       />
     </div>

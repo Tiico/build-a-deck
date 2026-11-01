@@ -184,6 +184,10 @@ export type TableRendererProps = {
   // the stand-in weave `table.css` draws, which is what every surface showed before: a back that
   // belonged to no game (L17).
   back?: ((fit: FeltFit, at: string) => ReactNode) | undefined
+  // What a face-up card wears where nothing serves textures (#1487), by the name it goes by, or
+  // nothing for the stand-in: the editor's Bord tab draws a marker's front from its own template, the
+  // way it draws the deck's back. A card it has no face for keeps the stand-in.
+  front?: ((fit: FeltFit, at: string, cardRef: string) => ReactNode) | undefined
   // Whose hand is whose. Table mode always says so on the felt; TV mode leaves it to the dock
   // that says it already (K9). A TV-mode surface with no dock — the editor's Bord tab — asks for
   // the cards here, so that a hand is named by the renderer like every other zone (K19).
@@ -339,7 +343,7 @@ type Settled = { ids: string[]; origin: Drag['origin']; pile: { id: string; x: n
 // chip — whose verbs are a counter's own and not a card's (C4, #67).
 type Ring = { target: DragTarget; x: number; y: number }
 
-export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(function TableRenderer({ view: whole, mode, scale: fixedScale, rotate = 0, faces, onAct, peers = [], pulses = [], recent = [], shuffles = [], said = [], rolls = [], onPresence, camera, remember, onInspect, onPick, onShow, watch = false, size: fixedSize, glideMs = GLIDE_MS, margin = 0, overlay, back, seatNames = false, me = null, foldHand = null, keyboard, aimed = null, lens = false, forTheRoom = false, lit, cornerIn, startWait = null, startTile = true, more, onFit }, ref) {
+export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(function TableRenderer({ view: whole, mode, scale: fixedScale, rotate = 0, faces, onAct, peers = [], pulses = [], recent = [], shuffles = [], said = [], rolls = [], onPresence, camera, remember, onInspect, onPick, onShow, watch = false, size: fixedSize, glideMs = GLIDE_MS, margin = 0, overlay, back, front, seatNames = false, me = null, foldHand = null, keyboard, aimed = null, lens = false, forTheRoom = false, lit, cornerIn, startWait = null, startTile = true, more, onFit }, ref) {
   const t = useT()
   // The boards lie under everything (#1480) and are nothing else on the table: not a card to count,
   // lay beside, name or pick up. The felt draws them first, and reads the rest of the table without them.
@@ -727,6 +731,10 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   // The box a back is drawn in: the card's own, so the supplier only has to draw a card. A
   // surface that supplies none keeps the stand-in weave `table.css` draws.
   const backAt = (at: string): ReactNode => back && <span className="byd-card-back">{back({ px, left, top, scale }, at)}</span>
+  const frontAt = (at: string, cardRef: string | null): ReactNode => {
+    const drawn = front && cardRef !== null ? front({ px, left, top, scale }, at, cardRef) : null
+    return drawn ? <span className="byd-card-back byd-card-face">{drawn}</span> : null
+  }
   // A chip's target (#67): the finger's 44 × 44 on the screen, laid invisibly over a disc that
   // stays its 24 mm (K9). In table mode the felt leans away, so a box set to 44 in its plane is
   // less than 44 on the screen, and slanted; the target is sized through the same projection the
@@ -1776,6 +1784,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
                 by={movedBy.has(c.id) ? { seat: movedBy.get(c.id) ?? null, colour: colourOf(movedBy.get(c.id) ?? null) } : undefined}
                 faces={faces}
                 back={backAt(`card-${c.id}`)}
+                front={frontAt(`face-${c.id}`, c.cardRef)}
                 handlers={onAct ? handlers({ kind: 'card', id: c.id }) : watches({ kind: 'card', id: c.id })}
                 points={bothPointing(bothPointing(inspects(c), reads({ kind: 'card', id: c.id })), points({ kind: 'card', id: c.id }))}
                 keys={keys(`card:${c.id}`)}
@@ -2191,7 +2200,7 @@ type FeltNodeProps = {
   onKeyDown(e: RKeyboardEvent): void
 }
 
-function Card({ c, left, top, px, dragging, hiding = false, carried, by, faces, back, handlers, points, keys }: { c: VisibleComponentState; left: number; top: number; px: (mm: number) => number; dragging: boolean; hiding?: boolean; carried?: boolean; by?: { seat: string | null; colour: string } | undefined; faces?: string | undefined; back?: ReactNode | undefined; handlers?: Handlers | undefined; points?: Pointing | undefined; keys?: FeltNodeProps | undefined }) {
+function Card({ c, left, top, px, dragging, hiding = false, carried, by, faces, back, front, handlers, points, keys }: { c: VisibleComponentState; left: number; top: number; px: (mm: number) => number; dragging: boolean; hiding?: boolean; carried?: boolean; by?: { seat: string | null; colour: string } | undefined; faces?: string | undefined; back?: ReactNode | undefined; front?: ReactNode | undefined; handlers?: Handlers | undefined; points?: Pointing | undefined; keys?: FeltNodeProps | undefined }) {
   // A card on its way into a hand is drawn as the card it is about to be (#444, K24): face down,
   // in its own size and with its own lift. It is the same card the table already knows how to
   // draw with its face away, so it is drawn by handing that card on rather than by a look of its
@@ -2200,7 +2209,7 @@ function Card({ c, left, top, px, dragging, hiding = false, carried, by, faces, 
   const face = shown.cardRef === null ? 'back' : 'front'
   // The deck's own back, when this card lies face down and a back was handed in. It is both what
   // is drawn and what tells the stylesheet to draw no stand-in under it.
-  const own = shown.cardRef === null ? back : null
+  const own = shown.cardRef === null ? back : front
   return (
     <div
       className="byd-card"

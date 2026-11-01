@@ -1,6 +1,7 @@
 import { TILE_COIN, TILE_HEX, TILE_ROUND, TILE_SQUARE, rotationStep, type ComponentTypeDef } from '@byd/engine'
 import type { ProjectDeck, ProjectDoc } from '@byd/server'
 import { copiesOf, nextCardRef, type Marker } from '@byd/server/doc'
+import type { FaceTemplate, Row } from '@byd/template'
 import type { Key, T } from '../i18n/index.js'
 
 // The game's tiles in Bord and Mall (#1487, editorvariant A i #1474): the shapes a tile is cut in,
@@ -51,6 +52,29 @@ export function newTileDeck(doc: Pick<ProjectDoc, 'decks'>, zone: string, t: T):
     rows: [{ id: nextCardRef({ rows: [] }), fields: { title: '', antal: 1 } }],
     zone,
   }
+}
+
+// A face of a tile as the felt draws it (#1487), by the name the tile goes by at the table: a
+// marker's (`marker:<id>`) side, or a side of a row of another deck (`<deck>:<row>`, `rowRef`), with
+// the type it is drawn at and the row it is drawn with. Nothing for a card of the document's own
+// deck, and nothing for a side with no layer on it yet.
+export function tileFaceOf(doc: Pick<ProjectDoc, 'decks' | 'setup'>, cardRef: string, side: string): { face: FaceTemplate; row: Row; type: ComponentTypeDef } | null {
+  const at = cardRef.indexOf(':')
+  if (at <= 0) return null
+  const owner = cardRef.slice(0, at)
+  const id = cardRef.slice(at + 1)
+  const drawn = (face: FaceTemplate | undefined) => face !== undefined && (face.base.length > 0 || Object.keys(face.variants).length > 0)
+  if (owner === 'marker') {
+    const marker = doc.setup.markers?.find((m) => m.id === id)
+    const face = marker?.faces?.[side as keyof NonNullable<Marker['faces']>]
+    const type = marker && tileType(marker.type)
+    return marker && type && drawn(face) ? { face: face!, row: { title: marker.name }, type } : null
+  }
+  const deck = doc.decks?.find((d) => d.id === owner)
+  const row = deck?.rows.find((r) => r.id === id)
+  const face = deck?.template.faces[side]
+  const type = deck && tileType(deck.type)
+  return deck && row && type && drawn(face) ? { face: face!, row: row.fields, type } : null
 }
 
 // How many tiles a deck lays: every row's copies (L4).
