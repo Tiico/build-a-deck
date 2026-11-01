@@ -3,7 +3,9 @@ import { describeActivity, sayable } from '../table/describe.js'
 import { Texture } from '../table/Texture.js'
 import { hue } from '../table/hue.js'
 import { cardName, cardWord } from '../table/keyboard.js'
-import { isMaterial } from '../components.js'
+import { isMaterial, pileTopType, tileOf } from '../components.js'
+import { TileInCard } from '../table/TileInCard.js'
+import { HOLDS_A_TILE } from '../table/tileLook.js'
 import { overviewOf } from './PlaySheet.js'
 import { Refusal, type RefusalHandle } from '../status/Refusal.js'
 import { useT, type T } from '../i18n/index.js'
@@ -72,12 +74,12 @@ export function TableSummary({ view, activity, onDraw, refusal, refusedZone = nu
                 className={refusedZone === zone.id ? 'byd-status-refused-control' : undefined}
                 {...(refusedZone === zone.id && refusal ? refusal.control : {})}
               >
-                <Tile zone={zone} t={t} />
+                <Tile zone={zone} t={t} tiles={ofTiles(view, zone.id)} />
                 <em>{t('kbd.verb.toHand')}</em>
               </button>
             ) : (
               <div key={zone.id} data-zone-summary={zone.id}>
-                <Tile zone={zone} t={t} heading />
+                <Tile zone={zone} t={t} heading tiles={ofTiles(view, zone.id)} />
                 {onRead && <AreaCards view={view} zone={zone.id} faces={faces} onRead={onRead} t={t} />}
               </div>
             ),
@@ -92,13 +94,18 @@ export function TableSummary({ view, activity, onDraw, refusal, refusedZone = nu
 // What every tile says, whether or not it can be pressed: the designer's name for the zone, and
 // how much lies in it. A tile that is no control heads what it holds with the zone's name, so a
 // reader can move from zone to zone (#560 P-20); a tile that is a button cannot hold a heading.
-function Tile({ zone, t, heading = false }: { zone: ZoneTile; t: T; heading?: boolean }) {
+// A pile of tiles is counted in tiles (#1486), as the felt says it: the zone tells what lies on top.
+function Tile({ zone, t, heading = false, tiles = false }: { zone: ZoneTile; t: T; heading?: boolean; tiles?: boolean }) {
   return (
     <>
       {heading ? <h2>{zone.name}</h2> : <strong>{zone.name}</strong>}
-      <span>{t(zone.count === 1 ? 'play.cards.one' : 'play.cards.other', { n: zone.count })}</span>
+      <span>{tiles ? t(zone.count === 1 ? 'play.tiles.one' : 'play.tiles.other', { n: zone.count }) : t(zone.count === 1 ? 'play.cards.one' : 'play.cards.other', { n: zone.count })}</span>
     </>
   )
+}
+const ofTiles = (view: Snapshot, id: string): boolean => {
+  const z = view.zones.find((x) => x.id === id)
+  return z !== undefined && z.kind === 'pile' && tileOf(pileTopType(z, view.components.find((c) => c.id === (z.mode === 'order' ? z.order[0] : z.top)))) !== null
 }
 
 // The cards an area holds, each one a control that holds it up. Only what this reader was sent is
@@ -110,9 +117,11 @@ function AreaCards({ view, zone, faces, onRead, t }: { view: Snapshot; zone: str
   return (
     <div className="byd-summary-cards">
       {row.map((c) => (
-        <button key={c.id} type="button" className="byd-summary-card" data-area-card={c.id} aria-label={cardName(c, t)} style={{ ['--hue' as string]: hue(c.cardRef ?? '') }} onClick={() => onRead(row, c)}>
-          <Texture faces={faces} c={c} />
-          <strong aria-hidden="true">{cardWord(c) ?? ''}</strong>
+        <button key={c.id} type="button" className="byd-summary-card" data-area-card={c.id} data-shape={tileOf(c)?.shape} aria-label={cardName(c, t)} style={{ ['--hue' as string]: hue(c.cardRef ?? ''), ...(tileOf(c) ? HOLDS_A_TILE : {}) }} onClick={() => onRead(row, c)}>
+          <TileInCard c={c}>
+            <Texture faces={faces} c={c} />
+            <strong aria-hidden="true">{cardWord(c) ?? ''}</strong>
+          </TileInCard>
         </button>
       ))}
     </div>

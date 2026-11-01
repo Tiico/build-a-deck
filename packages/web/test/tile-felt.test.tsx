@@ -40,10 +40,10 @@ afterEach(cleanup)
 
 describe('the ring turns a tile in its shape’s step (#1485, K34)', () => {
   it.each([
-    ['Rågåker', '↻ Vrid 60°', 60],
-    ['Rågåker', '↺ Vrid 60°', 300],
-    ['Vete', '↻ Vrid 90°', 90],
-    ['Vete', '↺ Vrid 90°', 270],
+    ['Rågåker', '↻ Rotera 60°', 60],
+    ['Rågåker', '↺ Rotera 60°', 300],
+    ['Vete', '↻ Rotera 90°', 90],
+    ['Vete', '↺ Rotera 90°', 270],
   ] as const)('%s: «%s» sends `rotate` to %i', (ref, label, rot) => {
     const view = tableOf(tileSetup()).view(null)
     const onAct = vi.fn()
@@ -104,7 +104,7 @@ describe('a reader hears a tile as a tile (#1485)', () => {
     const view = table.view(null)
     const labels = feltLabels(view)
     const hidden = view.components.find((c) => c.zone === 'table' && c.cardRef === null)!
-    expect(labels.get(`card:${id}`)).toBe('Rågåker, bricka i Spelyta, vriden 120°. Enter öppnar handlingar.')
+    expect(labels.get(`card:${id}`)).toBe('Rågåker, bricka i Spelyta, roterad 120°. Enter öppnar handlingar.')
     expect(labels.get(`card:${idOf(view, 'Vete')}`)).toBe('Vete, bricka i Spelyta. Enter öppnar handlingar.')
     expect(labels.get(`card:${hidden.id}`)).toBe('Bricka, baksida, i Spelyta. Enter öppnar handlingar.')
     expect(labels.get('pile:bag')).toBe('Landskap, 2 brickor, överst: bricka, baksida. Enter öppnar handlingar.')

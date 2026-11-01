@@ -13,7 +13,10 @@ import { ownTime, overBudget, TEST_CEILING, watchHolds, withAccount } from './ow
 // back afterwards, so a retry is wrapped once and not twice.
 //
 // A test that names a timeout of its own (`it(…, 60_000)`) is not on the package's budget and is
-// left to vitest's wall clock, as it asked. Only a test whose timeout is the ceiling is the guard's.
+// left to vitest's wall clock, as it asked. Only a test whose timeout is the ceiling is the guard's,
+// and that includes one that names the ceiling's own number, which vitest hands over unmarked
+// (#1542): such a test is on the budget, whatever it meant. The server's `render-budget.test.ts`
+// keeps its suites from naming it.
 // `packages/server/test/own-time.test.ts` watches every one of these outcomes.
 
 // vitest's own timeout, which in a package held to own time is the ceiling's.

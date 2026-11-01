@@ -117,6 +117,13 @@
 
 /* 4 · What is not printed. */
 .byd-print-stock { display: grid; gap: 10px; }
+/* The printed parts beside the deck (#1488): a name and what it is, a line each, under a small heading. */
+.byd-print-parts-list { display: grid; gap: 8px; margin-top: 16px; }
+.byd-print-parts-list h3 { margin: 0; font-size: 15px; color: #fff; }
+.byd-print-parts-list ul { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.byd-print-parts-list li { display: flex; flex-wrap: wrap; gap: 4px 12px; padding: 8px 12px; border-radius: 12px; background: var(--byd-print-well); border: 1px solid var(--byd-print-line); font-size: 15px; }
+.byd-print-parts-list li b { color: #fff; }
+.byd-print-parts-list p { margin: 0; }
 .byd-print-item { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 12px; align-items: center; padding: 12px; border-radius: 12px; background: var(--byd-print-well); border: 1px solid var(--byd-print-line); font-size: 15px; }
 .byd-print-item b { color: #fff; }
 .byd-print-die { display: grid; place-items: center; width: 44px; height: 44px; margin: 4px; border-radius: 10px; background: #f3efe6; color: #3a2a1a; font-size: 30px; }
