@@ -5173,6 +5173,14 @@ Högen behåller kortets ruta, som dess namn, antal och handtag läggs kring och
 Loggen säger «Ada vred Fjäll», eller «vred en bricka» där läsaren inte ser vilken.
 Skärmläsaren hör «Rågåker, bricka i Spelyta, vriden 120°», «Bricka, baksida, i Spelyta» för en bricka vars framsida inte syns, och påsen som «Landskap, 3 brickor, överst: bricka, baksida».
 
+**Telefonen** (#1486, variant A i #1474).
+Brickorna står i handens rutnät efter korten, var grupp i sin ordning, i sin sanna storlek mot kortet och i sin form med kantens brun under; en markerad bricka får en stapel under sig, eftersom konturen skär bort ringen ett kort bär.
+Alt och en pil flyttar en bricka bara bland brickorna.
+TV:ns solfjäder ritar kortens baksidor och sedan brickornas i sin form, ur zonens `types`; vilken bricka det är går aldrig ut (#1485).
+I «Framför mig» har en bricka «↺ Vrid 60°» och «↻ Vrid 60°» bredvid «Ta upp», och i «Bordet» står samma två i den upplyfta brickans rad, i en yta som ingen plats äger eller som är ens egen; en annan plats yta läses bara (#414).
+Den dolda högen räknas i brickor, och dess knapp är den som redan står på varje hög, «Dra 1 till min hand».
+Brickans utseende skrivs i `tileLook.ts` och står i elementens stilattribut, inte i arket som första bilden väntar på: dess larm (#366, L40) ringde med 0,4 kB över, och en bricka ritas bara i ett spel som har en.
+
 Brickor i setupen, en egen lek och tabell per brickform, bordet, telefonen och trycket byggs i #1484–#1488.
 
 ### K35. Brädet: brädtyperna, brädet i dokumentet och dess textur (beslutat 2026-10-28 och 2026-11-01, #1470, #1473, #1479)
