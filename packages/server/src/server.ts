@@ -1499,7 +1499,15 @@ async function deckOf(opts: ServerOptions, rec: ProjectRecord): Promise<Deck> {
     boards[id] = resolved.template
     boardMotifs = { ...boardMotifs, ...resolved.motifs }
   }
-  return { ...doc, ...(doc.boards ? { boards } : {}), motifs: { ...motifs, ...own.motifs, ...boardMotifs }, fonts: await resolveFonts(rec.fonts ?? {}, opts.assets) }
+  // And every other template the deck draws with, a marker's sides (#1483), as the template's own.
+  const templates: Record<string, Template> = {}
+  let drawn: Record<string, Motif> = {}
+  for (const [name, template] of Object.entries(doc.templates ?? {})) {
+    const resolved = await resolveTemplate(template, opts.assets, rec.pictures ?? {})
+    templates[name] = resolved.template
+    drawn = { ...drawn, ...resolved.motifs }
+  }
+  return { ...doc, ...(doc.boards ? { boards } : {}), ...(doc.templates ? { templates } : {}), motifs: { ...motifs, ...own.motifs, ...boardMotifs, ...drawn }, fonts: await resolveFonts(rec.fonts ?? {}, opts.assets) }
 }
 
 // The link's still of a game as it stands (#1417, L91), by the revision it was made of: a room's page

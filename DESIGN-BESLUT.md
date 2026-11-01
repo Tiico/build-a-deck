@@ -5066,6 +5066,17 @@ Det dolda går genom `project` som kortets (B6): en bricka med baksidan upp i en
 **Motorn har ingen gren för brickan.** `rotate`, `flip`, `stack`, `shuffle`, `split`, `draw` och `deal` läser typens beteenden som de läser kortets, och omspelningen ger samma bord och en blandad hög samma ordning (D4).
 En bricka staplas på ett kort och blandas i en hög med kort som motorn ser det, eftersom båda är `stackable` och `shufflable`; om en hög ska få blanda former är en fråga för leken och setupen (#1484), inte för typen.
 
+**Identiska markörer** (#1483): trettio guldmynt, eller skademarkörer, är en mall i n exemplar och ingen lek.
+Dokumentet bär dem i `setup.markers` som lådan bär sina ytor (L91): en `FaceTemplate` per sida, den pinnade bricktypen (B3), ett namn i dokumentet (`id`) och vad markören heter (`name`), och setupens rad som en tärnings (K28, K31): antal, en yta alla delar (`zone`, med `perSeat` för ett antal per spelare) eller en yta varje plats har (`role`), och en punkt (`at`).
+Till skillnad från en tärning får en markör ligga i en hög, en bank att ta ur: där ligger exemplaren som kort i högen och en punkt betyder ingenting.
+I en yta ligger de på rad kring punkten, eller kring ytans mitt; i en yta per plats sägs punkten från plats A:s stol och vänds mot varje plats kant.
+`layMarkers` säger var varje exemplar ligger och `setupFromProject` lägger dem, med framsidan upp; ett dokument utan markörer läses tillbaka orört.
+
+**En markör ritas en gång.** Vid bordet heter varje exemplar markören (`marker:<id>` som `cardRef`), aldrig en rad, så ett kort och en markör som delar ett ord delar varken yta, titel eller textur.
+Leken som bordet får bär markörens mall under det namnet (`templates` och `drawnWith` i `Deck`), och den enda kompilatorn ritar sidorna en gång per innehållshash: trettio mynt är två texturer, och en ändrad framsida ger alla trettio en ny hash.
+En sida utan mall ritas tom, eftersom en bricka har båda sidorna. Markörens namn är dess titel där dess framsida syns, och dold på samma villkor som ett korts (B6).
+Editorns ändring är `setMarkers`, hela listan med sidorna i en redigering som `setPieces`, och därmed ett steg tillbaka (B4). Raden i ＋-menyn och sidornas verktyg är #1487, filtens ritning #1485 och trycket #1488; tills trycket finns står brickor utanför tryckexporten och partnerns manifest (`printedYet`), där en partner som bara trycker kort annars vägrade hela ordern.
+
 Brickor i setupen, en egen lek och tabell per brickform, bordet, telefonen och trycket byggs i #1484–#1488.
 
 ### K35. Brädet: brädtyperna, brädet i dokumentet och dess textur (beslutat 2026-10-28 och 2026-11-01, #1470, #1473, #1479)
