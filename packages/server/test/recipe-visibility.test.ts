@@ -73,9 +73,10 @@ describe('the area in front of a seat, as the other seat is told about it (#414)
     const { seen, geometry } = playIntoArea('owner')
     // Since #518 every zone view also says who the zone shows its cards to (B6). That is the
     // setup's and no secret, and it says nothing about what lies in the area.
-    const mine = { mode: 'count', id: 'mine:A', kind: 'area', name: 'Framför A', geometry, dynamic: false, visibility: 'owner', owner: 'A', shortcut: { label: 'Framför mig', at: 'top' }, count: 1 }
+    const mine = { mode: 'count', id: 'mine:A', kind: 'area', name: 'Framför A', geometry, dynamic: false, visibility: 'owner', owner: 'A', shortcut: { label: 'Framför mig', at: 'top' }, count: 1, types: [{ type: { id: 'card.standard.63x88', version: 1 }, count: 1 }] }
     // A count and nothing else. No `top`, no `back`, no `bottom`: the area says how much lies in
-    // it and never what, which is what the felt draws as a number (decision B, #437).
+    // it and never what, which is what the felt draws as a number (decision B, #437). Since #1485
+    // it also says the kind of thing lying there, a card, which a stack shows to the room.
     expect(zoneOf(seen('B'))).toEqual(mine)
     // Said as the bytes too, since that is the claim the decision was written with.
     expect(JSON.stringify(zoneOf(seen('B')))).toBe(JSON.stringify(mine))

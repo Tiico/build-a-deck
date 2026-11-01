@@ -5114,6 +5114,21 @@ Bordets `Deck` bär varje leks mall i `templates` och `drawnWith`, som markörer
 Versionernas diff (B4) säger vilken lek en ändrad rad hör till (`deck` på raden; Tabell visar den egna lekens), exporten och importen (G5) bär hela dokumentet och därmed alla lekar, Fysisk kontroll (E5) läser varje lek med dess typs minsta textstorlek och skyddsmarginal, och taken på kort per spel (#1195) räknar rader och exemplar i varje lek.
 Editorns ändring är `setDecks`, hela listan i en redigering och ett steg tillbaka; flikarna per lek i Kortvägg, Mall och Tabell (#1474, variant A) och finare redigeringar per rad är #1487.
 
+**Filten** (#1485, variant A i #1474).
+Brickan ritas i sin form, i typens millimetrar, med texturen inom konturen och kartongens kant under: en sexhörning med spetsen uppåt, en kvadrat med typens hörn, och en skiva.
+Kanten är 2,5 mm djup på filten så att den syns (C1), och den faller alltid nedåt på skärmen hur brickan än är vriden; i en hög läggs 0,9 mm kant till för varje bricka under, upp till åtta.
+En komponents `x` och `y` är det övre vänstra hörnet av dess egen ruta, kortets eller brickans, som setupen lägger en markör (`piecesAt`); en bricka som dras av en hög hamnar med sitt eget hörn där den bars, och den staplas på bara där den ligger.
+Ringen har «↺ Vrid 60°» och «↻ Vrid 60°» på var sin sida om «Vänd» (90° för kvadraten och de runda), och panelen har samma två rader (`turnActs`); ett kort har kvar sin enda «Rotera».
+«Vrid» är prototypens ord, godkänt 2026-11-01 och bara för brickan: pilen och vinkeln skiljer det från «Vänd», vilket var skälet till «Rotera» för kortet (#1134).
+R vrider det som har tangentbordets fokus ett steg framåt, annars det pekaren vilar på, och Skift + R ett steg tillbaka; steget är typens (`turnStepOf`), så ett kort vrids ett kvarts varv.
+När en brickas vinkel ändras visas stegen en kort stund runt den på varje skärm, en prick för varje sätt den kan ligga och den den ligger i markerad, och under minskad rörelse utan att tona ut.
+Påsen är en dold hög som korten, ritad i brickans form: vyn säger nu vilka typer en dold zon håller och hur många av varje, den översta typen först (`types` på zonen), som en hög sexhörningar syns vara det över rummet; aldrig vilken bricka.
+Samma fält låter telefonen och TV:n rita brickornas baksidor i en hand (#1486).
+Korpusens projektioner härleddes om ur oförändrade loggar.
+Ett mynt är 18 px vid åtta platser och får räknarbrickans osynliga träffyta; en bricka som är mindre än ett finger på skärmen får den.
+Håll för att förstora (K8, K26) lyfter brickan i sina egna proportioner och lika hög som ett kort, i sin form.
+Skärmläsaren hör «Rågåker, bricka i Spelyta, vriden 120°», «Bricka, baksida, i Spelyta» för en bricka vars framsida inte syns, och påsen som «Landskap, 3 brickor, överst: bricka, baksida».
+
 Brickor i setupen, en egen lek och tabell per brickform, bordet, telefonen och trycket byggs i #1484–#1488.
 
 ### K35. Brädet: brädtyperna, brädet i dokumentet och dess textur (beslutat 2026-10-28 och 2026-11-01, #1470, #1473, #1479)

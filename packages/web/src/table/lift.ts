@@ -21,11 +21,13 @@ export type Box = { left: number; top: number; w: number; h: number }
 
 // `smallestPt`: the card's own smallest text (#523). A card whose words are smaller than the
 // wizard's frame is lifted larger, until they reach the desk's floor or the window's height.
-export function liftBox(card: Edges, window: { w: number; h: number }, smallestPt?: number | null): Box {
+// `foot` is what is lifted in the felt's millimetres: a card, or a tile in its own proportions
+// (#1485), lifted as tall as a card is, so its words are read at the same size.
+export function liftBox(card: Edges, window: { w: number; h: number }, smallestPt?: number | null, foot: { w: number; h: number } = CARD_MM): Box {
   const share = window.h * LIFT_SHARE
-  const need = (readingWidth((share * CARD_MM.w) / CARD_MM.h, smallestPt, 'desk') * CARD_MM.h) / CARD_MM.w
+  const need = (readingWidth((share * foot.w) / foot.h, smallestPt, 'desk') * foot.h) / foot.w
   const h = Math.min(need, window.h - 2 * LIFT_GAP)
-  const w = (h * CARD_MM.w) / CARD_MM.h
+  const w = (h * foot.w) / foot.h
   const onRight = window.w - card.right - LIFT_GAP >= w + LIFT_GAP
   const onLeft = card.left - LIFT_GAP >= w + LIFT_GAP
   const left = onRight ? card.right + LIFT_GAP : onLeft ? card.left - LIFT_GAP - w : (window.w - w) / 2

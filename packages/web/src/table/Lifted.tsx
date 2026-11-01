@@ -4,6 +4,7 @@ import { Texture } from './Texture.js'
 import { hue } from './hue.js'
 import { cardWord } from './keyboard.js'
 import type { Box } from './lift.js'
+import { tileOf } from '../components.js'
 
 // The card lifted up to be read (K26, #509), drawn the way «Titta» draws one — the texture over
 // the card's own paper, its name while the texture is on its way — in the box `liftBox` gives it.
@@ -16,6 +17,8 @@ export function Lifted({ c, box, faces, onAsk }: { c: VisibleComponentState; box
       className="byd-lift"
       data-lift={c.id}
       data-face={c.cardRef === null ? 'back' : 'front'}
+      // A tile is held up in its shape (#1485), cut to its outline by `table.css`.
+      data-shape={tileOf(c)?.shape}
       style={{ left: box.left, top: box.top, width: box.w, height: box.h, ...(c.cardRef === null ? {} : { ['--hue' as string]: hue(c.cardRef) }) }}
       onPointerDown={() => (pressed.current = true)}
       onClick={(e) => {

@@ -142,7 +142,11 @@ export function useFeltKeyboard(view: Snapshot | null, felt: boolean, options: F
         now.moveDie(die)
         return
       }
-      const intents = shortcutIntents(now.view, event.key, pointing.current)
+      // R turns what has the keyboard's focus before what the pointer rests on (#1485, variant A of
+      // #1474): a tile is turned where it was tabbed to, and the pointer answers only without one.
+      const focused = at instanceof HTMLElement ? at.closest<HTMLElement>('[data-kbd^="card:"]')?.dataset.kbd?.slice('card:'.length) : undefined
+      const target: DragTarget | null = event.key.toLowerCase() === 'r' && focused ? { kind: 'card', id: focused } : pointing.current
+      const intents = shortcutIntents(now.view, event.key, target, event.shiftKey)
       if (!intents) return
       event.preventDefault()
       now.run(intents)

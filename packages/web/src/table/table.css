@@ -1525,3 +1525,35 @@
 .byd-seat-plate[data-edge='E'] > span, .byd-seat-plate[data-edge='W'] > span { padding-left: 46px; }
 .byd-seat-plate[data-form] { padding: 4px; }
 .byd-seat-plate[data-form] > span, .byd-seat-plate[data-form] > b > span { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); }
+
+/* Tiles (#1485, variant A of #1474): the card in its own shape. The box is the type's millimetres,
+   and draws nothing itself: its printed side and the cardboard's edges under it are each cut to the
+   outline — a hexagon with a point up, a square with the type's 2 mm corner, or a disc — since an
+   outline cuts off every shadow a box casts. The edge is the board's brown (C1), a step darker for
+   every tile under it in a pile, and the unprinted back is the same board. */
+[data-shape='hex'] { --tile-clip: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); }
+[data-shape='square'] { --tile-r: 4.4%; }
+[data-shape='circle'] { --tile-r: 50%; }
+.byd-card[data-shape] { padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; overflow: visible; }
+.byd-card[data-shape][data-dragging] { box-shadow: none; filter: drop-shadow(0 0 12px rgba(0, 0, 0, 0.6)); }
+.byd-tile-face, .byd-tile-edge { position: absolute; inset: 0; overflow: hidden; clip-path: var(--tile-clip, none); border-radius: var(--tile-r, 0); pointer-events: none; }
+.byd-tile-face { box-sizing: border-box; display: grid; place-items: center; padding: 8% 12%; background: hsl(var(--hue, 0) 40% 86%); text-align: center; overflow-wrap: anywhere; }
+.byd-tile-face[data-face='back'], .byd-pile[data-shape] .byd-pile-top[data-face='back'], .byd-pile[data-shape] .byd-pile-bottom[data-face='back'], .byd-pile[data-shape] .byd-pile-fan-card { background: #4a3424; }
+.byd-tile-face > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.byd-tile-face > img ~ span:not([data-texture]) { visibility: hidden; }
+.byd-tile-edge { background: #2a1f16; }
+.byd-tile-edge[data-layer]:not([data-layer='0']):nth-of-type(odd) { background: #3a2c20; }
+.byd-pile[data-shape] .byd-pile-top, .byd-pile[data-shape] .byd-pile-bottom, .byd-pile[data-shape] .byd-pile-fan-card { padding: 0; border: 0; clip-path: var(--tile-clip, none); border-radius: var(--tile-r, 0); }
+.byd-pile[data-shape][data-count='0'] .byd-pile-top { background: rgba(255, 255, 255, 0.12); }
+/* The steps a tile was just turned through (variant A of #1474): a dot for each way it can lie,
+   round it, the one it lies at amber; there for a moment and gone. Under reduced motion it does not
+   fade, it is only there and then not. */
+.byd-detents { position: absolute; width: 0; height: 0; z-index: 55; pointer-events: none; animation: byd-detents-fade 1.4s ease-in forwards; }
+.byd-detents > i { position: absolute; left: -3px; top: calc(-3px - var(--r)); width: 6px; height: 6px; border-radius: 50%; background: #c9c3b8; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.55); transform-origin: 3px calc(3px + var(--r)); }
+.byd-detents > i[data-at] { left: -5px; top: calc(-5px - var(--r)); width: 10px; height: 10px; background: #f0b64a; transform-origin: 5px calc(5px + var(--r)); }
+@keyframes byd-detents-fade { 0%, 60% { opacity: 1; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .byd-detents { animation: none; } }
+/* Held up to be read (K8, K26), a tile is the tile: cut to its outline, its back the board's. */
+.byd-lift[data-shape], .byd-inspect > [data-inspect][data-shape] { clip-path: var(--tile-clip, none); border-radius: var(--tile-r, 0); display: grid; place-items: center; text-align: center; }
+.byd-lift[data-shape][data-face='back'], .byd-inspect > [data-inspect][data-shape][data-face='back'] { background: #4a3424; }
+.byd-lift[data-shape] img, .byd-inspect > [data-inspect][data-shape] img { border-radius: 0; }

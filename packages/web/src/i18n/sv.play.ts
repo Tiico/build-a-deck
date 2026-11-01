@@ -96,6 +96,8 @@ export const svPlay = {
   'ring.flip': 'Vänd',
   'ring.look': 'Titta',
   'ring.rotate': 'Rotera',
+  'ring.turn.back': '↺ Vrid {deg}°',
+  'ring.turn.on': '↻ Vrid {deg}°',
   'ring.reveal': 'Avslöja',
   'ring.move': 'Flytta…',
   'ring.shuffle': 'Blanda',
@@ -179,6 +181,7 @@ export const svPlay = {
   'felt.key.turnInHand': 'Vänd ett kort i din hand, så spelas det nedvänt',
   'felt.key.draw': 'Dra översta kortet från högen under pekaren',
   'felt.key.shuffle': 'Blanda högen under pekaren',
+  'felt.key.turn': 'Rotera kortet eller brickan som har fokus, eller under pekaren, ett steg. Skift + R tillbaka',
   'felt.key.moveDie': 'Flytta tärningen som har fokus',
   'felt.key.movePiece': 'Flytta pjäsen som har fokus',
   'felt.key.moveMaterial': 'Flytta tärningen eller pjäsen som har fokus',
@@ -199,6 +202,7 @@ export const svPlay = {
   'felt.press.middleDrag': 'Mittenknapp + dra',
   'felt.press.spaceDrag': 'Mellanslag + dra',
   'felt.press.arrows': 'Skift + piltangent',
+  'felt.press.shiftR': 'Skift + R',
   'felt.key.zoom': 'Zooma in och ut kring pekaren',
   'felt.key.pan': 'Panorera',
   'felt.key.escape.camera': 'Stäng ringen · avbryt draget · visa hela bordet',
@@ -212,6 +216,12 @@ export const svPlay = {
   'kbd.hidden': 'Dolt kort',
   'kbd.card': '{name}, kort i {zone}',
   'kbd.card.rotated': '{name}, kort i {zone}, roterat',
+  'kbd.tile': '{name}, bricka i {zone}',
+  'kbd.tile.hidden': 'Bricka, baksida, i {zone}',
+  'kbd.tile.turned': '{said}, vriden {deg}°',
+  'kbd.tile.back': 'bricka, baksida',
+  'kbd.pile.tiles.one': '{zone}, {n} bricka, överst: {top}',
+  'kbd.pile.tiles.other': '{zone}, {n} brickor, överst: {top}',
   // En räknare är inte ett kort (C4), och ordlistan ger begreppet sitt eget ord (A4). Värdet står
   // med i meningen därför att det är det enda brickan visar — talet är hela poängen med en
   // räknare, och på filten ryms inte ens namnet i den (se `TOKEN_NAME_PX`).
