@@ -123,11 +123,20 @@ describe.each([390, 320, 1280])('Mina spel at %i px (#555)', (width) => {
 // does not; the code's plate stands whole inside the row.
 describe.each([1024, 1280, 1440])('«Pågår nu» at %i px (#1282, #1411)', (width) => {
   it('says the way to the game and the table’s row on one line each, inside the card', async () => {
-    const html = await started()
+    // The table's code is drawn at random from 32 signs, and «W» is the widest of them in any
+    // proportional face. The row is measured with the widest code it can be given, so that a lucky
+    // draw cannot hide what an unlucky one wraps (#1507).
+    const html = (await started()).replace(/(<strong>)[A-Z2-9]{6}(<\/strong>)/, '$1WWWWWW$2')
+    expect(html).toContain('<strong>WWWWWW</strong>')
     const page = await browser.newPage({ viewport: { width, height: 800 } })
     try {
       await page.setContent(document_(html), { waitUntil: 'load' })
-      for (const face of ['', `* { font-family: Verdana, 'DejaVu Sans', sans-serif !important; }`]) {
+      // The wide face stands in for the runner's DejaVu Sans, and the code keeps a monospaced face
+      // as the stylesheet gives it: on the runner `ui-monospace, Menlo, monospace` is DejaVu Sans
+      // Mono, as wide per sign as Menlo here. Laid in Verdana, the plate's width followed the code
+      // the server happened to draw, and «Aldrig spelat» wrapped beside a wide one (#1507).
+      const wide = `* { font-family: Verdana, 'DejaVu Sans', sans-serif !important; } .byd-home-running-row > strong { font-family: 'DejaVu Sans Mono', Menlo, monospace !important; }`
+      for (const face of ['', wide]) {
         if (face) await page.addStyleTag({ content: face })
         const m = (await page.evaluate(`(() => {
           const card = document.querySelector('.byd-home-running-game').getBoundingClientRect()
