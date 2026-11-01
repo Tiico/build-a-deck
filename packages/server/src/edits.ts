@@ -2,8 +2,8 @@ import type { AssetCrop as Crop, CardQuery, FaceId, ZoneAction, ZoneBeside } fro
 import { RuleBlock, isSymbolName, type Element, type FaceTemplate, type Variant } from '@byd/template'
 import { showsWholePicture } from '@byd/protocol'
 import { BOX_SIDES, BoxFace, type BoxClearance, type BoxSide } from '@byd/engine'
-import { AssetCrop, PictureName, ProjectBox, ProjectDice, ProjectPieces } from './projects.js'
-import type { Cell, Picture, ProjectDie, ProjectPiece, ProjectCredit, ProjectDoc, ProjectFont, ProjectRow, ProjectTheme, RuleDoc } from './projects.js'
+import { AssetCrop, PictureName, ProjectBox, ProjectDice, ProjectMarkers, ProjectPieces } from './projects.js'
+import type { Cell, Picture, ProjectDie, ProjectMarker, ProjectPiece, ProjectCredit, ProjectDoc, ProjectFont, ProjectRow, ProjectTheme, RuleDoc } from './projects.js'
 import { DEFAULT_BOX_TYPE } from './box.js'
 import { applyRevert, decideRevert, type Revert } from './undo.js'
 import { columnsOf } from './columns.js'
@@ -166,6 +166,9 @@ export type EditIntent =
   | { v: 'setDice'; dice: ProjectDie[] }
   // The game's wooden pieces (#1471), the whole list at once as the dice: one version, one step back.
   | { v: 'setPieces'; pieces: ProjectPiece[] }
+  // The game's markers (#1483), the whole list at once as the pieces, their sides with them: a marker
+  // added, moved, counted again or drawn anew is one version and one step back (B4).
+  | { v: 'setMarkers'; markers: ProjectMarker[] }
   // `geometry` is where the zone was born, decided once when the edit is made (`decideEdit`) and
   // written into the log with it (#894). Where a new zone goes is a rule that changes with a
   // deploy (#443, #480, #881), and a line that asked the rule again on replay would put the zone
@@ -598,6 +601,11 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
       const pieces = ProjectPieces.parse(intent.pieces)
       const { pieces: _gone, ...rest } = doc.setup
       return { ...doc, setup: pieces.length > 0 ? { ...rest, pieces } : rest }
+    }
+    case 'setMarkers': {
+      const markers = ProjectMarkers.parse(intent.markers)
+      const { markers: _gone, ...rest } = doc.setup
+      return { ...doc, setup: markers.length > 0 ? { ...rest, markers } : rest }
     }
     case 'addZone': {
       if (doc.setup.zones.some((z) => z.id === intent.id)) throw new Error(`zone ${intent.id} already exists`)

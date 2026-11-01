@@ -150,6 +150,17 @@ Byggt 2026-11-01 (#1490, skiva 1 av 5 i #1469): **Pro i `BYD_PLANS`, med tryckpa
 - Själva grinden på tryckpaketet och på `tryck/` i exporten är inte byggd: den väntar på partnern och byggs i #1209:s spår, och läser `hasPrint`. Gratisnivåns siffror och Pro:s tak på kort är konfiguration och sätts inte här (frågorna 3 och 7), och medredigerare grindas inte (fråga 5).
 - Grindarna är `packages/server/test/quotas.test.ts`, `plans-at-start.test.ts`, `account-plans.test.ts` och `quota-projects.test.ts`, mot båda lagren.
 
+Byggt 2026-11-01 (#1493, skiva 4 av 5 i #1469, beställarens beslut 2026-11-01: testläget först, med en fake i sviten): **abonnemanget på Pro via Stripe.**
+- Konfigurationen är lådans `.env` (DRIFT §12): `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` och `BYD_STRIPE_PRICES`, Stripes pris-id per nivå, valuta och intervall. Inget pris och inget nivånamn står i koden. Utan variablerna är betalningen avstängd och lådan som förut; hälften av dem stoppar starten.
+- `POST /me/subscription/checkout` med valuta, `month` eller `year` och en väg tillbaka i appen skickar ett inloggat konto till Stripes Checkout, så inga kortuppgifter passerar lådan. Kontot får en Stripe-kund första gången, och kopplingen står i `stripe_customers`. Ett konto som redan har Pro från Stripe får 409, så att ingen dras två gånger.
+- `POST /stripe/webhook` godtar bara en kropp med giltig signatur, gjord inom fem minuter. Händelsen tas aldrig som sanningen: kundens abonnemang läses som de står hos Stripe och skrivs med `setPlan` eller `lapse` och källan `stripe` (`syncCustomer` i `packages/server/src/payments.ts`). Därför ändrar en händelse som kommer två gånger, sent eller i fel ordning ingenting fel, och ingenting skrivs när ingenting ändras.
+- Ett levande abonnemang (`active`, `trialing`, `past_due`) ger Pro och häver en utgång; inget levande abonnemang gör ett konto vars nivå Stripe gav utgånget, och läsläget från #1491 gäller.
+- En nivå med källan `operator` skrivs aldrig över av Stripe, tills operatören tar bort den med `plan clear`.
+- Moms är inte avgjord: priset är med moms som en EU-konsument ser det, och hur den tas ut bekräftar beställaren före de skarpa nycklarna (fråga 2 i #1469).
+- Ett konto som raderar sig själv säger ännu inte upp sitt abonnemang hos Stripe; RUNBOOK §10 säger hur det görs för hand tills det byggs.
+- Hur Pro köps, syns och sägs upp i webben är #1494, som prototypas först.
+- Grindarna är `packages/server/test/payments.test.ts` (konfigurationen, signaturen och vad abonnemangen ger), `stripe-subscription.test.ts` (kassan och webhooken mot båda lagren, med en fake för Stripe), `stripe-api.test.ts` (klienten mot en ställföreträdare på maskinen), `payments-at-start.test.ts` och `deploy.test.ts`. Inget anrop går till Stripe i `pnpm test`.
+
 ### A3. Testarrekrytering: enbart delbar länk (fråga 22)
 
 Ingen testpanel, ingen matchning, ingen ömsesidighetsmekanik, ingen öppen lobbylista.
@@ -2653,10 +2664,17 @@ Reviderat och byggt 2026-11-01 (#1511, beställarens beslut i #1469): **ett spel
 - I läsläget får rader tas bort, ett korts Antal sänkas och bilder tas bort, men inget annat. Det ersätter meningen ovan om att en redigering som bara krymper spelet avvisas.
 - Regeln är `onlyShrinks` i `packages/server/src/read-only.ts`, och den dömer två dokument, före och efter, så att en sammansatt redigering, ett helt dokument över HTTP (`PUT /projects/<id>`) och en version hålls till samma regel som en enskild redigering. En bild tas bort som `removePicture` gör det; rader i en annan ordning, ett högre Antal, en ny rad, bild eller text och allt annat är en ändring och avvisas som förut.
 - Aktören frågar regeln i beslutssteget, före commit. `PUT /projects/<id>` släpps därför förbi dörren för ett spel i läsläge, och aktören läser kroppen mot det som står; ett dokument som ändrar något annat svarar 402 med `{ error: 'read-only' }` som förut. «Spara» gör en version när det som står bara är den sparade versionen gjord mindre.
-- Ett spel som krympts så att det ryms lämnar läsläget utan att något lagras, eftersom regeln räknas om vid varje fråga. En krympning är en ändring, så spelet blir det senast ändrade och tar en plats före äldre spel som ryms.
+- Ett spel som krympts så att det ryms lämnar läsläget, när det finns en plats för det i ordningen som låstes vid utgången (#1518, nedan).
 - `GET /me/usage` säger `readOnly` som `{ id, why }` per spel, där `why` är taket spelet ligger över: `cardRowsPerProject`, `cardCopiesPerProject`, `projects` eller `storageBytes`, i den ordningen. `ifLapsed` säger samma sak för ett konto vars egen nivå fortfarande gäller, alltså vilka spel som skulle hamna i läsläge om den gick ut nu (#1494); ett konto på standardnivån har ingen sådan.
 - Gratisnivåns tak är beslutade (fråga 3 i #1469): 2 spel, 150 unika kort per spel, 1 bord åt gången, 8 bord på 30 dygn och 300 MB. De är konfiguration i lådans `BYD_PLANS` (DRIFT §12) och inte siffror i koden; utan variabeln är allt obegränsat som i betan.
 - Grindarna är `packages/server/test/read-only-lapsed.test.ts`, mot båda lagren.
+
+Beslutat och byggt 2026-11-01 (#1518, beställarens beslut i #1469): **läslägets ordning låses när abonnemanget går ut.**
+- Vid utgången sparas ordningen spelen tas i: de som ryms i gratisnivån då först, sedan resten, vardera senast ändrat först. Den står på kontots rad i `account_plans` (`lapsed_order`) och tas bort när utgången hävs eller kontot får en nivå igen.
+- Senare redigeringar flyttar inte ett spel i ordningen. Att ändra eller krympa ett spel kan därför bara ta det spelet ur läsläget, aldrig skjuta in ett annat; ett spel med för många kort som krymps så att det ryms tar en plats bara om det finns en ledig.
+- Ett spel som skapas efter utgången hamnar sist. Ett spel som tas bort lämnar sin plats till nästa i ordningen.
+- Utgången görs av `lapseAccount` i `packages/server/src/account-plans.ts`, som `plan lapse`, Stripes webhook och `stripe sync` (#1493) använder.
+- Grindarna är `packages/server/test/read-only-lapsed.test.ts` och `account-plans.test.ts`, mot båda lagren.
 
 ### G6. Personuppgifter: Deckster är ansvarig, och loggen maskas på plats (beslutat 2026-10-24, #1269)
 
@@ -5037,6 +5055,19 @@ En rad som läggs på en punkt ligger mitt på den i hela millimeter, med ett j�
 
 **Aktivitetsraden** säger biten efter sort: «Ada flyttade en meeple till Spelyta», «Ada lade ned en meeple» och «Ada ställde upp en meeple».
 
+**Filten** (#1475, prototypen i #1472, beställarens val 2026-11-01: filten B).
+Det som ännu inte flyttats är en hög: en plats stående pjäser av en sort som ligger på samma punkt i en yta ritas som en enda mörk bricka med figuren och antalet, som räknarnas hög (#89).
+Högen är bara en ritning och var bitarna ligger, aldrig ett begrepp i motorn eller loggen: setupen lägger en rads bitar i en färg på en punkt (`layMaterial`), filten och tangentbordet läser högen ur det (`piecePiles`), och en bit som dras ut är sin egen så fort bordet sagt var den hamnade.
+Ett drag i brickan tar den översta pjäsen, och tangentbordet når högen som ett stopp, den översta.
+En liggande meeple ligger alltid för sig.
+Varje flyttad pjäs ritas som sin silhuett uppifrån i platsens färg: meeplen som den kända figuren, kuben som en rundad kvadrat och skivan som en rund bricka med en ring innanför kanten, eftersom en gul skiva annars liknar räknarens bärnstensfärgade bricka.
+En liggande meeple är samma silhuett på sidan, utan skugga.
+Pjäserna ritas större än skalan, som tärningen: meeplen på tärningens 30 mm, kuben på 20 och skivan på 24 (`PIECE_MM`), och högens bricka på 44 mm (`PIECE_PILE_MM`), med fingrets mål på 44 px på varje skärm.
+Ingen platsfärg når 3:1 mot den gröna filten, så varje figur har ett hårfint band i filtens krita, som platsens kant; det mäts på målade pixlar i alla åtta platsfärger.
+Ett klick på en pjäs slår den aldrig: det öppnar ringen med «Lägg ner» eller «Res upp» för en meeple och «Flytta…», och F, Cmd/Ctrl-klick och dubbelklick lägger ned och reser upp den.
+M öppnar «Flytta till» med filtens ytor och ingen hand och inget kort, eftersom en pjäs aldrig staplas (K16, K32).
+Skärmläsaren hör sort, platsens namn i genitiv, om den ligger, och var: «meeple, Adas, i Spelyta» och för högen «3 meeples, Adas, i Framför A».
+
 ### K34. Brickor: kortet i sin egen form, och steget är typens (beslutat 2026-10-28 och 2026-11-01, #1470, #1474, #1482)
 
 Beställarens beslut i #1470 den 2026-10-28: formerna är kvadrat, sexhörning och rund (fråga 9), och en bricka kan hållas dold på handen som ett kort (fråga 10).
@@ -5054,6 +5085,17 @@ Det dolda går genom `project` som kortets (B6): en bricka med baksidan upp i en
 
 **Motorn har ingen gren för brickan.** `rotate`, `flip`, `stack`, `shuffle`, `split`, `draw` och `deal` läser typens beteenden som de läser kortets, och omspelningen ger samma bord och en blandad hög samma ordning (D4).
 En bricka staplas på ett kort och blandas i en hög med kort som motorn ser det, eftersom båda är `stackable` och `shufflable`; om en hög ska få blanda former är en fråga för leken och setupen (#1484), inte för typen.
+
+**Identiska markörer** (#1483): trettio guldmynt, eller skademarkörer, är en mall i n exemplar och ingen lek.
+Dokumentet bär dem i `setup.markers` som lådan bär sina ytor (L91): en `FaceTemplate` per sida, den pinnade bricktypen (B3), ett namn i dokumentet (`id`) och vad markören heter (`name`), och setupens rad som en tärnings (K28, K31): antal, en yta alla delar (`zone`, med `perSeat` för ett antal per spelare) eller en yta varje plats har (`role`), och en punkt (`at`).
+Till skillnad från en tärning får en markör ligga i en hög, en bank att ta ur: där ligger exemplaren som kort i högen och en punkt betyder ingenting.
+I en yta ligger de på rad kring punkten, eller kring ytans mitt; i en yta per plats sägs punkten från plats A:s stol och vänds mot varje plats kant.
+`layMarkers` säger var varje exemplar ligger och `setupFromProject` lägger dem, med framsidan upp; ett dokument utan markörer läses tillbaka orört.
+
+**En markör ritas en gång.** Vid bordet heter varje exemplar markören (`marker:<id>` som `cardRef`), aldrig en rad, så ett kort och en markör som delar ett ord delar varken yta, titel eller textur.
+Leken som bordet får bär markörens mall under det namnet (`templates` och `drawnWith` i `Deck`), och den enda kompilatorn ritar sidorna en gång per innehållshash: trettio mynt är två texturer, och en ändrad framsida ger alla trettio en ny hash.
+En sida utan mall ritas tom, eftersom en bricka har båda sidorna. Markörens namn är dess titel där dess framsida syns, och dold på samma villkor som ett korts (B6).
+Editorns ändring är `setMarkers`, hela listan med sidorna i en redigering som `setPieces`, och därmed ett steg tillbaka (B4). Raden i ＋-menyn och sidornas verktyg är #1487, filtens ritning #1485 och trycket #1488; tills trycket finns står brickor utanför tryckexporten och partnerns manifest (`printedYet`), där en partner som bara trycker kort annars vägrade hela ordern.
 
 Brickor i setupen, en egen lek och tabell per brickform, bordet, telefonen och trycket byggs i #1484–#1488.
 

@@ -7,7 +7,7 @@ import { forTheRoom } from '../table/presence.js'
 import { CardPlays, HandBar } from './HandActions.js'
 import { HandGrid } from './HandGrid.js'
 import { CountersRow, MineActions, MineStrip, inFrontOf } from './SeatExtras.js'
-import { isPiece } from '../components.js'
+import { isMaterial } from '../components.js'
 import { PlaySheet } from './PlaySheet.js'
 import { DicePill, DiceSheet, diceOf } from './Dice.js'
 import { standingRewind } from '../table/rewind.js'
@@ -222,7 +222,7 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
   }
   // The row as it is drawn now, so a card that moved while it was held leaves the walk with it.
   const rowOf = (row: 'hand' | 'mine' | { zone: string }): VisibleComponentState[] =>
-    row === 'hand' ? [...hand].reverse() : row === 'mine' ? inFrontOf(view) : view.components.filter((c) => c.zone === row.zone && !isPiece(c))
+    row === 'hand' ? [...hand].reverse() : row === 'mine' ? inFrontOf(view) : view.components.filter((c) => c.zone === row.zone && !isMaterial(c))
   const hold = (card: VisibleComponentState, row: 'hand' | 'mine' | { zone: string }) => setHeld({ card, row })
 
   const tabs: { id: Tab; label: string; count?: number }[] = [

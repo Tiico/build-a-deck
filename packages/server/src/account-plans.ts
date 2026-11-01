@@ -6,7 +6,7 @@ import type { LogStore } from './store.js'
 import { ProjectHost } from './project-actor.js'
 import { CARD_MEASURES, cardsUsed, type CardMeasure } from './quota-cards.js'
 import { checkPlansInUse, hasPrint, limitOf, plansFromEnv, tableWindowFrom, type Limit, type Plans } from './quotas.js'
-import { readOnlyReasons, type FitCeilings, type GameStanding, type ReadOnlyWhy } from './read-only.js'
+import { newestFirstOf, readOnlyReasons, type FitCeilings, type GameStanding, type ReadOnlyWhy } from './read-only.js'
 
 // Which tier an account has (#1193, A2, #1192). A table of its own, beside the accounts, written by
 // the operator today and by Stripe later — so that paying becomes a way to change tier and not a
@@ -18,10 +18,15 @@ import { readOnlyReasons, type FitCeilings, type GameStanding, type ReadOnlyWhy 
 // held to the default, which is the free tier (A2), and what of its games lies over the free tier's
 // ceilings is read-only (`read-only.ts`). Giving the account a tier again ends the lapse. The
 // operator sets and lifts it today; Stripe writes the same when a subscription runs out.
+//
+// The lapse locks the order the games are taken in (#1518, beställarens beslut 2026-11-01): the
+// games that fit at the lapse first, then the rest, each most recently changed first, as they stood
+// then. Later edits never move a game in it, so changing one game, a shrink included, can only take
+// that game out of read-only and never put another in. A game made after the lapse comes last.
 
 export type PlanSource = 'operator' | 'stripe'
-// `lapsed` is when the tier lapsed, absent while it holds.
-export type AccountPlan = { plan: string; since: string; source: PlanSource; lapsed?: string }
+// `lapsed` is when the tier lapsed, absent while it holds; `order` the games' order locked with it.
+export type AccountPlan = { plan: string; since: string; source: PlanSource; lapsed?: string; order?: string[] }
 
 export type AccountPlanStore = {
   // The account's own tier, or null when it has none and so has the default.
@@ -30,21 +35,27 @@ export type AccountPlanStore = {
   setPlan(account: string, plan: string, source: PlanSource): Promise<void>
   // Takes the account's own tier away, so it has the default again; false when it had none.
   clearPlan(account: string): Promise<boolean>
-  // Marks the account's own tier as lapsed; false when it has none. A tier already lapsed keeps the
-  // moment it lapsed.
-  lapse(account: string): Promise<boolean>
-  // Lifts a lapse; false when the account's tier was not lapsed.
+  // Marks the account's own tier as lapsed, with the order its games are taken in from now on (#1518);
+  // false when it has none. A tier already lapsed keeps the moment it lapsed and its order.
+  lapse(account: string, order?: readonly string[]): Promise<boolean>
+  // Lifts a lapse, and forgets its order; false when the account's tier was not lapsed.
   unlapse(account: string): Promise<boolean>
   // Every tier some account has, once each, in order: what the start checks the configuration
   // against. A lapsed tier is named too, since lifting the lapse gives it back.
   plansNamed(): Promise<string[]>
+  // Which Stripe customer is the account (#1493): linked once, when the account first asks for a
+  // checkout, and never moved; a second link for the account keeps the first, and a customer
+  // linked to another account is refused. The link is no tier, so taking the tier away keeps it.
+  linkCustomer(account: string, customer: string): Promise<void>
+  customerOf(account: string): Promise<string | null>
+  accountOfCustomer(customer: string): Promise<string | null>
 }
 
 export class MemoryAccountPlanStore implements AccountPlanStore {
   private readonly rows = new Map<string, AccountPlan>()
   async planOf(account: string): Promise<AccountPlan | null> {
     const row = this.rows.get(account)
-    return row ? { ...row } : null
+    return row ? { ...row, ...(row.order ? { order: [...row.order] } : {}) } : null
   }
   async setPlan(account: string, plan: string, source: PlanSource): Promise<void> {
     this.rows.set(account, { plan, since: new Date().toISOString(), source })
@@ -52,50 +63,86 @@ export class MemoryAccountPlanStore implements AccountPlanStore {
   async clearPlan(account: string): Promise<boolean> {
     return this.rows.delete(account)
   }
-  async lapse(account: string): Promise<boolean> {
+  async lapse(account: string, order: readonly string[] = []): Promise<boolean> {
     const row = this.rows.get(account)
     if (!row) return false
-    row.lapsed ??= new Date().toISOString()
+    if (row.lapsed === undefined) {
+      row.lapsed = new Date().toISOString()
+      row.order = [...order]
+    }
     return true
   }
   async unlapse(account: string): Promise<boolean> {
     const row = this.rows.get(account)
     if (row?.lapsed === undefined) return false
     delete row.lapsed
+    delete row.order
     return true
   }
   async plansNamed(): Promise<string[]> {
     return [...new Set([...this.rows.values()].map((r) => r.plan))].sort()
+  }
+  private readonly customers = new Map<string, string>()
+  async linkCustomer(account: string, customer: string): Promise<void> {
+    if (this.customers.has(account)) return
+    if ([...this.customers.values()].includes(customer)) throw new Error('customer linked to another account')
+    this.customers.set(account, customer)
+  }
+  async customerOf(account: string): Promise<string | null> {
+    return this.customers.get(account) ?? null
+  }
+  async accountOfCustomer(customer: string): Promise<string | null> {
+    return [...this.customers].find(([, c]) => c === customer)?.[0] ?? null
+  }
+  // What an account that deletes itself leaves here, in memory (#1280); Postgres drops it with the
+  // account.
+  forget(account: string): void {
+    this.rows.delete(account)
+    this.customers.delete(account)
   }
 }
 
 export class PostgresAccountPlanStore implements AccountPlanStore {
   constructor(private readonly sql: Sql) {}
   async planOf(account: string): Promise<AccountPlan | null> {
-    const [row] = await this.sql<{ plan: string; since: Date; source: PlanSource; lapsed_at: Date | null }[]>`select plan, since, source, lapsed_at from account_plans where account_id = ${account}`
-    return row ? { plan: row.plan, since: row.since.toISOString(), source: row.source, ...(row.lapsed_at ? { lapsed: row.lapsed_at.toISOString() } : {}) } : null
+    const [row] = await this.sql<{ plan: string; since: Date; source: PlanSource; lapsed_at: Date | null; lapsed_order: string[] | null }[]>`select plan, since, source, lapsed_at, lapsed_order from account_plans where account_id = ${account}`
+    return row ? { plan: row.plan, since: row.since.toISOString(), source: row.source, ...(row.lapsed_at ? { lapsed: row.lapsed_at.toISOString(), order: row.lapsed_order ?? [] } : {}) } : null
   }
   async setPlan(account: string, plan: string, source: PlanSource): Promise<void> {
     await this.sql`
       insert into account_plans (account_id, plan, since, source) values (${account}, ${plan}, now(), ${source})
-      on conflict (account_id) do update set plan = excluded.plan, since = excluded.since, source = excluded.source, lapsed_at = null
+      on conflict (account_id) do update set plan = excluded.plan, since = excluded.since, source = excluded.source, lapsed_at = null, lapsed_order = null
     `
   }
   async clearPlan(account: string): Promise<boolean> {
     const rows = await this.sql`delete from account_plans where account_id = ${account} returning account_id`
     return rows.length > 0
   }
-  async lapse(account: string): Promise<boolean> {
-    const rows = await this.sql`update account_plans set lapsed_at = coalesce(lapsed_at, now()) where account_id = ${account} returning account_id`
+  async lapse(account: string, order: readonly string[] = []): Promise<boolean> {
+    // Both columns are set from the row as it was, so a tier already lapsed keeps its moment and order.
+    const rows = await this.sql`
+      update account_plans set lapsed_order = case when lapsed_at is null then ${this.sql.json([...order])} else lapsed_order end, lapsed_at = coalesce(lapsed_at, now())
+      where account_id = ${account} returning account_id`
     return rows.length > 0
   }
   async unlapse(account: string): Promise<boolean> {
-    const rows = await this.sql`update account_plans set lapsed_at = null where account_id = ${account} and lapsed_at is not null returning account_id`
+    const rows = await this.sql`update account_plans set lapsed_at = null, lapsed_order = null where account_id = ${account} and lapsed_at is not null returning account_id`
     return rows.length > 0
   }
   async plansNamed(): Promise<string[]> {
     const rows = await this.sql<{ plan: string }[]>`select distinct plan from account_plans order by plan`
     return rows.map((r) => r.plan)
+  }
+  async linkCustomer(account: string, customer: string): Promise<void> {
+    await this.sql`insert into stripe_customers (account_id, customer_id) values (${account}, ${customer}) on conflict (account_id) do nothing`
+  }
+  async customerOf(account: string): Promise<string | null> {
+    const [row] = await this.sql<{ customer_id: string }[]>`select customer_id from stripe_customers where account_id = ${account}`
+    return row?.customer_id ?? null
+  }
+  async accountOfCustomer(customer: string): Promise<string | null> {
+    const [row] = await this.sql<{ account_id: string }[]>`select account_id::text from stripe_customers where customer_id = ${customer}`
+    return row ? String(row.account_id) : null
   }
 }
 
@@ -159,7 +206,7 @@ export async function usageOf(stores: UsageStores, plans: Plans, account: string
     const doc = await live(id)
     if (doc) games.push({ id, used: cardsUsed(doc) })
   }
-  const held = own ? listed(await overFree({ ...stores, live }, plans, account)) : []
+  const held = own ? listed(await overFree({ ...stores, live }, plans, account, own.order)) : []
   const readOnly = own?.lapsed === undefined ? [] : held
   const perGame = (m: CardMeasure): PerGame => ({ used: Math.max(0, ...games.map((g) => g.used[m])), limit: limitOf(plans, plan, m), projects: games.map((g) => ({ id: g.id, used: g.used[m] })) })
   const cards = Object.fromEntries(CARD_MEASURES.map((m) => [m, perGame(m)])) as Record<CardMeasure, PerGame>
@@ -201,13 +248,22 @@ async function changedAt(projects: ProjectStore, id: string): Promise<string> {
 // afresh every time, so a game deleted or a lapse lifted is felt at once. A game of somebody else's
 // is held to its owner's: what a co-editor meets is the owner's read-only mode (D3).
 export async function readOnlyOf(stores: Pick<UsageStores, 'projects' | 'accountPlans' | 'live'>, plans: Plans, owner: string): Promise<Set<string>> {
-  if ((await stores.accountPlans?.planOf(owner))?.lapsed === undefined) return new Set()
-  return new Set((await overFree(stores, plans, owner)).keys())
+  const own = await stores.accountPlans?.planOf(owner)
+  if (own?.lapsed === undefined) return new Set()
+  return new Set((await overFree(stores, plans, owner, own.order)).keys())
 }
 const listed = (over: Map<string, ReadOnlyWhy>): HeldGame[] => [...over].map(([id, why]) => ({ id, why })).sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
 // The owner's games that lie over the default tier's ceilings, and why, whether or not its own tier
 // has lapsed: the rule in `read-only.ts`, asked of every game as it stands.
-async function overFree(stores: Pick<UsageStores, 'projects' | 'live'>, plans: Plans, owner: string): Promise<Map<string, ReadOnlyWhy>> {
+async function overFree(stores: Pick<UsageStores, 'projects' | 'live'>, plans: Plans, owner: string, order?: readonly string[]): Promise<Map<string, ReadOnlyWhy>> {
+  return readOnlyReasons(freeCeilings(plans), await standingsOf(stores, owner), order)
+}
+const freeCeilings = (plans: Plans): FitCeilings => {
+  const free = (m: keyof FitCeilings): Limit => limitOf(plans, plans.default, m)
+  return { projects: free('projects'), cardRowsPerProject: free('cardRowsPerProject'), cardCopiesPerProject: free('cardCopiesPerProject'), storageBytes: free('storageBytes') }
+}
+// Each game the owner has, as it stands: when it last changed, its cards and what it names.
+async function standingsOf(stores: Pick<UsageStores, 'projects' | 'live'>, owner: string): Promise<GameStanding[]> {
   const live = liveOf(stores)
   const games: GameStanding[] = []
   for (const id of await stores.projects.ownedIds(owner)) {
@@ -216,8 +272,18 @@ async function overFree(stores: Pick<UsageStores, 'projects' | 'live'>, plans: P
     const used = cardsUsed(doc)
     games.push({ id, changedAt: await changedAt(stores.projects, id), rows: used.cardRowsPerProject, copies: used.cardCopiesPerProject, assets: await stores.projects.weighed(id) })
   }
-  const free = (m: keyof FitCeilings): Limit => limitOf(plans, plans.default, m)
-  return readOnlyReasons({ projects: free('projects'), cardRowsPerProject: free('cardRowsPerProject'), cardCopiesPerProject: free('cardCopiesPerProject'), storageBytes: free('storageBytes') }, games)
+  return games
+}
+
+// A lapse, as the operator's script and Stripe make it (#1491, #1518): the account's own tier is
+// marked lapsed, and the order its games are taken in from now on is locked with it: those that fit
+// the free tier now first, then the rest, each most recently changed first. False when the account
+// has no tier of its own.
+export async function lapseAccount(stores: Pick<UsageStores, 'projects' | 'live'> & { accountPlans: AccountPlanStore }, plans: Plans, account: string): Promise<boolean> {
+  const games = await standingsOf(stores, account)
+  const over = readOnlyReasons(freeCeilings(plans), games)
+  const newestFirst = newestFirstOf(games).map((g) => g.id)
+  return stores.accountPlans.lapse(account, [...newestFirst.filter((id) => !over.has(id)), ...newestFirst.filter((id) => over.has(id))])
 }
 
 // The operator's door to an account's tier (DRIFT §10): by address, over Tailscale, and no HTTP
@@ -239,10 +305,10 @@ export async function clearPlanByAddress(stores: { auth: Pick<AuthStore, 'accoun
 }
 // A lapse set and lifted by hand (#1491), before Stripe writes it: only a tier of the account's own
 // can lapse, since an account on the default has nothing to lapse from.
-export async function lapsePlanByAddress(stores: { auth: Pick<AuthStore, 'accountByEmail'>; accountPlans: AccountPlanStore }, email: string): Promise<{ ok: true } | Refusal> {
+export async function lapsePlanByAddress(stores: { auth: Pick<AuthStore, 'accountByEmail'>; accountPlans: AccountPlanStore; projects: ProjectStore; plans: Plans }, email: string): Promise<{ ok: true } | Refusal> {
   const account = await stores.auth.accountByEmail(address(email))
   if (!account) return { ok: false, why: 'no such account' }
-  return (await stores.accountPlans.lapse(account.id)) ? { ok: true } : { ok: false, why: 'no tier of its own' }
+  return (await lapseAccount(stores, stores.plans, account.id)) ? { ok: true } : { ok: false, why: 'no tier of its own' }
 }
 export async function unlapsePlanByAddress(stores: { auth: Pick<AuthStore, 'accountByEmail'>; accountPlans: AccountPlanStore }, email: string): Promise<{ ok: true } | Refusal> {
   const account = await stores.auth.accountByEmail(address(email))

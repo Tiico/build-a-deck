@@ -144,6 +144,12 @@
   100% { transform: scale(0.95); opacity: 0; }
 }
 
+/* A wooden piece (#1475, prototype #1472 felt B): `Piece.tsx` draws the figure in its seat's colour
+   with a hairline of chalk, or the chip a pile of them is, with the count on a chalk badge. */
+.byd-piece { touch-action: none; }
+.byd-piece svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.byd-piece text { fill: #1c1c1c; font-size: 36px; font-weight: 800; font-family: var(--byd-felt-font, system-ui, sans-serif); text-anchor: middle; dominant-baseline: central; font-variant-numeric: tabular-nums; }
+
 /* Zones that are areas other than the floor get an outline and a label. The outline is two bands
    (#553): the chalk outside a dark hairline, as the seat band is (K16), so it holds 3:1 between
    its bands on all of the felt, on the TV and against a card lying in the zone. */

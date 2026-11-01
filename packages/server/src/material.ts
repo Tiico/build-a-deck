@@ -1,5 +1,5 @@
-import { BOARDS, seatEdgeOf } from '@byd/engine'
-import { CHIP_MM, DIE_MM, PIECE_MM, counterSpots, diceSpots, type Counter, type Die, type Geometry, type Piece, type Setup, type Zone } from './recipe.js'
+import { BOARDS, TILES, seatEdgeOf } from '@byd/engine'
+import { CHIP_MM, DIE_MM, PIECE_MM, PIECE_PILE_MM, counterSpots, diceSpots, type Counter, type Die, type Geometry, type Marker, type Piece, type Setup, type Zone } from './recipe.js'
 
 // Imported by the editor as well as the server, so this module stays free of anything Node.
 // Where the game's material lies when a table is laid (#1292): the counters (C4) and the dice
@@ -30,8 +30,9 @@ export type MaterialPiece = {
 // A die or a piece on its way to a spot: its line, the seat whose chair its point is read from, and
 // for a piece the seat whose colour it wears.
 type Laid = { line: MaterialLine; seat: string | null; owner: string | null; faces?: number; kind?: PieceKind }
+const sizeOf = (l: Laid): number => (l.kind === undefined ? DIE_MM : PIECE_MM[l.kind])
 function pieceOf(zone: string, l: Laid, at: { x: number; y: number }): MaterialPiece {
-  const size = l.kind === undefined ? DIE_MM : PIECE_MM
+  const size = sizeOf(l)
   return { line: l.line, zone, seat: l.seat, size, ...(l.faces !== undefined ? { faces: l.faces } : {}), ...(l.kind !== undefined ? { kind: l.kind, owner: l.owner } : {}), ...at }
 }
 
@@ -84,21 +85,59 @@ export function layMaterial(setup: Setup): MaterialPiece[] {
   }
   // The dice and the wooden pieces (#1471) side by side in the area each is put in and clear of what
   // stands in it (the floor's piles, #1137) — or, for a line the designer dragged, in a row on the
-  // point it was dragged to. A line put in a zone that is gone lies nowhere. A die and a piece take
-  // the same room (`PIECE_MM` is `DIE_MM` until the felt draws a piece), so they share the spots.
-  const byZone = new Map<string, Laid[]>()
+  // point it was dragged to. A line put in a zone that is gone lies nowhere.
+  //
+  // A die takes a spot of its own. A line's wooden pieces of one colour share one (#1475, prototype
+  // #1472 B): what has not been moved yet is a pile the felt draws as one chip with a count, as a
+  // seat's counters past the second are (#89). The pile is where they lie and what the client
+  // draws, and nothing the engine or the log knows about. Each piece is centred on its spot by its
+  // own size, so a die and a piece pile beside each other however large each is drawn.
+  type Spot = Laid[]
+  const byZone = new Map<string, Spot[]>()
+  const roomOf = (spot: Spot): number => {
+    const first = spot[0]
+    if (!first) return DIE_MM
+    return first.kind !== undefined && spot.length > 1 ? PIECE_PILE_MM : sizeOf(first)
+  }
+  const put = (zoneId: string, spot: Spot, at: { x: number; y: number }, room: number) => {
+    for (const l of spot) {
+      const inset = Math.round((room - sizeOf(l)) / 2)
+      pieces.push(pieceOf(zoneId, l, { x: at.x + inset, y: at.y + inset }))
+    }
+  }
+  // The pieces of one line in one zone, gathered by colour into spots; dice one to a spot.
+  const spotsOf = (laid: Laid[]): Spot[] => {
+    const out: Spot[] = []
+    const byOwner = new Map<string, Spot>()
+    for (const l of laid) {
+      if (l.kind === undefined) {
+        out.push([l])
+        continue
+      }
+      const key = l.owner ?? ''
+      const spot = byOwner.get(key)
+      if (spot) spot.push(l)
+      else {
+        const fresh = [l]
+        byOwner.set(key, fresh)
+        out.push(fresh)
+      }
+    }
+    return out
+  }
   const lay = (zoneId: string, count: number, at: { x: number; y: number } | undefined, seat: string | null, of: (i: number) => Laid) => {
-    const laid = Array.from({ length: count }, (_, i) => of(i))
+    const spots = spotsOf(Array.from({ length: count }, (_, i) => of(i)))
     if (at === undefined) {
-      byZone.set(zoneId, [...(byZone.get(zoneId) ?? []), ...laid])
+      byZone.set(zoneId, [...(byZone.get(zoneId) ?? []), ...spots])
       return
     }
     const zone = zoneOf(setup, zoneId)
     if (!zone) return
     const point = seat === null ? at : seatPoint(at, zone.geometry, edgeOf(setup, seat))
-    piecesAt(point, zone.geometry, count, DIE_MM).forEach((spot, i) => {
-      const l = laid[i]
-      if (l) pieces.push(pieceOf(zoneId, l, spot))
+    const room = Math.max(...spots.map(roomOf))
+    piecesAt(point, zone.geometry, spots.length, room).forEach((corner, i) => {
+      const spot = spots[i]
+      if (spot) put(zoneId, spot, corner, room)
     })
   }
   const lines: { line: MaterialLine; d: Die | Piece; faces?: number; kind?: PieceKind }[] = [
@@ -117,11 +156,12 @@ export function layMaterial(setup: Setup): MaterialPiece[] {
       lay(d.zone, count, d.at, null, (i) => ({ ...what, seat: null, owner: d.perSeat ? colour(setup.seats[Math.floor(i / d.count)] ?? null) : null }))
     }
   }
-  for (const [zoneId, laid] of byZone) {
+  for (const [zoneId, spots] of byZone) {
     const zone = zoneOf(setup, zoneId)
     if (!zone) continue
-    const spots = diceSpots(zone.geometry, laid.length, setup.zones.filter((z) => z.id !== zoneId))
-    laid.forEach((l, i) => pieces.push(pieceOf(zoneId, l, spots[i] ?? { x: 0, y: 0 })))
+    const room = Math.max(...spots.map(roomOf))
+    const corners = diceSpots(zone.geometry, spots.length, setup.zones.filter((z) => z.id !== zoneId), room)
+    spots.forEach((spot, i) => put(zoneId, spot, corners[i] ?? { x: 0, y: 0 }, room))
   }
   return pieces
 }
@@ -171,6 +211,41 @@ export function placeLine(setup: Setup, line: MaterialLine, center: { x: number;
 }
 
 const contains = (g: Geometry, p: { x: number; y: number }): boolean => p.x >= g.x && p.y >= g.y && p.x <= g.x + g.w && p.y <= g.y + g.h
+
+// The name a marker goes by at the table (#1483): its `cardRef`, under which its faces are compiled
+// once for every copy. Kept apart from the deck's rows, whose ids are the designer's to choose, so a
+// card and a marker that share a word never share a face, a title or a texture.
+export const markerRef = (id: string): string => `marker:${id}`
+
+// Where the game's markers lie when a table is laid (#1483), copy by copy, with the marker each is
+// a copy of. In a pile they lie in the pile, as its cards do, and a point means nothing there. In an
+// area they lie in a row around the point (`at`, or the middle of the zone), a tile and a gap apart,
+// as a line of dice dragged to a point does; for an area each seat has the point is said from seat
+// A's chair and turned to face every other seat's edge (K31). `role` gives every seat `count` in its
+// own zone, and `perSeat` on a shared zone `count` for every player. A marker put in a zone that is
+// gone, or of a type nobody knows, lies nowhere. Asked by `setupFromProject` and by whatever draws
+// the markers in the editor, so both lay the same copies.
+export type LaidMarker = { marker: Marker; zone: string; seat: string | null; x?: number; y?: number }
+export function layMarkers(setup: Setup): LaidMarker[] {
+  const laid: LaidMarker[] = []
+  const lay = (marker: Marker, zoneId: string, count: number, seat: string | null) => {
+    const zone = zoneOf(setup, zoneId)
+    const size = TILES.find((t) => t.id === marker.type.id && t.version === marker.type.version)?.physical.widthMm
+    if (!zone || size === undefined) return
+    if (zone.kind !== 'area') {
+      for (let i = 0; i < count; i++) laid.push({ marker, zone: zoneId, seat })
+      return
+    }
+    const at = marker.at ?? { x: zone.geometry.w / 2, y: zone.geometry.h / 2 }
+    const point = seat === null ? at : seatPoint(at, zone.geometry, edgeOf(setup, seat))
+    for (const spot of piecesAt(point, zone.geometry, count, size)) laid.push({ marker, zone: zoneId, seat, ...spot })
+  }
+  for (const marker of setup.markers ?? []) {
+    if (marker.role !== undefined) for (const seat of setup.seats) lay(marker, `${marker.role}:${seat}`, marker.count, seat)
+    else if (marker.zone !== undefined) lay(marker, marker.zone, marker.perSeat ? marker.count * setup.seats.length : marker.count, null)
+  }
+  return laid
+}
 
 // Where the game's boards lie when a table is laid (#1479): one board for a line in a shared zone, and
 // one for every seat for a line in a role, turned to face the seat's edge. `x` and `y` are the top
