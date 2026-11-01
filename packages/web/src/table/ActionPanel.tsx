@@ -58,7 +58,9 @@ export function ActionPanel({ view, thing, cards, onClose, onRun, onLook, onSet,
         // A die lies on the felt (K28): the pointer never drops one into a pile (`zoneAt`) and a
         // hand holds cards, so its places are the areas and the cards lying in them.
         (p) => thing.kind !== 'die' || p.kind === 'area' || p.kind === 'card',
-      )
+        // A wooden piece is offered the felt's areas and nothing else (#1475, K16, K32): no hand, no
+        // pile, and no card, since a drop on a card is a stack and a piece stacks on nothing.
+      ).filter((p) => thing.kind !== 'piece' || p.kind === 'area')
   // Where the thing can be moved to, in one group per way of moving it. A pile is one stop since
   // #572, and it moves two ways: the whole pile, and — when there is one — the card on top of it.
   // Each group is named by its heading, so the same place said twice is said under what it does.

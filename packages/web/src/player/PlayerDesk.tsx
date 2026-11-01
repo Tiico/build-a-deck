@@ -16,7 +16,7 @@ import { Help } from '../editor/HelpDrawer.js'
 import { Texture } from '../table/Texture.js'
 import { hue } from '../table/hue.js'
 import { cardName, cardWord, floorName } from '../table/keyboard.js'
-import { isPiece } from '../components.js'
+import { isMaterial } from '../components.js'
 import { seatColor } from '../table/seatColor.js'
 import { Refusal, type RefusalHandle } from '../status/Refusal.js'
 import { useT, type T } from '../i18n/index.js'
@@ -173,7 +173,7 @@ export function deskTargets(view: Snapshot, t: T): { lead: DeskTarget[]; mine: D
   const all = tiles.filter((z) => z.kind === 'pile')
   const first = all.find((z) => z.id === back) ?? all[0]
   const piles = first ? [first, ...all.filter((z) => z !== first)] : []
-  const floor: DeskTarget = { id: view.floor, name: floorName(view, t), at: 'top', kind: 'area', count: view.components.filter((c) => c.zone === view.floor && !isPiece(c)).length, mine: false }
+  const floor: DeskTarget = { id: view.floor, name: floorName(view, t), at: 'top', kind: 'area', count: view.components.filter((c) => c.zone === view.floor && !isMaterial(c)).length, mine: false }
   return {
     lead: piles.slice(0, 1),
     mine: tiles.filter((z) => z.kind === 'area' && z.mine),
@@ -217,7 +217,7 @@ type TargetProps = PlayerDeskProps & { z: DeskTarget; aimed: boolean; t: T }
 // there. The whole tile is where a card is let go (`data-drop-zone`); what is pressed inside it is
 // a pile's draw (#79) or a card held up to be read.
 function Target({ z, aimed, t, view, faces, onDraw, drawn, refusedPile, dropped, refusedZone, onRead }: TargetProps) {
-  const cards = view.components.filter((c) => c.zone === z.id && !isPiece(c))
+  const cards = view.components.filter((c) => c.zone === z.id && !isMaterial(c))
   const refused = refusedZone === z.id && dropped.notice !== null
   return (
     <section className="byd-desk-target" data-kind={z.kind} data-drop-zone={z.id} data-aim={aimed ? '' : undefined} aria-label={z.name}>
