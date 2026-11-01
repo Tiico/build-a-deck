@@ -715,7 +715,7 @@ export const enAccount = {
   'quota.pro.storage': 'With Pro the account holds {limit}, for {price}.',
   'quota.pro.go': 'Upgrade to Pro',
   // Pro in the read-only band, to the owner (#1532).
-  'readOnly.pro': 'With Pro the account holds what Pro holds again, for {price}.',
+  'readOnly.pro': "Renew Pro for {price} and Pro's limits apply again.",
   'readOnly.pro.go': 'Renew Pro',
   'quota.pro.rows.one': '{n} card',
   'quota.pro.rows.other': '{n} cards',
