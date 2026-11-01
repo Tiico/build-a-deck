@@ -30,6 +30,10 @@ const ring = (l: Locator) => l.evaluate((el) => { const s = getComputedStyle(el)
 
 test('a mistyped address is corrected from the receipt, and the link is sent again until the limiter says when', async ({ page }) => {
   const asked = await aBoxWithAMailer(page, '1380')
+  // The page's clock starts on a whole minute, so «Skicka igen» below can be pressed 200 ms before
+  // the next one and the receipt read after it has gone over (#1503).
+  const start = Date.UTC(2026, 10, 1, 11, 14, 0)
+  await page.clock.install({ time: start })
   await page.goto('/login')
   const field = page.getByLabel('E-post')
   await field.fill('ada@example.co')
@@ -72,10 +76,19 @@ test('a mistyped address is corrected from the receipt, and the link is sent aga
   await page.keyboard.press('Tab')
   await page.keyboard.press('Tab')
   await expect(again).toBeFocused()
+  // The receipt says the minute the link went, and a minute can go over between the press and the
+  // reading: so the clock is read on both sides of the send, and either minute is the right answer.
+  await page.clock.pauseAt(start + 59_800)
+  const minute = () => page.evaluate(() => new Date().toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' }))
+  const before = await minute()
   await page.keyboard.press('Enter')
   await expect.poll(() => asked.length).toBe(3)
-  const clock = await page.evaluate(() => new Date().toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' }))
-  await expect(sent.getByText(/^En ny länk skickades/)).toHaveText(`En ny länk skickades ${clock}. Den förra fungerar också.`)
+  await page.clock.runFor(1_000)
+  const after = await minute()
+  // The press lands before the minute goes over and the reading after it, or this proves nothing.
+  expect(after).not.toBe(before)
+  await expect(sent.getByText(/^En ny länk skickades/)).toHaveText(new RegExp(`^En ny länk skickades (${before}|${after})\\. Den förra fungerar också\\.$`))
+  await page.clock.resume()
   await expect(again).toBeFocused()
 
   // The corrected address has five of its own; the sixth is told in the receipt when the next can go.

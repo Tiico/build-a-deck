@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { TUCKBOX, boxFaceSize, tuckNet, type BoxFace } from '@byd/engine'
 import { boxOf } from '@byd/server/doc'
@@ -360,6 +360,60 @@ describe('«Visa upp» (#1414)', () => {
     } finally {
       HTMLAnchorElement.prototype.click = click
     }
+  })
+
+  // En upptagen renderare (#1500): stillbilden köar efter bordens texturer (DRIFT §6), och tre bord
+  // på lådan tar minuter. Knappen gav upp efter en minut medan jobbet stod kvar i kön, och bilden
+  // som sedan ritades laddades aldrig ner. Den väntar så länge kön säger att bilden är på väg.
+  it('väntar på stillbilden så länge kön säger att den är på väg', async () => {
+    const pressed: string[] = []
+    const click = HTMLAnchorElement.prototype.click
+    HTMLAnchorElement.prototype.click = function (this: HTMLAnchorElement) {
+      pressed.push(`${this.href} ${this.download}`)
+    }
+    const realFetch = globalThis.fetch
+    let asked = 0
+    globalThis.fetch = (async (...args: Parameters<typeof fetch>) => {
+      const res = await realFetch(...args)
+      if (/\/faces\/[0-9a-f]{64}$/.test(String(args[0] instanceof Request ? args[0].url : args[0]))) asked++
+      return res
+    }) as typeof fetch
+    try {
+      await open()
+      await openBox()
+      await showOff()
+      fireEvent.click(screen.getByRole('button', { name: 'Spara bilden' }))
+      await waitFor(() => expect(asked).toBeGreaterThan(0))
+      // The pause between two questions to the queue, cut short: what is under test is how many
+      // answers of «on its way» the press sits through, and four hundred is well past the minute
+      // of them it used to allow.
+      const pause = globalThis.setTimeout
+      vi.spyOn(globalThis, 'setTimeout').mockImplementation(((fn: () => void, ms?: number, ...rest: unknown[]) => pause(fn, ms === 250 ? 0 : ms, ...rest)) as typeof setTimeout)
+      const failed = () => shown()!.querySelector('[role="alert"]') !== null
+      await waitFor(() => expect(asked > 400 || failed()).toBe(true), { timeout: 15_000 })
+      expect(failed()).toBe(false)
+      expect(pressed).toEqual([])
+      await run.completeRenders()
+      await waitFor(() => expect(pressed.length > 0 || failed()).toBe(true), { timeout: 5000 })
+      expect(failed()).toBe(false)
+      expect(pressed).toHaveLength(1)
+    } finally {
+      vi.restoreAllMocks()
+      globalThis.fetch = realFetch
+      HTMLAnchorElement.prototype.click = click
+    }
+  })
+
+  // Och väntan har ett slut: en bild renderaren inte kunde ta sägs som det, och knappen går att
+  // trycka igen.
+  it('säger till när stillbilden inte kunde tas', async () => {
+    await open()
+    await openBox()
+    await showOff()
+    fireEvent.click(screen.getByRole('button', { name: 'Spara bilden' }))
+    await waitFor(async () => expect(await run.failRenders()).toBeGreaterThan(0), { timeout: 5000 })
+    expect((await within(shown()!).findByRole('alert', {}, { timeout: 5000 })).textContent).toBe('Bilden kunde inte tas. Försök igen.')
+    expect(screen.getByRole('button', { name: 'Spara bilden' }).getAttribute('aria-disabled')).toBeNull()
   })
 
   it('viker ut med en klickad sida vald', async () => {
