@@ -499,6 +499,28 @@ OAuth återstår.
 
 Betalning: Stripe.
 
+Byggt 2026-11-01 (#1493): **abonnemanget på Pro via Stripe skriver kontots nivå.**
+Nycklarna bor i lådans `.env`, aldrig i repot, och stacken skickar dem till appen: `STRIPE_SECRET_KEY` (testlägets `sk_test_…` tills beställaren lägger in den skarpa före release), `STRIPE_WEBHOOK_SECRET` (webhookens signeringshemlighet, `whsec_…`) och `BYD_STRIPE_PRICES`, Stripes pris-id per nivå, valuta och intervall som JSON på en rad inom enkla citattecken:
+
+```sh
+BYD_STRIPE_PRICES='{"pro":{"sek":{"month":"price_…","year":"price_…"},"eur":{"month":"price_…","year":"price_…"}}}'
+```
+
+Inget pris är en siffra i koden: det Pro kostar är det Stripe har under id:t (99 kr / 9 € i månaden, 990 kr / 90 € om året, #1469).
+Utan någon av variablerna är betalningen avstängd och lådan som förut; några av dem, eller priser som inte går att läsa, en nivå `BYD_PLANS` saknar eller standardnivån med pris, stoppar starten, och loggen säger varför.
+Startraden säger `{"msg":"payments","on":true,"mode":"test","plans":["pro"]}`, aldrig en nyckel.
+Ett inloggat konto begär en kassa med `POST /me/subscription/checkout` och skickas till Stripes Checkout, så inga kortuppgifter passerar lådan; första gången skapas en Stripe-kund åt kontot, och kopplingen står i tabellen `stripe_customers`.
+Webhooken är `POST /stripe/webhook` på den publika adressen, alltså `https://deckster.se/stripe/webhook` genom lådans traefik och Cloudflare som all annan trafik (§2); den läggs upp i Stripes Dashboard med händelserna `customer.subscription.created`, `customer.subscription.updated` och `customer.subscription.deleted`, och dess signeringshemlighet blir `STRIPE_WEBHOOK_SECRET`.
+Cloudflares regler (§9) får inte utmana eller strypa Stripes anrop till den vägen, eftersom Stripe inte kan svara på en utmaning.
+En kropp utan giltig signatur, eller signerad för mer än fem minuter sedan, är 400 och ändrar ingenting.
+Appen tar aldrig händelsen som sanningen: den läser kundens abonnemang som de står hos Stripe och skriver dem, så en händelse som kommer två gånger, sent eller i fel ordning ändrar ingenting fel, och ingenting skrivs när ingenting ändras.
+Ett levande abonnemang (`active`, `trialing`, eller `past_due` medan Stripe försöker dra betalningen igen) ger Pro med källan `stripe` och häver en utgång; inget levande abonnemang, på ett konto vars nivå Stripe gav, gör kontot utgånget, och läsläget gäller (G5, #1491).
+En nivå som operatören satt (källan `operator`) skrivs aldrig över av Stripe: operatörens ord står tills hon tar bort det med `plan clear`, och nästa händelse eller `stripe sync` gäller då.
+Varje webhook loggar en rad med händelsens typ och vad som blev av den, till exempel `{"msg":"stripe","type":"customer.subscription.deleted","outcome":"lapsed"}`, aldrig vem som betalar, kunden eller adressen (§8).
+En webhook som inte kom fram läses om med `pnpm --filter @byd/server stripe sync <adress>`, med lådans variabler (RUNBOOK §10).
+Moms är inte avgjord: priset är med moms som en konsument i EU ser det (fråga 2 i #1469), och hur momsen tas ut, till exempel med Stripe Tax, bekräftar beställaren innan de skarpa nycklarna läggs in.
+Ett konto som raderar sig själv tar bort kopplingen till Stripe-kunden, men säger ännu inte upp abonnemanget hos Stripe; det görs för hand i Dashboard tills det byggs (RUNBOOK §10).
+
 Nivåerna och deras tak bor inte heller i koden (#1193, A2, #1192): de är `BYD_PLANS` i lådans `.env`, JSON på en rad inom enkla citattecken, och stacken skickar variabeln till appen.
 
 ```sh

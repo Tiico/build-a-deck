@@ -50,6 +50,7 @@ import { REFERRER_POLICY, UPLOAD_POLICY, pageNonce, pagePolicy, scriptHashesOf, 
 import { DEFAULT_PLANS, QuotaReached, YOU, growth, limitOf, tableWindowFrom, type Bearer, type Limit, type Measure, type Plans, type QuotaMet, type TableCeilings } from './quotas.js'
 import { planOf, readOnlyOf, usageOf, type AccountPlanStore } from './account-plans.js'
 import { ReadOnlyGame, gameWritten, type ReadOnlyCheck } from './read-only.js'
+import { INTERVALS, customerOfEvent, priceFor, signatureHolds, syncCustomer, type PaymentsConfig, type StripeApi } from './payments.js'
 import { NO_CARDS, cardGrowth, cardsUsed, type CardMeasure } from './quota-cards.js'
 import { checkRegister, openToTheDue, termsInForce, termsStanding, type TermsRegister, type TermsStanding } from './terms.js'
 import { entry, isMasked, type ErasureStore } from './erase.js'
@@ -110,6 +111,10 @@ export type ServerOptions = {
   // without accounts nobody bears anything.
   plans?: Plans
   accountPlans?: AccountPlanStore
+  // Subscriptions through Stripe (#1493, `payments.ts`): the box's configuration from its `.env`,
+  // and what asks Stripe, the real API on the box and a fake in the suite. Without it payments are
+  // off: the checkout and the webhook answer 404, and every tier is the operator's to set.
+  payments?: { config: PaymentsConfig; stripe: StripeApi }
   // The terms' versions (#1270, `terms.ts`): the box runs with `TERMS` (`main.ts`), and a test with
   // its own. Without one no terms apply, as without `auth` there are no accounts.
   terms?: TermsRegister
@@ -608,6 +613,72 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
       for (const done of await Promise.allSettled(sends)) if (done.status === 'rejected') console.error(JSON.stringify({ msg: 'report-mail', report: report.id, error: (done.reason as Error).message }))
       return json(res, 201, { id: report.id })
     }
+    // A checkout for the paid tier (#1493): the account is sent to Stripe's own Checkout page, so no
+    // card passes the box, with a Stripe customer of its own, made the first time and kept. Nothing
+    // is a tier until Stripe's webhook says the subscription is paid. `back` is the path on the app
+    // that Checkout returns to, never another site.
+    if (req.method === 'POST' && url.pathname === '/me/subscription/checkout') {
+      const payments = opts.payments
+      if (!payments || !opts.auth || !opts.accountPlans) return json(res, 404, { error: 'payments are off' })
+      const account = await accountOf(opts.auth, req)
+      if (!account) return json(res, 401, { error: 'log in first' })
+      const body = CheckoutBody.safeParse(JSON.parse((await readBody(req)) || '{}') as unknown)
+      const price = body.success ? priceFor(payments.config, body.data.currency, body.data.interval) : null
+      if (!body.success || !price) return json(res, 400, { error: 'no such price' })
+      const own = await opts.accountPlans.planOf(account.id)
+      if (own?.source === 'stripe' && own.lapsed === undefined && own.plan in payments.config.prices) return json(res, 409, { error: 'already subscribed' })
+      const back = (outcome: string) => {
+        const to = new URL(body.data.back ?? '/', opts.appOrigin ?? opts.publicOrigin ?? `${schemeOf(opts, req)}://${req.headers.host ?? 'localhost'}`)
+        to.searchParams.set('pro', outcome)
+        return to.toString()
+      }
+      // Stripe that does not answer is a gateway's failure, said without Stripe's words; the log
+      // has them, never whose checkout it was (DRIFT §8).
+      try {
+        let customer = await opts.accountPlans.customerOf(account.id)
+        if (!customer) {
+          await opts.accountPlans.linkCustomer(account.id, await payments.stripe.createCustomer({ account: account.id, email: account.email }))
+          // Two checkouts at once make two customers at Stripe and link the first: both use it.
+          customer = await opts.accountPlans.customerOf(account.id)
+        }
+        const checkoutUrl = await payments.stripe.createCheckout({ customer: customer ?? '', account: account.id, price, successUrl: back('paid'), cancelUrl: back('cancelled') })
+        return json(res, 200, { url: checkoutUrl })
+      } catch (err) {
+        console.error(JSON.stringify({ msg: 'stripe', checkout: 'failed', error: err instanceof Error ? err.message : String(err) }))
+        return json(res, 502, { error: 'stripe unavailable' })
+      }
+    }
+    // Stripe's webhook (#1493, DRIFT §12): a body signed with the box's webhook secret, about some
+    // customer. What it says is never taken as the truth: the customer's subscriptions are read from
+    // Stripe as they stand and written to the linked account (`syncCustomer`), so an event that comes
+    // twice, late or out of order changes nothing wrong. A body that is not Stripe's is 400 and asks
+    // Stripe nothing. A failure is 500, so Stripe sends it again. The log says the event's type and
+    // what came of it, never whose (DRIFT §8).
+    if (req.method === 'POST' && url.pathname === '/stripe/webhook') {
+      const payments = opts.payments
+      if (!payments || !opts.accountPlans) return json(res, 404, { error: 'payments are off' })
+      const bytes = await readBytes(req, WEBHOOK_MAX_BYTES)
+      const raw = bytes ? Buffer.from(bytes).toString('utf8') : ''
+      const header = req.headers['stripe-signature']
+      if (!bytes || !signatureHolds(raw, Array.isArray(header) ? header[0] : header, payments.config.webhookSecret, clock(opts))) return json(res, 400, { error: 'not signed by stripe' })
+      let parsed: unknown
+      try {
+        parsed = JSON.parse(raw)
+      } catch {
+        return json(res, 400, { error: 'not an event' })
+      }
+      const type = String((parsed as { type?: unknown } | null)?.type ?? '')
+      const customer = customerOfEvent(parsed)
+      try {
+        const outcome = customer ? await syncCustomer({ accountPlans: opts.accountPlans, ...payments }, customer) : 'no-customer'
+        console.log(JSON.stringify({ msg: 'stripe', type, outcome }))
+        return json(res, 200, { received: true })
+      } catch (err) {
+        // Stripe or the database did not answer: 500, so Stripe sends the event again.
+        console.error(JSON.stringify({ msg: 'stripe', type, outcome: 'failed', error: err instanceof Error ? err.message : String(err) }))
+        return json(res, 500, { error: 'not handled; send it again' })
+      }
+    }
     // Accepting the terms (#1270): only the version in force, so a tab opened before a change never
     // accepts what its reader has not read. 409 says which version that is, null when there is none.
     if (req.method === 'POST' && url.pathname === '/me/terms') {
@@ -902,7 +973,7 @@ const FACE_LINK_SLACK_S = 600
 // The built web app: hashed assets forever, everything else briefly, and the app's own routes
 // (/table, /play, …) fall back to index.html so the client can pick the page. Never a byte
 // outside the directory.
-const API_PREFIXES = ['/sessions', '/projects', '/faces', '/health', '/rooms', '/guests', '/me', '/invites', '/terms']
+const API_PREFIXES = ['/sessions', '/projects', '/faces', '/health', '/rooms', '/guests', '/me', '/invites', '/terms', '/stripe']
 // The one API path that is also a page: the invitation link in the mail (D3, #475). A browser
 // following it asks for HTML and gets the app, which accepts the invitation with a POST to the
 // same path; anything else asking gets the API's answer.
@@ -3213,6 +3284,15 @@ async function routeAuth(opts: ServerOptions, auth: AuthStore, req: IncomingMess
 
 const registerOf = (opts: ServerOptions): TermsRegister => opts.terms ?? []
 const TermsBody = z.object({ version: z.string().max(32) })
+// What a checkout asks for (#1493): a currency the box has prices in, month or year, and the path on
+// the app to come back to — a path, never another site.
+const CheckoutBody = z.object({
+  currency: z.string().regex(/^[a-z]{3}$/),
+  interval: z.enum(INTERVALS),
+  back: z.string().max(512).regex(/^\/(?![/\\])/).optional(),
+})
+// Stripe's events are a few kilobytes; a megabyte is room to spare and no room to fill the box.
+const WEBHOOK_MAX_BYTES = 1024 * 1024
 async function standingOf(opts: ServerOptions, auth: AuthStore, accountId: string): Promise<TermsStanding> {
   return termsStanding(registerOf(opts), (await auth.termsAccepted(accountId)).map((a) => a.version), clock(opts))
 }

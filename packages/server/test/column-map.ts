@@ -88,6 +88,9 @@ export const COLUMNS: Readonly<Record<string, Class>> = {
   'account_plans.since': 'none',
   'account_plans.source': 'none',
   'account_plans.lapsed_at': 'none',
+  'stripe_customers.account_id': 'pseudonymous',
+  'stripe_customers.customer_id': 'pseudonymous',
+  'stripe_customers.created_at': 'none',
   // The games: the designer's own content, and who may open it.
   'projects.id': 'pseudonymous',
   'projects.rev': 'none',
