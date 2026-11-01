@@ -48,7 +48,7 @@ import { AI_CAPS, ASK_MAX_BYTES, AiFlight, AskBody, answerQuestion, type AiCaps 
 import { PasskeyChallenges, login as passkeyLogin, loginOptions, register, registrationOptions, siteOf, viewOf, type Answer, type Ceremonies } from './passkeys.js'
 import { REFERRER_POLICY, UPLOAD_POLICY, pageNonce, pagePolicy, scriptHashesOf, socketOrigin } from './csp.js'
 import { DEFAULT_PLANS, QuotaReached, YOU, growth, limitOf, tableWindowFrom, type Bearer, type Limit, type Measure, type Plans, type QuotaMet, type TableCeilings } from './quotas.js'
-import { planOf, readOnlyOf, usageOf, type AccountPlanStore } from './account-plans.js'
+import { planOf, readOnlyOf, readOnlyWhyOf, usageOf, type AccountPlanStore } from './account-plans.js'
 import { ReadOnlyGame, gameWritten, type ReadOnlyCheck } from './read-only.js'
 import { NO_CARDS, cardGrowth, cardsUsed, type CardMeasure } from './quota-cards.js'
 import { checkRegister, openToTheDue, termsInForce, termsStanding, type TermsRegister, type TermsStanding } from './terms.js'
@@ -2170,6 +2170,25 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
   }
   // The history (B4): every save is a version, none of them is ever rewritten. It is presented
   // as versions with a date and, for the ones that meant something, a name — never as commits.
+  // Whether a game is read-only now (#1492, G5, L2), asked by the editor as it opens a game and again
+  // when an edit of its is refused for it. The owner hears why, with the free tier's ceiling it lies
+  // over; anyone else with a part in the game hears whose it is, by the owner's name, and never her
+  // tier nor her ceilings (A2, #1198). Null when the game works as usual.
+  const readOnly = /^\/projects\/([^/]+)\/read-only$/.exec(url.pathname)
+  if (readOnly && req.method === 'GET') {
+    const gate = await owned(decodeURIComponent(readOnly[1] ?? ''))
+    if (!('rec' in gate)) {
+      json(res, gate.status, { error: gate.error })
+      return true
+    }
+    const owner = gate.rec.owner
+    const accountPlans = opts.accountPlans
+    const why = owner === undefined || !opts.auth || !accountPlans ? undefined : (await readOnlyWhyOf({ projects, accountPlans, live: (game) => editors(opts, projects).live(game) }, plans, owner)).get(gate.rec.id)
+    if (!why || owner === undefined) json(res, 200, { readOnly: null })
+    else if (account?.id === owner) json(res, 200, { readOnly: { bearer: 'you', why, limit: limitOf(plans, plans.default, why) } })
+    else json(res, 200, { readOnly: await ownerBearer(opts, owner) })
+    return true
+  }
   const versions = /^\/projects\/([^/]+)\/versions$/.exec(url.pathname)
   if (versions && req.method === 'GET') {
     const gate = await owned(decodeURIComponent(versions[1] ?? ''))
