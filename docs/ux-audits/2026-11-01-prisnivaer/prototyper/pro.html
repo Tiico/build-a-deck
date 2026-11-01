@@ -211,6 +211,7 @@ function statusRad() {
 function aboA() {
   const k = yta === 'tillbaka' ? (besked === 'ok' ? 'pro' : 'gratis') : konto
   if (yta === 'saga' && st.klar) return aboAUppsagt()
+  if (k === 'gratis' && yta === 'tillbaka' && besked === 'vanta') return `<section class="pkort abo" id="abonnemang" aria-labelledby="abo-h"><h2 id="abo-h">Abonnemang <span class="niva" data-n="gratis">Gratis</span></h2>${statusRad()}<p class="liten">Köpet går inte att göra igen medan beskedet väntar. Tar det mer än en minut säger sidan det, och Pro slås på när beskedet kommer, också om du lämnar sidan.</p></section>`
   if (k === 'gratis') return `<section class="pkort abo" id="abonnemang" ${yta === 'tak' ? 'data-fram' : ''} aria-labelledby="abo-h"><h2 id="abo-h">Abonnemang <span class="niva" data-n="gratis">Gratis</span></h2>${statusRad()}
     <dl class="jmf"><dt>Gratis</dt><dd>${GRATIS()}.</dd><dt>Pro</dt><dd>${PRO()}.</dd></dl>
     <div class="kop">${periodVal()}<button class="k-blå" data-do="kassa">Uppgradera till Pro, ${pris()}</button></div>
