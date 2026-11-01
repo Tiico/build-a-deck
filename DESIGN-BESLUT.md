@@ -5078,12 +5078,16 @@ Ett bräde har ett namn (`id`), som är dess `cardRef` vid bordet och aldrig en 
 `x` och `y` är brädets övre vänstra hörn som det står innan det vrids, så att det vrids kring sin egen mitt till punkten, och `rot` är 0, 90, 180 eller 270 efter platsens kant.
 Ett dokument utan bräde har ingen post och läses tillbaka orört.
 
-**Texturen.** Typen säger `ownFaces`: dess sidor kommer ur dokumentets egen mall och inte ur en rad. `queueFaces` kompilerar varje sida med den enda kompilatorn och köar den som en textur i samma DPI som ett kort, så att filten ritar brädet i samma pixlar per millimeter, nycklad på innehållet (DRIFT §6): samma spelarbräde på åtta platser är en rendering, och en ändrad bild är en ny hash.
+**Texturen.** Typen säger `ownFaces`: dess sidor kommer ur dokumentets egen mall och inte ur en rad.
+`queueFaces` kompilerar varje sida med den enda kompilatorn och köar den som en textur nycklad på innehållet (DRIFT §6): samma spelarbräde på åtta platser är en rendering, och en ändrad bild är en ny hash.
 Hashen går till vyn genom `project` i `DeckFacts.ownFaces`, i fältet `faces` som ett korts, och läses bara för en typ som säger `ownFaces`, så att ett kort och ett bräde kan heta samma sak utan att dela yta.
 Ingen ändring i `packages/protocol`.
 Ett jobb för det största brädet, 610 × 457 mm i 150 DPI, är 3602 × 2699 px, och det ryms under renderns minnestak (1,5 GB, DRIFT §6).
 Mätt 2026-11-01 i #1479 som summan av Chromiums processers RSS medan jobbet ritades: 0,5 GB för en jämn bild över hela brädet, och 1,07 GB för det värsta fallet, en 3600 × 2700 px bild av brus, som också gav en textur på 28 MB.
-En textur så stor är filtens att hämta (#1480), och den hämtas bara av skärmar som ritar filten (C2).
+**Filtens egen variant** (beställarens beslut 2026-11-01, genom techleaden, #1480): en PNG i ett korts 150 DPI var för tung för varje skärm som ritar filten, så filten får en egen bild av brädet, en JPEG i kvalitet 90, högst 2048 px på den långa sidan och aldrig tätare än ett korts 150 DPI (`boardTextureKind`).
+Det stora brädet blir 2048 × 1534 px och spelarbrädet 1417 × 886 px; renderjobbet är `raster` med kvaliteten i jobbslaget, så en annan kvalitet är en annan nyckel.
+Mätt 2026-11-01 på det stora brädet med en bild över hela brädet: en jämn bild 0,17 MB som JPEG, och värsta fallet, brus, 2,25 MB mot 28 MB som PNG i 150 DPI.
+Den hämtas bara av skärmar som ritar filten (C2); trycket behåller typens upplösning (#1488).
 Brädets bilder går genom tillgångarna som kortets (#1028).
 Trycket i 300 DPI med utfall är #1488, och till dess hoppar tryckexporten över brädet i stället för att vägra spelet.
 

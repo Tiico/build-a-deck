@@ -8,7 +8,7 @@ import { createHash } from 'node:crypto'
 // pixels to the classifier it names, and what it keeps is a result, not an output.
 export type RenderKind =
   | { kind: 'png'; dpi: number }
-  | { kind: 'raster'; format: 'png' | 'jpg'; widthPx: number; heightPx: number }
+  | { kind: 'raster'; format: 'png' | 'jpg'; widthPx: number; heightPx: number; quality?: number }
   | { kind: 'pdf' }
   | { kind: 'booklet' }
   | { kind: 'screen'; asset: string; classifier: { id: string; version: string }; maxPx: number }
@@ -30,7 +30,7 @@ function kindLine(kind: RenderKind): string {
     case 'png':
       return `png:${kind.dpi}\n`
     case 'raster':
-      return `raster:${kind.format}:${kind.widthPx}x${kind.heightPx}\n`
+      return `raster:${kind.format}:${kind.widthPx}x${kind.heightPx}${kind.quality === undefined ? '' : `:q${kind.quality}`}\n`
     case 'screen':
       return `screen:${kind.classifier.id}@${kind.classifier.version}:${kind.maxPx}:${kind.asset}\n`
     default:

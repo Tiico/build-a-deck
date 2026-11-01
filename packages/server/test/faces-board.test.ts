@@ -49,7 +49,11 @@ describe('brädets yta som textur (#1479)', () => {
     const hash = f.ownFaces?.['main']?.['front']
     expect(hash).toMatch(/^[0-9a-f]{64}$/)
     const job = jobs.find((j) => j.hash === hash)!
-    expect(job).toMatchObject({ kind: { kind: 'png', dpi: 150 }, priority: 'texture' })
+    // Filtens egen variant (beställarens beslut 2026-11-01, #1480): en JPEG i kvalitet 90, högst 2048 px
+    // på den långa sidan och aldrig tätare än ett korts 150 DPI.
+    expect(job).toMatchObject({ kind: { kind: 'raster', format: 'jpg', quality: 90, widthPx: 2048, heightPx: 2048 }, priority: 'texture' })
+    const player = jobs.find((j) => j.hash === f.ownFaces?.['spelare']?.['front'])!
+    expect(player.kind).toEqual({ kind: 'raster', format: 'jpg', quality: 90, widthPx: Math.round((240 / 25.4) * 150), heightPx: Math.round((150 / 25.4) * 150) })
     // Sidan har brädets mått och inte kortets.
     expect(job.compiled.css).toContain('457mm')
     const state = initialState('v1', setupFromProject(doc), registry)
