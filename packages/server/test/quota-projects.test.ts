@@ -46,7 +46,8 @@ const backends: { name: string; skip: boolean; open(): Promise<Backend> }[] = [
   },
 ]
 
-const tiers = (free: number | null, pro: number | null = null): Plans => plansFromEnv({ BYD_PLANS: JSON.stringify({ default: 'free', plans: { free: { projects: free }, pro: { projects: pro } } }) })
+// Pro has the print package and Gratis does not (#1490, A2 as revised in #1469).
+const tiers = (free: number | null, pro: number | null = null): Plans => plansFromEnv({ BYD_PLANS: JSON.stringify({ default: 'free', plans: { free: { projects: free }, pro: { projects: pro, print: true } } }) })
 const game = (name = 'Skogens herrar', icons: Record<string, string> = {}) => {
   const { zones, seats, floor } = twoSeatSetup()
   return { name, template, rows: [{ id: 'dragon', fields: { title: 'Drake', antal: 1 } }], icons, setup: { zones, seats, floor, deckZone: 'draw' } }
@@ -128,7 +129,8 @@ for (const backend of backends) {
         await create(ada.cookie)
         const res = await send('GET', '/me/usage', ada.cookie)
         expect(res.status).toBe(200)
-        expect(await res.json()).toMatchObject({ plan: 'free', measures: { projects: { used: 1, limit: null } } })
+        // The beta's standard has the print package (#1490).
+        expect(await res.json()).toMatchObject({ plan: 'free', print: true, measures: { projects: { used: 1, limit: null } } })
       })
     })
 
@@ -143,14 +145,14 @@ for (const backend of backends) {
         expect(third.status).toBe(402)
         expect(await third.json()).toEqual({ error: 'quota', quota: { measure: 'projects', limit: 2, used: 2, bearer: 'you' } })
         expect((await (await send('GET', '/projects', ada.cookie)).json() as { name: string }[]).map((p) => p.name).sort()).toEqual(['Ett', 'Två'])
-        expect(await (await send('GET', '/me/usage', ada.cookie)).json()).toMatchObject({ plan: 'free', measures: { projects: { used: 2, limit: 2 } } })
+        expect(await (await send('GET', '/me/usage', ada.cookie)).json()).toMatchObject({ plan: 'free', print: false, measures: { projects: { used: 2, limit: 2 } } })
       })
 
       it('holds an account to its own tier, and the default again when that is taken away', async () => {
         const ada = await someone('ada')
         await db.accountPlans.setPlan(ada.id, 'pro', 'operator')
         for (let i = 0; i < 3; i++) expect((await create(ada.cookie, `Spel ${i}`)).status).toBe(201)
-        expect(await (await send('GET', '/me/usage', ada.cookie)).json()).toMatchObject({ plan: 'pro', measures: { projects: { used: 3, limit: null } } })
+        expect(await (await send('GET', '/me/usage', ada.cookie)).json()).toMatchObject({ plan: 'pro', print: true, measures: { projects: { used: 3, limit: null } } })
         await db.accountPlans.clearPlan(ada.id)
         expect((await create(ada.cookie)).status).toBe(402)
       })
