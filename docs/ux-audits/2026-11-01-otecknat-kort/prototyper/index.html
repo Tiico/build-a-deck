@@ -1,0 +1,206 @@
+<!doctype html>
+<!-- PROTOTYP (#1546). Kastas när beställaren har valt. ?yta=tv|telefon&v=idag|A|B|C, ←/→ byter variant, R ritar klart. -->
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ett kort innan dess textur är ritad — prototyp #1546</title>
+<style>
+:root {
+  --plate: #171a23; --edge: #0d0f14; --chalk: #f3e9d6; --chalk-off: #9b968e; --accent: #f0b64a; --line: #3a3f4b;
+  --paper: #f4ecdc; --ink: #2b241a; --ink-soft: #6b5f4d; --back: #2f4068; --back-mark: #c9a85a;
+  --felt-font: 'Roboto Condensed', system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: #0b0c10; color: var(--chalk); font-family: system-ui, sans-serif; }
+body { display: flex; flex-direction: column; }
+.protorad { flex: none; display: flex; align-items: flex-start; gap: 12px; flex-wrap: wrap; padding: 8px 16px; background: #2a2417; border-bottom: 1px solid #4a4230; color: #ffd98a; font-size: 12px; line-height: 1.5; }
+.protorad b { color: #ffe9b8; } .protorad p { margin: 0; }
+.protorad .fraga { flex: 1 1 360px; min-width: 0; } .protorad .fraga p + p { margin-top: 2px; color: #c8b98d; }
+.protorad .grupp { display: flex; gap: 4px; padding: 3px; border-radius: 9px; background: #1f1b12; border: 1px solid #4a4230; }
+.protorad button { min-height: 32px; border: 1px solid #4a4230; border-radius: 7px; padding: 0 10px; background: #1f1b12; color: #ffd98a; font: inherit; font-weight: 700; cursor: pointer; }
+.protorad .grupp button { border: 0; }
+.protorad button[aria-pressed='true'] { background: #ffd98a; color: #2a2417; }
+.protorad button:focus-visible { outline: 2px solid #ffd98a; outline-offset: 2px; }
+.protorad .rek { color: #b7dca0; font-weight: 700; }
+.scen { flex: 1 1 auto; min-height: 0; overflow: auto; }
+
+/* ── Filten på TV:n ─────────────────────────────────────────────────────────── */
+.tv { display: grid; grid-template-columns: minmax(0, 1fr) 280px; min-height: 100%; background: var(--edge); font-family: var(--felt-font); }
+.filt-hus { display: grid; place-items: center; padding: 16px; min-width: 0; }
+.filt { position: relative; width: 1080px; height: 720px; flex: none; background: var(--plate); border: 1px solid #22262f; border-radius: 14px; box-shadow: inset 0 0 0 1px #0004, 0 20px 50px #0008; }
+.zn { position: absolute; font-weight: 700; color: var(--chalk-off); font-size: 13px; white-space: nowrap; }
+.spalt { border-left: 1px solid #1e2129; padding: 20px; display: flex; flex-direction: column; gap: 14px; font-size: 17px; }
+.spalt .kod { font-size: 34px; letter-spacing: .2em; color: var(--accent); font-weight: 700; }
+.spalt .ritas { font-size: 24px; } .spalt .ritas small { display: block; font-size: 15px; color: var(--chalk-off); }
+.stapel { height: 6px; border-radius: 3px; background: #2a2e38; overflow: hidden; } .stapel i { display: block; height: 100%; background: var(--accent); }
+.bit { position: absolute; transform: translate(-50%, -50%); }
+.fot { position: absolute; transform: translateX(-50%); font-size: 13px; color: var(--chalk-off); white-space: nowrap; }
+
+/* ── En sida: ritad, eller inte ritad än ──────────────────────────────────── */
+.sida { position: relative; overflow: hidden; container-type: inline-size; }
+.sida.kort { border-radius: 6%/4.3%; }
+.sida.hex { clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); }
+.sida.kvadrat { border-radius: 5%; }
+.sida.rund { border-radius: 50%; }
+.sida.brade { border-radius: 4px; }
+.ritad { position: absolute; inset: 0; transition: opacity .25s; }
+.ritad.kort { background: radial-gradient(circle at 50% 38%, #f6c56b 0 18%, transparent 19%), linear-gradient(#7aa4d8, #355c8a 46%, #f1e6cf 46%); }
+.ritad.kort::after { content: attr(data-namn); position: absolute; left: 8%; right: 8%; top: 4%; font: 700 12cqw/1.1 Georgia, serif; color: #111; text-align: center; }
+.ritad.bricka { background: radial-gradient(circle at 40% 40%, #9fd07a, #3c7a3a 70%); }
+.ritad.brade { background: repeating-linear-gradient(45deg, #2f6b3a 0 22px, #2a6234 22px 44px); }
+.inne { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; }
+.lugn * { animation: none !important; transition: none !important; }
+
+/* I dag: texture.css, samma för varje form; namnet 6 % från toppen när det inte ryms, i hexagonens spets. */
+.v-idag .inne { background: linear-gradient(100deg, #232a3a 30%, #2e3750 50%, #232a3a 70%) #232a3a; background-size: 300% 100%; animation: svep 1.6s linear infinite; place-items: start center; padding: 6%; color: #a7b0c4; }
+.v-idag .inne b { font-size: clamp(8px, 14cqw, 19px); color: #eef2fb; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; display: block; }
+.v-idag .inne i { display: block; font-style: normal; font-size: clamp(7px, 9cqw, 14px); }
+@container (max-width: 71px) { .v-idag .inne i { display: none; } }
+@keyframes svep { from { background-position: 150% 0; } to { background-position: -50% 0; } }
+
+/* A — Tryckprovet: sidan står som ett tryckprov på papper, med kortets egna ord, och ritas över. */
+.v-A .inne { background: var(--paper); color: var(--ink); padding: var(--in, 9%); align-content: center; gap: 3cqw; }
+.v-A .inne::before { content: ''; position: absolute; inset: 4cqw; border: max(1px, .8cqw) solid #cdbf9f; border-radius: inherit; clip-path: inherit; }
+.v-A .sida.hex .inne { --in: 26% 14%; background: #cdbf9f; } .v-A .sida.hex .inne::before { inset: 2.5cqw; border: 0; background: var(--paper); clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); }
+.v-A .sida.rund .inne { --in: 18%; } .v-A .sida.rund .inne::before { border-radius: 50%; }
+.v-A .inne b { position: relative; font: 700 clamp(8px, 13cqw, 22px)/1.1 Georgia, serif; max-width: 100%; overflow-wrap: anywhere; }
+.v-A .inne p { position: relative; margin: 0; font-size: clamp(6px, 6.5cqw, 13px); line-height: 1.3; color: var(--ink-soft); }
+.v-A .inne .prick { position: absolute; right: 7cqw; bottom: 6cqw; width: max(5px, 4cqw); height: max(5px, 4cqw); border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 0 #f0b64a88; animation: puls 1.8s ease-out infinite; }
+.v-A .sida.hex .inne .prick { right: 46%; bottom: 9%; } .v-A .sida.rund .inne .prick { right: 46%; bottom: 8%; }
+@keyframes puls { to { box-shadow: 0 0 0 max(5px, 4cqw) #f0b64a00; } }
+@container (max-width: 80px) { .v-A .inne p { display: none; } }
+
+/* B — Ryggen och en lapp: det som redan är ritat, baksidan, med en lapp tvärs över som säger vad sidan är. */
+.v-B .inne { background: radial-gradient(circle, transparent 0 30%, #0003), repeating-linear-gradient(45deg, var(--back) 0 6cqw, #344873 6cqw 12cqw); filter: saturate(.55) brightness(.9); }
+.v-B .inne .lapp { position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%); padding: 3cqw 6cqw; background: var(--chalk); color: #1c1c1c; font: 700 clamp(8px, 11cqw, 20px)/1.15 var(--felt-font); }
+.v-B .inne .lapp small { display: block; font-weight: 400; font-size: .7em; color: #555; }
+.v-B .sida.hex .inne .lapp, .v-B .sida.rund .inne .lapp { padding: 3cqw 18cqw; }
+@container (max-width: 80px) { .v-B .inne .lapp small { display: none; } }
+
+/* C — Formens skelett: dagens svep, men i formen och med namnet i formens inskrivna ruta, och en räkning. */
+.v-C .inne { background: linear-gradient(100deg, #232a3a 30%, #2e3750 50%, #232a3a 70%) #232a3a; background-size: 300% 100%; animation: svep 1.6s linear infinite; color: #a7b0c4; padding: var(--in, 10%); align-content: center; gap: 2cqw; }
+.v-C .sida.hex .inne { --in: 27% 15%; } .v-C .sida.rund .inne { --in: 17%; }
+.v-C .inne b { font-size: clamp(8px, 13cqw, 20px); color: #eef2fb; max-width: 100%; overflow-wrap: anywhere; line-height: 1.1; }
+.v-C .inne i { font-style: normal; font-size: clamp(7px, 8cqw, 14px); }
+.v-C .inne .ring { width: max(10px, 12cqw); height: max(10px, 12cqw); border-radius: 50%; border: max(2px, 1.6cqw) solid #44506e; border-top-color: #eef2fb; animation: snurr 1s linear infinite; justify-self: center; }
+@keyframes snurr { to { transform: rotate(1turn); } }
+@container (max-width: 71px) { .v-C .inne i { display: none; } }
+
+/* ── Telefonen ──────────────────────────────────────────────────────────────── */
+.telefoner { display: flex; gap: 32px; justify-content: center; flex-wrap: wrap; padding: 24px 16px; }
+.telefon { width: 390px; height: 800px; border-radius: 36px; border: 10px solid #000; background: #10131a; position: relative; overflow: hidden; font-family: var(--felt-font); flex: none; }
+.telefon .rubrik { padding: 18px 16px 8px; font-size: 15px; color: var(--chalk-off); }
+.telefon .rubrik b { color: var(--chalk); font-size: 18px; display: block; }
+.telefon .lyft { display: grid; place-items: center; padding: 16px 0; }
+.telefon .hand { position: absolute; left: 0; right: 0; bottom: 0; height: 190px; background: #0c0e13; border-top: 1px solid #22262f; }
+.telefon .hand .zn { left: 16px; top: 10px; }
+.telefon .lapp-text { text-align: center; color: var(--chalk-off); font-size: 15px; padding: 0 24px; }
+.knappar { display: flex; gap: 8px; justify-content: center; padding: 8px 16px; }
+.knappar span { min-height: 44px; padding: 0 16px; border-radius: 999px; background: var(--chalk); color: #1c1c1c; display: grid; place-items: center; font-weight: 700; }
+.etikett { font-size: 12px; color: var(--chalk-off); text-align: center; margin-top: 6px; }
+</style>
+</head>
+<body>
+<div class="protorad" role="region" aria-label="Prototyp">
+  <div class="fraga">
+    <p><b>PROTOTYP #1546 — hur ser en sida ut som dragits innan dess textur är ritad?</b> Starten väntar bara på det som syns (beslut A); resten ritas efteråt. Kort, sexkantig, fyrkantig och rund bricka, och ett bräde.</p>
+    <p id="om"></p>
+    <p class="rek">Rekommendation: A, tryckprovet.</p>
+  </div>
+  <div class="grupp" aria-label="Yta"><button data-yta="tv">TV och filt</button><button data-yta="telefon">Telefon</button></div>
+  <div class="grupp" aria-label="Variant"><button data-v="idag">I dag</button><button data-v="A">A</button><button data-v="B">B</button><button data-v="C">C</button></div>
+  <button id="rita" aria-pressed="false">Rita klart (R)</button>
+</div>
+<main class="scen" id="scen"></main>
+<script>
+const OM = {
+  idag: 'I dag: texture.css, ett mörkt svep med namnet och «Laddar kortet…», samma för varje form. På den sexkantiga brickan hamnar namnet i spetsen (#1544), och sidan ser trasig ut snarare än på väg.',
+  A: 'A — Tryckprovet: sidan står på papper med kortets namn och regeltext (projektionens texter, K27), inskriven i formen, och en lugn prick som säger att den ritas. Kortet går att spela utan bilden; när texturen kommer tonas den in över.',
+  B: 'B — Ryggen och en lapp: det som redan är ritat, baksidan, med en kritlapp tvärs över som säger namnet. Ingen ny yta att rita, men ett uppvänt kort ser nedvänt ut, och det är ett läge som betyder något i spelet.',
+  C: 'C — Formens skelett: dagens svep, men klippt i formen, med namnet i formens inskrivna ruta och en snurra. Minsta ändringen; säger «vänta» och inget om kortet.',
+}
+const BODY = 'Dra två kort och lägg ett av dem framför dig.'
+const q = new URLSearchParams(location.search)
+let yta = q.get('yta') === 'telefon' ? 'telefon' : 'tv'
+let v = ['idag', 'A', 'B', 'C'].includes(q.get('v')) ? q.get('v') : 'A'
+let ritad = false
+
+// One face, drawn or not yet: the shape is the type's, what lies on it is the variant's.
+function sida(form, w, h, namn, o = {}) {
+  const body = form === 'kort' && o.text !== false ? `<p>${BODY}</p>` : ''
+  const inne = {
+    idag: `<b>${namn}</b><i>Laddar kortet…</i>`,
+    A: `<div><b>${namn}</b>${body}</div><span class="prick" aria-hidden="true"></span>`,
+    B: `<div class="lapp">${namn}<small>ritas</small></div>`,
+    C: `<span class="ring" aria-hidden="true"></span><b>${namn}</b><i>Ritas…</i>`,
+  }[v]
+  const drawn = `<div class="ritad ${form === 'kort' ? 'kort' : form === 'brade' ? 'brade' : 'bricka'}" data-namn="${namn}" style="opacity:${ritad ? 1 : 0}"></div>`
+  return `<div class="sida ${form}" style="width:${w}px;height:${h}px" role="img" aria-label="${namn}, ${ritad ? 'ritad' : 'ritas'}"><div class="inne" style="opacity:${ritad ? 0 : 1}">${inne}</div>${drawn}</div>`
+}
+const rygg = (w, h, r = '6%/4.3%') => `<div style="width:${w}px;height:${h}px;border-radius:${r};background:repeating-linear-gradient(45deg,#2f4068 0 8px,#344873 8px 16px);box-shadow:0 0 0 1px #0006, 2px 3px 0 #0005"></div>`
+
+function tv() {
+  const k = 92, kh = 128
+  return `<div class="tv"><div class="filt-hus"><div class="filt">
+    <div class="bit" style="left:540px;top:300px">${sida('brade', 470, 352, 'Huvudbrädet', { text: false })}</div>
+    <span class="fot" style="left:540px;top:482px">Brädet (610 × 457 mm)</span>
+    <div class="bit" style="left:110px;top:150px">${rygg(k, kh)}</div><span class="fot" style="left:110px;top:220px">Draghögen · 412</span>
+    <div class="bit" style="left:110px;top:330px">${sida('kort', k, kh, 'Drakens öga')}</div><span class="fot" style="left:110px;top:400px">Slänghögen · uppvänt</span>
+    <div class="bit" style="left:930px;top:140px">${sida('hex', 100, 115, 'Skog')}</div><span class="fot" style="left:930px;top:204px">Sexkant 52 mm</span>
+    <div class="bit" style="left:930px;top:290px">${sida('kvadrat', 92, 92, 'Sjö')}</div><span class="fot" style="left:930px;top:342px">Fyrkant 45 mm</span>
+    <div class="bit" style="left:930px;top:430px">${sida('rund', 90, 90, 'Guld')}</div><span class="fot" style="left:930px;top:481px">Rund 44 mm</span>
+    <div class="bit" style="left:420px;top:620px">${sida('kort', 64, 89, 'Riddaren')}</div>
+    <div class="bit" style="left:490px;top:620px">${sida('kort', 64, 89, 'Häxans brygd')}</div>
+    <div class="bit" style="left:560px;top:620px;width:64px;height:89px;border-radius:4px;background:linear-gradient(#7aa4d8,#355c8a 46%,#f1e6cf 46%)"></div>
+    <div class="bit" style="left:640px;top:620px">${sida('hex', 58, 67, 'Berg')}</div>
+    <span class="fot" style="left:530px;top:672px">Framför Ada · två kort och en bricka dragna nyss, ett redan ritat</span>
+  </div></div>
+  <aside class="spalt"><div>Rumskod</div><div class="kod">K7QX</div>
+    <div class="ritas">Leken ritas · 212 av 576<small>Spelet är igång; korten som dras härnäst ritas först.</small></div>
+    <div class="stapel"><i style="width:37%"></i></div></aside></div>`
+}
+
+function telefon() {
+  const hand = ['Riddaren', 'Häxans brygd', 'Drakens öga', 'Skog'].map((n, i) =>
+    `<div class="bit" style="left:${70 + i * 82}px;top:110px">${i === 3 ? sida('hex', 64, 74, n) : i === 1 ? '<div style="width:62px;height:86px;border-radius:5px;background:linear-gradient(#7aa4d8,#355c8a 46%,#f1e6cf 46%)"></div>' : sida('kort', 62, 86, n)}</div>`).join('')
+  return `<div class="telefoner">
+    <div><div class="telefon"><div class="rubrik"><b>Ada</b>Kortet du håller upp</div>
+      <div class="lyft">${sida('kort', 252, 352, 'Drakens öga')}</div>
+      <div class="knappar"><span>Lägg framför</span><span>Släng</span></div>
+      <div class="hand"><span class="zn">Din hand · 4</span>${hand}</div></div><div class="etikett">390 × 800, ett kort dras och hålls upp innan det är ritat</div></div>
+    <div><div class="telefon"><div class="rubrik"><b>Ada</b>Brickan du håller upp</div>
+      <div class="lyft">${sida('hex', 230, 265, 'Skog')}</div>
+      <div class="lyft" style="display:flex;gap:16px;justify-content:center">${sida('kvadrat', 110, 110, 'Sjö')}${sida('rund', 110, 110, 'Guld')}</div>
+      <div class="hand"><span class="zn">Din hand · 4</span>${hand}</div></div><div class="etikett">Brickorna i sina former, uppe och i handen</div></div>
+  </div>`
+}
+
+function rita() {
+  document.getElementById('scen').innerHTML = `<div class="v-${v}">${yta === 'tv' ? tv() : telefon()}</div>`
+  document.getElementById('om').textContent = OM[v]
+  for (const b of document.querySelectorAll('[data-yta]')) b.setAttribute('aria-pressed', String(b.dataset.yta === yta))
+  for (const b of document.querySelectorAll('[data-v]')) b.setAttribute('aria-pressed', String(b.dataset.v === v))
+  document.getElementById('rita').setAttribute('aria-pressed', String(ritad))
+  const u = new URL(location.href); u.searchParams.set('yta', yta); u.searchParams.set('v', v); history.replaceState(null, '', u)
+}
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return
+  if (b.dataset.yta) yta = b.dataset.yta
+  if (b.dataset.v) v = b.dataset.v
+  if (b.id === 'rita') ritad = !ritad
+  rita()
+})
+document.addEventListener('keydown', (e) => {
+  const order = ['idag', 'A', 'B', 'C']
+  if (e.key === 'ArrowRight') v = order[(order.indexOf(v) + 1) % 4]
+  else if (e.key === 'ArrowLeft') v = order[(order.indexOf(v) + 3) % 4]
+  else if (e.key === 'r' || e.key === 'R') ritad = !ritad
+  else return
+  rita()
+})
+if (matchMedia('(prefers-reduced-motion: reduce)').matches) document.body.classList.add('lugn')
+rita()
+</script>
+</body>
+</html>
