@@ -502,18 +502,24 @@ Betalning: Stripe.
 Nivåerna och deras tak bor inte heller i koden (#1193, A2, #1192): de är `BYD_PLANS` i lådans `.env`, JSON på en rad inom enkla citattecken, och stacken skickar variabeln till appen.
 
 ```sh
-BYD_PLANS='{"default":"free","plans":{"free":{"projects":3},"pro":{}}}'
+BYD_PLANS='{"default":"free","plans":{"free":{"projects":3},"pro":{"print":true}}}'
 ```
 
 Ett tak är ett heltal eller `null`, och `null` är obegränsat; ett mått som en nivå inte nämner är obegränsat på den nivån.
+En egenskap är något nivån ger utan att räkna något, `true` eller `false`, och en egenskap som en nivå inte nämner har den inte (#1490).
+Den enda egenskapen är `print`, tryckpaketet och tryck-PDF:erna i exporten, som följer med Pro när en riktig partner finns (A2, G5); grinden på dem är ännu inte byggd och läser egenskapen när den byggs (#1209).
+Utan variabeln har standardnivån tryckpaketet, som i betan.
 Bordens mått är `openTables`, bord som står samtidigt och som §1:s minnesbudget bär, och `tablesPer30Days`, bord som startats under rullande 30 dygn (#1196); båda prövas bara när ett bord startas, så ett tak stänger aldrig ett bord som står.
 Utan variabeln är allt obegränsat, vilket är betans läge och det läge en glömd variabel ger, så att en deploy aldrig av misstag stänger ute en designer.
-Variabeln läses en gång när appen startar, som `BYD_CORPUS_ACCOUNTS` (§7), och starten skriver en rad med nivåernas namn, standarden och om något tak alls är satt, aldrig vem som har vilken nivå (§8).
+Variabeln läses en gång när appen startar, som `BYD_CORPUS_ACCOUNTS` (§7), och starten skriver en rad med nivåernas namn, standarden, om något tak alls är satt och vilka nivåer som har tryckpaketet, aldrig vem som har vilken nivå (§8).
 En variabel som inte är giltig JSON eller inte håller schemat stoppar starten, och så gör en nivå som något konto har men som variabeln saknar; loggen säger varför.
 Vilken nivå ett konto har står i tabellen `account_plans`, som Stripe skriver till när betalningen kopplas på; ett konto utan rad har standarden.
 I dag sätter operatören den över Tailscale (§10), med lådans egen `BYD_PLANS` så att en nivå lådan inte har aldrig skrivs:
 `pnpm --filter @byd/server plan set <adress> <nivå>` och `plan clear <adress>`.
-`pnpm --filter @byd/server usage` skriver varje kontos nivå, förbrukning och tak, för prisbeslutet, och skickar ingenting någonstans.
+Byggt 2026-11-01 (#1491): ett abonnemang som gått ut är en utgång på kontots rad i `account_plans` (`lapsed_at`), och operatören sätter och häver den med `plan lapse <adress>` och `plan unlapse <adress>`; Stripe skriver samma sak när abonnemangen kopplas på.
+Ett utgånget konto hålls till standardnivån, alltså Gratis, och de av dess spel som ligger över gratisnivåns tak är i läsläge (G5, L2); `plan set` ger kontot en nivå igen och häver utgången.
+Raden behåller sin nivå medan den är utgången, så starten håller fortfarande `BYD_PLANS` mot den, och standardnivån finns alltid, eftersom schemat kräver att standarden är en av nivåerna.
+`pnpm --filter @byd/server usage` skriver varje kontos nivå, om den har tryckpaketet, en utgång och spelen i läsläge, förbrukning och tak, för prisbeslutet, och skickar ingenting någonstans.
 Lagring (`storageBytes`, #1197) är det kontots spel nämner i någon version, räknat ur databasen; ett borttaget spel frigör sitt, men bytesen ligger kvar i R2 (§4).
 Renderingar (`rendersPer30Days`) läses ur renderköns logg `render_log` i samma databas, så skriptet behöver ingen annan anslutning.
 

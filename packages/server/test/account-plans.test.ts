@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { MemoryAuthStore, MemoryLogStore, MemoryProjectStore, PostgresLogStore, type AuthStore, type LogStore } from '../src/index.js'
-import { MemoryAccountPlanStore, clearPlanByAddress, plansAtStart, setPlanByAddress, usageReport, type AccountPlanStore } from '../src/account-plans.js'
+import { MemoryAccountPlanStore, clearPlanByAddress, lapsePlanByAddress, planOf, plansAtStart, setPlanByAddress, unlapsePlanByAddress, usageReport, type AccountPlanStore } from '../src/account-plans.js'
 import type { ProjectStore } from '../src/projects.js'
 import { DEFAULT_PLANS, plansFromEnv } from '../src/quotas.js'
 import { twoSeatSetup } from './fixture.js'
@@ -113,6 +113,68 @@ for (const backend of backends) {
       expect(report).toContainEqual(expect.objectContaining({ email: 'dee@example.com', plan: 'pro', measures: expect.objectContaining({ projects: { used: 2, limit: null }, cardRowsPerProject: perGame, cardCopiesPerProject: perGame, openTables: { used: 1, limit: null }, tablesPer30Days: { used: 1, limit: null }, storageBytes: none, rendersPer30Days: none }) }))
       expect(report).toContainEqual(expect.objectContaining({ email: 'bo@example.com', plan: 'free', measures: expect.objectContaining({ projects: { used: 0, limit: 2 }, cardRowsPerProject: { used: 0, limit: null, projects: [] }, openTables: { used: 0, limit: null }, tablesPer30Days: { used: 0, limit: null }, storageBytes: none, rendersPer30Days: none }) }))
       await db.plans.clearPlan(dee.id)
+    })
+
+    // A lapsed subscription (#1491, G5, L2): the account keeps its own tier in the table, marked as
+    // lapsed, and is held to the default — the free tier — until the operator lifts the lapse or
+    // gives it a tier again. Only an account with a tier of its own can lapse.
+    it('lapses, is held to the default while lapsed, and is as before when lifted or given a tier again', async () => {
+      const gus = await db.auth.ensureAccount('gus@example.com')
+      const stores = { auth: db.auth, accountPlans: db.plans }
+      expect(await lapsePlanByAddress(stores, 'gus@example.com')).toEqual({ ok: false, why: 'no tier of its own' })
+      expect(await lapsePlanByAddress(stores, 'nobody@example.com')).toEqual({ ok: false, why: 'no such account' })
+      await setPlanByAddress({ ...stores, plans: tiers }, 'gus@example.com', 'pro')
+      expect(await planOf(db.plans, tiers, gus.id)).toBe('pro')
+
+      expect(await lapsePlanByAddress(stores, ' Gus@Example.com ')).toEqual({ ok: true })
+      expect(await db.plans.planOf(gus.id)).toMatchObject({ plan: 'pro', source: 'operator', lapsed: expect.any(String) })
+      expect(Date.parse((await db.plans.planOf(gus.id))!.lapsed!)).not.toBeNaN()
+      expect(await planOf(db.plans, tiers, gus.id)).toBe('free')
+      // The lapsed row still names its tier, so the start still holds BYD_PLANS to it.
+      expect(await db.plans.plansNamed()).toContain('pro')
+
+      expect(await unlapsePlanByAddress(stores, 'gus@example.com')).toEqual({ ok: true })
+      expect((await db.plans.planOf(gus.id))?.lapsed).toBeUndefined()
+      expect(await planOf(db.plans, tiers, gus.id)).toBe('pro')
+      expect(await unlapsePlanByAddress(stores, 'gus@example.com')).toEqual({ ok: false, why: 'not lapsed' })
+
+      // A tier given again ends the lapse.
+      await lapsePlanByAddress(stores, 'gus@example.com')
+      await setPlanByAddress({ ...stores, plans: tiers }, 'gus@example.com', 'pro')
+      expect(await planOf(db.plans, tiers, gus.id)).toBe('pro')
+      await db.plans.clearPlan(gus.id)
+    })
+
+    // The report says the lapse, and which games are read-only, beside the tier it is held to.
+    it('reports a lapsed account as held to the default, with its own tier, and its read-only games', async () => {
+      const hal = await db.auth.ensureAccount('hal@example.com')
+      const games = [`hal-1-${backend.name}`, `hal-2-${backend.name}`, `hal-3-${backend.name}`]
+      for (const id of games) await db.projects.create(id, game(id), hal.id)
+      await db.plans.setPlan(hal.id, 'pro', 'operator')
+      await db.plans.lapse(hal.id)
+      const report = await usageReport({ auth: db.auth, accountPlans: db.plans, projects: db.projects, tables: db.tables }, tiers)
+      const line = report.find((l) => l.email === 'hal@example.com')!
+      expect(line).toMatchObject({ plan: 'free', lapsed: { plan: 'pro' }, measures: { projects: { used: 3, limit: 2 } } })
+      expect(line.readOnly).toHaveLength(1)
+      expect(games).toContain(line.readOnly[0])
+      expect(report.find((l) => l.email === 'bo@example.com')).toMatchObject({ readOnly: [] })
+      expect(report.find((l) => l.email === 'bo@example.com')?.lapsed).toBeUndefined()
+      for (const id of games) await db.projects.remove(id)
+      await db.plans.clearPlan(hal.id)
+    })
+
+    // The print package is a property of the tier (#1490), and the report says whether each account
+    // has it, so the operator sees it beside the ceilings; the beta's standard has it.
+    it('says whether each account has the print package, by its tier', async () => {
+      const withPrint = plansFromEnv({ BYD_PLANS: JSON.stringify({ default: 'free', plans: { free: { projects: 2 }, pro: { print: true } } }) })
+      const eve = await db.auth.ensureAccount('eve@example.com')
+      await db.auth.ensureAccount('fay@example.com')
+      await db.plans.setPlan(eve.id, 'pro', 'operator')
+      const report = await usageReport({ auth: db.auth, accountPlans: db.plans, projects: db.projects, tables: db.tables }, withPrint)
+      expect(report).toContainEqual(expect.objectContaining({ email: 'eve@example.com', plan: 'pro', print: true }))
+      expect(report).toContainEqual(expect.objectContaining({ email: 'fay@example.com', plan: 'free', print: false }))
+      await db.plans.clearPlan(eve.id)
+      expect(await usageReport({ auth: db.auth, accountPlans: db.plans, projects: db.projects, tables: db.tables }, DEFAULT_PLANS)).toContainEqual(expect.objectContaining({ email: 'eve@example.com', plan: 'free', print: true }))
     })
   })
 }

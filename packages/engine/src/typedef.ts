@@ -39,6 +39,10 @@ export const ComponentTypeDef = z.object({
     // Never held in a hand (K32, #1471): material that lies on the table. Declared by the type rather
     // than guessed from whether it rolls or counts, since a meeple does neither. Absent, it is held.
     holdable: z.literal(false).optional(),
+    // The step a turn takes on the table (#1482), in degrees: a hexagon's sixth of a turn. The type's
+    // to say and the screen's to use; `rotate` takes any angle, so the step is no verb and the engine
+    // refuses nothing off it. Absent, a quarter turn, as a card has always turned.
+    rotationStepDeg: z.number().positive().max(360).optional(),
   }),
   editorSchema: z.array(FieldDef),
   print: z.object({
@@ -58,6 +62,9 @@ export type ComponentTypeDef = z.infer<typeof ComponentTypeDef>
 // Material (K31, K32): a piece that lies on the table and is never held in a hand, as against a card.
 // What the type declares (`holdable: false`), and nothing else (#1471).
 export const isMaterial = (def: ComponentTypeDef): boolean => def.behaviours.holdable === false
+
+// The step a component turns in on the table (#1482): what the type declares, or a quarter turn.
+export const rotationStep = (def: ComponentTypeDef): number => def.behaviours.rotationStepDeg ?? 90
 
 export const typeKey = (ref: TypeRef): string => `${ref.id}@${ref.version}`
 
@@ -229,8 +236,37 @@ export const CUBE = wood('cube', { shape: 'polyhedron', widthMm: 8, heightMm: 8,
 export const DISC = wood('disc', { shape: 'circle', widthMm: 16, heightMm: 16, thicknessMm: 5, material: 'wood' }, ['front'])
 export const PIECES: readonly ComponentTypeDef[] = [MEEPLE, CUBE, DISC]
 
+// The tiles (#1482, #1470): cardboard pieces that behave as a card does, in their own shape. The
+// shapes are beställarens beslut 9 (2026-10-28), square, hexagon and round, in the sizes of the
+// approved prototype (#1474): a hexagon 52 mm across its flats with a point up, a square of 45 mm,
+// a round tile of 44 mm and a coin of 25 mm, all of 2 mm board. Each has a printed front and back,
+// stacks, shuffles and flips as a card, and may be held hidden in a hand as a card (beslut 10), so
+// it declares nothing that makes it material (K32). It turns in its shape's step: a sixth of a turn
+// for the hexagon, a quarter for the square and the round one (2026-11-01). One type per shape and
+// size, as the card is one type per size.
+const tile = (id: string, physical: Omit<ComponentTypeDef['physical'], 'thicknessMm' | 'material'>, rotationStepDeg: number): ComponentTypeDef => ({
+  id: `tile.${id}`,
+  version: 1,
+  physical: { ...physical, thicknessMm: 2, material: 'greyboard-2mm' },
+  faces: ['front', 'back'],
+  contentFace: 'front',
+  behaviours: { stackable: true, shufflable: true, flippable: true, rollable: false, counter: false, rotationStepDeg },
+  editorSchema: [
+    { key: 'title', label: 'Title', kind: 'text', required: true },
+    { key: 'body', label: 'Body', kind: 'text', required: false },
+    { key: 'art', label: 'Art', kind: 'image', required: false },
+  ],
+  print: { bleedMm: 3, safeMm: 2, dpi: 300, colorProfile: 'sRGB', minPtByScript: { Latn: 6, Hani: 8, Arab: 7 } },
+  manufacturableBy: [],
+})
+export const TILE_HEX = tile('hex.52', { shape: 'hex', widthMm: 52, heightMm: Math.round(((52 * 2) / Math.sqrt(3)) * 100) / 100 }, 60)
+export const TILE_SQUARE = tile('square.45', { shape: 'roundedRect', widthMm: 45, heightMm: 45, cornerRadiusMm: 2 }, 90)
+export const TILE_ROUND = tile('round.44', { shape: 'circle', widthMm: 44, heightMm: 44 }, 90)
+export const TILE_COIN = tile('round.25', { shape: 'circle', widthMm: 25, heightMm: 25 }, 90)
+export const TILES: readonly ComponentTypeDef[] = [TILE_HEX, TILE_SQUARE, TILE_ROUND, TILE_COIN]
+
 // What every table knows.
-export const STANDARD_TYPES: readonly ComponentTypeDef[] = [CARD_STANDARD_63x88, TOKEN_COUNTER, ...DICE, ...PIECES]
+export const STANDARD_TYPES: readonly ComponentTypeDef[] = [CARD_STANDARD_63x88, TOKEN_COUNTER, ...DICE, ...PIECES, ...TILES]
 
 // The tuckbox (#1412, L91): the one box of step 1 (#1406, beslut 4). The deck stands in it on its edge
 // and the lid tucks in at the top. Its measure follows the deck with 1 mm of air around the card and

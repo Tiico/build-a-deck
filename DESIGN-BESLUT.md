@@ -141,6 +141,15 @@ Reviderat 2026-10-28 (#1469, beställarens beslut, förslag A): **Gratis och en 
 - Pro:s tak på unika kort per spel: 500 efter ett lasttest, eller 308 som är det mätta (fråga 7).
 - Om taket på kort blir ett tak på komponenter per spel när brädspelens typer kommer, eller om varje typ får sitt eget mått (fråga 9).
 
+Byggt 2026-11-01 (#1490, skiva 1 av 5 i #1469): **Pro i `BYD_PLANS`, med tryckpaketet som egenskap på nivån.**
+- En nivå i `BYD_PLANS` bär nu, utöver taken, egenskaper: något nivån ger utan att räkna något, `true` eller `false`. Den enda är `print`, tryckpaketet och tryck-PDF:erna i exporten (DRIFT §12).
+- En egenskap som nivån inte nämner har den inte, till skillnad från ett mått, som då är obegränsat: en nivå får en egenskap genom att säga det. Utan variabeln har standardnivån tryckpaketet, som i betan, så att en glömd variabel inte stänger av något.
+- Schemat är lika strikt för egenskaper som för mått: en felstavad egenskap, eller ett värde som inte är `true` eller `false`, stoppar starten.
+- `hasPrint` i `packages/server/src/quotas.ts` svarar om en nivå har tryckpaketet; ingen siffra och inget nivånamn står i koden. Startraden säger vilka nivåer som har det (`print`), aldrig vem som har vilken nivå, och en egenskap räknas aldrig som ett satt tak.
+- `GET /me/usage` och `usage`-skriptet säger `print` för kontots nivå.
+- Själva grinden på tryckpaketet och på `tryck/` i exporten är inte byggd: den väntar på partnern och byggs i #1209:s spår, och läser `hasPrint`. Gratisnivåns siffror och Pro:s tak på kort är konfiguration och sätts inte här (frågorna 3 och 7), och medredigerare grindas inte (fråga 5).
+- Grindarna är `packages/server/test/quotas.test.ts`, `plans-at-start.test.ts`, `account-plans.test.ts` och `quota-projects.test.ts`, mot båda lagren.
+
 ### A3. Testarrekrytering: enbart delbar länk (fråga 22)
 
 Ingen testpanel, ingen matchning, ingen ömsesidighetsmekanik, ingen öppen lobbylista.
@@ -2628,6 +2637,18 @@ Preciserat 2026-10-28 (#1469, beställarens beslut, form L2): **läsläget gäll
 - Det här skiljer sig från ett nått tak under en gällande nivå, som fortfarande bara stoppar tillväxt (A2, #1192): läsläget gäller ett konto vars abonnemang har gått ut.
 - Hur läsläget syns för designern är inte beslutat och prototypas först. Om samma läsläge gäller ett betakonto som vuxit utan tak när gratisnivåns tak sätts hör till fråga 3 i #1469.
 
+Byggt 2026-11-01 (#1491, skiva 2 av 5 i #1469): **läsläget L2 på servern.**
+- Ett konto kan vara **utgånget**: `lapsed_at` på dess rad i `account_plans`. Operatören sätter och häver det med `plan lapse <adress>` och `plan unlapse <adress>` (DRIFT §12), och Stripe skriver samma sak när abonnemangen kopplas på. Bara ett konto med en egen nivå kan gå ut; `plan set` ger det en nivå igen och häver utgången.
+- Ett utgånget konto hålls till standardnivån, Gratis, för varje tak. Raden behåller sin nivå, så starten håller fortfarande `BYD_PLANS` mot den, och standardnivån finns alltid eftersom schemat kräver det.
+- Vilka spel som ryms står på ett ställe, `readOnlyGames` i `packages/server/src/read-only.ts`, och prövas utan HTTP: de senast ändrade först (senaste versionen eller senaste redigeringen i loggen efter den), där ett spel ryms om det har högst gratisnivåns `cardRowsPerProject` och `cardCopiesPerProject`, om det finns en plats kvar under `projects`, och om det som de spel som ryms nämner tillsammans håller sig under `storageBytes`, en bild som två spel delar räknad en gång. Ett spel över korttaken tar ingen plats. Regeln räknas om varje gång och lagras inte, så ett borttaget spel eller en hävd utgång märks genast.
+- Grinden sitter före allt som skriver, som villkorens: en skrivning under `/projects/<id>` på ett spel i läsläge, och en uppladdning med `?project=<id>`, svarar 402 med `{ error: 'read-only' }` innan något läses eller skrivs. Öppna är läsning, export, tryck-PDF:erna och regelhäftet (tills #1209 säger annat), en bild att spara («Spara bilden»), att lådan öppnats, borttagning, och att ta bort en medlem eller dra tillbaka en inbjudan (`READ_ONLY_OPEN`). En väg som läggs till senare är stängd tills listan säger annat; en kopia av ett spel i läsläge är det också.
+- Projektaktören frågar samma regel i beslutssteget, före commit, för varje redigering och version, så editorns linje svarar `refused` med `why: 'read-only'` och ingenting hamnar i loggen. En redigering som bara krymper spelet avvisas också, eftersom beslutet säger «inte ändra».
+- Grinden frågas bara för den som har en roll i spelet, så en främling inte får veta något om det. En medredigerare möter ägarens läsläge, eftersom det är ägarens nivå som gäller (D3); medredigerare grindas inte i övrigt (fråga 5).
+- Bord som redan står stängs inte: att ansluta, spela, få en ny kod och avsluta prövar aldrig läsläget.
+- `GET /me/usage` och `usage`-skriptet säger `plan` (nivån kontot hålls till), `lapsed` (den egna nivån och när den gick ut) och `readOnly`, spelen i läsläge. Hur det sägs för designern är #1492.
+- Ett konto som bara nått ett tak under en gällande nivå beter sig som förut: bara tillväxt stoppas.
+- Grindarna är `packages/server/test/read-only-lapsed.test.ts` (regeln utan HTTP, och REST, editorns linje och `GET /me/usage` mot båda lagren) och `account-plans.test.ts` (utgången och skriptets rapport).
+
 ### G6. Personuppgifter: Deckster är ansvarig, och loggen maskas på plats (beslutat 2026-10-24, #1269)
 
 Beställarens beslut 2026-10-24 på frågorna F1–F7 i #1269.
@@ -5006,6 +5027,26 @@ Varje rad har ett handtag i filten ur samma `layMaterial` som bordet läggs ur (
 En rad som läggs på en punkt ligger mitt på den i hela millimeter, med ett jämnt avstånd mellan bitarna: med det gamla avståndet låg en rad med två bitar en halv millimeter från sin punkt, och varje pil drog den en millimeter åt sidan.
 
 **Aktivitetsraden** säger biten efter sort: «Ada flyttade en meeple till Spelyta», «Ada lade ned en meeple» och «Ada ställde upp en meeple».
+
+### K34. Brickor: kortet i sin egen form, och steget är typens (beslutat 2026-10-28 och 2026-11-01, #1470, #1474, #1482)
+
+Beställarens beslut i #1470 den 2026-10-28: formerna är kvadrat, sexhörning och rund (fråga 9), och en bricka kan hållas dold på handen som ett kort (fråga 10).
+Prototypen godkändes 2026-11-01 (#1474, variant A på varje yta), och en rund bricka vrids i steg om 90°.
+
+**Fyra typer i registret.** `tile.hex.52`, `tile.square.45`, `tile.round.44` och `tile.round.25`, version 1, står i `STANDARD_TYPES` (B1–B3), en per form och storlek som kortet är en per storlek.
+Måtten är prototypens: sexhörningen 52 mm mellan de raka sidorna med spetsen uppåt, kvadraten 45 mm, den runda brickan 44 mm och myntet 25 mm, alla av 2 mm kartong.
+Var och en har två tryckta ytor, `front` och `back`, med framsidan som innehåll, och staplas, blandas och vänds som ett kort; trycket har 3 mm utfall, och ingen är en lagervara.
+
+**En bricka hålls.** Typen deklarerar inte `holdable: false`, så den är inget material (K32): `move`, `draw` och `deal` lägger den i en hand som ett kort, och handen är ägarens ensam.
+Det dolda går genom `project` som kortets (B6): en bricka med baksidan upp i en hög med synligheten «ingen» lämnar varken rad, titel, text eller framsidans hash på någon plats tråd, och en bricka som visas för en plats (`showTo`) når bara den platsen. Testet läser råa frames (`wire.test.ts`).
+
+**Steget är typens, inte ett verb.** `rotationStepDeg` bland typens beteenden säger hur långt ett steg vrider: 60° för sexhörningen, 90° för kvadraten och de runda. `rotationStep` läser det, och en typ som inte säger något vrids ett kvarts varv som kortet alltid har gjort.
+`rotate` tar redan vilken vinkel som helst, så motorn vägrar ingenting utanför steget, och inget verb är nytt; ringen och tangenterna vrider ett steg (#1485).
+
+**Motorn har ingen gren för brickan.** `rotate`, `flip`, `stack`, `shuffle`, `split`, `draw` och `deal` läser typens beteenden som de läser kortets, och omspelningen ger samma bord och en blandad hög samma ordning (D4).
+En bricka staplas på ett kort och blandas i en hög med kort som motorn ser det, eftersom båda är `stackable` och `shufflable`; om en hög ska få blanda former är en fråga för leken och setupen (#1484), inte för typen.
+
+Brickor i setupen, en egen lek och tabell per brickform, bordet, telefonen och trycket byggs i #1484–#1488.
 
 ## L. Editorn (grillad 2026-09-06)
 

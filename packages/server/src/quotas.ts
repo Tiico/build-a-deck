@@ -2,7 +2,7 @@ import { z } from 'zod'
 
 // Quotas (A2, #1192): tiers, measures and ceilings, and nothing else — no HTTP, no store.
 //
-// A **tier** is a name and a ceiling per measure. A **measure** is something an account uses and the
+// A **tier** is a name, a ceiling per measure and its properties (#1490). A **measure** is something an account uses and the
 // server can count. A **ceiling** is a whole number or `null`, and `null` is unlimited.
 //
 // The tiers are configuration and never numbers in the code: `BYD_PLANS` is read once at start, the
@@ -26,10 +26,19 @@ export type BuiltMeasure = (typeof BUILT_MEASURES)[number]
 
 export type Limit = number | null
 const Ceiling = z.number().int().min(0).nullable()
-// Strict, so a misspelt measure stops the start rather than quietly leaving a tier unlimited. A
-// measure a tier does not name is unlimited on it, so a new measure never shuts out anyone whose
-// configuration is older than it.
-const Plan = z.strictObject(Object.fromEntries(MEASURES.map((m) => [m, Ceiling.optional()])) as Record<Measure, z.ZodOptional<typeof Ceiling>>)
+// A **property** is something a tier gives and nothing counts, so it is had or not had, never a
+// ceiling (#1490). `print` is the print package and the print PDFs in the export, which belong to
+// Pro once a real partner is there (A2, G5, #1209, #1469); the gate on them reads `hasPrint`.
+const PROPERTIES = ['print'] as const
+type Property = (typeof PROPERTIES)[number]
+// Strict, so a misspelt measure or property stops the start rather than quietly leaving a tier
+// unlimited, or without what it was given. A measure a tier does not name is unlimited on it, so a
+// new measure never shuts out anyone whose configuration is older than it. A property a tier does
+// not name is one it does not have: a tier is given a property by saying so.
+const Plan = z.strictObject({
+  ...(Object.fromEntries(MEASURES.map((m) => [m, Ceiling.optional()])) as Record<Measure, z.ZodOptional<typeof Ceiling>>),
+  ...(Object.fromEntries(PROPERTIES.map((p) => [p, z.boolean().optional()])) as Record<Property, z.ZodOptional<z.ZodBoolean>>),
+})
 export type Plan = z.infer<typeof Plan>
 const PlanName = z.string().regex(/^[a-z0-9][a-z0-9_-]{0,31}$/, 'a tier is named in lower-case letters, digits, - and _')
 export const Plans = z
@@ -38,8 +47,9 @@ export const Plans = z
   .refine((p) => p.default in p.plans, { error: (issue) => `the default tier «${String((issue.input as { default?: unknown }).default)}» is not one of the tiers`, path: ['default'] })
 export type Plans = z.infer<typeof Plans>
 
-// The built-in standard: one tier, free, with no ceiling anywhere.
-export const DEFAULT_PLANS: Plans = { default: 'free', plans: { free: Object.fromEntries(MEASURES.map((m) => [m, null])) as Plan } }
+// The built-in standard: one tier, free, with no ceiling anywhere and every property, which is the
+// beta's state (DESIGN-BESLUT I, G5: the export carries the print PDFs on every tier until a partner).
+export const DEFAULT_PLANS: Plans = { default: 'free', plans: { free: { ...(Object.fromEntries(MEASURES.map((m) => [m, null])) as Plan), print: true } } }
 
 // The tiers the box was given. Throws, saying what is wrong, when `BYD_PLANS` is there and cannot
 // be read; the caller stops the start on it.
@@ -73,11 +83,20 @@ export function limitOf(plans: Plans, plan: string, measure: Measure): Limit {
   return plans.plans[plan]?.[measure] ?? null
 }
 
+// Whether a tier has the print package (#1490). A tier the configuration does not have has
+// nothing, the reverse of `limitOf`: what is missing is never given.
+export function hasPrint(plans: Plans, plan: string): boolean {
+  return plans.plans[plan]?.print === true
+}
+
 // What the start writes about the tiers (DRIFT §8), as `ai-keys` and `corpus` do: their names, the
-// default and whether any ceiling is set at all. Never who has which tier.
+// default, whether any ceiling is set at all, and which tiers have the print package (#1490). Never
+// who has which tier.
 export function plansLine(plans: Plans): Record<string, unknown> {
-  const limited = Object.values(plans.plans).some((plan) => Object.values(plan).some((limit) => limit !== null && limit !== undefined))
-  return { msg: 'plans', plans: Object.keys(plans.plans).sort(), default: plans.default, limited, ...(limited ? {} : { warning: 'no ceiling is set; nothing is limited' }) }
+  const names = Object.keys(plans.plans).sort()
+  const limited = names.some((plan) => MEASURES.some((m) => limitOf(plans, plan, m) !== null))
+  const print = names.filter((plan) => hasPrint(plans, plan))
+  return { msg: 'plans', plans: names, default: plans.default, limited, print, ...(limited ? {} : { warning: 'no ceiling is set; nothing is limited' }) }
 }
 
 // Where a ceiling stood when it was met: the measure, the ceiling and what was used against it.

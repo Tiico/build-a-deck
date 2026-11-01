@@ -309,6 +309,10 @@ export type ProjectStore = {
   // versions, so a game taken away frees what no other game of the account names, and the history
   // counts as long as it is kept. A name no asset answers to weighs nothing.
   stored(owner: string): Promise<number>
+  // What one game's versions name (#1491): every distinct asset some version of it names, with its
+  // size, read as `stored` reads them; a name no asset answers to weighs nothing. What the read-only
+  // mode holds the games that fit to `storageBytes` with, a picture two of them share weighed once.
+  weighed(id: string): Promise<Record<string, number>>
   // Which of these hashes some version of some game the account owns names already (#1197): what
   // costs it nothing again.
   borne(owner: string, hashes: readonly string[]): Promise<Set<string>>
@@ -492,6 +496,12 @@ export class MemoryProjectStore implements ProjectStore {
   async stored(owner: string): Promise<number> {
     const mine = [...this.named(owner)]
     return weight(mine, await this.weigh(mine))
+  }
+
+  async weighed(id: string): Promise<Record<string, number>> {
+    const named = [...new Set((this.history.get(id) ?? []).flatMap((v) => assetHashesOf(v.doc)))]
+    const sizes = await this.weigh(named)
+    return Object.fromEntries(named.map((hash) => [hash, sizes[hash] ?? 0]))
   }
 
   async using(hash: string): Promise<{ id: string; owner?: string }[]> {
