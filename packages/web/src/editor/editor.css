@@ -1099,8 +1099,8 @@ i[data-kind='piece'][data-piece='disc'] { border-radius: 50%; }
   position: absolute;
   z-index: 2;
   transform: translate(8px, 8px);
-  padding: 2px 8px;
-  border: 1px solid #3c8ce7;
+  padding: var(--byd-s1) var(--byd-s2);
+  border: 1px solid var(--byd-editor-primary-mark);
   border-radius: 4px;
   background: rgb(16 19 26 / 0.92);
   color: #f4efe2;
