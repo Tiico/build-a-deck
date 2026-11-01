@@ -407,6 +407,9 @@ input.byd-code-field { font: 700 22px/1 ui-monospace, Menlo, monospace; letter-s
    mode reads the same on Mina spel as in the editor; the way back on a quieter line under it. */
 .byd-read-only-offer { align-items: start; background: #2a2418; border: 1px solid #4a4230; color: #ffe4b0; --byd-secondary-line: #8a7a52; --byd-secondary-ink: #ffe4b0; }
 .byd-read-only-offer > .byd-glyph { color: #ffd98a; }
+/* «Förnya Pro» (#1532): an outline in the band's own amber, beside «Stäng». */
+.byd-read-only-pro { display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; box-sizing: border-box; border: 1px solid #8a7a52; border-radius: 12px; color: #fff; font-weight: 700; text-decoration: none; white-space: nowrap; }
+.byd-read-only-pro:hover { background: #3a3222; }
 .byd-read-only-offer small { display: block; margin-top: 4px; color: #e0cfa3; font-size: 13px; }
 /* The name's band (#1254) asks in the band itself: the field stands before its two answers, on the
    band's green, in the band's own line colour. */

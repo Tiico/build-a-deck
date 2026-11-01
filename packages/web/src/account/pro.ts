@@ -127,3 +127,23 @@ export function useProOffer(http: string, quota: Quota | null | undefined): stri
   }, [http, quota])
   return quota ? proOffer(quota, standing, t) : null
 }
+
+// What the read-only band says of Pro to the owner (#1532, beställarens beslut 2026-11-01): the
+// monthly price, for «Förnya Pro». Null for anyone else (`mine` false), with payments off, while
+// the standing is being read, and for an account that has Pro.
+export function useRenewOffer(http: string, mine: boolean): string | null {
+  const t = useT()
+  const [standing, setStanding] = useState<ProStanding | null>(null)
+  useEffect(() => {
+    if (!mine) return
+    let live = true
+    void proOnce(http).then((s) => live && setStanding(s))
+    return () => {
+      live = false
+    }
+  }, [http, mine])
+  if (!mine || !standing || standing.plan === standing.paid.plan) return null
+  const currency = currencyOf(standing, t)
+  const price = currency ? pricePhrase(standing, currency, 'month', t) : null
+  return price ? t('readOnly.pro', { price }) : null
+}

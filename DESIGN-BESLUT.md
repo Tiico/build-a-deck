@@ -2701,8 +2701,13 @@ Beslutat och byggt 2026-11-01 (#1492, beställarens beslut variant A efter [prot
 - **Spelet i läsläge** bär märket «Läsläge» och taket det ligger över på sin rad eller i heron, i stället för när det senast spelades. Heron får «Exportera…» där «Starta bord» stod, och ⋯ behåller sina val, där «Starta bord», «Byt namn…» och «Duplicera» säger «Inte i läsläge». Spelen som ryms ser ut som i dag.
 - **Editorn** säger det i #489:s läsband, så läsläget har en form: till ägaren taket och vad spelet använder av det, till en medredigerare bara vems spelet är, med ägarens namn och aldrig hennes nivå. En redigering som inte bara gör spelet mindre avvisas i editorn innan den skickas, med regeln aktören håller den till (`onlyShrinks`, #1511), och bandet säger «Läsläge: bara att ta bort kort, sänka Antal och ta bort bilder sparas.». Kontrollerna står kvar, eftersom att ta bort kort, sänka Antal och ta bort bilder ska gå. «Starta bord» finns inte för ett spel i läsläge. När spelet ryms igen försvinner bandet.
 - Editorn frågar `GET /projects/<id>/read-only`, som svarar ägaren `{ bearer: 'you', why, limit }` och någon annan med en roll i spelet `{ bearer: 'owner', ownerName? }`, och `null` när spelet fungerar som vanligt.
-- Ordet «Pro», ett pris och «Förnya Pro» står inte i läsläget förrän kassan finns (#1493, #1494).
+- Ordet «Pro», ett pris och «Förnya Pro» stod inte i läsläget förrän kassan fanns (#1493, #1494); sedan #1532 gör de det för ägaren, se nedan.
 - Grindarna är `packages/web/test/read-only-mode.test.tsx`, `packages/server/test/read-only-lapsed.test.ts` och `packages/e2e/test/read-only-mode.spec.ts`, där ett utgånget konto i den byggda appen möter läsläget.
+
+Beslutat och byggt 2026-11-01 (#1532, beställarens beslut samma dag, efter #1492 och #1494): **läslägets band erbjuder ägaren Pro igen, med priset.**
+- Bandet i Mina spel och editorns läsband säger till ägaren «Med Pro rymmer kontot det Pro rymmer igen, för 99 kr i månaden.» och har «Förnya Pro», som leder till kortet «Abonnemang» i Profil, på samma sätt som takbeskedet (#1494).
+- Priset är det Stripe har, i läsarens valuta, läst med `GET /me/subscription`. En medredigerare ser fortfarande bara ägarens namn, aldrig hennes nivå eller ett pris, och med betalningen avstängd sägs inget pris och ingen väg till Pro.
+- Grinden är `packages/web/test/read-only-pro.test.tsx`, mot Stripes ställföreträdare på maskinen.
 
 ### G6. Personuppgifter: Deckster är ansvarig, och loggen maskas på plats (beslutat 2026-10-24, #1269)
 
