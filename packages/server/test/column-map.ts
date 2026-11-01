@@ -169,6 +169,8 @@ export const COLUMNS: Readonly<Record<string, Class>> = {
   'render_jobs.state': 'none',
   'render_jobs.error': 'none',
   'render_jobs.started_at': 'none',
+  // A job's place in its table's order (#1546), a number.
+  'render_jobs.place': 'none',
   'render_outputs.hash': 'none',
   'render_outputs.bytes': 'none',
   'render_outputs.created_at': 'none',

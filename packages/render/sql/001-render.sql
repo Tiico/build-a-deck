@@ -78,3 +78,9 @@ create table if not exists screening_references (
   added_at   bigint not null,
   primary key (algorithm, bits)
 );
+
+-- A job's place in what asked for it (#1546): a table numbers its textures from 0, the ones seen
+-- first first, and `claim` hands out the lowest place within a kind, so the queue takes turns between
+-- tables. A job queued before there was a place is at 0.
+alter table render_jobs add column if not exists place integer not null default 0;
+create index if not exists render_jobs_turns on render_jobs (priority, place, requested_at) where state = 'queued';

@@ -64,11 +64,11 @@ export class PostgresRenderStore implements RenderStore {
       const [existing] = await tx<{ state: Row['state'] }[]>`select state from render_jobs where hash = ${req.hash} for update`
       if (existing && (existing.state === 'queued' || existing.state === 'running')) return 'queued-already'
       await tx`
-        insert into render_jobs (hash, kind, priority, compiled, requested_at, state)
-        values (${req.hash}, ${tx.json(req.kind)}, ${req.priority}, ${tx.json(req.compiled)}, ${req.requestedAt}, 'queued')
+        insert into render_jobs (hash, kind, priority, compiled, requested_at, state, place)
+        values (${req.hash}, ${tx.json(req.kind)}, ${req.priority}, ${tx.json(req.compiled)}, ${req.requestedAt}, 'queued', ${req.order ?? 0})
         on conflict (hash) do update
           set kind = excluded.kind, priority = excluded.priority, compiled = excluded.compiled,
-              requested_at = excluded.requested_at, state = 'queued', error = null, started_at = null
+              requested_at = excluded.requested_at, state = 'queued', error = null, started_at = null, place = excluded.place
       `
       // In the transaction that queued the job (#1197), so a job is never queued unbilled nor billed unqueued.
       if (bearer !== undefined) await tx`insert into render_log (account_id, hash, priority, requested_at) values (${bearer}, ${req.hash}, ${req.priority}, ${req.requestedAt})`
@@ -86,7 +86,7 @@ export class PostgresRenderStore implements RenderStore {
       update render_jobs set state = 'running', started_at = ${now}, error = null
       where hash = (
         select hash from render_jobs where state = 'queued'
-        order by case priority when 'texture' then 0 when 'print' then 1 else 2 end, requested_at
+        order by case priority when 'texture' then 0 when 'print' then 1 else 2 end, place, requested_at
         limit 1 for update skip locked
       )
       returning *

@@ -356,6 +356,12 @@ Varje nyckel ska läsas som ingen — «ange nyckeln igen» — och testet går 
 
 Jobbtabell i Postgres med `SELECT … FOR UPDATE SKIP LOCKED`.
 Två prioriteter: bordstextur före tryck-PDF.
+Inom ett jobbslag turas kön om mellan borden (#1546).
+Varje bord numrerar sina texturer, och det som syns när spelet startar får platserna från 0: brädena, baksidorna och uppvända kort.
+Resten av leken får platser från en fast bas, i högarnas ordning med översta först.
+Kön delar ut lägsta plats först och sedan den äldsta, så varje bords synliga texturer ritas före något bords resten, och därefter bordens kort turvis.
+Ett bord som startar medan ett annat är halvvägs hinner ikapp det, och sedan turas de om.
+Platsen står i `render_jobs.place`, och ett jobb utan plats har plats 0.
 En Chromium-container med en sida i taget och det minnestak §1 ger den — 1,5 GB sedan 2026-09-11.
 Sidan namnger sina bilder och typsnitt med hash, och workern läser bytesen själv ur Postgres eller R2 (§4, #1028).
 Utdata i R2 under hash av mall, rad, typversion och fontset; ett jobb vars hash redan finns är en no-op.
