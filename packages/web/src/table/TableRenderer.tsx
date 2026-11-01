@@ -185,6 +185,10 @@ export type TableRendererProps = {
   // the stand-in weave `table.css` draws, which is what every surface showed before: a back that
   // belonged to no game (L17).
   back?: ((fit: FeltFit, at: string) => ReactNode) | undefined
+  // A board's side drawn by the one compiler from the document (#1481), for a surface with no render
+  // farm behind it: the editor's Bord tab draws the side being designed, as it draws the deck's back.
+  // Without it a board wears the felt's texture of it, or plain board while there is none.
+  boardSide?: ((board: VisibleComponentState, fit: FeltFit) => ReactNode) | undefined
   // Whose hand is whose. Table mode always says so on the felt; TV mode leaves it to the dock
   // that says it already (K9). A TV-mode surface with no dock — the editor's Bord tab — asks for
   // the cards here, so that a hand is named by the renderer like every other zone (K19).
@@ -340,7 +344,7 @@ type Settled = { ids: string[]; origin: Drag['origin']; pile: { id: string; x: n
 // chip — whose verbs are a counter's own and not a card's (C4, #67).
 type Ring = { target: DragTarget; x: number; y: number }
 
-export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(function TableRenderer({ view: whole, mode, scale: fixedScale, rotate = 0, faces, onAct, peers = [], pulses = [], recent = [], shuffles = [], said = [], rolls = [], onPresence, camera, remember, onInspect, onPick, onShow, watch = false, size: fixedSize, glideMs = GLIDE_MS, margin = 0, overlay, back, seatNames = false, me = null, foldHand = null, keyboard, aimed = null, lens = false, forTheRoom = false, lit, cornerIn, startWait = null, startTile = true, more, onFit }, ref) {
+export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(function TableRenderer({ view: whole, mode, scale: fixedScale, rotate = 0, faces, onAct, peers = [], pulses = [], recent = [], shuffles = [], said = [], rolls = [], onPresence, camera, remember, onInspect, onPick, onShow, watch = false, size: fixedSize, glideMs = GLIDE_MS, margin = 0, overlay, back, boardSide, seatNames = false, me = null, foldHand = null, keyboard, aimed = null, lens = false, forTheRoom = false, lit, cornerIn, startWait = null, startTile = true, more, onFit }, ref) {
   const t = useT()
   // The boards lie under everything (#1480) and are nothing else on the table: not a card to count,
   // lay beside, name or pick up. The felt draws them first, and reads the rest of the table without them.
@@ -1530,7 +1534,11 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
             const a = absoluteOf(whole, c)
             return (
               <div key={c.id} className="byd-board" data-board={c.id} aria-hidden="true" style={{ left: left(a.x), top: top(a.y), width: px(mm.w), height: px(mm.h), ...(c.rot ? { transform: `rotate(${c.rot}deg)` } : {}) }}>
-                <BackTexture faces={faces} hash={c.faces?.['front']} />
+                {(boardSide && (
+                  <span className="byd-board-side" data-board-face>
+                    {boardSide(c, { px, left, top, scale })}
+                  </span>
+                )) || <BackTexture faces={faces} hash={c.faces?.['front']} />}
               </div>
             )
           })}

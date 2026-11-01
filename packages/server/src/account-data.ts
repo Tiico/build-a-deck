@@ -83,6 +83,15 @@ export const PersonalData = z.object({
   goneGames: z.array(z.object({ name: z.string(), why: z.enum(['removed', 'account']), at: When })),
   // What the account bears (A2): the tables started from its games or by it, and its renderings.
   borne: z.object({ tables: z.number().int(), renders: z.number().int() }),
+  // Its customer at Stripe, if it ever went to the checkout (#1520, #1493): Stripe's id for it, and
+  // every subscription Stripe has for it as it stands, with what each was for. `subscriptions` is
+  // null when Stripe could not be asked; the card and the address are Stripe's and not here.
+  stripe: z
+    .object({
+      customer: z.string(),
+      subscriptions: z.array(z.object({ status: z.string(), plan: z.string().nullable(), currency: z.string().nullable(), interval: z.string().nullable() })).nullable(),
+    })
+    .nullable(),
 })
 export type PersonalData = z.infer<typeof PersonalData>
 
@@ -146,6 +155,9 @@ Times are in UTC, written like \`2026-10-25T14:03:00.000Z\`, and \`null\` means 
   The moves themselves belong to the table and its game's owner, and are not here.
 - \`goneGames\`: the games gone from your My games whose notice you have not closed: \`name\` the game's name, \`why\` why it went (\`removed\` when its owner removed it, \`account\` when its owner deleted their account) and \`at\` when. Who owned it is not said.
 - \`borne\`: what your account bears: \`tables\`, how many tables were started from your games or by you, and \`renders\`, how many card pictures were rendered for you.
+- \`stripe\`: your subscription through Stripe, \`null\` if you never went to the checkout.
+  \`customer\` is Stripe's id for you, and \`subscriptions\` every subscription Stripe has for you: \`status\` as Stripe says it (\`active\`, \`past_due\`, \`canceled\` and so on), \`plan\` the tier, \`currency\` and \`interval\` (\`month\` or \`year\`).
+  \`subscriptions\` is \`null\` when Stripe could not be asked. Your card and your receipts are with Stripe, not here.
 `
   }
   return `# Dina uppgifter i Deckster
@@ -185,6 +197,9 @@ Tider står i UTC, skrivna som \`2026-10-25T14:03:00.000Z\`, och \`null\` betyde
   Själva dragen hör till bordet och spelets ägare och står inte här.
 - \`goneGames\`: spelen som försvunnit ur dina Mina spel och vars besked du inte har stängt: \`name\` spelets namn, \`why\` varför det försvann (\`removed\` när ägaren tog bort det, \`account\` när ägaren raderade sitt konto) och \`at\` när. Vem som ägde det står inte med.
 - \`borne\`: vad ditt konto står för: \`tables\`, hur många bord som startats från dina spel eller av dig, och \`renders\`, hur många kortbilder som renderats åt dig.
+- \`stripe\`: ditt abonnemang via Stripe, \`null\` om du aldrig gick till kassan.
+  \`customer\` är Stripes id för dig, och \`subscriptions\` varje abonnemang Stripe har för dig: \`status\` som Stripe säger det (\`active\`, \`past_due\`, \`canceled\` och så vidare), \`plan\` nivån, \`currency\` valutan och \`interval\` (\`month\` för månad eller \`year\` för år).
+  \`subscriptions\` är \`null\` när Stripe inte gick att fråga. Ditt kort och dina kvitton finns hos Stripe, inte här.
 `
 }
 
@@ -261,6 +276,28 @@ export async function personalDataOf(opts: ServerOptions, auth: AuthStore, accou
     tables,
     goneGames: projects ? (await projects.goneFor(account.id)).map((g) => ({ name: g.name, why: g.why, at: g.at })) : [],
     borne: { tables: (await opts.store.tablesOf(account.id, new Date(0))).started, renders: opts.renders ? await opts.renders.rendersBy(account.id, 0) : 0 },
+    stripe: await stripeOf(opts, account.id),
+  }
+}
+
+// Her customer at Stripe and its subscriptions (#1520): asked of Stripe as they stand, and said as
+// not asked when Stripe does not answer or payments are off, so the extract always comes.
+async function stripeOf(opts: ServerOptions, account: string): Promise<PersonalData['stripe']> {
+  const customer = await opts.accountPlans?.customerOf(account)
+  if (!customer) return null
+  if (!opts.payments) return { customer, subscriptions: null }
+  try {
+    const subs = await opts.payments.stripe.subscriptionsOf(customer)
+    return {
+      customer,
+      subscriptions: subs.map((s) => {
+        const known = s.prices.map((p) => opts.payments?.config.byId.get(p)).find((k) => k !== undefined)
+        return { status: s.status, plan: known?.plan ?? null, currency: known?.currency ?? null, interval: known?.interval ?? null }
+      }),
+    }
+  } catch (err) {
+    console.error(JSON.stringify({ msg: 'stripe', extract: 'failed', error: err instanceof Error ? err.message : String(err) }))
+    return { customer, subscriptions: null }
   }
 }
 

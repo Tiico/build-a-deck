@@ -465,6 +465,10 @@
 .byd-editor-notice > b { color: #fff; }
 .byd-editor-notice-close { flex: none; display: inline-grid; place-items: center; width: var(--byd-tap); height: var(--byd-tap); border: 0; border-radius: 6px; padding: 0; background: transparent; color: var(--byd-editor-notice-mark); font: inherit; font-size: 20px; line-height: 1; cursor: pointer; }
 .byd-editor-notice-close:hover { background: #3a3222; }
+/* «Uppgradera till Pro» beside a met ceiling of her own (#1494): an outline in the band's own amber,
+   one row high, before ×. */
+.byd-editor-notice-pro { flex: none; display: inline-flex; align-items: center; min-height: 40px; padding: 0 var(--byd-s3); box-sizing: border-box; border: 1px solid #8a7a52; border-radius: 8px; color: #ffe4b0; font-weight: 700; text-decoration: none; white-space: nowrap; }
+.byd-editor-notice-pro:hover { background: #3a3222; }
 .byd-editor .byd-editor-notice-close:focus-visible { outline-offset: -3px; }
 /* What just happened stands in the open tab's foot, in the stead of the foot's quiet line (#698,
    beslut B 2026-10-06). It floated at the bottom of the screen (#566, beslut D) and lay over «Nästa
@@ -1092,6 +1096,27 @@ i[data-kind='piece'][data-piece='disc'] { border-radius: 50%; }
 .byd-setup-material { position: absolute; z-index: 2; box-sizing: border-box; border-radius: 6px; cursor: grab; outline: none; touch-action: none; }
 .byd-setup-material:hover { box-shadow: 0 0 0 2px rgba(255, 217, 138, 0.55); }
 .byd-setup-material:focus-visible { outline: none; box-shadow: 0 0 0 2px #ffd98a, 0 0 0 5px rgba(255, 217, 138, 0.25); }
+/* The main board's handle (#1481, variant A of #1473): a plate over its top edge that names it and
+   opens its row, as the prototype draws it. A plate and not a box, so the zones on the board keep
+   their own handles. */
+.byd-setup-board-handle {
+  position: absolute;
+  z-index: 2;
+  transform: translate(8px, 8px);
+  padding: var(--byd-s1) var(--byd-s2);
+  border: 1px solid var(--byd-editor-primary-mark);
+  border-radius: 4px;
+  background: rgb(16 19 26 / 0.92);
+  color: #f4efe2;
+  font: 600 12px system-ui, sans-serif;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.byd-setup-board-handle:hover { border-color: #ffd98a; }
+.byd-setup-board-handle:focus-visible { outline: none; box-shadow: 0 0 0 2px #ffd98a, 0 0 0 5px rgba(255, 217, 138, 0.25); }
+.byd-setup-board { display: grid; gap: 8px; }
+.byd-setup-board > select { min-height: var(--byd-tap); }
+.byd-setup-board .byd-setup-note { margin: 0; }
 .byd-setup-material:active { cursor: grabbing; }
 .byd-setup-handle[data-kind='pile'] { border: 0; outline: 2px solid rgba(255, 217, 138, 0.55); outline-offset: 2px; }
 .byd-setup-handle[data-kind='pile'][aria-pressed='true'], .byd-setup-handle[data-kind='pile']:focus-visible { outline-color: #ffd98a; box-shadow: 0 0 0 7px rgba(255, 217, 138, 0.25); }
@@ -5057,6 +5082,45 @@ label.byd-ai-rules { cursor: pointer; }
 /* The flaps are folded in and never printed (#1406): a row that says so, and no button. */
 .byd-box-flaps { min-height: 32px; color: var(--byd-editor-source-ink); cursor: default; }
 .byd-box-flaps .byd-box-thumb::before { content: ''; width: 14px; height: 14px; border: 1px solid #5b6275; border-radius: 2px; }
+/* The «Bräde» tab (#1481, variant A of #1473): the game's boards as the box's faces are listed, and
+   the board in the middle on the same chequerboard, fitted whole into the room, with Bord's zones
+   over it as locked dashed outlines named «från Bord», which answer nothing. */
+.byd-board-list { padding-bottom: var(--byd-s2); margin-bottom: var(--byd-s2); border-bottom: 1px solid #2f333d; }
+.byd-board-list ul { list-style: none; margin: 0; padding: 0; display: grid; }
+.byd-board-list button {
+  box-sizing: border-box;
+  display: grid;
+  justify-items: start;
+  align-content: center;
+  gap: 2px;
+  width: 100%;
+  min-height: var(--byd-tap);
+  padding: 4px var(--byd-s2);
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #dce3f2;
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+.byd-board-list button:hover { background: #232838; }
+.byd-board-list button[aria-pressed='true'] { color: #fff; font-weight: 600; box-shadow: inset 0 -3px 0 var(--byd-editor-primary-mark); }
+.byd-board-list small { color: var(--byd-editor-source-ink); font-size: 11px; font-weight: 400; font-variant-numeric: tabular-nums; }
+.byd-board-notes .byd-canvas-hint { margin: 0 0 var(--byd-s2); }
+.byd-board-stage {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  place-items: center;
+  background: repeating-conic-gradient(#20232b 0 25%, #1b1d23 0 50%) 0 0 / 24px 24px;
+}
+.byd-board-sheet { position: relative; box-shadow: 0 3px 12px rgb(0 0 0 / 0.5); }
+.byd-board-sheet [data-card] { background: var(--byd-editor-blank-paper); }
+.byd-board-zone { position: absolute; box-sizing: border-box; border: 1.5px dashed #9cc4f5; border-radius: 4px; pointer-events: none; }
+.byd-board-zone > span { position: absolute; left: 6px; top: 4px; color: #9cc4f5; font-size: 12px; white-space: nowrap; text-shadow: 0 0 3px #0b0d12, 0 0 3px #0b0d12; }
+.byd-board-foot { margin: 0; padding: var(--byd-s1) var(--byd-s3); color: #c3cbdd; font-size: 12px; font-variant-numeric: tabular-nums; }
 /* The net on the room's chequerboard, fitted whole into it (`useFitted`). */
 .byd-box-stage { min-height: 0; background: repeating-conic-gradient(#20232b 0 25%, #1b1d23 0 50%) 0 0 / 24px 24px; }
 /* The net itself, its lines and its faces, is drawn by `BOX_NET_CSS` in box-net.tsx, which the

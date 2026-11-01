@@ -142,6 +142,7 @@ const EVERY: Record<EditIntent['v'], { mine: (doc: ProjectDoc) => EditIntent; th
   setGroupColumn: { mine: () => ({ v: 'setGroupColumn', column: null }) },
   setRecipe: { mine: () => ({ v: 'setRecipe', recipe: { players: 3, counters: [{ name: 'Liv', start: 20 }, { name: 'Guld', start: 0 }] } }) },
   setDice: { mine: () => ({ v: 'setDice', dice: [{ faces: 6, count: 2, role: 'mine' }, { faces: 20, count: 1, zone: 'table', perSeat: true }] }) },
+  setBoards: { mine: () => ({ v: 'setBoards', boards: [{ id: 'main', type: { id: 'board.square457', version: 1 }, zone: 'table' }, { id: 'spelare', type: { id: 'board.player', version: 1 }, role: 'mine' }] }) },
   setPieces: { mine: () => ({ v: 'setPieces', pieces: [{ kind: 'meeple', count: 5, role: 'mine' }, { kind: 'cube', count: 2, zone: 'table', perSeat: true }] }) },
   setDecks: { mine: (doc) => ({ v: 'setDecks', decks: [{ id: 'landskap', name: 'Landskap', type: { id: 'tile.hex.52', version: 1 }, template: doc.template, rows: [{ id: 'skog', fields: { title: 'Skog' } }], zone: 'draw' }] }) },
   setMarkers: { mine: () => ({ v: 'setMarkers', markers: [{ id: 'mynt', name: 'Mynt', type: { id: 'tile.round.25', version: 1 }, faces: { front: { base: [], variants: {} } }, count: 30, zone: 'table' }] }) },

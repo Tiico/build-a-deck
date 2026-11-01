@@ -1,5 +1,5 @@
 import { maskedWord, maskedWords } from '../masked.js'
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
 import { canDelete, canEdit, canStartTables, type CardFace, type GameCover, type Role } from '@byd/server/doc'
 import { HOME_COVER_CARD_H, HeroBox } from './HeroBox.js'
 import { LandingPage } from './LandingPage.js'
@@ -13,7 +13,8 @@ import { ReadOnlyOffer } from './ReadOnlyOffer.js'
 import { dismissGone, duplicateProject, gameCover, gameFan, logout, myAccount, myCards, myGone, myPlayed, myProjects, myUsage, myWaiting, removeProject, renameProject, returnToTable, runningTables, startTable, type GameWaiting, type GoneGame, type ReadOnlyWhy, type Usage, type Played, type ProjectSummary, type RunningTable, type TermsStanding } from './api.js'
 import { TermsDue, laterFor, putOff } from './terms-due.js'
 import { TermsOffer } from './TermsOffer.js'
-import { QuotaReached } from './quota.js'
+import { QuotaReached, type Quota } from './quota.js'
+import { proCardUrl, useProOffer } from './pro.js'
 import { quotaWords, type QuotaWords } from './quota-words.js'
 import { startInTab, tableWay } from '../startWay.js'
 import type { StartAnswer } from '../editor/startAnswer.js'
@@ -147,7 +148,14 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
   const [attempt, setAttempt] = useState(0)
   // What could not happen, in the box under the heading: a sentence, or a met ceiling in its three
   // parts (#1198, variant A), which takes the focus so a keyboard hears it where the press was.
-  const [notice, setNotice] = useState<string | QuotaWords | null>(null)
+  const [notice, setNotice] = useState<string | (QuotaWords & { quota?: Quota }) | null>(null)
+  // A met ceiling of her own says Pro too (#1494): its price, and the way to Profil's card.
+  const offer = useProOffer(http, notice !== null && typeof notice !== 'string' ? notice.quota : null)
+  const goPro = (e: MouseEvent<HTMLAnchorElement>) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return
+    e.preventDefault()
+    onNavigate(proCardUrl())
+  }
   const noticeRef = useRef<HTMLParagraphElement>(null)
   useEffect(() => {
     if (notice !== null && typeof notice !== 'string') noticeRef.current?.focus()
@@ -221,7 +229,7 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
           },
           (err: unknown) => {
             if (askTerms(err, () => startAs(p, answer))) return null
-            setNotice(err instanceof QuotaReached ? quotaWords(err.quota, { kind: 'table', rev: p.rev, here: runningOf(p).length }, t) : err instanceof Error ? err.message : String(err))
+            setNotice(err instanceof QuotaReached ? { ...quotaWords(err.quota, { kind: 'table', rev: p.rev, here: runningOf(p).length }, t), quota: err.quota } : err instanceof Error ? err.message : String(err))
             return null
           },
         ),
@@ -235,7 +243,10 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
   const newGame = withTerms(() => void makeGame())
   const makeGame = async () => {
     const games = (await myUsage(http))?.measures['projects']
-    if (games && games.limit !== null && games.used >= games.limit) return setNotice(quotaWords({ measure: 'projects', limit: games.limit, used: games.used, bearer: 'you' }, { kind: 'newGame' }, t))
+    if (games && games.limit !== null && games.used >= games.limit) {
+      const quota: Quota = { measure: 'projects', limit: games.limit, used: games.used, bearer: 'you' }
+      return setNotice({ ...quotaWords(quota, { kind: 'newGame' }, t), quota })
+    }
     onNavigate(`/new?${suffix(new URLSearchParams())}`)
   }
   // «Starta bord» from a game's ⋯ or its hero (#1145, beslut A): asked first while a table of it runs.
@@ -440,7 +451,7 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
                       setRefocus({ to: p.id })
                       say?.('polite', t('home.duplicated', { name: copy.name }))
                     },
-                    (err: unknown) => askTerms(err, duplicate) || setNotice(err instanceof QuotaReached ? quotaWords(err.quota, { kind: 'duplicate', game: p.name }, t) : err instanceof Error ? err.message : String(err)),
+                    (err: unknown) => askTerms(err, duplicate) || setNotice(err instanceof QuotaReached ? { ...quotaWords(err.quota, { kind: 'duplicate', game: p.name }, t), quota: err.quota } : err instanceof Error ? err.message : String(err)),
                   )
                 })}
               >
@@ -659,9 +670,19 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
             </p>
           )}
           {notice !== null && typeof notice !== 'string' && (
-            <p ref={noticeRef} className="byd-home-notice" role="alert" tabIndex={-1}>
-              <b>{notice.what}</b> {notice.why} {notice.way}
-            </p>
+            <div className="byd-home-quota">
+              <p ref={noticeRef} className="byd-home-notice" role="alert" tabIndex={-1}>
+                <b>{notice.what}</b> {notice.why} {notice.way}
+              </p>
+              {offer && (
+                <p className="byd-home-pro">
+                  <span>{offer}</span>
+                  <a href={proCardUrl()} onClick={goPro}>
+                    {t('quota.pro.go')}
+                  </a>
+                </p>
+              )}
+            </div>
           )}
           {another && anotherTable && (
             <Question

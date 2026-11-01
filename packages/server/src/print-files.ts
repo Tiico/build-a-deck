@@ -1,4 +1,4 @@
-import { typeKey, type ComponentTypeDef, type SetupDef, type TypeRegistry } from '@byd/engine'
+import { seatColourOf, typeKey, type ComponentTypeDef, type SetupDef, type TypeRegistry } from '@byd/engine'
 import type { FileSource, PreparedFile, PreparedOrder, PrintManifest } from '@byd/print'
 import { contentHash, type RenderKind, type RenderRequest, type RenderStore } from '@byd/render/queue'
 import { compileRow, deckFor, printedYet, type Deck } from './faces.js'
@@ -12,7 +12,8 @@ export type PrintFileJob = { name: string; job: RenderRequest }
 
 // One entry per physical card, as `printExportOf` lists them, each side named by what it shows: the
 // hash of the face compiled without bleed, so two cards whose side is the same picture are one
-// file to the partner whatever bleed it asks for. A die is hardware, by type and count (#1140), and
+// file to the partner whatever bleed it asks for. A die is hardware, by type and count (#1140), a
+// wooden piece by type, colour and count (#1478), and
 // a seat's counter is a token and no card at all (C4).
 export function printManifestOf(deck: Deck, setup: SetupDef, registry: TypeRegistry): PrintManifest {
   const cards: PrintManifest['cards'] = []
@@ -20,9 +21,12 @@ export function printManifestOf(deck: Deck, setup: SetupDef, registry: TypeRegis
   for (const spec of setup.components) {
     const type = registry.get(spec.type)
     if (type.print.stock) {
-      const seen = hardware.get(typeKey(spec.type))
+      // A wooden piece wears its seat's colour (L11, #1478), so each seat's are a line of their own.
+      const colour = seatColourOf(setup.seats, spec.cardRef)
+      const key = `${typeKey(spec.type)} ${colour ?? ''}`
+      const seen = hardware.get(key)
       if (seen) seen.count++
-      else hardware.set(typeKey(spec.type), { type: { id: spec.type.id, version: spec.type.version }, count: 1 })
+      else hardware.set(key, { type: { id: spec.type.id, version: spec.type.version }, count: 1, ...(colour !== undefined ? { colour } : {}) })
       continue
     }
     if (spec.counter !== undefined) continue

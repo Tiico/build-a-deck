@@ -1,6 +1,6 @@
 import type { BlockReason, Withheld } from './withheld.js'
 import { ASSET_HEAD_BYTES, assetFormatsNamed, assetRefusal, assetTypeDeclaring, pictureNameOf, type AssetCrop, type AssetKind, type SeatId, type Seating } from '@byd/protocol'
-import type { ProjectCredit, ProjectDoc, ProjectFont, ProjectRow, RuleDoc, VersionSummary } from '@byd/server'
+import type { ProjectBoard, ProjectCredit, ProjectDoc, ProjectFont, ProjectRow, RuleDoc, VersionSummary } from '@byd/server'
 import { catalogFont, type CatalogFamily, fileInSheet, fileSheetHref } from './font-catalog.js'
 import type { DocDiff, Playtest, VersionChange } from '@byd/server/doc'
 import type { Element } from '@byd/template'
@@ -979,6 +979,33 @@ export class ProjectClient {
     this.edit({ v: 'replaceFace', on: 'box', face, base })
   }
 
+  // Spelets bräden (#1481), hela listan i en redigering som tärningarna: ett bräde lagt, ändrat eller
+  // borttaget är en version och ett steg tillbaka, och filten läggs ut för dem i samma steg (K18).
+  setBoards(boards: ProjectBoard[], gesture?: string): void {
+    this.edit({ v: 'setBoards', boards }, gesture)
+  }
+
+  // Ett brädes sida redigeras med kortets egna redigeringar, märkta `on: 'board'` och med ytan som
+  // brädets namn och sidan, `main.front` (#1481, L91). En sida som aldrig ritats är tom, och det
+  // designern gör med den är det första som står på den.
+  patchBoardElement(face: string, id: string, patch: Partial<Element>, gesture?: string): void {
+    const clear = Object.entries(patch).flatMap(([key, value]) => (value === undefined ? [key as Clearable] : []))
+    const set = Object.fromEntries(Object.entries(patch).filter(([, value]) => value !== undefined)) as Partial<Element>
+    this.edit({ v: 'patchElement', on: 'board', face, id, patch: set, ...(clear.length ? { clear } : {}) }, gesture)
+  }
+  addBoardElement(face: string, element: Element): void {
+    this.edit({ v: 'addElement', on: 'board', face, element })
+  }
+  removeBoardElement(face: string, id: string): void {
+    this.edit({ v: 'removeElement', on: 'board', face, id })
+  }
+  moveBoardElement(face: string, id: string, to: number): void {
+    this.edit({ v: 'moveElement', on: 'board', face, id, to })
+  }
+  replaceBoardFace(face: string, base: Element[]): void {
+    this.edit({ v: 'replaceFace', on: 'board', face, base })
+  }
+
   private onBox(face: BoxFace, intent: EditIntent, gesture?: string): void {
     const drawing = boxFaceOf(this.doc, face)
     // A step of a gesture that has begun is on a face the gesture's first step already drew.
@@ -1310,7 +1337,7 @@ export class ProjectClient {
     const what = t(undoing.said, { name: undoing.name })
     // A met ceiling keeps its parts (#1198): the lead is this sentence up to its colon, set off on the
     // surface that draws it so, and the way out stands under it.
-    if (why instanceof QuotaSaid) return new QuotaSaid({ what: t('upload.undone', { what, why: '' }).trimEnd(), why: why.words.why, way: why.words.way })
+    if (why instanceof QuotaSaid) return new QuotaSaid({ what: t('upload.undone', { what, why: '' }).trimEnd(), why: why.words.why, way: why.words.way }, why.quota)
     return new Said(t('upload.undone', { what, why: saidOr(why, t('upload.failed')) }))
   }
 
@@ -1596,7 +1623,7 @@ export class ProjectClient {
     const res = await fetch(`${this.http}/assets?${new URLSearchParams({ project: this.id }).toString()}`, withCredentials({ method: 'POST', headers: { 'content-type': assetTypeDeclaring(kind) }, body: file }))
     if (res.status === 401) throw new Unauthorized()
     const quota = await quotaOf(res)
-    if (quota) throw new QuotaSaid(quotaWords(quota, { kind: 'upload', file: kind === 'font' ? 'font' : kind === 'image' ? 'picture' : 'file', size: file.size }, t))
+    if (quota) throw new QuotaSaid(quotaWords(quota, { kind: 'upload', file: kind === 'font' ? 'font' : kind === 'image' ? 'picture' : 'file', size: file.size }, t), quota)
     if (res.status === 415) throw new Said(t('upload.notThisKind', { formats: assetFormatsNamed(kind, t('upload.or')) }))
     if (res.status === 413) throw new Said(t('upload.tooBig'))
     // A picture blocked after a report is not stored again (#1274).

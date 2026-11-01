@@ -4,6 +4,7 @@ import { AboutLine } from './AboutLine.js'
 import { KeyBox, type WayBack } from './KeyBox.js'
 import { PasskeyBox } from './PasskeyBox.js'
 import { UsageCard } from './UsageCard.js'
+import { SubscriptionCard } from './SubscriptionCard.js'
 import { myAccount, myProjects } from './api.js'
 import { AccountCard } from './AccountCard.js'
 import { NameCard } from './NameCard.js'
@@ -110,6 +111,8 @@ export function ProfilePage({ onNavigate = (url) => location.assign(url) }: Prof
         <NameCard http={http} email={loaded.email} initial={loaded.name} />
         <KeyBox http={http} initial={loaded.key} wayBack={wayBack} />
         <PasskeyBox http={http} />
+        {/* Pro (#1494, variant A): bought, seen and cancelled here, above what the account uses. */}
+        <SubscriptionCard http={http} onNavigate={onNavigate} />
         {/* What the account uses (#1198, variant A), only once a ceiling is set. */}
         <UsageCard http={http} />
         <section className="byd-profile-card" aria-labelledby="byd-profile-lang">

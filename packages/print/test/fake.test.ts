@@ -3,6 +3,7 @@ import { CONTRACT_MANIFEST } from '../contract/suite.js'
 import { createFakeProvider, MULTI_STEP_INCHES, SINGLE_ORDER_MM, widestBleedMm, type FakeConfig, type OrderStep, type PrintManifest } from '../src/index.js'
 
 const CARD = { id: 'card.standard.63x88', version: 1 }
+const MEEPLE = { id: 'piece.meeple', version: 1 }
 const actions = (steps: OrderStep[]) => steps.map((s) => s.action)
 const many = (n: number): PrintManifest => ({
   cards: Array.from({ length: n }, (_, i) => ({ cardRef: `k${i}`, type: CARD, faces: { front: `front:${i}`, back: 'back:bas' } })),
@@ -18,7 +19,7 @@ describe('fake-providern i flerstegsform (The Game Crafters form)', () => {
     const prepared = provider.prepare(CONTRACT_MANIFEST)
     const uploads = prepared.steps.filter((s) => s.action === 'upload file')
     expect(uploads.map((s) => s.payload)).toEqual(prepared.files.map((f) => ({ name: f.name, file: { file: f.name } })))
-    expect(actions(prepared.steps).slice(uploads.length)).toEqual(['create game', 'create deck', 'add cards', 'create deck', 'add cards', 'add part', 'add part', 'create cart'])
+    expect(actions(prepared.steps).slice(uploads.length)).toEqual(['create game', 'create deck', 'add cards', 'create deck', 'add cards', 'add part', 'add part', 'add part', 'add part', 'create cart'])
   })
 
   it('gör en lek per baksida, så att en grupps kort får gruppens baksida (L7)', () => {
@@ -37,8 +38,11 @@ describe('fake-providern i flerstegsform (The Game Crafters form)', () => {
     expect(batches).toEqual([100, 100, 50])
   })
 
-  it('packar tärningarna', () => {
-    expect(provider.prepare(CONTRACT_MANIFEST).hardware.map((h) => [h.sku, h.count])).toEqual([['d6', 2], ['d20', 1]])
+  it('packar tärningarna, och meeplarna i den färg det har närmast (#1478)', () => {
+    expect(provider.prepare(CONTRACT_MANIFEST).hardware.map((h) => [h.sku, h.count])).toEqual([['d6', 2], ['d20', 1], ['meeple-red', 5], ['meeple-blue', 5]])
+    // Lila (#8e6bd9) och rosa (#d9699f) finns inte i lagret; närmast är blått och rött.
+    const odd = provider.prepare({ cards: [], hardware: [{ type: MEEPLE, count: 1, colour: '#8e6bd9' }, { type: MEEPLE, count: 1, colour: '#d9699f' }] })
+    expect(odd.hardware.map((h) => [h.sku, h.colour])).toEqual([['meeple-blue', '#8e6bd9'], ['meeple-red', '#d9699f']])
   })
 })
 
@@ -76,10 +80,15 @@ describe('fake-providern med en order (QPMN:s form)', () => {
     expect(design.filter((d) => d.index === 3 || d.index === 4).map((d) => d.url.file)).toEqual(['Card_Front-3.pdf', 'Card_Back-1.pdf', 'Card_Front-3.pdf', 'Card_Back-1.pdf'])
   })
 
-  it('lämnar tärningarna och säger det', () => {
+  it('lämnar tärningarna och meeplarna och säger det, meeplarna per färg', () => {
     const prepared = provider.prepare(CONTRACT_MANIFEST)
     expect(prepared.hardware).toEqual([])
-    expect(prepared.omitted.map((o) => [o.type.id, o.count, o.reason])).toEqual([['die.d6', 2, 'not-packed'], ['die.d20', 1, 'not-packed']])
+    expect(prepared.omitted.map((o) => [o.type.id, o.count, o.colour, o.reason])).toEqual([
+      ['die.d6', 2, undefined, 'not-packed'],
+      ['die.d20', 1, undefined, 'not-packed'],
+      ['piece.meeple', 5, '#e05a4f', 'not-packed'],
+      ['piece.meeple', 5, '#3c8ce7', 'not-packed'],
+    ])
   })
 })
 

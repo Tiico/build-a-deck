@@ -38,8 +38,12 @@ export const quotaLine = (words: QuotaWords): string => [words.what, words.why, 
 // A met ceiling already in the reader's words, thrown where a surface catches a `Said`: its message is
 // the whole line, and a surface that draws the parts apart — the lead set off, the way under it —
 // reads them from `words`.
+// `quota` is the ceiling it says, where the surface can offer Pro beside it (#1494).
 export class QuotaSaid extends Said {
-  constructor(readonly words: QuotaWords) {
+  constructor(
+    readonly words: QuotaWords,
+    readonly quota?: Quota,
+  ) {
     super(quotaLine(words))
   }
 }

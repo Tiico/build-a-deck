@@ -132,6 +132,20 @@ export function printProviderContract(name: string, subject: ContractSubject): v
       expect(prepared.omitted.every((o) => o.reason === 'not-packed')).toBe(true)
     })
 
+    // En trädel har sin plats färg (L11, #1478): tryckeriet packar den i den färg det har närmast,
+    // och färgen följer med raden både när den packas och när den lämnas, så att ingen färg
+    // försvinner eller slås ihop med en annan.
+    it('håller en lagervaras färg isär från en annan färg av samma typ', () => {
+      const prepared = subject.provider().prepare(manifest)
+      const key = (h: { type: TypeRef; colour?: string | undefined }) => `${h.type.id}@${h.type.version} ${h.colour ?? ''}`
+      const count = (list: readonly { type: TypeRef; colour?: string | undefined; count: number }[]) => list.reduce<Record<string, number>>((n, h) => ({ ...n, [key(h)]: (n[key(h)] ?? 0) + h.count }), {})
+      expect(count([...prepared.hardware, ...prepared.omitted])).toEqual(count(manifest.hardware))
+      for (const h of prepared.hardware) {
+        const req = subject.provider().requirements(h.type)
+        if (req.kind === 'stock' && h.colour !== undefined && req.colours) expect(req.colours.map((c) => c.sku), key(h)).toContain(h.sku)
+      }
+    })
+
     it('hänvisar i sina steg till varje förberedd fil, och bara till dem', () => {
       const prepared = subject.provider().prepare(manifest)
       const referred = new Set(prepared.steps.flatMap((s) => fileRefs(s.payload)))

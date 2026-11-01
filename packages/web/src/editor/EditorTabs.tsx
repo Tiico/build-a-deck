@@ -1,7 +1,7 @@
 import { useRoving } from './roving.js'
 import { useT, type Key } from '../i18n/index.js'
 
-export type Mode = 'wall' | 'template' | 'box' | 'table' | 'theme' | 'media' | 'rules' | 'tables'
+export type Mode = 'wall' | 'template' | 'box' | 'board' | 'table' | 'theme' | 'media' | 'rules' | 'tables'
 
 // The editor's seven modes, in the order they are read (L, #19): the wall is home, the canvas is
 // the template, the table is the data, and then what the cards draw from — Speltema, the game's
@@ -21,10 +21,13 @@ export const MODES: readonly (readonly [Mode, Key])[] = [
 // used (#1406, beslut 3). Before that it is not there at all, so a designer who has just begun is
 // not asked about a box (beslut 2).
 export const BOX_MODE: readonly [Mode, Key] = ['box', 'editor.tab.box']
-export function modesFor(playable: boolean): readonly (readonly [Mode, Key])[] {
-  if (!playable) return MODES
+// Brädet (#1481, variant A i #1473): a tab of its own after Låda, where the board's side is designed
+// as a face of the box is (L91), there whenever the game has a board, which is laid in Bord.
+export const BOARD_MODE: readonly [Mode, Key] = ['board', 'editor.tab.board']
+export function modesFor(playable: boolean, boarded = false): readonly (readonly [Mode, Key])[] {
+  if (!playable && !boarded) return MODES
   const at = MODES.findIndex(([m]) => m === 'template') + 1
-  return [...MODES.slice(0, at), BOX_MODE, ...MODES.slice(at)]
+  return [...MODES.slice(0, at), ...(playable ? [BOX_MODE] : []), ...(boarded ? [BOARD_MODE] : []), ...MODES.slice(at)]
 }
 
 // A mode on the desk and a stage on anything smaller name the same panel, because only one of

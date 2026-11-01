@@ -41,21 +41,33 @@ export function planFiles(provider: Pick<PrintProvider, 'id' | 'supports' | 'req
     return { cardRef: card.cardRef, type: card.type, sku: req.sku, files: out }
   })
 
-  const counted = new Map<string, { type: TypeRef; count: number }>()
+  // Counted by type and, for a wooden piece, by colour (#1478): two seats' meeples stay two lines.
+  const counted = new Map<string, { type: TypeRef; count: number; colour?: string }>()
   for (const item of manifest.hardware) {
-    const seen = counted.get(typeKey(item.type))
+    const key = `${typeKey(item.type)} ${item.colour ?? ''}`
+    const seen = counted.get(key)
     if (seen) seen.count += item.count
-    else counted.set(typeKey(item.type), { type: item.type, count: item.count })
+    else counted.set(key, { type: item.type, count: item.count, ...(item.colour !== undefined ? { colour: item.colour } : {}) })
   }
   const hardware: FilePlan['hardware'] = []
   const omitted: FilePlan['omitted'] = []
-  for (const { type, count } of counted.values()) {
+  for (const { type, count, colour } of counted.values()) {
     const req = provider.supports(type) ? provider.requirements(type) : undefined
     if (req?.kind === 'printed') throw new Error(`${provider.id} prints ${typeKey(type)}; it is not hardware`)
-    if (req) hardware.push({ type, sku: req.sku, count })
-    else omitted.push({ type, count, reason: 'not-packed' })
+    const tinted = colour !== undefined ? { colour } : {}
+    if (req) hardware.push({ type, sku: colour !== undefined && req.colours ? nearest(req.colours, colour).sku : req.sku, count, ...tinted })
+    else omitted.push({ type, count, ...tinted, reason: 'not-packed' })
   }
   return { files, cards, hardware, omitted }
+}
+
+// The partner's colour nearest to the one asked for (beställarens beslut 2 i #1470): by distance
+// in RGB, the first of two equally near, so the same game is always packed the same.
+function nearest<C extends { colour: string }>(stocked: readonly C[], asked: string): C {
+  const rgb = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16))
+  const want = rgb(asked)
+  const far = (c: C) => rgb(c.colour).reduce((d, v, i) => d + (v - (want[i] ?? 0)) ** 2, 0)
+  return stocked.reduce((best, c) => (far(c) < far(best) ? c : best))
 }
 
 // The widest bleed any of the providers asks for the type, or nothing when none of them prints it.
