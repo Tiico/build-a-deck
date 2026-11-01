@@ -141,6 +141,15 @@ Reviderat 2026-10-28 (#1469, beställarens beslut, förslag A): **Gratis och en 
 - Pro:s tak på unika kort per spel: 500 efter ett lasttest, eller 308 som är det mätta (fråga 7).
 - Om taket på kort blir ett tak på komponenter per spel när brädspelens typer kommer, eller om varje typ får sitt eget mått (fråga 9).
 
+Byggt 2026-11-01 (#1490, skiva 1 av 5 i #1469): **Pro i `BYD_PLANS`, med tryckpaketet som egenskap på nivån.**
+- En nivå i `BYD_PLANS` bär nu, utöver taken, egenskaper: något nivån ger utan att räkna något, `true` eller `false`. Den enda är `print`, tryckpaketet och tryck-PDF:erna i exporten (DRIFT §12).
+- En egenskap som nivån inte nämner har den inte, till skillnad från ett mått, som då är obegränsat: en nivå får en egenskap genom att säga det. Utan variabeln har standardnivån tryckpaketet, som i betan, så att en glömd variabel inte stänger av något.
+- Schemat är lika strikt för egenskaper som för mått: en felstavad egenskap, eller ett värde som inte är `true` eller `false`, stoppar starten.
+- `hasPrint` i `packages/server/src/quotas.ts` svarar om en nivå har tryckpaketet; ingen siffra och inget nivånamn står i koden. Startraden säger vilka nivåer som har det (`print`), aldrig vem som har vilken nivå, och en egenskap räknas aldrig som ett satt tak.
+- `GET /me/usage` och `usage`-skriptet säger `print` för kontots nivå.
+- Själva grinden på tryckpaketet och på `tryck/` i exporten är inte byggd: den väntar på partnern och byggs i #1209:s spår, och läser `hasPrint`. Gratisnivåns siffror och Pro:s tak på kort är konfiguration och sätts inte här (frågorna 3 och 7), och medredigerare grindas inte (fråga 5).
+- Grindarna är `packages/server/test/quotas.test.ts`, `plans-at-start.test.ts`, `account-plans.test.ts` och `quota-projects.test.ts`, mot båda lagren.
+
 ### A3. Testarrekrytering: enbart delbar länk (fråga 22)
 
 Ingen testpanel, ingen matchning, ingen ömsesidighetsmekanik, ingen öppen lobbylista.
