@@ -1,7 +1,8 @@
 import type { Intent, Snapshot, VisibleComponentState, ZoneView } from '@byd/protocol'
 import { translate, type Key, type T } from '../i18n/index.js'
-import { dieKind, isCounter, isDie, isPiece, standIn } from '../components.js'
-import { CARD_MM, DIE_MM, TOKEN_MM, besidePile, type DragTarget } from './drop.js'
+import { dieKind, isCounter, isDie, isMaterial, materialBox, pieceKind, standIn, type PieceKind } from '../components.js'
+import { piecePiles } from './pieces.js'
+import { CARD_MM, besidePile, type DragTarget } from './drop.js'
 import { laidIn } from './lay.js'
 import { faceDown } from '../player/play.js'
 import { handName } from './handName.js'
@@ -30,13 +31,18 @@ export type Thing =
   | { key: string; kind: 'counter'; id: string; name: string; zone: string; value: number; owner: string | null }
   // A die (#1137): its kind, «d6», is its name, and its one verb is a roll, which Enter says at once.
   | { key: string; kind: 'die'; id: string; name: string; zone: string; value: number }
+  // A wooden piece (#1475): its kind is its name, whose seat's colour it wears, and whether it lies
+  // down. `count` is more than one on the top of a pile (#1472 B), which is one stop for all of it.
+  | { key: string; kind: 'piece'; id: string; name: string; zone: string; piece: PieceKind; owner: string | null; lying: boolean; count: number }
   | { key: string; kind: 'pileTop'; pile: string; name: string }
   | { key: string; kind: 'pile'; pile: string; name: string; count: number }
 
 // The things that are components and move by `move` — a card and a counter — as against the ones
 // that are a pile or the top of one.
-export const isLoose = (thing: Thing): thing is Extract<Thing, { kind: 'card' | 'counter' | 'die' }> =>
-  thing.kind === 'card' || thing.kind === 'counter' || thing.kind === 'die'
+export const isLoose = (thing: Thing): thing is Extract<Thing, { kind: 'card' | 'counter' | 'die' | 'piece' }> =>
+  thing.kind === 'card' || thing.kind === 'counter' || thing.kind === 'die' || thing.kind === 'piece'
+// What is not a card among the loose things: it joins no pile and stacks on nothing (K1, C4).
+const isMaterialThing = (thing: Thing): boolean => thing.kind === 'counter' || thing.kind === 'die' || thing.kind === 'piece'
 
 // The word a card is called by, or null when this view has none: the row's own title, and the
 // row's id behind it for a deck that has given the row no title yet (#412). Written once and read
@@ -110,11 +116,20 @@ export function ownerOf(view: Snapshot, c: VisibleComponentState): string | null
 
 export function thingsOn(view: Snapshot, t: T = swedish): Thing[] {
   const areas = new Set(view.zones.filter((z) => z.kind === 'area').map((z) => z.id))
+  // A pile of wooden pieces is one stop, its top (#1472 B): the pieces under it are reached by taking
+  // the top away, as on the felt.
+  const woodPiles = piecePiles(view)
   const placed = view.components
     .filter((c) => areas.has(c.zone))
+    .filter((c) => {
+      const pile = woodPiles.get(c.id)
+      return !pile || pile.top.id === c.id
+    })
     .map((c) => ({
       at: absolute(view, c),
-      thing: isDie(c)
+      thing: pieceKind(c) !== null
+        ? ({ key: `piece:${c.id}`, kind: 'piece', id: c.id, name: t(`piece.kind.${pieceKind(c) ?? 'meeple'}`), zone: c.zone, piece: pieceKind(c) ?? 'meeple', owner: c.cardRef ? (view.seats.find((s) => s.id === c.cardRef)?.name ?? c.cardRef) : null, lying: c.face === 'lying', count: woodPiles.get(c.id)?.ids.length ?? 1 } satisfies Thing)
+        : isDie(c)
         ? ({ key: `die:${c.id}`, kind: 'die', id: c.id, name: dieKind(c) ?? '', zone: c.zone, value: c.counter ?? 1 } satisfies Thing)
         : isCounter(c)
         ? // A counter's name is the designer's word and nothing stands in for it: a chip this view
@@ -146,6 +161,15 @@ const saysKind = (name: string, kind: string): boolean => {
 
 // The sentence a reader hears when focus lands on a thing.
 export function labelOf(view: Snapshot, thing: Thing, t: T = swedish): string {
+  if (thing.kind === 'piece') {
+    // «meeple, Adas, i Spelyta», «4 meeples, Adas, i Framför A», «meeple, Bos, liggande, i Spelyta».
+    const what = [
+      thing.count > 1 ? t('kbd.piece.many', { n: thing.count, kinds: t(`piece.kinds.${thing.piece}`) }) : thing.name,
+      ...(thing.owner !== null ? [t('kbd.piece.whose', { owner: thing.owner })] : []),
+      ...(thing.lying ? [t('kbd.piece.lying')] : []),
+    ].join(', ')
+    return t('kbd.piece', { what, zone: zoneName(view, thing.zone, t) })
+  }
   if (thing.kind === 'die') return t('kbd.die', { kind: thing.name, n: thing.value, zone: zoneName(view, thing.zone, t) })
   if (thing.kind === 'counter') {
     const said = { zone: zoneName(view, thing.zone, t), n: thing.value }
@@ -176,7 +200,8 @@ export function labelOf(view: Snapshot, thing: Thing, t: T = swedish): string {
 // by saying what Enter does, because a control that opens a panel should say so.
 export function feltLabels(view: Snapshot, t: T = swedish): Map<string, string> {
   // A die's own sentence already says what Enter does, and it is not «opens actions»: it rolls.
-  return new Map(thingsOn(view, t).map((thing) => [thing.key, thing.kind === 'die' ? labelOf(view, thing, t) : t('kbd.enter', { label: labelOf(view, thing, t) })]))
+  // Nor is a wooden piece's (#1475): it says that M moves it, as a die's says.
+  return new Map(thingsOn(view, t).map((thing) => [thing.key, thing.kind === 'die' || thing.kind === 'piece' ? labelOf(view, thing, t) : t('kbd.enter', { label: labelOf(view, thing, t) })]))
 }
 
 // ================================================================================================
@@ -209,7 +234,20 @@ export function counterActs(c: VisibleComponentState, t: T = swedish): Act[] {
   ]
 }
 
+// What a wooden piece can be asked to do besides being moved (#1475, beslut 4 i #1470): a meeple is
+// laid down and stood up again with `flip`, between its two faces; a cube and a disc have one face
+// and nothing to do but move. One list, read by the ring and by the panel (K16).
+export function pieceActs(c: VisibleComponentState, t: T = swedish): Act[] {
+  if (pieceKind(c) !== 'meeple') return []
+  const lying = c.face === 'lying'
+  return [{ key: 'flip', label: t(lying ? 'ring.piece.raise' : 'ring.piece.lay'), intents: [{ v: 'flip', component: c.id, face: lying ? 'standing' : 'lying' }] }]
+}
+
 export function verbsFor(view: Snapshot, thing: Thing, t: T = swedish): Act[] {
+  if (thing.kind === 'piece') {
+    const c = view.components.find((x) => x.id === thing.id)
+    return c ? pieceActs(c, t) : []
+  }
   // A die has one verb, and the server decides what it comes to (D4).
   if (thing.kind === 'die') return [{ key: 'roll', label: t('kbd.verb.roll'), intents: [{ v: 'roll', component: thing.id }] }]
   // A card's verbs are not a counter's: a chip has no face to turn, no back to reveal and nothing
@@ -295,7 +333,7 @@ export function placesFor(view: Snapshot, moving: ReadonlySet<string>, sourceZon
   // but counters is not a place for cards at all.
   const byZone = new Map<string, VisibleComponentState[]>()
   for (const c of view.components) byZone.set(c.zone, [...(byZone.get(c.zone) ?? []), c])
-  const pieces = view.components.some((c) => moving.has(c.id) && isPiece(c))
+  const pieces = view.components.some((c) => moving.has(c.id) && isMaterial(c))
   const countersOnly = (id: string) => {
     const inside = byZone.get(id) ?? []
     return inside.length > 0 && inside.every(isCounter)
@@ -308,7 +346,9 @@ export function placesFor(view: Snapshot, moving: ReadonlySet<string>, sourceZon
     // Material is never held (#1377, K32): a die or a chip is offered no hand.
     .filter((z) => z.kind !== 'hand' || !pieces)
     .map((z): Place => {
-      const n = countOf(z)
+      // An area's count is of its cards (#1475): the meeples, dice and chips lying in it are not
+      // «kort», and four meeples not yet moved said «4 kort» of an area that held none.
+      const n = z.kind === 'area' && z.mode === 'order' ? (byZone.get(z.id) ?? []).filter((c) => !isMaterial(c)).length : countOf(z)
       const one = n === 1 ? 'one' : 'other'
       return {
         key: `z:${z.id}`,
@@ -324,7 +364,7 @@ export function placesFor(view: Snapshot, moving: ReadonlySet<string>, sourceZon
   const areas = new Set(view.zones.filter((z) => z.kind === 'area').map((z) => z.id))
   // A counter is not something a card stacks on (K1 is about cards).
   const cards: Place[] = view.components
-    .filter((c) => areas.has(c.zone) && !moving.has(c.id) && !isCounter(c) && !isDie(c))
+    .filter((c) => areas.has(c.zone) && !moving.has(c.id) && !isMaterial(c))
     .map((c): Place => ({
       key: `c:${c.id}`,
       label: t('kbd.place.onCard', { name: cardName(c, t) }),
@@ -382,7 +422,7 @@ export function intentsForPlace(view: Snapshot, place: Place, thing: Thing, movi
   }
   // A chip stacks on nothing — the counter type is `stackable: false`, and the table says so — so
   // where a card would join the one it was sent to, a counter goes to that card's zone instead.
-  if (place.kind === 'card' && place.anchor && thing.kind !== 'counter' && thing.kind !== 'die') {
+  if (place.kind === 'card' && place.anchor && !isMaterialThing(thing)) {
     const onto = place.anchor.id
     return moving.map((id): Intent => ({ v: 'stack', component: id, onto }))
   }
@@ -390,9 +430,9 @@ export function intentsForPlace(view: Snapshot, place: Place, thing: Thing, movi
   // A card played into a public area turns face up as a hand would (K11) — the same two verbs
   // the phone's sheet already sends. A counter has one face and no back to turn from: it is
   // `flippable: false`, and the flip sent with the move had the whole envelope refused.
-  const isPublic = z?.kind === 'area' && z.mode === 'order' && thing.kind !== 'counter' && thing.kind !== 'die'
+  const isPublic = z?.kind === 'area' && z.mode === 'order' && !isMaterialThing(thing)
   return moving.flatMap((id, i): Intent[] => {
-    const laid = centredIn(laidIn(view, place.zone, i, thing.kind === 'counter' || thing.kind === 'die'), thing)
+    const laid = centredIn(view, laidIn(view, place.zone, i, isMaterialThing(thing)), thing)
     const to: Intent & { v: 'move' } = { v: 'move', component: id, to: place.zone, ...(laid ? { x: laid.x, y: laid.y, index: laid.index } : {}) }
     const c = turned.has(id) ? view.components.find((x) => x.id === id) : undefined
     if (c) return faceDown(view, c, to)
@@ -406,8 +446,9 @@ const PILE_CORNER = 90
 // take, by its own size (#1169, #1177): the area's answer is a card's top-left corner, and a die
 // or a chip put there sat on the area's corner, over its edge and its name. A card keeps the
 // area's answer as it is.
-function centredIn(laid: ReturnType<typeof laidIn>, thing: Thing): ReturnType<typeof laidIn> {
-  const size = thing.kind === 'die' ? DIE_MM : thing.kind === 'counter' ? TOKEN_MM : null
+function centredIn(view: Snapshot, laid: ReturnType<typeof laidIn>, thing: Thing): ReturnType<typeof laidIn> {
+  const c = isMaterialThing(thing) && isLoose(thing) ? view.components.find((x) => x.id === thing.id) : undefined
+  const size = c ? materialBox(c).w : null
   if (!laid || size === null) return laid
   return { ...laid, x: Math.round(laid.x + (CARD_MM.w - size) / 2), y: Math.round(laid.y + (CARD_MM.h - size) / 2) }
 }
@@ -418,7 +459,7 @@ export function landedKeyFor(view: Snapshot, place: Place, thing: Thing): string
   const z = view.zones.find((x) => x.id === place.zone)
   // A chip stacks on nothing: sent onto a card it lands in that card's zone, still itself, so the
   // focus stays on the chip where a card's would follow it into the pile it made.
-  if (place.kind === 'card') return thing.kind === 'counter' || thing.kind === 'die' ? thing.key : `card:${place.anchor?.id ?? ''}`
+  if (place.kind === 'card') return isMaterialThing(thing) ? thing.key : `card:${place.anchor?.id ?? ''}`
   if (z?.kind === 'pile') return `pile:${z.id}`
   if (z?.kind === 'area' && isLoose(thing)) return thing.key
   // A whole pile moved keeps its own id; the top of one is a card and lands as one, above.
@@ -458,6 +499,11 @@ export function modifierHeld(e: Modifiers, platform: string = thisPlatform()): b
 // pile (K15) — which is the only handle a hidden pile gives out. A chip has no back to turn and
 // an empty pile has nothing lying on it, so both answer with nothing.
 export function flipUnder(view: Snapshot, target: DragTarget): Intent[] | null {
+  // A meeple is laid down and stood up again (#1475); a cube and a disc have no other face.
+  if (target.kind === 'piece') {
+    const c = view.components.find((x) => x.id === target.id)
+    return c ? (pieceActs(c)[0]?.intents ?? null) : null
+  }
   if (target.kind === 'card') {
     const c = view.components.find((x) => x.id === target.id)
     return c ? [{ v: 'flip', component: c.id, face: c.face === 'front' ? 'back' : 'front' }] : null
@@ -496,7 +542,8 @@ export function shortcutIntents(view: Snapshot, key: string, at: DragTarget | nu
 // truth is the only thing worth opening.
 // `hand`: the screen holds this seat's own hand, where F turns a card over to be played face down (#1133).
 // `dice`: there are dice on the felt, and M moves the one with the keyboard's focus (#1169).
-export function feltShortcuts(t: T = swedish, platform: string = thisPlatform(), camera = false, hand = false, dice = false): Shortcut[] {
+// `pieces`: there are wooden pieces on the felt, and M moves those too (#1475).
+export function feltShortcuts(t: T = swedish, platform: string = thisPlatform(), camera = false, hand = false, dice = false, pieces = false): Shortcut[] {
   return [
     // The felt's own rule first, and the keyboard's way in (#719, K16): a drag moves, a click reads
     // and then asks, and Tab, the arrows and Enter reach the same things. A list of shortcuts that
@@ -513,7 +560,7 @@ export function feltShortcuts(t: T = swedish, platform: string = thisPlatform(),
     { press: ['D'], what: t('felt.key.draw') },
     { press: ['S'], what: t('felt.key.shuffle') },
     // M is the focus's and not the pointer's, so the row says so where D and S say «under pekaren».
-    ...(dice ? [{ press: ['M'], what: t('felt.key.moveDie') }] : []),
+    ...(dice || pieces ? [{ press: ['M'], what: t(dice && pieces ? 'felt.key.moveMaterial' : dice ? 'felt.key.moveDie' : 'felt.key.movePiece') }] : []),
     // Kameran (#325), och bara där det finns en att köra: `/online` har ingen, och en lista som
     // lovade den där skulle lova något ytan inte har. Varje rad bär alla sina grepp, eftersom
     // hjulet, plus och minus är samma handling bedd om på tre sätt — och panoreringen likaså.

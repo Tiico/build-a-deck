@@ -48,7 +48,7 @@ import { AI_CAPS, ASK_MAX_BYTES, AiFlight, AskBody, answerQuestion, type AiCaps 
 import { PasskeyChallenges, login as passkeyLogin, loginOptions, register, registrationOptions, siteOf, viewOf, type Answer, type Ceremonies } from './passkeys.js'
 import { REFERRER_POLICY, UPLOAD_POLICY, pageNonce, pagePolicy, scriptHashesOf, socketOrigin } from './csp.js'
 import { DEFAULT_PLANS, QuotaReached, YOU, growth, limitOf, tableWindowFrom, type Bearer, type Limit, type Measure, type Plans, type QuotaMet, type TableCeilings } from './quotas.js'
-import { planOf, readOnlyOf, usageOf, type AccountPlanStore } from './account-plans.js'
+import { lapseAccount, planOf, readOnlyOf, usageOf, type AccountPlanStore } from './account-plans.js'
 import { ReadOnlyGame, gameWritten, type ReadOnlyCheck } from './read-only.js'
 import { INTERVALS, cancelForErasure, customerOfEvent, priceFor, signatureHolds, syncCustomer, type PaymentsConfig, type StripeApi } from './payments.js'
 import { NO_CARDS, cardGrowth, cardsUsed, type CardMeasure } from './quota-cards.js'
@@ -670,7 +670,11 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
       const type = String((parsed as { type?: unknown } | null)?.type ?? '')
       const customer = customerOfEvent(parsed)
       try {
-        const outcome = customer ? await syncCustomer({ accountPlans: opts.accountPlans, ...payments }, customer) : 'no-customer'
+        // The lapse locks the order the account's games are taken in (#1518), as the operator's does.
+        const projects = opts.projects
+        const accountPlans = opts.accountPlans
+        const lapse = projects ? (account: string) => lapseAccount({ projects, accountPlans, live: (game) => editors(opts, projects).live(game) }, opts.plans ?? DEFAULT_PLANS, account) : undefined
+        const outcome = customer ? await syncCustomer({ accountPlans, ...payments, ...(lapse ? { lapse } : {}) }, customer) : 'no-customer'
         console.log(JSON.stringify({ msg: 'stripe', type, outcome }))
         return json(res, 200, { received: true })
       } catch (err) {

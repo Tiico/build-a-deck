@@ -167,7 +167,7 @@ export function stripeApi(secretKey: string, base = STRIPE_API, fetcher: typeof 
 // The operator's way round a webhook that never came (RUNBOOK): the account by its address, read
 // from Stripe and written exactly as a webhook would. An account that never went to the checkout
 // has no customer, and nothing is asked.
-export async function syncByAddress(stores: { auth: { accountByEmail(email: string): Promise<{ id: string } | null> }; accountPlans: AccountPlanStore; stripe: StripeApi; config: PaymentsConfig }, email: string): Promise<{ ok: true; outcome: Synced } | { ok: false; why: string }> {
+export async function syncByAddress(stores: { auth: { accountByEmail(email: string): Promise<{ id: string } | null> }; accountPlans: AccountPlanStore; stripe: StripeApi; config: PaymentsConfig; lapse?: Lapse }, email: string): Promise<{ ok: true; outcome: Synced } | { ok: false; why: string }> {
   const account = await stores.auth.accountByEmail(email.trim().toLowerCase())
   if (!account) return { ok: false, why: 'no such account' }
   const customer = await stores.accountPlans.customerOf(account.id)
@@ -193,8 +193,12 @@ export function customerOfEvent(event: unknown): string | null {
 // and ends a lapse; none, on an account whose tier Stripe gave, lapses it (G5, L2, #1491). Nothing is
 // written when nothing changes. A tier the operator set (`source: 'operator'`) is never written
 // over: the operator's word stands until she clears it, and the next event then holds (DRIFT §12).
+//
+// `lapse` is how the account is lapsed: `lapseAccount`, which locks the order its games are taken
+// in (#1518), wherever the games are at hand; without it the row alone is marked.
 export type Synced = 'unknown-customer' | 'operator' | 'subscribed' | 'lapsed' | 'unchanged'
-export async function syncCustomer(stores: { accountPlans: AccountPlanStore; stripe: StripeApi; config: PaymentsConfig }, customer: string): Promise<Synced> {
+export type Lapse = (account: string) => Promise<boolean>
+export async function syncCustomer(stores: { accountPlans: AccountPlanStore; stripe: StripeApi; config: PaymentsConfig; lapse?: Lapse }, customer: string): Promise<Synced> {
   const account = await stores.accountPlans.accountOfCustomer(customer)
   if (!account) return 'unknown-customer'
   const tier = planOfSubscriptions(stores.config, await stores.stripe.subscriptionsOf(customer))
@@ -206,7 +210,7 @@ export async function syncCustomer(stores: { accountPlans: AccountPlanStore; str
     return 'subscribed'
   }
   if (!row || row.lapsed !== undefined) return 'unchanged'
-  await stores.accountPlans.lapse(account)
+  await (stores.lapse ?? ((a: string) => stores.accountPlans.lapse(a)))(account)
   return 'lapsed'
 }
 

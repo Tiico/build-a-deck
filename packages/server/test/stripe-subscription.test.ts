@@ -6,7 +6,8 @@ import { MemoryAccountPlanStore, type AccountPlanStore } from '../src/account-pl
 import type { ProjectStore } from '../src/projects.js'
 import { paymentsFromEnv, retryCancellations, syncByAddress, type StripeApi, type Subscription } from '../src/payments.js'
 import { plansFromEnv } from '../src/quotas.js'
-import { start, type Running } from './fixture.js'
+import { start, twoSeatSetup, type Running } from './fixture.js'
+import { template } from './deck.js'
 
 // Subscriptions through Stripe on the server (#1493): a logged-in account asks for a checkout for
 // Pro and is sent to Stripe's Checkout, and Stripe's webhook writes the account's tier in
@@ -222,6 +223,21 @@ for (const backend of backends) {
       expect(lapsed).toEqual(expect.any(String))
       expect((await webhook(created)).status).toBe(200)
       expect((await db.accountPlans.planOf(ada.id))!.lapsed).toBe(lapsed)
+    })
+
+    // A lapse written by the webhook locks the order the account's games are taken in (#1518), as
+    // the operator's `plan lapse` does, so a later edit never puts another game into read-only.
+    it('lock the order of the account’s games when a subscription ends', async () => {
+      await open()
+      const ada = await someone('ada')
+      const cus = await customer(ada.cookie)
+      stripe.subs.set(cus, [{ status: 'active', prices: ['price_sek_m'] }])
+      await webhook(event('customer.subscription.created', cus))
+      const { zones, seats, floor } = twoSeatSetup()
+      const { id } = await db.projects.create(`stripe-order-${process.pid}-${Date.now()}`, { name: 'Spel', template, rows: [{ id: 'kort-1', fields: { title: 'Kort', antal: 1 } }], icons: {}, setup: { zones, seats, floor, deckZone: 'draw' } }, ada.id)
+      stripe.subs.set(cus, [{ status: 'canceled', prices: ['price_sek_m'] }])
+      await webhook(event('customer.subscription.deleted', cus))
+      expect((await db.accountPlans.planOf(ada.id))!.order).toEqual([id])
     })
 
     it('never write over a tier the operator set, until she clears it', async () => {

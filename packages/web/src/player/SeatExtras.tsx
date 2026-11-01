@@ -5,7 +5,7 @@ import { hue } from '../table/hue.js'
 import { Texture } from '../table/Texture.js'
 import { cardName, cardWord } from '../table/keyboard.js'
 import { targetsOf, type Placement } from './PlaySheet.js'
-import { isCounter, isPiece } from '../components.js'
+import { isCounter, isMaterial } from '../components.js'
 import type { RefusalHandle } from '../status/Refusal.js'
 import { useT } from '../i18n/index.js'
 import { MinusGlyph, PlusGlyph } from '../glyphs.js'
@@ -21,7 +21,7 @@ export function countersOf(view: Snapshot): VisibleComponentState[] {
 // The cards in the seat's own areas: zones it owns that are areas, and hold cards.
 export function inFrontOf(view: Snapshot): VisibleComponentState[] {
   const own = new Set(view.zones.filter((z) => z.owner === view.seat && z.kind === 'area').map((z) => z.id))
-  return view.components.filter((c) => !isPiece(c) && own.has(c.zone))
+  return view.components.filter((c) => !isMaterial(c) && own.has(c.zone))
 }
 
 // A counter as a pill: tap the sides to count, tap the number to type a value.

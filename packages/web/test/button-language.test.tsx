@@ -1449,6 +1449,7 @@ describe('every suite that measures a surface', () => {
       'felt-hands.test.tsx',
       'felt-into-hand-look.test.tsx',
       'felt-names.test.tsx',
+      'felt-pieces.test.tsx',
       'help-layout.test.tsx',
       'history-layout.test.tsx',
       'home-layout.test.tsx',

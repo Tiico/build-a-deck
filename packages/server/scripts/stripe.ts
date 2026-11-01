@@ -8,6 +8,7 @@
 import { PostgresLogStore } from '../src/store-postgres.js'
 import { paymentsFromEnv, retryCancellations, stripeApi, syncByAddress } from '../src/payments.js'
 import { plansFromEnv } from '../src/quotas.js'
+import { lapseAccount } from '../src/account-plans.js'
 
 const [verb, email] = process.argv.slice(2)
 const url = process.env['DATABASE_URL']
@@ -18,7 +19,10 @@ if (!url || verb !== 'sync' || !config) {
 }
 const store = PostgresLogStore.connect(url)
 try {
-  const stores = { auth: store.auth(), accountPlans: store.accountPlans(), stripe: stripeApi(config.secretKey), config }
+  const accountPlans = store.accountPlans()
+  // The lapse locks the order the account's games are taken in (#1518), as the webhook's does.
+  const lapse = (account: string) => lapseAccount({ projects: store.projects(), accountPlans }, plansFromEnv(process.env), account)
+  const stores = { auth: store.auth(), accountPlans, stripe: stripeApi(config.secretKey), config, lapse }
   if (email) {
     const done = await syncByAddress(stores, email)
     console.log(JSON.stringify({ msg: 'stripe', verb, email, ...done }))
