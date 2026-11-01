@@ -785,6 +785,9 @@ export const svAccount = {
   'quota.pro.started': 'Med Pro rymmer kontot {limit}, för {price}.',
   'quota.pro.storage': 'Med Pro rymmer kontot {limit}, för {price}.',
   'quota.pro.go': 'Uppgradera till Pro',
+  // Pro in the read-only band, to the owner (#1532).
+  'readOnly.pro': 'Med Pro rymmer kontot det Pro rymmer igen, för {price}.',
+  'readOnly.pro.go': 'Förnya Pro',
   'quota.pro.rows.one': '{n} kort',
   'quota.pro.rows.other': '{n} kort',
   'quota.pro.rows.none': 'obegränsat antal kort',
