@@ -1,4 +1,5 @@
-import type { Key, T } from '../i18n/index.js'
+import { useEffect, useState } from 'react'
+import { useT, type Key, type T } from '../i18n/index.js'
 import { proStanding, type Interval, type ProStanding, type Tier } from './api.js'
 import type { Quota } from './quota.js'
 import { bytes } from './quota-words.js'
@@ -58,8 +59,8 @@ const ORDER: Said[] = ['projects', 'cardRowsPerProject', 'cardCopiesPerProject',
 export function limitWords(measure: Said, limit: number | null, t: T): string {
   const word = WORD[measure]
   if (limit === null) return t(`profile.pro.${word}.none` as Key)
-  const n = measure === 'storageBytes' ? bytes(limit, t) : new Intl.NumberFormat(t('quota.locale')).format(limit)
-  return t(`profile.pro.${word}` as Key, { n })
+  if (measure === 'storageBytes') return t('profile.pro.storage', { n: bytes(limit, t) })
+  return t(`profile.pro.${word}.${limit === 1 ? 'one' : 'other'}` as Key, { n: new Intl.NumberFormat(t('quota.locale')).format(limit) })
 }
 
 // A tier as the parts of its line, each with whether it is better than the other tier's; the line
@@ -100,11 +101,29 @@ export function proOffer(quota: Quota, standing: ProStanding | null, t: T): stri
   const currency = currencyOf(standing, t)
   const price = currency ? pricePhrase(standing, currency, 'month', t) : null
   if (!price) return null
-  return t(`quota.pro.${word}` as Key, { limit: limitWords(quota.measure as Said, pro, t), price })
+  // Per game the sentence already says «a game»: «500 kort», not «500 kort per spel».
+  const limit = word === 'rows' || word === 'copies' ? (pro === null ? t(`quota.pro.${word}.none`) : t(`quota.pro.${word}.${pro === 1 ? 'one' : 'other'}`, { n: new Intl.NumberFormat(t('quota.locale')).format(pro) })) : limitWords(quota.measure as Said, pro, t)
+  return t(`quota.pro.${word}` as Key, { limit, price })
 }
 
 // Where «Uppgradera till Pro» goes: the card in Profil, on the same server.
 export function proCardUrl(): string {
   const server = new URLSearchParams(location.search).get('server')
   return `/profile${server ? `?server=${encodeURIComponent(server)}` : ''}#abonnemang`
+}
+
+// The sentence a met ceiling says of Pro, once the standing is read; null until then and whenever
+// there is nothing to offer.
+export function useProOffer(http: string, quota: Quota | null | undefined): string | null {
+  const t = useT()
+  const [standing, setStanding] = useState<ProStanding | null>(null)
+  useEffect(() => {
+    if (!quota || quota.bearer !== 'you') return
+    let live = true
+    void proOnce(http).then((s) => live && setStanding(s))
+    return () => {
+      live = false
+    }
+  }, [http, quota])
+  return quota ? proOffer(quota, standing, t) : null
 }

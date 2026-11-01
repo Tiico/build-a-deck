@@ -2,6 +2,8 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { ProfilePage } from '../src/account/ProfilePage.js'
+import { HomePage } from '../src/account/HomePage.js'
+import { EditorPage } from '../src/editor/EditorPage.js'
 import { StatusLive } from '../src/status/StatusLive.js'
 import { plansFromEnv } from '../../server/src/quotas.js'
 import { startServer, type Running } from './fixture.js'
@@ -166,5 +168,78 @@ describe('the card «Abonnemang» in Profil (#1494)', () => {
     const abo = await card()
     expect((await within(abo).findByRole('status')).textContent).toBe('Betalningen gick inte igenom. Pro gäller medan Stripe försöker igen. Byt betalkort så fortsätter det som vanligt.')
     expect(within(abo).getAllByRole('button').map((b) => b.textContent)).toEqual(['Byt betalkort', 'Säg upp Pro', 'Kvitton och betalkort'])
+  })
+})
+
+// The answer to a met ceiling (#1198) keeps its three parts and then offers Pro, with its price and
+// «Uppgradera till Pro» to Profil's card (beställarens beslut 2026-11-01, revising #1198). Only to the
+// one whose ceiling it is, and only where Pro holds more.
+describe('Pro in the answer to a met ceiling (#1494)', () => {
+  const FEW = plansFromEnv({ BYD_PLANS: JSON.stringify({ default: 'free', plans: { free: { projects: 1, cardRowsPerProject: 3 }, pro: { cardRowsPerProject: 500, print: true } } }) })
+  const made = async (): Promise<string> => {
+    const res = await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(projectDoc()) })
+    expect(res.status).toBe(201)
+    return ((await res.json()) as { id: string }).id
+  }
+
+  it('says Pro’s price under «Inget nytt spel skapades.» in Mina spel, with the way to the card', async () => {
+    run = await startServer({ auth: true, authBypass: true, plans: FEW, payments: true })
+    await login('ada@example.com')
+    await made()
+    history.replaceState(null, '', `/?server=${encodeURIComponent(run.http)}`)
+    const gone: string[] = []
+    render(
+      <StatusLive>
+        <HomePage onNavigate={(url) => gone.push(url)} />
+      </StatusLive>,
+    )
+    await screen.findByText('Skogens herrar')
+    fireEvent.click(screen.getAllByRole('link', { name: '＋ Nytt spel' })[0]!)
+    const offer = await waitFor(() => {
+      const row = document.querySelector<HTMLElement>('.byd-home-pro')
+      expect(row).not.toBeNull()
+      return row!
+    })
+    expect(document.querySelector('.byd-home-notice')?.textContent).toBe('Inget nytt spel skapades. Ditt konto rymmer 1 spel, och du har 1. Ta bort ett spel du inte behöver för att få plats. Exportera det först om du vill ha det kvar.')
+    expect(offer.querySelector('span')?.textContent).toBe('Med Pro rymmer kontot obegränsat antal spel, för 99\u00a0kr i månaden.')
+    fireEvent.click(within(offer).getByRole('link', { name: 'Uppgradera till Pro' }))
+    expect(gone).toEqual([`/profile?server=${encodeURIComponent(run.http)}#abonnemang`])
+  })
+
+  it('says Pro’s ceiling and price in the editor’s band, and nothing to a co-editor meeting the owner’s', async () => {
+    run = await startServer({ auth: true, authBypass: true, plans: FEW, payments: true })
+    await login('ada@example.com')
+    const id = await made()
+    history.replaceState(null, '', `/editor?project=${id}&server=${encodeURIComponent(run.http)}`)
+    const gone: string[] = []
+    const view = render(
+      <StatusLive>
+        <EditorPage onNavigate={(url) => gone.push(url)} />
+      </StatusLive>,
+    )
+    await screen.findByText('Skogens herrar')
+    fireEvent.click(await screen.findByRole('tab', { name: 'Tabell' }))
+    fireEvent.click(await screen.findByRole('button', { name: '+ Nytt kort' }))
+    await waitFor(() => expect(document.querySelector('.byd-editor-notice-pro')).not.toBeNull())
+    expect(document.querySelector('.byd-editor-notice')?.textContent).toBe('Kortet lades inte till. Skogens herrar har 3 av 3 kort, så många som ett spel rymmer på ditt konto. Ta bort eller slå ihop kort för att få plats. Fler exemplar av ett kort går alltid: ändra Antal. Med Pro rymmer ett spel 500 kort, för 99\u00a0kr i månaden.')
+    fireEvent.click(screen.getByRole('link', { name: 'Uppgradera till Pro' }))
+    expect(gone).toEqual([`/profile?server=${encodeURIComponent(run.http)}#abonnemang`])
+    view.unmount()
+
+    const bo = await login('bo@example.com')
+    await run.projects.share(id, bo, 'editor')
+    history.replaceState(null, '', `/editor?project=${id}&server=${encodeURIComponent(run.http)}`)
+    render(
+      <StatusLive>
+        <EditorPage onNavigate={() => undefined} />
+      </StatusLive>,
+    )
+    await screen.findByText('Skogens herrar')
+    fireEvent.click(await screen.findByRole('tab', { name: 'Tabell' }))
+    fireEvent.click(await screen.findByRole('button', { name: '+ Nytt kort' }))
+    await waitFor(() => expect(document.querySelector('.byd-editor-notice')).not.toBeNull())
+    await new Promise((r) => setTimeout(r, 200))
+    expect(document.querySelector('.byd-editor-notice-pro')).toBeNull()
+    expect(document.querySelector('.byd-editor-notice')?.textContent).not.toContain('Pro')
   })
 })

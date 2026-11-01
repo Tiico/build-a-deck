@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef } from 'react'
+import { useLayoutEffect, useRef, type MouseEvent } from 'react'
 import { useT } from '../i18n/index.js'
 import { CloseGlyph, WarningGlyph } from '../glyphs.js'
 
@@ -16,7 +16,10 @@ import { CloseGlyph, WarningGlyph } from '../glyphs.js'
  */
 // `lead` is what did not happen when a met ceiling is said (#1198, variant A): set off before the rest,
 // inside the same live region so it is read out with it.
-export function NoticeBand({ text, lead, onClose }: { text: string; lead?: string; onClose(): void }) {
+// `offer` is Pro beside a met ceiling of her own (#1494): its sentence after the notice's, and the way
+// to Profil's card as the band's one link before ×.
+export type BandOffer = { text: string; href: string; onGo(e: MouseEvent<HTMLAnchorElement>): void }
+export function NoticeBand({ text, lead, offer, onClose }: { text: string; lead?: string; offer?: BandOffer; onClose(): void }) {
   const t = useT()
   const band = useRef<HTMLDivElement>(null)
   // A band that goes while focus is on its × hands it to the work and never to nothing: the open
@@ -36,7 +39,13 @@ export function NoticeBand({ text, lead, onClose }: { text: string; lead?: strin
         {lead && <b>{lead}</b>}
         {lead && ' '}
         {text}
+        {offer && ` ${offer.text}`}
       </span>
+      {offer && (
+        <a className="byd-editor-notice-pro" href={offer.href} onClick={offer.onGo}>
+          {t('quota.pro.go')}
+        </a>
+      )}
       <button type="button" className="byd-editor-notice-close" aria-label={t('editor.notice.close')} onClick={onClose}>
         <CloseGlyph />
       </button>

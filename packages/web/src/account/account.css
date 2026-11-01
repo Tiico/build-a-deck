@@ -348,6 +348,13 @@ input.byd-code-field { font: 700 22px/1 ui-monospace, Menlo, monospace; letter-s
 .byd-home-notice { margin: 0; padding: 10px 14px; border-radius: 10px; background: #2a1b1b; color: #ffd8d8; line-height: 1.5; }
 /* A met ceiling (#1198, variant A) leads with what did not happen, set off in white. */
 .byd-home-notice b { color: #fff; }
+/* Pro beside a met ceiling of her own (#1494): a second row in the same box, the price in words and
+   «Uppgradera till Pro» as an outline in the box's own rose. */
+.byd-home-quota { display: grid; border-radius: 10px; background: #2a1b1b; }
+.byd-home-quota > .byd-home-notice { background: transparent; }
+.byd-home-pro { margin: 0; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; padding: 0 14px 10px; color: #ffd8d8; line-height: 1.5; }
+.byd-home-pro > a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 14px; box-sizing: border-box; border: 1px solid #e0a0a0; border-radius: 10px; color: #fff; font-weight: 700; text-decoration: none; }
+.byd-home-pro > a:hover { background: #3a2424; }
 
 /* The language switch (A4): on the login card, so a reader who cannot read the page can still change
    what it speaks. Signed in, it is on the profile page (#999). */

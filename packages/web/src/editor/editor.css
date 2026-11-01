@@ -465,6 +465,10 @@
 .byd-editor-notice > b { color: #fff; }
 .byd-editor-notice-close { flex: none; display: inline-grid; place-items: center; width: var(--byd-tap); height: var(--byd-tap); border: 0; border-radius: 6px; padding: 0; background: transparent; color: var(--byd-editor-notice-mark); font: inherit; font-size: 20px; line-height: 1; cursor: pointer; }
 .byd-editor-notice-close:hover { background: #3a3222; }
+/* «Uppgradera till Pro» beside a met ceiling of her own (#1494): an outline in the band's own amber,
+   one row high, before ×. */
+.byd-editor-notice-pro { flex: none; display: inline-flex; align-items: center; min-height: 40px; padding: 0 var(--byd-s3); box-sizing: border-box; border: 1px solid #8a7a52; border-radius: 8px; color: #ffe4b0; font-weight: 700; text-decoration: none; white-space: nowrap; }
+.byd-editor-notice-pro:hover { background: #3a3222; }
 .byd-editor .byd-editor-notice-close:focus-visible { outline-offset: -3px; }
 /* What just happened stands in the open tab's foot, in the stead of the foot's quiet line (#698,
    beslut B 2026-10-06). It floated at the bottom of the screen (#566, beslut D) and lay over «Nästa

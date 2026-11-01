@@ -1276,7 +1276,7 @@ export class ProjectClient {
     const what = t(undoing.said, { name: undoing.name })
     // A met ceiling keeps its parts (#1198): the lead is this sentence up to its colon, set off on the
     // surface that draws it so, and the way out stands under it.
-    if (why instanceof QuotaSaid) return new QuotaSaid({ what: t('upload.undone', { what, why: '' }).trimEnd(), why: why.words.why, way: why.words.way })
+    if (why instanceof QuotaSaid) return new QuotaSaid({ what: t('upload.undone', { what, why: '' }).trimEnd(), why: why.words.why, way: why.words.way }, why.quota)
     return new Said(t('upload.undone', { what, why: saidOr(why, t('upload.failed')) }))
   }
 
@@ -1562,7 +1562,7 @@ export class ProjectClient {
     const res = await fetch(`${this.http}/assets?${new URLSearchParams({ project: this.id }).toString()}`, withCredentials({ method: 'POST', headers: { 'content-type': assetTypeDeclaring(kind) }, body: file }))
     if (res.status === 401) throw new Unauthorized()
     const quota = await quotaOf(res)
-    if (quota) throw new QuotaSaid(quotaWords(quota, { kind: 'upload', file: kind === 'font' ? 'font' : kind === 'image' ? 'picture' : 'file', size: file.size }, t))
+    if (quota) throw new QuotaSaid(quotaWords(quota, { kind: 'upload', file: kind === 'font' ? 'font' : kind === 'image' ? 'picture' : 'file', size: file.size }, t), quota)
     if (res.status === 415) throw new Said(t('upload.notThisKind', { formats: assetFormatsNamed(kind, t('upload.or')) }))
     if (res.status === 413) throw new Said(t('upload.tooBig'))
     // A picture blocked after a report is not stored again (#1274).
