@@ -9,7 +9,7 @@ import { WebSocketServer, type WebSocket } from 'ws'
 import { z } from 'zod'
 import { ASSET_MAX_BYTES, assetFormatsNamed, assetKindDeclared, ClientMessage, PHYSICAL_VERBS, codeOfAddress, REDACTED, SEATINGS, TABLE_PROTOCOL, hostKeyOfProtocols, offersTableProtocol, sniffAsset, tokenOfProtocols, type Applied, type Seating, type ServerMessage } from '@byd/protocol'
 import { CARD_STANDARD_63x88, validateSetup, type DeckFacts, type SetupDef, type TypeRegistry } from '@byd/engine'
-import { renderRules, Template, validateCard } from '@byd/template'
+import { renderRules, Template, validateCard, type Motif } from '@byd/template'
 import { A5, bookletOf } from './booklet.js'
 import { contentHash, contentTypeOf, type ObjectStore, type RenderKind, type RenderRequest, type RenderStore } from '@byd/render/queue'
 import type { Subscriber, TableActor, TableHost } from './actor.js'
@@ -1420,7 +1420,15 @@ async function deckOf(opts: ServerOptions, rec: ProjectRecord): Promise<Deck> {
   // The template's own pictures too (#320), keyed beside the rows' under the URL each now carries.
   const own = await resolveTemplate(rec.template, opts.assets, rec.pictures ?? {})
   const doc = deckFromProject({ ...rec, rows, template: own.template, icons: await resolveIcons(rec.icons, opts.assets) })
-  return { ...doc, motifs: { ...motifs, ...own.motifs }, fonts: await resolveFonts(rec.fonts ?? {}, opts.assets) }
+  // And every other template the deck draws with, a marker's sides (#1483), as the template's own.
+  const templates: Record<string, Template> = {}
+  let drawn: Record<string, Motif> = {}
+  for (const [name, template] of Object.entries(doc.templates ?? {})) {
+    const resolved = await resolveTemplate(template, opts.assets, rec.pictures ?? {})
+    templates[name] = resolved.template
+    drawn = { ...drawn, ...resolved.motifs }
+  }
+  return { ...doc, ...(doc.templates ? { templates } : {}), motifs: { ...motifs, ...own.motifs, ...drawn }, fonts: await resolveFonts(rec.fonts ?? {}, opts.assets) }
 }
 
 // The link's still of a game as it stands (#1417, L91), by the revision it was made of: a room's page

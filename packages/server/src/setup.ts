@@ -1,6 +1,6 @@
 import { matches } from '@byd/protocol'
 import { CARD_STANDARD_63x88, DICE, PIECES, TOKEN_COUNTER, type SetupDef } from '@byd/engine'
-import { layMaterial } from './material.js'
+import { layMarkers, layMaterial, markerRef } from './material.js'
 import type { ProjectDoc } from './projects.js'
 
 // Imported by the editor as well as the server, so this module stays free of anything Node.
@@ -40,6 +40,14 @@ export function setupFromProject(doc: Pick<ProjectDoc, 'rows' | 'setup'>): Setup
     }
     const def = DICE.find((t) => t.behaviours.rollable !== false && t.behaviours.rollable.faces === piece.faces)
     if (def) components.push({ type: { id: def.id, version: def.version }, cardRef: `d${piece.faces}`, zone: piece.zone, face: 'front', counter: 1, ...at })
+  }
+  // The markers (#1483): every copy of one marker is the same tile, named at the table by the marker
+  // and not by a row (`markerRef`), so its faces are drawn once for all of them. Laid front up, as a
+  // bank of coins lies; in a pile nobody may look into, the front is as hidden as a card's.
+  for (const laid of layMarkers(doc.setup)) {
+    const { type, id } = laid.marker
+    const at = laid.x !== undefined && laid.y !== undefined ? { x: laid.x, y: laid.y } : {}
+    components.push({ type: { id: type.id, version: type.version }, cardRef: markerRef(id), zone: laid.zone, face: 'front', ...at })
   }
   // Optional keys that are present but undefined are dropped: the engine's types are exact.
   const zones: SetupDef['zones'] = doc.setup.zones.map((z) => ({

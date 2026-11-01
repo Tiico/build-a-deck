@@ -16,6 +16,20 @@ export type Deck = {
   palette?: Record<string, string>
   fonts?: Record<string, { stack: string; src?: string }>
   motifs?: Record<string, Motif>
+  // Rows drawn with another template than the deck's own (#1483): a marker's sides, a template of
+  // its own under the name `drawnWith` gives it, as the box carries its faces (L91). Drawn with the
+  // deck's icons, palette, fonts and motifs, since it is designed with the same tools as a card. A
+  // row `drawnWith` does not name is drawn with `template`, as every row always was.
+  templates?: Record<string, Template>
+  drawnWith?: Record<string, string>
+}
+
+// The deck one row of it is drawn from (#1483): the deck itself, with the template the row is drawn
+// with in its own's place.
+export function deckFor(deck: Deck, cardRef: string): Deck {
+  const name = deck.drawnWith?.[cardRef]
+  const template = name === undefined ? undefined : deck.templates?.[name]
+  return template === undefined ? deck : { ...deck, template }
 }
 
 // One row of the deck through the one compiler (E2), every face of it, with whatever the deck
@@ -55,14 +69,15 @@ function* compiledCards(deck: Deck, setup: SetupDef, registry: TypeRegistry, dpi
     if (isMaterial(registry.get(spec.type))) continue
     const row = deck.rows[spec.cardRef]
     if (!row) continue
+    const drawn = deckFor(deck, spec.cardRef)
     // The designer's title with its capitals and its diacritics (#412). A row that has none says
     // nothing here, and the card keeps being named by its id at the reader, as it always was.
     const title = titleOfFields(row)
     if (title !== '') out.titles[spec.cardRef] = title
     // The words of the face a view that may see the card is shown: its content face (#551, K27).
-    const content = deck.template.faces[registry.get(spec.type).contentFace]
+    const content = drawn.template.faces[registry.get(spec.type).contentFace]
     if (content) out.texts[spec.cardRef] = printedText({ face: content, row })
-    const compiled = compileRow(deck, registry.get(spec.type), row)
+    const compiled = compileRow(drawn, registry.get(spec.type), row)
     const perFace: Record<string, string> = {}
     out.faces[spec.cardRef] = perFace
     for (const [face, page] of Object.entries(compiled)) {
@@ -113,7 +128,7 @@ export function printExportOf(deck: Deck, setup: SetupDef, registry: TypeRegistr
     const row = deck.rows[spec.cardRef]
     if (!row) throw new Error(`deck has no row "${spec.cardRef}" for print`)
     // The type's own bleed: this is the print where no partner is asked (G5's export, #1207).
-    const compiled = compileRow(deck, registry.get(spec.type), row, true)
+    const compiled = compileRow(deckFor(deck, spec.cardRef), registry.get(spec.type), row, true)
     const faces: Record<string, string> = {}
     for (const [face, out] of Object.entries(compiled)) {
       const hash = contentHash(out, { kind: 'pdf' })
