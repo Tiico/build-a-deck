@@ -48,7 +48,7 @@ export function TileProps({ type, reading, onType }: { type: ComponentTypeDef; r
       <h3 id="byd-tile-props">{t('tile.props')}</h3>
       <div role="group" aria-label={t('tile.props.shape')} className="byd-tile-shapes">
         {(['hex', 'square', 'round'] as const).map((s) => {
-          const first = TILE_TYPES.find((d) => shapeOf(d) === s)!
+          const first = TILE_TYPES.find((d) => shapeOf(d) === s) ?? type
           return (
             <button key={s} type="button" className="byd-choice" aria-pressed={shape === s} disabled={reading} onClick={() => shape !== s && onType(first)}>
               <i aria-hidden="true" data-kind="tile" data-shape={s} />

@@ -146,7 +146,7 @@ function insideBy(physical: ValidateInput['type']['physical'], box: { x: number;
   const within = ([x, y]: readonly [number, number]) =>
     Math.min(
       ...points.map(([ax, ay], i) => {
-        const [bx, by] = points[(i + 1) % points.length]!
+        const [bx, by] = points[(i + 1) % points.length] ?? [ax, ay]
         return ((bx - ax) * (y - ay) - (by - ay) * (x - ax)) / Math.hypot(bx - ax, by - ay)
       }),
     )

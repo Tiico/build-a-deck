@@ -43,7 +43,7 @@ export function OwnDeckHead({ doc, onGo }: { doc: ProjectDoc; onGo: Go }) {
   const t = useT()
   if ((doc.decks ?? []).length === 0) return null
   const n = doc.rows.reduce((sum, r) => sum + copiesOf(r.fields), 0)
-  return <Head name={t('deck.tabs.own')} about={t('wall.decks.cards', { n, w: 63, h: 88 })} deck={null} onGo={onGo} />
+  return <Head name={t('deck.tabs.own')} about={t(n === 1 ? 'wall.decks.cards.one' : 'wall.decks.cards.other', { n, w: 63, h: 88 })} deck={null} onGo={onGo} />
 }
 
 // Every other deck, each in a section of its own under the document's (#1487).
@@ -58,7 +58,8 @@ export function OtherDecks({ doc, assetBase, motifs, onGo }: { doc: ProjectDoc; 
       {decks.map((deck) => {
         const type = tileType(deck.type)
         const face = deck.template.faces['front'] ?? { base: [], variants: {} }
-        const about = type ? t('wall.decks.tiles', { n: tilesIn(deck), shape: shapeWords(type, t), deg: stepOf(type) }) : t('wall.decks.cards', { n: tilesIn(deck), w: 63, h: 88 })
+        const n = tilesIn(deck)
+        const about = type ? t(n === 1 ? 'wall.decks.tiles.one' : 'wall.decks.tiles.other', { n, shape: shapeWords(type, t), deg: stepOf(type) }) : t(n === 1 ? 'wall.decks.cards.one' : 'wall.decks.cards.other', { n, w: 63, h: 88 })
         return (
           <section key={deck.id} className="byd-wall-other" data-deck={deck.id} aria-label={deck.name}>
             <Head name={deck.name} about={about} deck={deck.id} onGo={onGo} />

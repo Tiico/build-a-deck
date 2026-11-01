@@ -68,13 +68,13 @@ export function tileFaceOf(doc: Pick<ProjectDoc, 'decks' | 'setup'>, cardRef: st
     const marker = doc.setup.markers?.find((m) => m.id === id)
     const face = marker?.faces?.[side as keyof NonNullable<Marker['faces']>]
     const type = marker && tileType(marker.type)
-    return marker && type && drawn(face) ? { face: face!, row: { title: marker.name }, type } : null
+    return marker && type && face && drawn(face) ? { face, row: { title: marker.name }, type } : null
   }
   const deck = doc.decks?.find((d) => d.id === owner)
   const row = deck?.rows.find((r) => r.id === id)
   const face = deck?.template.faces[side]
   const type = deck && tileType(deck.type)
-  return deck && row && type && drawn(face) ? { face: face!, row: row.fields, type } : null
+  return row && type && face && drawn(face) ? { face, row: row.fields, type } : null
 }
 
 // How many tiles a deck lays: every row's copies (L4).

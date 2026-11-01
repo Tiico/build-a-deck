@@ -528,9 +528,10 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   // The decks Mall and Tabell have a tab for (#1487), and the one each shows. Tabell has rows to show,
   // so a marker's tab is Mall's alone, and Tabell then shows the document's own deck.
   const tabs = deckTabs(doc)
-  const mallTab = tabs.find((x) => x.ref === deckRef) ?? tabs[0]!
+  const mallTab = tabs.find((x) => x.ref === deckRef) ?? tabs[0]
+  const mallRef = mallTab.ref
   const dataTabs = tabs.filter((x) => x.kind === 'deck')
-  const dataTab = dataTabs.find((x) => x.ref === mallTab.ref) ?? dataTabs[0]!
+  const dataTab = dataTabs.find((x) => x.ref === mallRef) ?? tabs[0]
   const mallDoc = deckView(doc, mallTab.ref)
   const dataDoc = deckView(doc, dataTab.ref)
   const mallEdits = client.inDeck(mallTab.ref)
@@ -819,7 +820,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         doc={mallDoc}
         deckTabs={<DeckTabs tabs={tabs} current={mallTab.ref} onPick={pickDeck} onNew={newDeck} />}
         {...(mallTab.ref !== null ? { type: mallTab.type } : {})}
-        propsHead={mallTab.ref !== null && isTileType(mallTab.type) ? <TileProps type={mallTab.type} reading={!client.mayEdit} onType={(type) => retype(mallTab.ref!, type)} /> : undefined}
+        propsHead={mallRef !== null && isTileType(mallTab.type) ? <TileProps type={mallTab.type} reading={!client.mayEdit} onType={(type) => retype(mallRef, type)} /> : undefined}
         assetBase={http}
         motifs={deckMotifs}
         face={face}

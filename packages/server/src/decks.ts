@@ -11,7 +11,7 @@ import type { ProjectDoc, ProjectRow } from './projects.js'
 // in `decks` with its type, template, rows, column order and the pile it starts in. Read, never
 // written back: a document is never rewritten to say what it already says (B4).
 export type GameDeck = { id: string | null; name?: string; type: TypeRef; template: Template; rows: ProjectRow[]; columns?: string[] | undefined; zone: string }
-export function decksOf(doc: Pick<ProjectDoc, 'template' | 'rows' | 'columns' | 'setup' | 'decks'>): GameDeck[] {
+export function decksOf(doc: Pick<ProjectDoc, 'template' | 'rows' | 'columns' | 'setup' | 'decks'>): [GameDeck, ...GameDeck[]] {
   const own: GameDeck = { id: null, type: { id: CARD_STANDARD_63x88.id, version: CARD_STANDARD_63x88.version }, template: doc.template, rows: doc.rows, ...(doc.columns ? { columns: doc.columns } : {}), zone: doc.setup.deckZone }
   return [own, ...(doc.decks ?? [])]
 }
@@ -32,10 +32,11 @@ export const deckTemplateName = (deck: string): string => `deck:${deck}`
 export type DeckTab = { ref: string | null; kind: 'deck' | 'marker'; name?: string; type: ComponentTypeDef; rows: number }
 export const MARKER_REF = 'marker:'
 const typeOf = (ref: TypeRef): ComponentTypeDef => [CARD_STANDARD_63x88, ...TILES].find((d) => d.id === ref.id && d.version === ref.version) ?? CARD_STANDARD_63x88
-export function deckTabs(doc: Pick<ProjectDoc, 'template' | 'rows' | 'columns' | 'setup' | 'decks'>): DeckTab[] {
-  const decks = decksOf(doc).map((d): DeckTab => ({ ref: d.id, kind: 'deck', ...(d.name ? { name: d.name } : {}), type: typeOf(d.type), rows: d.rows.length }))
+export function deckTabs(doc: Pick<ProjectDoc, 'template' | 'rows' | 'columns' | 'setup' | 'decks'>): [DeckTab, ...DeckTab[]] {
+  const tab = (d: GameDeck): DeckTab => ({ ref: d.id, kind: 'deck', ...(d.name ? { name: d.name } : {}), type: typeOf(d.type), rows: d.rows.length })
+  const [own, ...others] = decksOf(doc)
   const markers = (doc.setup.markers ?? []).map((m): DeckTab => ({ ref: `${MARKER_REF}${m.id}`, kind: 'marker', name: m.name, type: typeOf(m.type), rows: 0 }))
-  return [...decks, ...markers]
+  return [tab(own), ...others.map(tab), ...markers]
 }
 
 // The document as one deck's tab sees it (#1487): that deck's template, rows and column order in the

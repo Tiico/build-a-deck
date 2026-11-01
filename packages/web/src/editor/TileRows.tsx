@@ -50,7 +50,10 @@ function ShapeSelect({ label, value, onChange }: { label: string; value: { id: s
   const t = useT()
   const reading = useContext(Reading)
   return (
-    <select aria-label={label} value={value.id} disabled={reading} onChange={(e) => onChange(TILE_TYPES.find((d) => d.id === e.target.value) ?? TILE_TYPES[0]!)}>
+    <select aria-label={label} value={value.id} disabled={reading} onChange={(e) => {
+        const type = TILE_TYPES.find((d) => d.id === e.target.value)
+        if (type) onChange(type)
+      }}>
       {TILE_TYPES.map((type) => (
         <option key={type.id} value={type.id}>
           {shapeWords(type, t)}
