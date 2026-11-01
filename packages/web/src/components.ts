@@ -1,5 +1,6 @@
 import { CARD_STANDARD_63x88, DICE, PIECES, TOKEN_COUNTER } from '@byd/engine'
 import type { VisibleComponentState } from '@byd/protocol'
+import { CHIP_MM, DIE_MM, PIECE_MM, PIECE_PILE_MM } from '@byd/server/felt-sizes'
 
 // What a thing on the table is, as against where it is (`zones.ts`) or how it got there
 // (`table/drop.ts`). A component's type is a fact about the component, and the rooms that ask
@@ -30,9 +31,24 @@ const PIECE_KINDS = new Map(PIECES.map((p) => [p.id, p.id.slice('piece.'.length)
 export type PieceKind = 'meeple' | 'cube' | 'disc'
 export const pieceKind = (c: { type: { id: string } }): PieceKind | null => PIECE_KINDS.get(c.type.id) ?? null
 
-// A piece that is not a card: a counter or a die. The phone draws each in a place of its own — the
-// counters' pills, the dice's sheet — and never as a card in a row of cards.
-export const isPiece = (c: { type: { id: string } }): boolean => isCounter(c) || isDie(c)
+// The square of the felt a piece of material is drawn in, in the felt's millimetres, its top left
+// corner where the table says it lies: a chip's 24, a die's 30, and a wooden piece by its kind
+// (#1475). `room` is what it may come to take: a wooden piece can be the top of a pile, drawn as the
+// pile's wider chip round the same middle, and what lays a card beside it keeps clear of that.
+export function materialBox(c: { x: number; y: number; type: { id: string } }, room = false): { x: number; y: number; w: number; h: number } {
+  const kind = pieceKind(c)
+  const size = kind !== null ? PIECE_MM[kind] : isDie(c) ? DIE_MM : CHIP_MM
+  const drawn = kind !== null && room ? PIECE_PILE_MM : size
+  const inset = (drawn - size) / 2
+  return { x: c.x - inset, y: c.y - inset, w: drawn, h: drawn }
+}
+
+export const isWoodenPiece = (c: { type: { id: string } }): boolean => PIECE_KINDS.has(c.type.id)
+
+// Material, as K32 calls it: what is not a card — a counter, a die or a wooden piece. Never held,
+// and never drawn as a card in a row of cards: the phone gives each a place of its own (the
+// counters' pills, the dice's sheet), and the felt draws each in its own form.
+export const isMaterial = (c: { type: { id: string } }): boolean => isCounter(c) || isDie(c) || isWoodenPiece(c)
 
 // A card the screen shows without the wire having handed it out (K23): a face-down bottom card
 // held up to look at. It knows only what the zone said — that there is a card, and the back it

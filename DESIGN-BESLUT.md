@@ -5048,6 +5048,19 @@ En rad som läggs på en punkt ligger mitt på den i hela millimeter, med ett j�
 
 **Aktivitetsraden** säger biten efter sort: «Ada flyttade en meeple till Spelyta», «Ada lade ned en meeple» och «Ada ställde upp en meeple».
 
+**Filten** (#1475, prototypen i #1472, beställarens val 2026-11-01: filten B).
+Det som ännu inte flyttats är en hög: en plats stående pjäser av en sort som ligger på samma punkt i en yta ritas som en enda mörk bricka med figuren och antalet, som räknarnas hög (#89).
+Högen är bara en ritning och var bitarna ligger, aldrig ett begrepp i motorn eller loggen: setupen lägger en rads bitar i en färg på en punkt (`layMaterial`), filten och tangentbordet läser högen ur det (`piecePiles`), och en bit som dras ut är sin egen så fort bordet sagt var den hamnade.
+Ett drag i brickan tar den översta pjäsen, och tangentbordet når högen som ett stopp, den översta.
+En liggande meeple ligger alltid för sig.
+Varje flyttad pjäs ritas som sin silhuett uppifrån i platsens färg: meeplen som den kända figuren, kuben som en rundad kvadrat och skivan som en rund bricka med en ring innanför kanten, eftersom en gul skiva annars liknar räknarens bärnstensfärgade bricka.
+En liggande meeple är samma silhuett på sidan, utan skugga.
+Pjäserna ritas större än skalan, som tärningen: meeplen på tärningens 30 mm, kuben på 20 och skivan på 24 (`PIECE_MM`), och högens bricka på 44 mm (`PIECE_PILE_MM`), med fingrets mål på 44 px på varje skärm.
+Ingen platsfärg når 3:1 mot den gröna filten, så varje figur har ett hårfint band i filtens krita, som platsens kant; det mäts på målade pixlar i alla åtta platsfärger.
+Ett klick på en pjäs slår den aldrig: det öppnar ringen med «Lägg ner» eller «Res upp» för en meeple och «Flytta…», och F, Cmd/Ctrl-klick och dubbelklick lägger ned och reser upp den.
+M öppnar «Flytta till» med filtens ytor och ingen hand och inget kort, eftersom en pjäs aldrig staplas (K16, K32).
+Skärmläsaren hör sort, platsens namn i genitiv, om den ligger, och var: «meeple, Adas, i Spelyta» och för högen «3 meeples, Adas, i Framför A».
+
 ### K34. Brickor: kortet i sin egen form, och steget är typens (beslutat 2026-10-28 och 2026-11-01, #1470, #1474, #1482)
 
 Beställarens beslut i #1470 den 2026-10-28: formerna är kvadrat, sexhörning och rund (fråga 9), och en bricka kan hållas dold på handen som ett kort (fråga 10).
