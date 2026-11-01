@@ -27,9 +27,9 @@ const NOTES = {
 <span class="minus">− Bordsläget 1280 × 800 går från 46 till 44 px utan och 40 px med spelarbräden: filten blir högre.</span>`,
   B: `<b>B — Brädet bredvid filten.</b> Filten är exakt dagens; brädet och spelarbräden ligger som ett eget ark på mörkret till höger om den, där TV:n har bredd. Editorn: brädet och spelarbrädet är två nya sidor i Mall bredvid kortets fram- och baksida, och arket placeras i Bord under en egen rot «Bredvid bordet».
 <span class="plus">+ Ingen zon och ingen hög på filten flyttar; ett spel utan bräde ser ut precis som i dag.</span>
-<span class="minus">− Bredden var inte fri: scenen (K9 2026-10-25) tar redan den. TV-kortet faller från 57 till 41–42 px och åttaplatsbordets till 34–37: under K9:s golv i alla fall. − Platserna sitter inte runt brädet.</span>`,
+<span class="minus">− Bredden var inte fri: scenen (K9 2026-10-25) tar redan den. TV-kortet faller från 58 till 41–42 px och åttaplatsbordets till 34–37: under K9:s golv i alla fall. − Platserna sitter inte runt brädet.</span>`,
   C: `<b>C — Brädet är bordet.</b> Brädets bild ersätter filtens grönt; bordet är brädet plus platsernas kant, och spelarbrädet är platsens kant. Högarna ligger på brädet, i zoner designern lämnar plats för. Editorn: ytan designas direkt i fliken Bord, med Mall:s lager i en högerspalt.
-<span class="plus">+ Fyraplatsbordet blir smalare än i dag: TV-kortet går från 57 till 76 px (68 med spelarbräden).</span>
+<span class="plus">+ Fyraplatsbordet blir smalare än i dag: TV-kortet går från 58 till 76 px (68 med spelarbräden).</span>
 <span class="minus">− Åttaplatsbordet går under golvet (44 px, 41 med spelarbräden). − Designern måste rita leken och slänghögen på bilden. − Ett spel utan bräde har ett annat bord än ett med; Bord blir två verktyg i ett.</span>`,
 }
 
@@ -242,7 +242,8 @@ function table(v, s, mode) {
   const feltFill = `<defs><radialGradient id="felt" cx="50%" cy="45%" r="70%"><stop offset="0" stop-color="#2f7a52"/><stop offset="1" stop-color="#1d5638"/></radialGradient></defs>`
   parts.push(feltFill)
   if (mode === 'table') parts.push(`<rect x="${-felt.w / 2 - 30 / s}" y="${-felt.h / 2 - 30 / s}" width="${felt.w + 60 / s}" height="${felt.h + 60 / s}" rx="${14 / s}" fill="#6b4524"/>`)
-  parts.push(`<rect x="${-felt.w / 2}" y="${-felt.h / 2}" width="${felt.w}" height="${felt.h}" rx="${8 / s}" fill="url(#felt)"/>`)
+  // I C är bordet brädet: kanten runt det är platsernas läderkant, inte filtens grönt.
+  parts.push(`<rect x="${-felt.w / 2}" y="${-felt.h / 2}" width="${felt.w}" height="${felt.h}" rx="${8 / s}" fill="${v === 'C' ? '#3a2a1c' : 'url(#felt)'}"/>`)
 
   // Brädet.
   let boardAt = null
@@ -473,7 +474,7 @@ function renderBordflik(sc, layered) {
   if (v === 'A' || v === 'C') {
     // Brädet valt: en ram runt det i dukens pixlar.
     const cx = dw / 2, cy = dh / 2
-    duk.insertAdjacentHTML('beforeend', `<div style="position:absolute;left:${cx - (b.w / 2) * s - 3}px;top:${cy - (b.h / 2) * s - 3}px;width:${b.w * s + 6}px;height:${b.h * s + 6}px;outline:2px solid #3c8ce7;pointer-events:none"></div><div style="position:absolute;left:${cx - (b.w / 2) * s}px;top:${cy + (b.h / 2) * s + 8}px;color:#9cc4f5;font:12px system-ui">Brädet · ${b.w} × ${b.h} mm · ligger fast${v === 'C' ? ' · är bordet' : ''}</div>`)
+    duk.insertAdjacentHTML('beforeend', `<div style="position:absolute;left:${cx - (b.w / 2) * s - 3}px;top:${cy - (b.h / 2) * s - 3}px;width:${b.w * s + 6}px;height:${b.h * s + 6}px;outline:2px solid #3c8ce7;pointer-events:none"></div><div style="position:absolute;left:${cx - (b.w / 2) * s}px;top:${cy - (b.h / 2) * s - 8}px;transform:translateY(-100%);padding:2px 6px;border-radius:4px;background:#10131a;color:#9cc4f5;font:12px system-ui">Brädet · ${b.w} × ${b.h} mm · ligger fast${v === 'C' ? ' · är bordet' : ''}</div>`)
   }
 }
 
