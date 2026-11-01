@@ -1054,6 +1054,9 @@
    part of any card: with it the back is laid out two pixels inside the card it is the back of,
    and the two on the other side are cut off. */
 .byd-card[data-back='own'], .byd-pile .byd-pile-top[data-back='own'], .byd-pile .byd-pile-bottom[data-back='own'], .byd-pile .byd-pile-fan-card[data-back='own'] { border: 0; background: none; }
+/* A tile's own face where nothing serves textures (#1487): drawn in its middle, with no word over it. */
+.byd-card-face { display: grid; place-items: center; background: transparent; }
+.byd-card-face ~ span:not([data-texture]) { visibility: hidden; }
 .byd-card > img ~ span:not([data-texture]), .byd-pile-top > img ~ span:not([data-texture]), .byd-pile-bottom > img ~ span:not([data-texture]) { visibility: hidden; }
 .byd-pile-top, .byd-pile-bottom, .byd-pile-fan-card { overflow: hidden; }
 

@@ -1,8 +1,8 @@
-import { useContext, useEffect, useId, useRef, useState, type KeyboardEvent as RKeyboardEvent, type ReactNode } from 'react'
+import { Fragment, useContext, useEffect, useId, useRef, useState, type KeyboardEvent as RKeyboardEvent, type ReactNode } from 'react'
 import type { ProjectDoc } from '@byd/server'
 import type { ZoneBeside } from '@byd/protocol'
 import { BOARDS } from '@byd/engine'
-import { boardTypeOf, counterId, titleOfRow, type BoardKind, type Counter, type Die, type Piece, type SeatRole, type Setup, type Zone, type ZonePatch } from '@byd/server/doc'
+import { boardTypeOf, counterId, titleOfRow, type BoardKind, type Counter, type Die, type Marker, type Piece, type SeatRole, type Setup, type Zone, type ZonePatch } from '@byd/server/doc'
 import { useT, type Key } from '../i18n/index.js'
 import { ChevronGlyph, CloseGlyph } from '../glyphs.js'
 import { Help } from './HelpDrawer.js'
@@ -10,6 +10,8 @@ import { useGesture } from './gesture.js'
 import { landingOf } from './landing.js'
 import { Reading, diePlaces, fixed, placeOf, rowsOf, type Family } from './setup-rows.js'
 import { CounterFields, DieFields, MaterialRow, PieceFields, dieWords, pieceWords, type MaterialKey } from './MaterialRow.js'
+import { DeckFields, MarkerFields, TileChoiceItem, deckWords, markerWords, shapeOf, type TileChoice } from './TileRows.js'
+import { tileType } from './tiles.js'
 import { useMm } from './box-mm.js'
 
 // The table as a tree (#1403, beställarens beslut C): the list in Bord's column mirrors the felt,
@@ -22,9 +24,19 @@ import { useMm } from './box-mm.js'
 // The row is the handle a keyboard can reach and the only way to a zone that lies under another;
 // opening one shows what the zone is, and the × takes it away — or says, where the × would be, why
 // this one stays.
-export type AddWhat = { kind: 'area' | 'pile' } | { kind: 'seat'; role: SeatRole } | { kind: 'die'; place: string } | { kind: 'piece'; place: string } | { kind: 'counter'; role: string | undefined }
+export type AddWhat =
+  | { kind: 'area' | 'pile' }
+  | { kind: 'seat'; role: SeatRole }
+  | { kind: 'die'; place: string }
+  | { kind: 'piece'; place: string }
+  | { kind: 'counter'; role: string | undefined }
+  // A tile (#1487): a marker in the place, or a deck of tiles in the pile (`pile` null: a new pile).
+  | { kind: 'marker'; place: string }
+  | { kind: 'tileDeck'; pile: string | null }
 // `hint` says under the label what a word the designer may not know yet covers (#1477, «Pjäs»).
-type AddItem = { label: string; hint?: string; pick(): void }
+// `choices` makes the item a door to choices side by side rather than a thing laid (#1487, «Bricka»):
+// pressed, it opens them under itself in the menu, and a choice is what is laid.
+type AddItem = { label: string; hint?: string; pick(): void; choices?: TileChoice[] }
 
 export function TableTree({
   setup,
@@ -44,6 +56,11 @@ export function TableTree({
   onDice,
   onPieces,
   onCounters,
+  markers = [],
+  decks = [],
+  onMarkers,
+  onDecks,
+  onOpenDeck,
   onBoards,
   onDrawBoard,
   typing,
@@ -62,6 +79,13 @@ export function TableTree({
   onDice(dice: Die[]): void
   onPieces(pieces: Piece[]): void
   onCounters(counters: Counter[], gesture?: string): void
+  // The game's markers and its other decks (#1487), each a row under the zone it lies in, and the
+  // way from a row to Mall or Tabell with that deck's tab open.
+  markers?: Marker[] | undefined
+  decks?: NonNullable<ProjectDoc['decks']> | undefined
+  onMarkers?(markers: Marker[], gesture?: string): void
+  onDecks?(decks: NonNullable<ProjectDoc['decks']>, gesture?: string): void
+  onOpenDeck?: ((ref: string, where: 'template' | 'table') => void) | undefined
   // The game's boards (#1481), written back as the whole list, and the way to the «Bräde» tab.
   onBoards(boards: BoardKind[]): void
   onDrawBoard?: ((id: string) => void) | undefined
@@ -85,13 +109,24 @@ export function TableTree({
   const seats = setup.seats.length
   // An area's own dice stand under its row, in a list of its name.
   const zoneRow = (zone: Zone, add?: AddItem[], material: ReactNode[] = []) => (
-    <ZoneRow key={zone.id} zone={zone} setup={setup} rows={deck} selected={selected} add={add} onSelect={onSelect} onRemove={onRemove} onPatch={onPatch} onHold={onHold}>
+    <ZoneRow key={zone.id} zone={zone} setup={setup} rows={deck} holds={decks.find((d) => d.zone === zone.id)?.name} selected={selected} add={add} onSelect={onSelect} onRemove={onRemove} onPatch={onPatch} onHold={onHold}>
       {material.length > 0 && <ul aria-label={zone.name}>{material}</ul>}
     </ZoneRow>
   )
   const dieIn = (place: string): AddItem => ({ label: t('setup.die.add'), pick: () => onAdd({ kind: 'die', place }) })
   // One «＋ Pjäs» for the whole family of wooden pieces, the kind chosen in the row (#1477, #1472 B).
   const pieceIn = (place: string): AddItem => ({ label: t('setup.piece.add'), hint: t('setup.piece.add.hint'), pick: () => onAdd({ kind: 'piece', place }) })
+  // «＋ Bricka» (#1487, #1474 A): a marker where the menu is, or a deck of tiles in this pile, or in a
+  // new pile where the menu is on the table. The two stand side by side, each saying what it costs.
+  const tileIn = (place: string, pile: string | null): AddItem => ({
+    label: t('setup.tile.add'),
+    hint: t('setup.tile.add.hint'),
+    pick: () => undefined,
+    choices: [
+      { kind: 'marker', pick: () => onAdd({ kind: 'marker', place }) },
+      { kind: 'deck', pick: () => onAdd({ kind: 'tileDeck', pile }) },
+    ],
+  })
   const materialIn = (place: string): AddItem[] => [dieIn(place), pieceIn(place)]
   // The boards (#1481, variant A of #1473): one main board on the floor and one player board laid for
   // every seat, each a row of its own that says it lies fixed. The ＋ offers one only while there is none.
@@ -118,6 +153,7 @@ export function TableTree({
     { label: t('setup.addPile'), pick: () => onAdd({ kind: 'pile' }) },
     ...(floor ? materialIn(`zone:${floor.id}`) : []),
     ...(floor && !mainBoard ? [{ label: t('setup.board.add'), pick: () => laidBoard({ id: 'main', type: FIRST_MAIN, zone: floor.id }) }] : []),
+    ...(floor ? [tileIn(`zone:${floor.id}`, null)] : []),
   ]
   const seatAdds: AddItem[] = [
     { label: t('setup.addSeatArea'), pick: () => onAdd({ kind: 'seat', role: 'mine' }) },
@@ -171,6 +207,33 @@ export function TableTree({
   }
   const piecesAt = (place: string) => pieces.flatMap((piece, i) => (placeOf(piece) === place ? [pieceRow(piece, i, false)] : []))
   const homelessPieces = pieces.flatMap((piece, i) => (known.has(placeOf(piece)) ? [] : [pieceRow(piece, i, true)]))
+  // The tiles' rows (#1487): a marker under the zone it lies in as a piece's, and a deck of tiles under
+  // the pile it starts in. One whose zone is gone stands under the floor, as a die's does.
+  const zoneIds = new Set(setup.zones.map((z) => z.id))
+  const markerRow = (marker: Marker, i: number) => {
+    const key: MaterialKey = `marker:${i}`
+    const words = markerWords(marker, t)
+    return (
+      <MaterialRow key={key} id={key} kind="tile" shape={shapeOf(tileType(marker.type))} label={words.label} detail={words.detail} removeLabel={t('setup.marker.remove', { n: i + 1 })} open={openMaterial === key} onOpen={(open) => onOpenMaterial(open ? key : null)} onRemove={() => { onOpenMaterial(null); onMarkers?.(markers.filter((_, j) => j !== i)) }}>
+        <MarkerFields marker={marker} n={i + 1} focus={focusMaterial === key} onFocused={onFocused} visit={typing.visit} token={typing.token} onChange={(next, gesture) => onMarkers?.(markers.map((m, j) => (j === i ? next : m)), gesture)} {...(onOpenDeck ? { onDraw: () => onOpenDeck(`marker:${marker.id}`, 'template') } : {})} />
+      </MaterialRow>
+    )
+  }
+  const markersAt = (place: string) => markers.flatMap((m, i) => (placeOf(m) === place ? [markerRow(m, i)] : []))
+  const deckRow = (d: NonNullable<ProjectDoc['decks']>[number], i: number) => {
+    const key: MaterialKey = `deck:${i}`
+    const words = deckWords(d, t)
+    return (
+      <MaterialRow key={key} id={key} kind="tile" shape={shapeOf(tileType(d.type))} label={words.label} detail={words.detail} removeLabel={t('setup.tileDeck.remove', { name: d.name })} open={openMaterial === key} onOpen={(open) => onOpenMaterial(open ? key : null)} onRemove={() => { onOpenMaterial(null); onDecks?.(decks.filter((_, j) => j !== i)) }}>
+        <DeckFields deck={d} n={i + 1} focus={focusMaterial === key} onFocused={onFocused} visit={typing.visit} token={typing.token} onChange={(next, gesture) => onDecks?.(decks.map((o, j) => (j === i ? next : o)), gesture)} {...(onOpenDeck ? { onOpen: (where: 'template' | 'table') => onOpenDeck(d.id, where) } : {})} />
+      </MaterialRow>
+    )
+  }
+  const decksAt = (pile: string) => decks.flatMap((d, i) => (d.zone === pile ? [deckRow(d, i)] : []))
+  const homelessTiles = [
+    ...markers.flatMap((m, i) => (zoneIds.has(m.zone ?? '') || (m.role !== undefined && familyRoles.has(m.role)) ? [] : [markerRow(m, i)])),
+    ...decks.flatMap((d, i) => (zoneIds.has(d.zone) ? [] : [deckRow(d, i)])),
+  ]
   const counterRow = (c: Counter, i: number, note?: ReactNode) => {
     const key: MaterialKey = `counter:${i}`
     return (
@@ -217,11 +280,15 @@ export function TableTree({
             floorAdds,
             <ul aria-label={floor.name}>
               {mainBoard && boardRow(mainBoard)}
-              {onTable.map((zone) => zoneRow(zone, zone.kind === 'area' ? materialIn(`zone:${zone.id}`) : undefined, [...diceAt(`zone:${zone.id}`), ...piecesAt(`zone:${zone.id}`)]))}
+              {onTable.map((zone) =>
+                zoneRow(zone, zone.kind === 'area' ? [...materialIn(`zone:${zone.id}`), tileIn(`zone:${zone.id}`, null)] : zone.kind === 'pile' ? [tileIn(`zone:${zone.id}`, zone.id)] : undefined, [...diceAt(`zone:${zone.id}`), ...piecesAt(`zone:${zone.id}`), ...decksAt(zone.id), ...markersAt(`zone:${zone.id}`)]),
+              )}
               {diceAt(`zone:${floor.id}`)}
               {piecesAt(`zone:${floor.id}`)}
+              {markersAt(`zone:${floor.id}`)}
               {homelessDice}
               {homelessPieces}
+              {homelessTiles}
             </ul>,
           )}
         <li data-seats-root>
@@ -238,7 +305,7 @@ export function TableTree({
               it.kind === 'zone' ? (
                 zoneRow(it.zone)
               ) : (
-                <FamilyRow key={it.family.role} family={it.family} setup={setup} open={opened.includes(it.family.role)} add={familyAdds(it.family)} material={[...(playerBoard && playerBoard.role === it.family.role ? [boardRow(playerBoard)] : []), ...diceAt(`role:${it.family.role}`), ...piecesAt(`role:${it.family.role}`), ...countersAt(it.family.role)]} onOpen={() => onOpen(it.family.role)}>
+                <FamilyRow key={it.family.role} family={it.family} setup={setup} open={opened.includes(it.family.role)} add={familyAdds(it.family)} material={[...(playerBoard && playerBoard.role === it.family.role ? [boardRow(playerBoard)] : []), ...diceAt(`role:${it.family.role}`), ...piecesAt(`role:${it.family.role}`), ...markersAt(`role:${it.family.role}`), ...countersAt(it.family.role)]} onOpen={() => onOpen(it.family.role)}>
                   {it.family.zones.map((zone) => zoneRow(zone))}
                 </FamilyRow>
               ),
@@ -265,6 +332,8 @@ function useAddMenu(name: string, items: AddItem[] | undefined): { button: React
   const t = useT()
   const reading = useContext(Reading)
   const [open, setOpen] = useState(false)
+  // Which item with choices stands open in the menu (#1487), by its label.
+  const [opened, setOpened] = useState<string | null>(null)
   const id = useId()
   const button = useRef<HTMLButtonElement>(null)
   const menu = useRef<HTMLDivElement>(null)
@@ -279,11 +348,24 @@ function useAddMenu(name: string, items: AddItem[] | undefined): { button: React
     document.addEventListener('pointerdown', away, true)
     return () => document.removeEventListener('pointerdown', away, true)
   }, [open])
+  // The choices an item opens stand under the menu's foot, and at 1024 × 640 the column's own foot is
+  // above them (#711): they are brought into view where they open, with the menu above them.
+  useEffect(() => {
+    if (opened === null) return
+    // Up and down only: the column is the one that scrolls, and it must not be pulled sideways.
+    const pair = menu.current?.querySelector<HTMLElement>('.byd-setup-add-pair')
+    let column = pair?.parentElement ?? null
+    while (column && !(column.scrollHeight > column.clientHeight && /auto|scroll/.test(getComputedStyle(column).overflowY))) column = column.parentElement
+    if (!pair || !column) return
+    const below = pair.getBoundingClientRect().bottom - column.getBoundingClientRect().bottom
+    if (below > 0) column.scrollTop += below
+  }, [opened])
   if (reading || !items || items.length === 0) return { button: null, list: null }
   const label = t('setup.add.to', { name })
   const close = () => {
     button.current?.focus()
     setOpen(false)
+    setOpened(null)
   }
   const keys = (e: RKeyboardEvent) => {
     const all = [...(menu.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [])]
@@ -311,21 +393,38 @@ function useAddMenu(name: string, items: AddItem[] | undefined): { button: React
     list: open ? (
       <div ref={menu} role="menu" id={id} className="byd-setup-add-menu" aria-label={label} onKeyDown={keys}>
         {items.map((item, i) => (
-          <button
-            key={item.label}
-            type="button"
-            role="menuitem"
-            // A hint is said after the name rather than in it, so the item is called what it adds.
-            aria-label={item.hint !== undefined ? item.label : undefined}
-            aria-describedby={item.hint !== undefined ? `${id}-hint-${i}` : undefined}
-            onClick={() => {
-              close()
-              item.pick()
-            }}
-          >
-            {item.label}
-            {item.hint !== undefined && <small id={`${id}-hint-${i}`}>{item.hint}</small>}
-          </button>
+          <Fragment key={item.label}>
+            <button
+              type="button"
+              role="menuitem"
+              // A hint is said after the name rather than in it, so the item is called what it adds.
+              aria-label={item.hint !== undefined ? item.label : undefined}
+              aria-describedby={item.hint !== undefined ? `${id}-hint-${i}` : undefined}
+              {...(item.choices ? { 'aria-expanded': opened === item.label, 'aria-controls': opened === item.label ? `${id}-choices-${i}` : undefined } : {})}
+              onClick={() => {
+                if (item.choices) return setOpened(opened === item.label ? null : item.label)
+                close()
+                item.pick()
+              }}
+            >
+              {item.label}
+              {item.hint !== undefined && <small id={`${id}-hint-${i}`}>{item.hint}</small>}
+            </button>
+            {item.choices && opened === item.label && (
+              <div role="group" id={`${id}-choices-${i}`} className="byd-setup-add-pair" aria-label={t('setup.tile.choices')}>
+                {item.choices.map((choice) => (
+                  <TileChoiceItem
+                    key={choice.kind}
+                    choice={choice}
+                    onPick={() => {
+                      close()
+                      choice.pick()
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+          </Fragment>
         ))}
       </div>
     ) : null,
@@ -392,6 +491,7 @@ function ZoneRow({
   zone,
   setup,
   rows,
+  holds,
   selected,
   add,
   onSelect,
@@ -403,6 +503,9 @@ function ZoneRow({
   zone: Zone
   setup: Setup
   rows: ProjectDoc['rows']
+  // The name of another deck that starts in this pile (#1487): the pile says «leken» as the own deck's
+  // does, and the deck's own row under it says which.
+  holds?: string | undefined
   selected: string | null
   add?: AddItem[] | undefined
   onSelect(id: string | null): void
@@ -426,6 +529,7 @@ function ZoneRow({
           <span>{zone.name}</span>
           {zone.owner !== undefined && <> <em>{zone.owner}</em></>}
           {deck && <> <strong>{t('setup.deck.mark')}</strong></>}
+          {holds !== undefined && <> <strong>{t('setup.deck.mark')}</strong></>}
         </button>
         {adding.button}
         {why === null ? (

@@ -993,8 +993,9 @@
 .byd-setup-undo button { border: 1px solid #5c4a1f; border-radius: 8px; padding: 4px 8px; background: #241f13; color: #ffd98a; font-weight: 700; cursor: pointer; }
 /* The list of zones: every one the table has, in two groups, and the row is the way into it —
    the only way to one that lies under another on the felt. */
-.byd-setup-zones { display: grid; gap: 14px; }
-.byd-setup-zones ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.byd-setup-zones { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+/* A grid row keeps its min-content, and a row's words are nowrap: the tracks are held to the column (#1487). */
+.byd-setup-zones ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 2px; }
 .byd-setup-zones li[data-open='true'] { background: #171a23; border-radius: 10px; }
 .byd-setup-row { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .byd-setup-name { flex: 1; min-width: 0; display: flex; gap: 8px; align-items: center; border: 0; background: transparent; color: #e6ecfa; text-align: left; padding: 8px; border-radius: 8px; cursor: pointer; font: inherit; }
@@ -1007,7 +1008,7 @@
 .byd-setup-name i[data-kind='hand'] { width: 16px; height: 7px; box-shadow: none; }
 .byd-setup-name i[data-kind='die'] { width: 12px; height: 12px; border-radius: 3px; border-color: #f3e9d6; background: #f3e9d6; box-shadow: inset 0 0 0 4px #f3e9d6, inset 0 0 0 6px #1c1c1c; }
 .byd-setup-name i[data-kind='counter'] { width: 12px; height: 12px; border-radius: 50%; border-color: #ffd98a; background: #2a2f3c; box-shadow: none; }
-.byd-setup-name small { flex: none; color: #9aa3b8; font-size: 11px; }
+.byd-setup-name small { flex: 0 100 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #9aa3b8; font-size: 11px; }
 /* A wooden piece (#1477, K33) drawn as its silhouette in wood, since its colour is each seat's (L11):
    a meeple, a cube, a disc. The same glyph stands in the row and in the row's kind buttons. */
 i[data-kind='piece'] { flex: none; display: inline-block; width: 14px; height: 14px; border: 0; border-radius: 0; box-shadow: none; background: #e3b878; }
@@ -1045,6 +1046,22 @@ i[data-kind='piece'][data-piece='disc'] { border-radius: 50%; }
 .byd-setup-add-menu > button:hover { background: #2a2f3c; }
 /* What a word in the menu covers (#1477): «＋ Pjäs», then «meeple, kub eller skiva» in the quiet grey. */
 .byd-setup-add-menu > button > small { margin-left: var(--byd-s2); color: #9aa3b8; font-size: 12px; font-weight: 400; }
+/* «＋ Bricka» opens its two choices side by side in the menu (#1487, #1474 A): a marker and a pile
+   from a deck, each with what it is and, in the amber, what it costs. Two columns of the menu's
+   width; a grid row inside a grid keeps its min-content, so each choice may shrink to nothing. */
+.byd-setup-add-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--byd-s1); padding: var(--byd-s1); min-width: 0; }
+.byd-setup-add-pair > button { display: grid; align-content: start; justify-items: start; gap: var(--byd-s1); min-width: 0; min-height: var(--byd-tap); padding: var(--byd-s2); border: 1px solid #6d7486; border-radius: 8px; background: #15171c; color: #e6ecfa; font: inherit; text-align: left; cursor: pointer; }
+.byd-setup-add-pair > button:hover { border-color: #ffd98a; background: #2a2f3c; }
+.byd-setup-add-pair > button > b { color: #fff; font-size: 13px; }
+.byd-setup-add-pair > button > span { color: #c7cede; font-size: 12px; line-height: 1.4; }
+.byd-setup-add-pair > button > em { color: #ffd98a; font-size: 12px; font-style: normal; line-height: 1.4; }
+/* A tile (#1487) drawn in its shape and in cardboard: a hexagon on its point, a square, a round one. */
+i[data-kind='tile'] { flex: none; display: inline-block; width: 14px; height: 16px; border: 0; border-radius: 0; box-shadow: none; background: #d9b77a; clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); }
+i[data-kind='tile'][data-shape='square'] { width: 14px; height: 14px; border-radius: 2px; clip-path: none; }
+i[data-kind='tile'][data-shape='round'] { width: 14px; height: 14px; border-radius: 50%; clip-path: none; }
+.byd-setup-add-pair i[data-kind='tile'] { width: 24px; height: 28px; }
+.byd-setup-add-pair i[data-kind='tile'][data-shape='round'] { width: 24px; height: 24px; background: #e3b04b; }
+.byd-setup-tile-go { display: inline-flex; align-items: center; gap: var(--byd-s1); }
 .byd-setup-name strong { flex: none; color: #8ad0ff; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; }
 .byd-setup-x { flex: none; border: 1px solid #2f333d; border-radius: 8px; background: #1b1d23; color: #c7cede; font-size: 15px; line-height: 1; padding: 4px 8px; cursor: pointer; }
 .byd-setup-x:hover { background: #2a1b1b; border-color: #6b2b2b; color: #ff9a9a; }
@@ -5176,3 +5193,36 @@ label.byd-ai-rules { cursor: pointer; }
 /* A face of the box says what it says in the panel, as fixed words (#1413). */
 .byd-props label.byd-props-words { grid-template-columns: minmax(0, 1fr); align-items: stretch; }
 .byd-props-words textarea { min-height: var(--byd-tap); resize: vertical; background: #0f1115; border: 1px solid var(--byd-secondary-line); color: #fff; border-radius: 6px; padding: var(--byd-s1) var(--byd-s2); font: inherit; font-size: 13px; box-sizing: border-box; width: 100%; }
+
+/* En flik per lek i Mall och Tabell (#1487, editorvariant A i #1474): först i kronan, bara när spelet
+   har fler lekar än en. Den valda leken har kronans primära markering, som Framsida och Baksida. */
+.byd-deck-tabs { display: flex; align-items: center; gap: var(--byd-s1); flex: 0 0 auto; min-width: 0; }
+.byd-deck-tabs > button { display: inline-flex; align-items: center; gap: var(--byd-s1); min-height: var(--byd-tap); padding: 0 var(--byd-s3); border: 1px solid #6d7486; border-radius: 8px; background: transparent; color: #dce3f2; font: inherit; font-size: 13px; font-weight: 700; white-space: nowrap; cursor: pointer; }
+.byd-deck-tabs > button:hover { border-color: var(--byd-editor-primary-mark); }
+.byd-deck-tabs > button[aria-pressed='true'] { border-color: var(--byd-editor-primary-mark); background: #2f3a55; color: #fff; }
+.byd-deck-tabs > button > small { color: #9aa3b8; font-size: 11px; font-weight: 400; }
+.byd-deck-tabs > button[aria-pressed='true'] > small { color: #c7cede; }
+.byd-deck-tabs > .byd-deck-tabs-new { border-style: dashed; color: #c7cede; font-weight: 600; }
+/* «Brickan» över egenskaperna (#1487): formen som tre val, storleken för den runda, och det typen
+   säger om mått, kartong och steg, läst och inte skrivet. */
+.byd-tile-props { display: grid; gap: var(--byd-s2); margin: 0 0 var(--byd-s3); padding: 0 0 var(--byd-s3); border-bottom: 1px solid #6d7486; }
+.byd-tile-props > h3 { margin: 0; font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--byd-editor-hint-ink); }
+.byd-tile-shapes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--byd-s1); min-width: 0; }
+.byd-tile-shapes > .byd-choice { display: inline-flex; align-items: center; justify-content: center; gap: var(--byd-s1); min-width: 0; min-height: var(--byd-tap); padding: 0 var(--byd-s1); font-size: 12px; }
+.byd-tile-measures { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--byd-s2); margin: 0; min-width: 0; }
+.byd-tile-measures > div { display: grid; gap: var(--byd-s1); min-width: 0; }
+.byd-tile-measures dt { font-size: 11px; color: #9aa3b8; }
+.byd-tile-measures dd { margin: 0; font-size: 13px; color: #e6ecfa; font-variant-numeric: tabular-nums; }
+/* Snittet över en brickas yta i Mall (#1487): det som stansas bort är dämpat, och konturen streckad. */
+.byd-canvas-cut { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+/* Kortväggen med ett avsnitt per lek (#1487): ett huvud per lek med vägen till dess Mall och Tabell. */
+.byd-wall-deck-head { display: flex; align-items: center; gap: var(--byd-s2); min-width: 0; margin: 0 0 var(--byd-s3); }
+.byd-wall-deck-head > h2 { margin: 0; font-size: 15px; color: #fff; }
+.byd-wall-deck-head > small { flex: 1 1 auto; min-width: 0; color: #9aa3b8; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.byd-wall-deck-head > button { display: inline-flex; align-items: center; gap: var(--byd-s1); flex: none; }
+.byd-wall-other { margin: var(--byd-s5) 0 0; }
+.byd-wall-tiles { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--byd-s3); }
+.byd-wall-tiles > li { position: relative; overflow: hidden; background: #f4ead8; }
+.byd-wall-tiles > li[data-shape='hex'] { clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); }
+.byd-wall-tiles > li[data-shape='round'] { border-radius: 50%; }
+.byd-wall-tiles > li[data-shape='square'] { border-radius: 4px; }

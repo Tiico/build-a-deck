@@ -5,6 +5,8 @@ export * from './diff.js'
 export * from './names.js'
 export * from './recipe.js'
 export * from './edits.js'
+// The game's decks and markers as the editor's tabs see them (#1484, #1487).
+export * from './decks.js'
 // Spelets låda ur dokumentet (#1412): måtten, låsen och om leken ryms, för editorns Fysisk kontroll.
 export * from './box.js'
 // Spelets bräden (#1481): typen ett bräde pinnar och Fysisk kontroll på dess sidor.

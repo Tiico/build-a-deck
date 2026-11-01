@@ -30,6 +30,10 @@ import { ChevronGlyph } from '../glyphs.js'
 import { useDoor } from '../doors.js'
 
 export type DeckWallProps = {
+  // The head over the document's own deck and the sections of the game's other decks (#1487), drawn
+  // in the wall's own scroll. Nothing in a game of one deck.
+  ownHead?: ReactNode
+  others?: ReactNode
   doc: ProjectDoc
   face: string
   selectedRow: string | null
@@ -134,7 +138,7 @@ export type Panel = 'view' | 'checks'
 // The deck as a wall (C as the home view): every row as a card, copies and faults on each, the
 // whole deck visible at once — a balance change on forty cards is seen as one thing. Beside it
 // the physical checks (E5), gathered by kind, and the eyes to read the deck with.
-export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement, assetBase, motifs, onFixChecks, onAddCard, onOpenTemplate, onOpenFonts, onOpenRow, view, onView, readOnly = false, proposed, changed, redrawn, printPackage, box: footBox, onOpenBoxFace }: DeckWallProps) {
+export function DeckWall({ ownHead, others, doc, face, selectedRow, onSelectRow, onSelectElement, assetBase, motifs, onFixChecks, onAddCard, onOpenTemplate, onOpenFonts, onOpenRow, view, onView, readOnly = false, proposed, changed, redrawn, printPackage, box: footBox, onOpenBoxFace }: DeckWallProps) {
   const t = useT()
   // What was mended is said out loud: an edit that changes the template under a deck of forty
   // cards and says nothing is the silence #32 forbids.
@@ -690,6 +694,7 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
           // them, so the wall leaves room between its cards while one stands on it (#1003).
           {...(proposedKey ? { 'data-proposing': '' } : {})}
         >
+          {ownHead}
           {/* What an empty game is missing, and the doors to it (#476, beslut 2026-09-27, variant A).
               A deck with no cards says so and offers the first card here and the front in Mall;
               a deck whose front is still empty says that over the cards it has. Both doors are
@@ -760,6 +765,7 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
               </section>
             ))
           )}
+          {others}
         </div>
         {panel && (
           <WallPanel title={t(panel === 'view' ? 'wall.eyes' : 'wall.checks.title')} onClose={closePanel} t={t}>

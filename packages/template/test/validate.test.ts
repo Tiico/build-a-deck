@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BOARDS, CARD_STANDARD_63x88 } from '@byd/engine'
+import { BOARDS, CARD_STANDARD_63x88, TILE_COIN, TILE_HEX } from '@byd/engine'
 import { contrastRatio, distance, remedyFor, simulate, validateCard, type Issue } from '../src/validate.js'
 import { textFloorPt } from '../src/fit.js'
 import type { FitReport } from '../src/dom-fit.js'
@@ -241,6 +241,27 @@ describe('text that does not fit even shrunk (E6, #808)', () => {
     expect(measured([bg(), text()], [fitted({ overflow: false, hidden: 0 })])).toEqual([])
     expect(measured([bg(), text()], [fitted({ empty: true })])).toEqual([])
     expect(measured([bg(), text()], [fitted({ element: 'elsewhere' })])).toEqual([])
+  })
+})
+
+// En bricka skärs i sin form (#1487, E5): skyddsmarginalen mäts mot sexhörningens och myntets kontur,
+// och inte mot den rektangel som omskriver dem. Hörnen på rektangeln är kartong som stansas bort.
+describe('the safe area of a tile follows the shape it is cut in', () => {
+  const tile = (type: typeof TILE_HEX, base: Element[]): Issue[] => validateCard({ type, face: face(base), row: {}, fonts: PINNED })
+  const hexBg = bg({ w: 58, h: 67 })
+  const word = (x: number, y: number) => text({ x, y, w: 10, h: 5, font: { family: 'system-ui', sizePt: 9 } })
+  it('passes a word in the middle of a hexagon', () => {
+    expect(codes(tile(TILE_HEX, [hexBg, word(21, 27)]))).toEqual([])
+  })
+  it('says a word the rectangle would keep is cut off in the hexagon\'s corner', () => {
+    expect(codes(tile(TILE_HEX, [hexBg, word(3, 8)]))).toEqual(['outside-safe-area:error'])
+  })
+  it('warns of a word inside the hexagon but nearer its slanted edge than the safe margin', () => {
+    expect(codes(tile(TILE_HEX, [hexBg, word(10, 10.5)]))).toEqual(['outside-safe-area:warning'])
+  })
+  it('measures a coin against its circle', () => {
+    expect(codes(tile(TILE_COIN, [bg({ w: 31, h: 31 }), word(2.5, 2.5)]))).toEqual(['outside-safe-area:error'])
+    expect(codes(tile(TILE_COIN, [bg({ w: 31, h: 31 }), word(7.5, 10)]))).toEqual([])
   })
 })
 

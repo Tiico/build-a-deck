@@ -5182,6 +5182,19 @@ I «Framför mig» har en bricka «↺ Rotera 60°» och «↻ Rotera 60°» bre
 Den dolda högen räknas i brickor, och dess knapp är den som redan står på varje hög, «Dra 1 till min hand».
 Brickans utseende skrivs i `tileLook.ts` och står i elementens stilattribut, inte i arket som första bilden väntar på: dess larm (#366, L40) ringde med 0,4 kB över, och en bricka ritas bara i ett spel som har en.
 
+**Editorn: en flik per lek, och «Bricka» i Bord (#1487, variant A i #1474).**
+Huvudet är oförändrat.
+Mall och Tabell har en rad med en flik per lek först i sin krona, «Kort» för dokumentets egen och varje annan lek med sin form och sitt antal, och «＋ Lek»; i Mall står också varje markörs sidor som en flik.
+Raden ritas bara när spelet har mer än en lek eller en markör: den som bara har kort ser ingenting nytt.
+Kortväggen får ett huvud över den egna leken och ett avsnitt per annan lek, med form, antal och steg och vägen till lekens Mall och Tabell, bara när en andra lek finns.
+En leks flik redigerar med samma redigeringar som den egna leken, märkta `deck` med lekens id, och en markörs sidor med `deck: 'marker:<id>'` (`inDeck` i `edits.ts`): ingen redigering finns i två exemplar, och **inget nytt verb**. Ett steg tillbaka tar en cell eller ett lagers egenskap i en annan lek som i den egna (L14).
+«Brickan» står överst i Malls egenskaper för en bricka: formen (sexhörning, kvadrat, rund, och för den runda 44 eller 25 mm), och typens mått, kartong och steg, som läses och inte skrivs, eftersom en typ är en form i ett mått (B3). Formens kontur ritas över ytan som snittet, med det som stansas bort dämpat.
+I Bord har ＋-menyn på Spelyta, en yta och en hög raden «＋ Bricka», som öppnar två val sida vid sida med vad vart och ett kostar: **Markör** (en bild i n exemplar, en rad i Bord) och **Hög ur en lek** (en lek med mall och tabell, i högen menyn öppnades på eller i en ny hög). En hög har därmed ett ＋, med «Bricka» som enda rad.
+Markören och leken står som rader under zonen de ligger i, «30 × Guld · rund 25 mm, totalt», och öppnas till antal, namn och form, och vägen till sidorna i Mall eller lekens Mall och Tabell.
+Vid 1024 × 640 dras de två valen upp i kolumnen när de öppnas, så att båda syns med sin kostnad (#711).
+Fysisk kontroll mäter skyddsmarginalen mot sexhörningens och cirkelns kontur och inte mot den omskrivna rektangeln.
+Ett spel är spelbart när någon lek har en rad (beställarens beslut 2026-11-01 i #1470): `playable()` räknar alla lekar.
+
 Brickor i setupen, en egen lek och tabell per brickform, bordet, telefonen och trycket byggs i #1484–#1488.
 
 ### K35. Brädet: brädtyperna, brädet i dokumentet och dess textur (beslutat 2026-10-28 och 2026-11-01, #1470, #1473, #1479)

@@ -13,7 +13,7 @@ import type { OwnIcon } from './IconCatalog.js'
 import { TemplateCanvas } from './TemplateCanvas.js'
 import { BoxTab } from './BoxTab.js'
 import { BoardTab } from './BoardTab.js'
-import type { BoxFace } from '@byd/engine'
+import type { BoxFace, ComponentTypeDef } from '@byd/engine'
 import { DataTable } from './DataTable.js'
 import { AiPanel, useAiKey } from './AiPanel.js'
 import { proposalView, rulesView, showsDeck, showsRules, showsTemplate, translated, type ProposalView, type ShownProposal } from './proposals.js'
@@ -40,7 +40,9 @@ import { useProjectClient, type ProjectTiming } from './useProjectClient.js'
 import { Arriving } from './AssetImage.js'
 import { WithheldPictures, drawnEmpty, type Withheld } from './withheld.js'
 import type { ProjectDoc } from '@byd/server'
-import { copiesOf } from '@byd/server/doc'
+import { MARKER_REF, copiesOf, deckTabs, deckView } from '@byd/server/doc'
+import { DeckTabs, TileProps, isTileType, typed } from './DeckTabs.js'
+import { OtherDecks, OwnDeckHead } from './WallDecks.js'
 import { useTableClient } from '../table/useTableClient.js'
 import { seatColor } from '../table/seatColor.js'
 import { roomAddress } from '../table/roomAddress.js'
@@ -187,6 +189,10 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   // Which group the canvas edits (#13), or nothing for the base every card inherits.
   const [group, setGroup] = useState<string | null>(null)
   const [row, setRow] = useState<string | null>(null)
+  // Which deck Mall and Tabell show (#1487, #1474 A): null for the document's own, a deck's id, or a
+  // marker's sides as `marker:<id>`. One choice for both tabs, so the deck a row was opened from is
+  // the deck its template is drawn in.
+  const [deckRef, setDeckRef] = useState<string | null>(null)
   // An AI proposal laid on the wall among the deck's cards (#1002): its parts, translated against the
   // game as it stands every time the wall is drawn, so the ghosts take the ids the game has free now.
   // Held by what it was worked out from, so a wall drawn again over the same game draws the same cards.
@@ -535,6 +541,34 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   if (fault && fault !== 'loggedOut' && !client) return <StatusNotice notice={noticeFor(fault, 'editor', t)} surface="page" links={links} onRetry={retry} />
   if (!client) return <StatusNotice notice={noticeFor(slow ? 'slow' : 'loading', 'editor', t)} surface="page" links={links} onRetry={retry} />
   const doc = client.doc
+  // The decks Mall and Tabell have a tab for (#1487), and the one each shows. Tabell has rows to show,
+  // so a marker's tab is Mall's alone, and Tabell then shows the document's own deck.
+  const tabs = deckTabs(doc)
+  const mallTab = tabs.find((x) => x.ref === deckRef) ?? tabs[0]
+  const mallRef = mallTab.ref
+  const dataTabs = tabs.filter((x) => x.kind === 'deck')
+  const dataTab = dataTabs.find((x) => x.ref === mallRef) ?? tabs[0]
+  const mallDoc = deckView(doc, mallTab.ref)
+  const dataDoc = deckView(doc, dataTab.ref)
+  const mallEdits = client.inDeck(mallTab.ref)
+  const dataEdits = client.inDeck(dataTab.ref)
+  const pickDeck = (ref: string | null) => {
+    setDeckRef(ref)
+    setRow(null)
+    setGroup(null)
+    setElement(null)
+    setFace('front')
+  }
+  const goDeck = (ref: string | null, where: 'template' | 'table') => {
+    pickDeck(ref)
+    setStage(where === 'template' ? 'canvas' : 'table')
+  }
+  const newDeck = client.mayEdit ? () => pickDeck(client.addTileDeck(null, t)) : undefined
+  // A deck of tiles' or a marker's shape (#1487), changed from «Brickan» in Mall.
+  const retype = (ref: string, type: ComponentTypeDef) => {
+    if (ref.startsWith(MARKER_REF)) client.setMarkers((doc.setup.markers ?? []).map((m) => (m.id === ref.slice(MARKER_REF.length) ? typed(m, type) : m)))
+    else client.setDecks((doc.decks ?? []).map((d) => (d.id === ref ? typed(d, type) : d)))
+  }
   const shownWall = (() => {
     if (!ghosts) return null
     const had = ghostWall.current
@@ -721,6 +755,9 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
     wall: () => (
       <DeckWall
         key={wallMount}
+        // Ett avsnitt per lek (#1487, #1474 A), och inget nytt alls i ett spel med en lek.
+        ownHead={<OwnDeckHead doc={doc} onGo={goDeck} />}
+        others={<OtherDecks doc={doc} assetBase={http} motifs={deckMotifs} onGo={goDeck} />}
         doc={shownWall?.doc ?? doc}
         proposed={shownWall?.added}
         changed={shownWall?.changed}
@@ -791,34 +828,40 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
     ),
     template: () => (
       <TemplateCanvas
+        // A deck's own canvas (#1487): its template, rows and groups are its own, so another deck's
+        // tab starts afresh rather than keeping a layer or a group of the one before.
+        key={mallTab.ref ?? ''}
         stage={canvasStage}
         reading={!client.mayEdit}
-        doc={doc}
+        doc={mallDoc}
+        deckTabs={<DeckTabs tabs={tabs} current={mallTab.ref} onPick={pickDeck} onNew={newDeck} />}
+        {...(mallTab.ref !== null ? { type: mallTab.type } : {})}
+        propsHead={mallRef !== null && isTileType(mallTab.type) ? <TileProps type={mallTab.type} reading={!client.mayEdit} onType={(type) => retype(mallRef, type)} /> : undefined}
         assetBase={http}
         motifs={deckMotifs}
         face={face}
         onSelectFace={setFace}
-        onReplaceFace={(base) => client.replaceFace(face, base)}
+        onReplaceFace={(base) => mallEdits.replaceFace(face, base)}
         row={row}
         onPickRow={setRow}
         selectedElement={element}
         onSelectElement={setElement}
-        onPatch={(id, patch, gesture) => client.patchElement(face, id, patch, group, gesture)}
+        onPatch={(id, patch, gesture) => mallEdits.patchElement(face, id, patch, group, gesture)}
         onCallOff={(gesture) => client.callOff(gesture)}
-        onAdd={(el) => client.addElement(face, el, group)}
+        onAdd={(el) => mallEdits.addElement(face, el, group)}
         // The symbol's bytes travel before anything is placed (E1), so this is the one tool in the
         // rail that can fail on the way. It says so where the editor says everything else.
-        onReorder={(id, to) => client.moveElement(face, id, to)}
+        onReorder={(id, to) => mallEdits.moveElement(face, id, to)}
         // Locking a layer and naming it are edits to the element (L15), so they go the way every
         // other change to an element goes — through the base, which is where the layer lives even
         // when a group is open, exactly as the order does.
-        onLock={(id, locked) => client.patchElement(face, id, { locked: locked ? true : undefined })}
-        onRename={(id, name) => client.patchElement(face, id, { name: name ?? undefined })}
+        onLock={(id, locked) => mallEdits.patchElement(face, id, { locked: locked ? true : undefined })}
+        onRename={(id, name) => mallEdits.patchElement(face, id, { name: name ?? undefined })}
         onRemove={(id) => {
-          client.removeElement(face, id, group)
+          mallEdits.removeElement(face, id, group)
           setElement(null)
         }}
-        onAddField={(field, bindTo) => client.addField(field, { face, id: bindTo, group })}
+        onAddField={(field, bindTo) => mallEdits.addField(field, { face, id: bindTo, group })}
         // The game's typefaces moved to Speltema (L57); the panel says so and takes the hand there,
         // with the section that holds them open.
         onOpenFonts={() => {
@@ -835,10 +878,10 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         group={group}
         onSelectGroup={setGroup}
         onGroupColumn={(column) => {
-          client.setGroupColumn(column)
+          mallEdits.setGroupColumn(column)
           setGroup(null)
         }}
-        onReset={(id) => group && client.resetElement(face, id, group)}
+        onReset={(id) => group && mallEdits.resetElement(face, id, group)}
       />
     ),
     // Lådan (#1413): the net, with the face chosen edited by Mall's own canvas.
@@ -908,30 +951,34 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
     ),
     table: () => (
       <DataTable
-        doc={doc}
+        // A deck's own table (#1487): its columns, widths and filters are its own.
+        key={dataTab.ref ?? ''}
+        doc={dataDoc}
+        deckTabs={<DeckTabs tabs={dataTabs} current={dataTab.ref} onPick={pickDeck} onNew={newDeck} />}
         reading={!client.mayEdit}
         project={projectId ?? undefined}
         assetBase={http}
         onUpload={(file, onto) => client.addPicture(file, t, onto)}
         onSymbol={(icon) => client.useIcon(icon, undefined, t)}
-        compareWith={compare ?? undefined}
+        // A version compared with and a proposal are the document's own deck's (#1484, #1003).
+        compareWith={dataTab.ref === null ? (compare ?? undefined) : undefined}
         onStopCompare={() => setCompare(null)}
         // An AI proposal shown in the table (#1003), through the same comparison in its own words —
         // but never one with a template, which is shown on the wall (#1005).
-        proposal={shownWall && !shownWall.templated ? shownWall : undefined}
+        proposal={dataTab.ref === null && shownWall && !shownWall.templated ? shownWall : undefined}
         onHideProposal={() => setGhosts(null)}
         onOpenTemplate={() => setStage('canvas')}
         selectedRow={row}
         onSelectRow={setRow}
-        onCell={(cardRef, field, value, gesture) => client.setCell(cardRef, field, value, gesture)}
-        onAddRow={(cardRef) => client.addRow(cardRef, { title: '', antal: 1 })}
-        onRemoveRow={(cardRef) => client.removeRow(cardRef)}
-        onReplaceRows={(rows) => client.replaceRows(rows)}
-        onAddField={(field, kind) => client.addField(field, undefined, kind)}
-        onRemoveField={(field) => client.removeField(field)}
-        onMoveField={(field, before) => client.moveField(field, before)}
-        onRenameField={(from, to) => client.renameField(from, to)}
-        onColumnKind={(field, kind) => client.setColumnKind(field, kind)}
+        onCell={(cardRef, field, value, gesture) => dataEdits.setCell(cardRef, field, value, gesture)}
+        onAddRow={(cardRef) => dataEdits.addRow(cardRef, { title: '', antal: 1 })}
+        onRemoveRow={(cardRef) => dataEdits.removeRow(cardRef)}
+        onReplaceRows={(rows) => dataEdits.replaceRows(rows)}
+        onAddField={(field, kind) => dataEdits.addField(field, undefined, kind)}
+        onRemoveField={(field) => dataEdits.removeField(field)}
+        onMoveField={(field, before) => dataEdits.moveField(field, before)}
+        onRenameField={(from, to) => dataEdits.renameField(from, to)}
+        onColumnKind={(field, kind) => dataEdits.setColumnKind(field, kind)}
       />
     ),
     // The three tabs whose work has no foot of its own are given one (#698, L67): the line what
@@ -955,6 +1002,8 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         server={params.get('server')}
         started={table?.kind === 'new' ? table.id : null}
         results={results}
+        // From a tile's row to its deck's tab (#1487), or to a marker's sides in Mall.
+        onOpenDeck={goDeck}
         // A board's row leads to the tab its side is drawn in, with that board chosen (#1481).
         onDrawBoard={(id) => {
           setBoardId(id)

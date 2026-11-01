@@ -155,7 +155,7 @@ const DRAWINGS: Record<string, { count: number; why: string }> = {
   'src/editor/svg-clean.ts': { count: 1, why: 'the words of a refusal, naming the root element a designer’s own SVG lacked' },
   'src/account/PrintPackagePage.tsx': { count: 1, why: 'the knife: the bleed, the trim and the safe margin drawn over a card in its own millimetres (#1208)' },
   'src/editor/box-net.tsx': { count: 1, why: 'the box net’s flaps, cut and folds (#1413), in the net’s own millimetres, in the Låda tab and the print package (#1418); they are folded in and never printed, and the faces are the renderer’s' },
-  'src/editor/TemplateCanvas.tsx': { count: 2, why: 'a shape’s and a pattern’s picture in the gallery, drawn by the path generator and tile the card is drawn by' },
+  'src/editor/TemplateCanvas.tsx': { count: 3, why: 'a shape’s and a pattern’s picture in the gallery, drawn by the path generator and tile the card is drawn by; and a tile’s cut over its face, the hexagon or circle the punch follows (#1487)' },
 }
 
 describe('the icons in src', () => {
