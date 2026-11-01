@@ -1,0 +1,676 @@
+[
+ {
+  "seats": 4,
+  "board": null,
+  "playerBoards": null,
+  "variant": "idag",
+  "felt": {
+   "w": 1200,
+   "h": 800
+  },
+  "beside": null,
+  "drawnTv": {
+   "w": 1268.735312763948,
+   "h": 864.597724770452
+  },
+  "framedTv": {
+   "w": 1200,
+   "h": 800
+  },
+  "tv1920": 57.5,
+  "stage1920": 760,
+  "tv1280": 46,
+  "stage1280": 360,
+  "table1280": 45.7,
+  "table1920": 63
+ },
+ {
+  "seats": 4,
+  "board": "kvadrat",
+  "playerBoards": false,
+  "variant": "A",
+  "felt": {
+   "w": 1200,
+   "h": 837
+  },
+  "beside": null,
+  "drawnTv": {
+   "w": 1268.735312763948,
+   "h": 901.597724770452
+  },
+  "framedTv": {
+   "w": 1200,
+   "h": 837
+  },
+  "tv1920": 57.5,
+  "stage1920": 760,
+  "tv1280": 46,
+  "stage1280": 360,
+  "table1280": 43.8,
+  "table1920": 60.8
+ },
+ {
+  "seats": 4,
+  "board": "kvadrat",
+  "playerBoards": false,
+  "variant": "B",
+  "felt": {
+   "w": 1200,
+   "h": 800
+  },
+  "beside": {
+   "w": 457,
+   "h": 457
+  },
+  "drawnTv": {
+   "w": 1765.735312763948,
+   "h": 864.597724770452
+  },
+  "framedTv": {
+   "w": 1945.5,
+   "h": 800
+  },
+  "tv1920": 42.2,
+  "stage1920": 552,
+  "tv1280": 28.4,
+  "stage1280": 360,
+  "table1280": 40.8,
+  "table1920": 61.4
+ },
+ {
+  "seats": 4,
+  "board": "kvadrat",
+  "playerBoards": false,
+  "variant": "C",
+  "felt": {
+   "w": 840,
+   "h": 840
+  },
+  "beside": null,
+  "drawnTv": {
+   "w": 908.7353127639481,
+   "h": 904.597724770452
+  },
+  "framedTv": {
+   "w": 840,
+   "h": 840
+  },
+  "tv1920": 76.1,
+  "stage1920": 760,
+  "tv1280": 50.8,
+  "stage1280": 360,
+  "table1280": 43.7,
+  "table1920": 60.6
+ },
+ {
+  "seats": 4,
+  "board": "kvadrat",
+  "playerBoards": true,
+  "variant": "A",
+  "felt": {
+   "w": 1200,
+   "h": 937
+  },
+  "beside": null,
+  "drawnTv": {
+   "w": 1268.735312763948,
+   "h": 1001.597724770452
+  },
+  "framedTv": {
+   "w": 1200,
+   "h": 937
+  },
+  "tv1920": 57.5,
+  "stage1920": 760,
+  "tv1280": 45.5,
+  "stage1280": 360,
+  "table1280": 39.5,
+  "table1920": 54.8
+ },
+ {
+  "seats": 4,
+  "board": "kvadrat",
+  "playerBoards": true,
+  "variant": "B",
+  "felt": {
+   "w": 1200,
+   "h": 800
+  },
+  "beside": {
+   "w": 490,
+   "h": 787
+  },
+  "drawnTv": {
+   "w": 1798.735312763948,
+   "h": 864.597724770452
+  },
+  "framedTv": {
+   "w": 1995,
+   "h": 800
+  },
+  "tv1920": 41.9,
+  "stage1920": 528,
+  "tv1280": 27.7,
+  "stage1280": 360,
+  "table1280": 40.1,
+  "table1920": 60.3
+ },
+ {
+  "seats": 4,
+  "board": "kvadrat",
+  "playerBoards": true,
+  "variant": "C",
+  "felt": {
+   "w": 940,
+   "h": 940
+  },
+  "beside": null,
+  "drawnTv": {
+   "w": 1008.7353127639481,
+   "h": 1004.597724770452
+  },
+  "framedTv": {
+   "w": 940,
+   "h": 940
+  },
+  "tv1920": 68,
+  "stage1920": 760,
+  "tv1280": 45.4,
+  "stage1280": 360,
+  "table1280": 39.4,
+  "table1920": 54.6
+ },
+ {
+  "seats": 4,
+  "board": "rektangel",
+  "playerBoards": false,
+  "variant": "A",
+  "felt": {
+   "w": 1200,
+   "h": 837
+  },
+  "beside": null,
+  "drawnTv": {
+   "w": 1268.735312763948,
+   "h": 901.597724770452
+  },
+  "framedTv": {
+   "w": 1200,
+   "h": 837
+  },
+  "tv1920": 57.5,
+  "stage1920": 760,
+  "tv1280": 46,
+  "stage1280": 360,
+  "table1280": 43.8,
+  "table1920": 60.8
+ },
+ {
+  "seats": 4,
+  "board": "rektangel",
+  "playerBoards": false,
+  "variant": "B",
+  "felt": {
+   "w": 1200,
+   "h": 800
+  },
+  "beside": {
+   "w": 610,
+   "h": 457
+  },
+  "drawnTv": {
+   "w": 1918.735312763948,
+   "h": 864.597724770452
+  },
+  "framedTv": {
+   "w": 2175,
+   "h": 800
+  },
+  "tv1920": 41,
+  "stage1920": 440,
+  "tv1280": 25.4,
+  "stage1280": 360,
+  "table1280": 37.7,
+  "table1920": 56.7
+ },
+ {
+  "seats": 4,
+  "board": "rektangel",
+  "playerBoards": false,
+  "variant": "C",
+  "felt": {
+   "w": 950,
+   "h": 840
+  },
+  "beside": null,
+  "drawnTv": {
+   "w": 1018.7353127639481,
+   "h": 904.597724770452
+  },
+  "framedTv": {
+   "w": 950,
+   "h": 840
+  },
+  "tv1920": 72.6,
+  "stage1920": 760,
+  "tv1280": 50.8,
+  "stage1280": 360,
+  "table1280": 43.7,
+  "table1920": 60.6
+ },
+ {
+  "seats": 4,
+  "board": "rektangel",
+  "playerBoards": true,
+  "variant": "A",
+  "felt": {
+   "w": 1296,
+   "h": 937
+  },
+  "beside": null,
+  "drawnTv": {
+   "w": 1364.735312763948,
+   "h": 1001.597724770452
+  },
+  "framedTv": {
+   "w": 1296,
+   "h": 937
+  },
+  "tv1920": 53.2,
+  "stage1920": 760,
+  "tv1280": 42.6,
+  "stage1280": 360,
+  "table1280": 39.5,
+  "table1920": 54.8
+ },
+ {
+  "seats": 4,
+  "board": "rektangel",
+  "playerBoards": true,
+  "variant": "B",
+  "felt": {
+   "w": 1200,
+   "h": 800
+  },
+  "beside": {
+   "w": 610,
+   "h": 787
+  },
+  "drawnTv": {
+   "w": 1918.735312763948,
+   "h": 864.597724770452
+  },
+  "framedTv": {
+   "w": 2175,
+   "h": 800
+  },
+  "tv1920": 41,
+  "stage1920": 440,
+  "tv1280": 25.4,
+  "stage1280": 360,
+  "table1280": 37.7,
+  "table1920": 56.7
+ },
+ {
+  "seats": 4,
+  "board": "rektangel",
+  "playerBoards": true,
+  "variant": "C",
+  "felt": {
+   "w": 1050,
+   "h": 940
+  },
+  "beside": null,
+  "drawnTv": {
+   "w": 1118.735312763948,
+   "h": 1004.597724770452
+  },
+  "framedTv": {
+   "w": 1050,
+   "h": 940
+  },
+  "tv1920": 65.7,
+  "stage1920": 760,
+  "tv1280": 45.4,
+  "stage1280": 360,
+  "table1280": 39.4,
+  "table1920": 54.6
+ },
+ {
+  "seats": 8,
+  "board": null,
+  "playerBoards": null,
+  "variant": "idag",
+  "felt": {
+   "w": 1800,
+   "h": 1400
+  },
+  "beside": null,
+  "drawnTv": {
+   "w": 1868.735312763948,
+   "h": 1464.597724770452
+  },
+  "framedTv": {
+   "w": 1800,
+   "h": 1400
+  },
+  "tv1920": 45.7,
+  "stage1920": 360,
+  "tv1280": 30.5,
+  "stage1280": 360,
+  "table1280": 27,
+  "table1920": 37.5
+ },
+ {
+  "seats": 8,
+  "board": "kvadrat",
+  "playerBoards": false,
+  "variant": "A",
+  "felt": {
+   "w": 1800,
+   "h": 1400
+  },
+  "beside": null,
+  "drawnTv": {
+   "w": 1868.735312763948,
+   "h": 1464.597724770452
+  },
+  "framedTv": {
+   "w": 1800,
+   "h": 1400
+  },
+  "tv1920": 45.7,
+  "stage1920": 360,
+  "tv1280": 30.5,
+  "stage1280": 360,
+  "table1280": 27,
+  "table1920": 37.5
+ },
+ {
+  "seats": 8,
+  "board": "kvadrat",
+  "playerBoards": false,
+  "variant": "B",
+  "felt": {
+   "w": 1800,
+   "h": 1400
+  },
+  "beside": {
+   "w": 457,
+   "h": 457
+  },
+  "drawnTv": {
+   "w": 2365.735312763948,
+   "h": 1464.597724770452
+  },
+  "framedTv": {
+   "w": 2545.5,
+   "h": 1400
+  },
+  "tv1920": 37,
+  "stage1920": 360,
+  "tv1280": 21.7,
+  "stage1280": 360,
+  "table1280": 27,
+  "table1920": 37.5
+ },
+ {
+  "seats": 8,
+  "board": "kvadrat",
+  "playerBoards": false,
+  "variant": "C",
+  "felt": {
+   "w": 1440,
+   "h": 1440
+  },
+  "beside": null,
+  "drawnTv": {
+   "w": 1508.735312763948,
+   "h": 1504.597724770452
+  },
+  "framedTv": {
+   "w": 1440,
+   "h": 1440
+  },
+  "tv1920": 44.4,
+  "stage1920": 360,
+  "tv1280": 29.6,
+  "stage1280": 360,
+  "table1280": 26.3,
+  "table1920": 36.5
+ },
+ {
+  "seats": 8,
+  "board": "kvadrat",
+  "playerBoards": true,
+  "variant": "A",
+  "felt": {
+   "w": 1800,
+   "h": 1400
+  },
+  "beside": null,
+  "drawnTv": {
+   "w": 1868.735312763948,
+   "h": 1464.597724770452
+  },
+  "framedTv": {
+   "w": 1800,
+   "h": 1400
+  },
+  "tv1920": 45.7,
+  "stage1920": 360,
+  "tv1280": 30.5,
+  "stage1280": 360,
+  "table1280": 27,
+  "table1920": 37.5
+ },
+ {
+  "seats": 8,
+  "board": "kvadrat",
+  "playerBoards": true,
+  "variant": "B",
+  "felt": {
+   "w": 1800,
+   "h": 1400
+  },
+  "beside": {
+   "w": 490,
+   "h": 1107
+  },
+  "drawnTv": {
+   "w": 2398.735312763948,
+   "h": 1464.597724770452
+  },
+  "framedTv": {
+   "w": 2595,
+   "h": 1400
+  },
+  "tv1920": 36.3,
+  "stage1920": 360,
+  "tv1280": 21.3,
+  "stage1280": 360,
+  "table1280": 27,
+  "table1920": 37.5
+ },
+ {
+  "seats": 8,
+  "board": "kvadrat",
+  "playerBoards": true,
+  "variant": "C",
+  "felt": {
+   "w": 1540,
+   "h": 1540
+  },
+  "beside": null,
+  "drawnTv": {
+   "w": 1608.735312763948,
+   "h": 1604.597724770452
+  },
+  "framedTv": {
+   "w": 1540,
+   "h": 1540
+  },
+  "tv1920": 41.5,
+  "stage1920": 360,
+  "tv1280": 27.7,
+  "stage1280": 360,
+  "table1280": 24.6,
+  "table1920": 34.2
+ },
+ {
+  "seats": 8,
+  "board": "rektangel",
+  "playerBoards": false,
+  "variant": "A",
+  "felt": {
+   "w": 1800,
+   "h": 1400
+  },
+  "beside": null,
+  "drawnTv": {
+   "w": 1868.735312763948,
+   "h": 1464.597724770452
+  },
+  "framedTv": {
+   "w": 1800,
+   "h": 1400
+  },
+  "tv1920": 45.7,
+  "stage1920": 360,
+  "tv1280": 30.5,
+  "stage1280": 360,
+  "table1280": 27,
+  "table1920": 37.5
+ },
+ {
+  "seats": 8,
+  "board": "rektangel",
+  "playerBoards": false,
+  "variant": "B",
+  "felt": {
+   "w": 1800,
+   "h": 1400
+  },
+  "beside": {
+   "w": 610,
+   "h": 457
+  },
+  "drawnTv": {
+   "w": 2518.735312763948,
+   "h": 1464.597724770452
+  },
+  "framedTv": {
+   "w": 2775,
+   "h": 1400
+  },
+  "tv1920": 33.9,
+  "stage1920": 360,
+  "tv1280": 19.9,
+  "stage1280": 360,
+  "table1280": 27,
+  "table1920": 37.5
+ },
+ {
+  "seats": 8,
+  "board": "rektangel",
+  "playerBoards": false,
+  "variant": "C",
+  "felt": {
+   "w": 1440,
+   "h": 1440
+  },
+  "beside": null,
+  "drawnTv": {
+   "w": 1508.735312763948,
+   "h": 1504.597724770452
+  },
+  "framedTv": {
+   "w": 1440,
+   "h": 1440
+  },
+  "tv1920": 44.4,
+  "stage1920": 360,
+  "tv1280": 29.6,
+  "stage1280": 360,
+  "table1280": 26.3,
+  "table1920": 36.5
+ },
+ {
+  "seats": 8,
+  "board": "rektangel",
+  "playerBoards": true,
+  "variant": "A",
+  "felt": {
+   "w": 1800,
+   "h": 1400
+  },
+  "beside": null,
+  "drawnTv": {
+   "w": 1868.735312763948,
+   "h": 1464.597724770452
+  },
+  "framedTv": {
+   "w": 1800,
+   "h": 1400
+  },
+  "tv1920": 45.7,
+  "stage1920": 360,
+  "tv1280": 30.5,
+  "stage1280": 360,
+  "table1280": 27,
+  "table1920": 37.5
+ },
+ {
+  "seats": 8,
+  "board": "rektangel",
+  "playerBoards": true,
+  "variant": "B",
+  "felt": {
+   "w": 1800,
+   "h": 1400
+  },
+  "beside": {
+   "w": 610,
+   "h": 1107
+  },
+  "drawnTv": {
+   "w": 2518.735312763948,
+   "h": 1464.597724770452
+  },
+  "framedTv": {
+   "w": 2775,
+   "h": 1400
+  },
+  "tv1920": 33.9,
+  "stage1920": 360,
+  "tv1280": 19.9,
+  "stage1280": 360,
+  "table1280": 27,
+  "table1920": 37.5
+ },
+ {
+  "seats": 8,
+  "board": "rektangel",
+  "playerBoards": true,
+  "variant": "C",
+  "felt": {
+   "w": 1540,
+   "h": 1540
+  },
+  "beside": null,
+  "drawnTv": {
+   "w": 1608.735312763948,
+   "h": 1604.597724770452
+  },
+  "framedTv": {
+   "w": 1540,
+   "h": 1540
+  },
+  "tv1920": 41.5,
+  "stage1920": 360,
+  "tv1280": 27.7,
+  "stage1280": 360,
+  "table1280": 24.6,
+  "table1920": 34.2
+ }
+]
