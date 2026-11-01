@@ -7,6 +7,7 @@ import { compileCard, type Template } from '@byd/template'
 import { decodePng } from '../../../test-support/png.js'
 import type { Deck } from '../src/faces.js'
 import { printFileJobsOf, printManifestOf, renderedFiles } from '../src/print-files.js'
+import { testPrinterConfig } from '../src/print-providers.js'
 import { start, twoSeatSetup, type Running } from './fixture.js'
 
 // Print files after the partner's requirements (#1207): the files a provider's `prepare` names are
@@ -68,6 +69,40 @@ describe('the game as a print partner is handed it', () => {
     // Both backs are the same picture, so they are one file to the partner.
     expect(manifest.cards[0]?.faces['back']).toBe(manifest.cards[1]?.faces['back'])
     expect(manifest.hardware).toEqual([{ type: { id: 'die.d6', version: 1 }, count: 1 }])
+  })
+
+  // A wooden piece is stock the partner packs, as a die is (#1478, beställarens beslut 5 i #1470),
+  // and it wears its seat's colour (L11): each seat's meeples are a line of their own, in the
+  // colour the table draws the seat in, and a piece of no seat has no colour.
+  it('lists each seat\'s meeples as hardware in the seat\'s colour, never as cards', () => {
+    const piece = (kind: string, seat: string) => ({ type: { id: `piece.${kind}`, version: 1 }, cardRef: seat, zone: 'table', face: kind === 'meeple' ? 'standing' : 'front' })
+    const seated: SetupDef = { ...setup, seats: ['A', 'B'], components: [...setup.components, piece('meeple', 'A'), piece('meeple', 'B'), piece('meeple', 'A'), piece('disc', ''), piece('meeple', 'A')] }
+    const manifest = printManifestOf(deck, seated, registry)
+    expect(manifest.cards.map((c) => c.cardRef)).toEqual(['drake', 'troll', 'drake'])
+    expect(manifest.hardware).toEqual([
+      { type: { id: 'die.d6', version: 1 }, count: 1 },
+      { type: { id: 'piece.meeple', version: 1 }, count: 3, colour: '#e05a4f' },
+      { type: { id: 'piece.meeple', version: 1 }, count: 1, colour: '#3c8ce7' },
+      { type: { id: 'piece.disc', version: 1 }, count: 1 },
+    ])
+  })
+})
+
+// Testtryckeriet packs what the registry says is stock (#1140, #1478): a die by its kind, and a
+// wooden piece by its kind with a part number for each seat colour, since it pretends to stock them.
+describe('Testtryckeriet\'s stock (#1478)', () => {
+  it('packs a meeple as «meeple», in every seat colour', () => {
+    const config = testPrinterConfig(STANDARD_TYPES)
+    const stock = (id: string) => config.catalog.find((r) => r.type.id === id)
+    expect(stock('die.d6')).toMatchObject({ kind: 'stock', sku: 'd6' })
+    const meeple = stock('piece.meeple')
+    expect(meeple).toMatchObject({ kind: 'stock', sku: 'meeple' })
+    expect(meeple?.kind === 'stock' ? meeple.colours?.slice(0, 2) : null).toEqual([
+      { colour: '#e05a4f', sku: 'meeple-red' },
+      { colour: '#3c8ce7', sku: 'meeple-blue' },
+    ])
+    const prepared = createFakeProvider(config).prepare({ cards: [], hardware: [{ type: { id: 'piece.meeple', version: 1 }, count: 5, colour: '#3c8ce7' }] })
+    expect(prepared.hardware).toEqual([{ type: { id: 'piece.meeple', version: 1 }, sku: 'meeple-blue', count: 5, colour: '#3c8ce7' }])
   })
 })
 
