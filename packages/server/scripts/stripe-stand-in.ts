@@ -57,6 +57,7 @@ export async function stripeStandIn(prices: Record<string, { currency: string; i
       const page = (html: string) => res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }).end(`<!doctype html><meta charset="utf-8"><title>Stripe (testläge)</title><body style="font:16px system-ui;padding:40px">${html}</body>`)
       const path = at.pathname
       let m: RegExpExecArray | null
+      const part = (found: RegExpExecArray | null): string => decodeURIComponent(found?.[1] ?? '')
       if (req.method === 'POST' && path === '/v1/customers') return send(200, { id: id('cus'), object: 'customer' })
       if (req.method === 'POST' && path === '/v1/checkout/sessions') {
         const session = { id: id('cs_test'), customer: form['customer'] ?? '', price: form['line_items[0][price]'] ?? '', successUrl: form['success_url'] ?? '', cancelUrl: form['cancel_url'] ?? '', form }
@@ -64,13 +65,13 @@ export async function stripeStandIn(prices: Record<string, { currency: string; i
         return send(200, { id: session.id, url: `${url}/c/pay/${session.id}` })
       }
       if (req.method === 'GET' && (m = /^\/v1\/prices\/([^/]+)$/.exec(path))) {
-        const price = state.prices.get(decodeURIComponent(m[1]!))
+        const price = state.prices.get(part(m))
         if (!price) return send(404, { error: { message: 'No such price' } })
-        return send(200, { id: m[1], object: 'price', currency: price.currency, unit_amount: price.amount, tax_behavior: price.taxBehavior, recurring: { interval: price.interval, interval_count: 1 } })
+        return send(200, { id: part(m), object: 'price', currency: price.currency, unit_amount: price.amount, tax_behavior: price.taxBehavior, recurring: { interval: price.interval, interval_count: 1 } })
       }
       if (req.method === 'GET' && path === '/v1/subscriptions') return send(200, { object: 'list', data: state.subs.filter((s) => s.customer === at.searchParams.get('customer')).map(asSub) })
       if ((m = /^\/v1\/subscriptions\/([^/]+)$/.exec(path))) {
-        const sub = state.subs.find((s) => s.id === decodeURIComponent(m![1]!))
+        const sub = state.subs.find((s) => s.id === part(m))
         if (!sub) return send(404, { error: { message: 'No such subscription' } })
         if (req.method === 'DELETE') sub.status = 'canceled'
         else if (req.method === 'POST' && 'cancel_at_period_end' in form) sub.cancelAtPeriodEnd = form['cancel_at_period_end'] === 'true'
@@ -82,18 +83,18 @@ export async function stripeStandIn(prices: Record<string, { currency: string; i
       }
       // The pages a browser is sent to: Checkout, with a way to pay and a way back, and the portal.
       if (req.method === 'GET' && (m = /^\/c\/pay\/([^/]+)$/.exec(path))) {
-        const session = state.checkouts.find((c) => c.id === m![1])
+        const session = state.checkouts.find((c) => c.id === part(m))
         if (!session) return page('<p>Ingen sådan kassa.</p>')
         return page(`<h1>Stripes kassa (testläge)</h1><p>${session.price}</p><form method="post" action="/c/pay/${session.id}"><button>Betala</button></form><p><a href="${session.cancelUrl}">Tillbaka</a></p>`)
       }
       if (req.method === 'POST' && (m = /^\/c\/pay\/([^/]+)$/.exec(path))) {
-        const session = state.checkouts.find((c) => c.id === m![1])
+        const session = state.checkouts.find((c) => c.id === part(m))
         if (!session) return send(404, { error: { message: 'No such session' } })
         pay(session.customer, session.price)
         return res.writeHead(303, { location: session.successUrl }).end()
       }
       if (req.method === 'GET' && (m = /^\/p\/session\/([^/]+)$/.exec(path))) {
-        const back = [...state.portals].reverse().find((p) => p.customer === decodeURIComponent(m![1]!))?.returnUrl ?? '/'
+        const back = [...state.portals].reverse().find((p) => p.customer === part(m))?.returnUrl ?? '/'
         return page(`<h1>Stripes kundportal (testläge)</h1><p><a href="${back}">Tillbaka</a></p>`)
       }
       return send(404, { error: { message: `stand-in has no ${req.method} ${path}` } })

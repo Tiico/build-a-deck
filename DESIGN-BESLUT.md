@@ -158,7 +158,7 @@ Byggt 2026-11-01 (#1493, skiva 4 av 5 i #1469, beställarens beslut 2026-11-01: 
 - En nivå med källan `operator` skrivs aldrig över av Stripe, tills operatören tar bort den med `plan clear`.
 - Momsen tas ut med Stripe Tax, och priset är inklusive moms (se nedan, #1521).
 - Ett konto som raderar sig själv säger upp sitt abonnemang hos Stripe direkt (#1520, se G6).
-- Hur Pro köps, syns och sägs upp i webben är #1494, som prototypas först.
+- Hur Pro köps, syns och sägs upp i webben är #1494 (se nedan).
 - Grindarna är `packages/server/test/payments.test.ts` (konfigurationen, signaturen och vad abonnemangen ger), `stripe-subscription.test.ts` (kassan och webhooken mot båda lagren, med en fake för Stripe), `stripe-api.test.ts` (klienten mot en ställföreträdare på maskinen), `payments-at-start.test.ts` och `deploy.test.ts`. Inget anrop går till Stripe i `pnpm test`.
 
 Beslutat och byggt 2026-11-01 (#1521, beställarens beslut 2026-11-01 i #1469): **momsen tas ut med Stripe Tax, och priset är inklusive moms.**
@@ -167,6 +167,19 @@ Beslutat och byggt 2026-11-01 (#1521, beställarens beslut 2026-11-01 i #1469): 
 - Priserna sätts upp i Stripe med momsen inräknad (`tax_behavior: inclusive`, RUNBOOK §10). Kassan frågar Stripe om priset innan den skickar någon dit, och ett pris med moms ovanpå, utan besked om moms, eller i en annan valuta eller ett annat intervall än `BYD_STRIPE_PRICES` säger säljs aldrig (`priceFault` i `packages/server/src/payments.ts`).
 - Stripe Tax påslaget med registreringarna och beställarens OSS-registrering hos Skatteverket är förutsättningar för de skarpa nycklarna.
 - Grindarna är `packages/server/test/stripe-subscription.test.ts` (kassan mot Stripe-faken) och `stripe-api.test.ts` (kassans och prisets fält i klienten).
+
+Beslutat och byggt 2026-11-01 (#1494, skiva 5 av 5 i #1469, beställarens val av **variant A** 2026-11-01): **Pro köps, syns och sägs upp i ett kort i Profil.**
+Tre varianter prototypades i [`docs/ux-audits/2026-11-01-prisnivaer/prototyper/pro.html`](docs/ux-audits/2026-11-01-prisnivaer/prototyper/pro.html): kortet i Profil (A), en egen Pro-sida med Stripes kundportal för uppsägningen (B), och en dialog där taket nås (C).
+- Kortet «Abonnemang» står i Profil ovanför Förbrukning, med nivån som ett märke vid rubriken. Med Gratis jämförs Gratis och Pro på två rader, ur `BYD_PLANS` och aldrig ur koden, och köpet är «Uppgradera till Pro, 99 kr i månaden» med månad eller år som ett val; året säger hur många månader det ger gratis, räknat ur Stripes priser.
+- Beloppen är de Stripe har under `BYD_STRIPE_PRICES`' id:n, lästa med `GET /me/subscription` och aldrig siffror i koden. Valutan följer språket: kronor på svenska och euro på engelska.
+- Med Pro säger kortet vad det kostar och när det förnyas, «Säg upp Pro» lika stort som köpet var, och «Kvitton och betalkort», som öppnar Stripes kundportal (`POST /me/subscription/portal`).
+- **Uppsägningen sker i appen och vid periodens slut**, genom Stripes API (`cancel_at_period_end`, `POST /me/subscription/cancel`), inte i kundportalen: bara appen kan säga vilka spel som hamnar i läsläge. Frågan står i kortet, räknar upp spelen ur `ifLapsed` (#1511), och «Behåll Pro» har fokus. Pro gäller perioden ut, och Stripes webhook gör kontot utgånget när perioden är slut (#1491, #1518). «Fortsätt med Pro» tar tillbaka uppsägningen (`POST /me/subscription/resume`).
+- Tillbakavägen från kassan (`?pro=paid`) kommer före Stripes webhook. Kortet säger att betalningen är gjord och att beskedet väntar, visar inget köp under tiden, och frågar servern tills kontot är Pro. Servern vägrar dessutom en kassa till en kund som Stripe redan drar från, oavsett vad kontots nivå säger ännu, så att ingen betalar två gånger. `?pro=cancelled` säger att inget köptes.
+- En förnyelse som misslyckats (`past_due`) behåller Pro medan Stripe försöker igen, och kortet säger det och har «Byt betalkort» först.
+- Ett konto som fått Pro av operatören har inget abonnemang, och kortet säger att det inte finns något att betala eller säga upp.
+- **Takbeskedet erbjuder Pro** (beställarens beslut 2026-11-01, som reviderar #1198:s förbud): efter de tre delarna står en mening med Pro:s tak och månadspris, till exempel «Med Pro rymmer kontot obegränsat antal spel, för 99 kr i månaden.», och «Uppgradera till Pro», som leder till kortet. I Mina spel står den som en andra rad i rutan, i editorn i notisbandet före ×. Den sägs bara till den som bär taket (`bearer: 'you'`), bara när Pro rymmer mer, och inte alls när betalningen är avstängd eller kontot redan har Pro.
+- Köpknappen är rummets fyllda knapp (#44), alltså grön i kontots rum och inte blå som i prototypen.
+- Grindarna är `packages/server/test/stripe-subscription.test.ts` och `stripe-api.test.ts` (servern och klienten mot Stripe-faken), `packages/web/test/pro-profile.test.tsx` (kortet och takbeskeden mot Stripes ställföreträdare på maskinen, `packages/server/scripts/stripe-stand-in.ts`) och `packages/e2e/test/pro-journey.spec.ts` (hela resan i den byggda appen). Inget anrop går till Stripe i `pnpm test`.
 
 ### A3. Testarrekrytering: enbart delbar länk (fråga 22)
 
