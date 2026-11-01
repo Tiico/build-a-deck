@@ -6,7 +6,7 @@ import type { LogStore } from './store.js'
 import { ProjectHost } from './project-actor.js'
 import { CARD_MEASURES, cardsUsed, type CardMeasure } from './quota-cards.js'
 import { checkPlansInUse, hasPrint, limitOf, plansFromEnv, tableWindowFrom, type Limit, type Plans } from './quotas.js'
-import { readOnlyGames, type FitCeilings, type GameStanding } from './read-only.js'
+import { readOnlyReasons, type FitCeilings, type GameStanding, type ReadOnlyWhy } from './read-only.js'
 
 // Which tier an account has (#1193, A2, #1192). A table of its own, beside the accounts, written by
 // the operator today and by Stripe later — so that paying becomes a way to change tier and not a
@@ -129,12 +129,17 @@ export type PerGame = Measured & { projects: { id: string; used: number }[] }
 //
 // A lapsed account (#1491) is said by `plan`, the tier it is held to, which is the default, and by
 // `lapsed`, its own tier and when it lapsed. `readOnly` is the games it owns that lie over the free
-// tier's ceilings, by id, and is empty for every account that has not lapsed.
+// tier's ceilings, by id and with the ceiling each lies over (#1511), and is empty for every account
+// that has not lapsed. `ifLapsed` is the same answer for an account whose own tier still holds: the
+// games that would be read-only if it lapsed now, which is what a cancellation says (#1494). An
+// account on the default tier has nothing to lapse from, and so none.
+export type HeldGame = { id: string; why: ReadOnlyWhy }
 export type Usage = {
   plan: string
   print: boolean
   lapsed?: { plan: string; at: string }
-  readOnly: string[]
+  readOnly: HeldGame[]
+  ifLapsed: HeldGame[]
   measures: { projects: Measured; openTables: Measured; tablesPer30Days: Measured; storageBytes: Measured; rendersPer30Days: Measured } & Record<CardMeasure, PerGame>
 }
 // `live` is the game as it stands (D3, #909): the running actor's document, or the saved version
@@ -154,7 +159,8 @@ export async function usageOf(stores: UsageStores, plans: Plans, account: string
     const doc = await live(id)
     if (doc) games.push({ id, used: cardsUsed(doc) })
   }
-  const readOnly = own?.lapsed === undefined ? [] : [...(await readOnlyOf({ ...stores, live }, plans, account))].sort()
+  const held = own ? listed(await overFree({ ...stores, live }, plans, account)) : []
+  const readOnly = own?.lapsed === undefined ? [] : held
   const perGame = (m: CardMeasure): PerGame => ({ used: Math.max(0, ...games.map((g) => g.used[m])), limit: limitOf(plans, plan, m), projects: games.map((g) => ({ id: g.id, used: g.used[m] })) })
   const cards = Object.fromEntries(CARD_MEASURES.map((m) => [m, perGame(m)])) as Record<CardMeasure, PerGame>
   const measured = (used: number, m: 'projects' | 'openTables' | 'tablesPer30Days' | 'storageBytes' | 'rendersPer30Days'): Measured => ({ used, limit: limitOf(plans, plan, m) })
@@ -164,6 +170,7 @@ export async function usageOf(stores: UsageStores, plans: Plans, account: string
     print: hasPrint(plans, plan),
     ...(own?.lapsed !== undefined ? { lapsed: { plan: own.plan, at: own.lapsed } } : {}),
     readOnly,
+    ifLapsed: held,
     measures: {
       projects: measured(await stores.projects.owned(account), 'projects'),
       ...cards,
@@ -195,6 +202,12 @@ async function changedAt(projects: ProjectStore, id: string): Promise<string> {
 // is held to its owner's: what a co-editor meets is the owner's read-only mode (D3).
 export async function readOnlyOf(stores: Pick<UsageStores, 'projects' | 'accountPlans' | 'live'>, plans: Plans, owner: string): Promise<Set<string>> {
   if ((await stores.accountPlans?.planOf(owner))?.lapsed === undefined) return new Set()
+  return new Set((await overFree(stores, plans, owner)).keys())
+}
+const listed = (over: Map<string, ReadOnlyWhy>): HeldGame[] => [...over].map(([id, why]) => ({ id, why })).sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+// The owner's games that lie over the default tier's ceilings, and why, whether or not its own tier
+// has lapsed: the rule in `read-only.ts`, asked of every game as it stands.
+async function overFree(stores: Pick<UsageStores, 'projects' | 'live'>, plans: Plans, owner: string): Promise<Map<string, ReadOnlyWhy>> {
   const live = liveOf(stores)
   const games: GameStanding[] = []
   for (const id of await stores.projects.ownedIds(owner)) {
@@ -204,7 +217,7 @@ export async function readOnlyOf(stores: Pick<UsageStores, 'projects' | 'account
     games.push({ id, changedAt: await changedAt(stores.projects, id), rows: used.cardRowsPerProject, copies: used.cardCopiesPerProject, assets: await stores.projects.weighed(id) })
   }
   const free = (m: keyof FitCeilings): Limit => limitOf(plans, plans.default, m)
-  return readOnlyGames({ projects: free('projects'), cardRowsPerProject: free('cardRowsPerProject'), cardCopiesPerProject: free('cardCopiesPerProject'), storageBytes: free('storageBytes') }, games)
+  return readOnlyReasons({ projects: free('projects'), cardRowsPerProject: free('cardRowsPerProject'), cardCopiesPerProject: free('cardCopiesPerProject'), storageBytes: free('storageBytes') }, games)
 }
 
 // The operator's door to an account's tier (DRIFT §10): by address, over Tailscale, and no HTTP

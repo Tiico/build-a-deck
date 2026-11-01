@@ -292,9 +292,10 @@ for (const backend of backends) {
       const big = a.ids[2]!
       const editor = await edit(big, a.cookie)
       expect((await editor.edit({ v: 'setCell', cardRef: 'kort-4', field: 'antal', value: 0 })).v).toBe('edits')
-      expect((await editor.edit({ v: 'compound', edits: [{ v: 'removeRow', cardRef: 'kort-4' }, { v: 'removePicture', hash: 'ingen' }] })).v).toBe('edits')
       expect((await editor.edit(retitle('Drake'))).v).toBe('refused')
+      // Still four rows, over the free tier's three: a version of it made smaller is saved.
       expect((await editor.save()).v).toBe('saved')
+      expect((await editor.edit({ v: 'compound', edits: [{ v: 'removeRow', cardRef: 'kort-4' }, { v: 'removePicture', hash: 'ingen' }] })).v).toBe('edits')
       // Three cards fit under the free tier's three: the game is as usual again, with nothing stored about it.
       expect((await usage(a.cookie)).readOnly.map((g) => g.id)).not.toContain(big)
       expect((await editor.edit(retitle('Drake'))).v).toBe('edits')
