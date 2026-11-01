@@ -78,14 +78,21 @@ describe('brädets yta som textur (#1479)', () => {
     expect(after).not.toBe(before)
   })
 
-  // Brädets tryckfil i 300 DPI med utfall är #1488; till dess hindrar brädet inte trycket av korten.
-  it('stoppar inte trycket av korten: brädet listas varken som kort eller hårdvara än', () => {
+  // Brädets sidor går till tryck (#1488): ur brädets egen mall, ett per lagt bräde, och aldrig ur
+  // kortet som råkar heta som brädet.
+  it('trycker brädena ur sina egna mallar, och kortet som heter som brädet som ett kort', () => {
     const doc = docWith('#2f6b3a')
     const exported = printExportOf(deckFromProject(doc), setupFromProject(doc), registry, 0)
-    expect(exported.cards.map((c) => c.cardRef)).toEqual(['main'])
     expect(exported.hardware).toEqual([])
     const manifest = printManifestOf(deckFromProject(doc), setupFromProject(doc), registry)
-    expect(manifest.cards.map((c) => [c.cardRef, c.type.id])).toEqual([['main', 'card.standard.63x88']])
+    const boards = manifest.cards.filter((c) => c.type.id.startsWith('board.'))
+    // The main board once, and a player board at every seat.
+    expect(boards.map((c) => [c.cardRef, c.type.id])).toEqual([['main', 'board.square457'], ...doc.setup.seats.map(() => ['spelare', 'board.player'])])
+    const card = manifest.cards.find((c) => c.type.id === 'card.standard.63x88' && c.cardRef === 'main')
+    expect(card).toBeDefined()
+    expect(Object.keys(boards[0]!.faces)).toEqual(['front'])
+    expect(boards[0]!.faces['front']).not.toBe(card!.faces['front'])
+    expect(exported.cards.filter((c) => c.cardRef === 'spelare')).toHaveLength(doc.setup.seats.length)
   })
 
   it('ger ett bräde utan mall ingen textur', async () => {
