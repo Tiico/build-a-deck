@@ -8,7 +8,7 @@ import { BOX_SIDES, type BoxClearance, type BoxFace, type BoxSide } from '@byd/e
 import { Unauthorized, withCredentials } from '../account/api.js'
 import { QuotaReached, quotaIn, quotaOf, type Quota } from '../account/quota.js'
 import { QuotaSaid, quotaWords, type QuotaDoing } from '../account/quota-words.js'
-import { applyEdit, boxFaceOf, cellColumn, changeOf, copiesOf, decideEdit, joined, plainEdits, playable, recipeOf, revertOf, type Change, type Clearable, type ColumnKind, type Die, type EditIntent, type Recipe, type RecipeWords, type SeatRole, type Zone, type ZonePatch } from '@byd/server/doc'
+import { applyEdit, boxFaceOf, cellColumn, changeOf, copiesOf, decideEdit, joined, plainEdits, playable, recipeOf, revertOf, type Change, type Clearable, type ColumnKind, type Die, type EditIntent, type Piece, type Recipe, type RecipeWords, type SeatRole, type Zone, type ZonePatch } from '@byd/server/doc'
 import { ASSET_PREFIX, assetBytesUrl, assetRef, assetRefOf } from './assets.js'
 import { measureAsset } from './motifs.js'
 import type { Motif } from '@byd/template'
@@ -970,6 +970,11 @@ export class ProjectClient {
   // The game's dice (K5, #1139), written whole like the counters: one change, one step back.
   setDice(dice: Die[], gesture?: string): void {
     this.edit({ v: 'setDice', dice }, gesture)
+  }
+
+  // The game's wooden pieces (#1477, K33), written whole as the dice are: one change, one step back.
+  setPieces(pieces: Piece[], gesture?: string): void {
+    this.edit({ v: 'setPieces', pieces }, gesture)
   }
 
   // A zone of the designer's own (K2): an area of a card's rows or a pile at a point, in the

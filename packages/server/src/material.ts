@@ -49,7 +49,9 @@ export function seatPoint(at: { x: number; y: number }, zone: Geometry, edge: 'N
 // apart with its middle on the point, kept inside the zone, as the top left corners the table lays.
 // Kept here and not in the recipe: the phone loads the recipe, and never lays a table.
 export function piecesAt(at: { x: number; y: number }, zone: Geometry, count: number, size: number): { x: number; y: number }[] {
-  const pitch = size * 1.3
+  // An even pitch in whole millimetres (#1477): with an odd one a row of two lay half a millimetre
+  // off its point, rounded one way, and every arrow on Bord's handle pulled it a millimetre aside.
+  const pitch = 2 * Math.round((size * 1.3) / 2)
   return Array.from({ length: Math.max(0, count) }, (_, i) => {
     const x = at.x + (i - (count - 1) / 2) * pitch - size / 2
     const y = at.y - size / 2

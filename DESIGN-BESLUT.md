@@ -4996,7 +4996,14 @@ Hur färgen ritas avgörs av prototypen (#1472) och byggs med bordet (#1475).
 **Setupen.** Dokumentet har `setup.pieces` som tärningarna har `setup.dice` (K28, K31): sort (`kind`), antal, en yta alla delar (`zone`, med `perSeat` för ett antal per plats) eller en yta varje plats har (`role`), och en punkt (`at`).
 `layMaterial` och `setupFromProject` lägger ut dem, en per plats vänd mot platsens kant, och en delad ytas rad per spelare ger varje plats sina i dess färg; en rad utan plats ger bitar utan färg.
 Editorns ändring är `setPieces`, hela listan i en redigering som `setDice`, och därmed ett steg tillbaka (B4).
-Raden i fliken Bord väntar på prototypen (#1477), och tills dess har en trädel inget handtag i filten.
+**Fliken Bord** (#1477, editorvariant B i prototypen #1472, godkänd 2026-11-01): ＋-menyn på en yta har en enda «＋ Pjäs» med undertexten «meeple, kub eller skiva», bredvid «＋ Tärning», och sorten väljs i raden, som tärningens sort (K28).
+Menyn står därmed still när familjen växer, och en rad byter sort utan att tas bort.
+Raden säger «5 × meeple · per spelare» under ytan den ligger i (L89), och öppnas till sort, antal och, för en meeple, «Börjar stående» eller «Liggande» (`lying` på raden; bara en meeple har en sida att ligga på).
+En ny rad är fem meeples, eftersom det är vad de flesta spel lägger per spelare.
+Färgen är platsens och väljs inte i raden.
+En rad vars yta tas bort står kvar under Spelyta med ett besked och en väljare, som tärningens.
+Varje rad har ett handtag i filten ur samma `layMaterial` som bordet läggs ur (K31), pilarna flyttar det 10 mm och Skift 50, och ett grepp är ett steg tillbaka (L14).
+En rad som läggs på en punkt ligger mitt på den i hela millimeter, med ett jämnt avstånd mellan bitarna: med det gamla avståndet låg en rad med två bitar en halv millimeter från sin punkt, och varje pil drog den en millimeter åt sidan.
 
 **Aktivitetsraden** säger biten efter sort: «Ada flyttade en meeple till Spelyta», «Ada lade ned en meeple» och «Ada ställde upp en meeple».
 
