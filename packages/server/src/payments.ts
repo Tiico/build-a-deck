@@ -28,7 +28,7 @@ const Prices = z.record(PlanName, z.record(Currency, z.strictObject({ month: Pri
 type Prices = z.infer<typeof Prices>
 
 export type PriceOf = { plan: string; currency: string; interval: Interval }
-export type PaymentsConfig = { secretKey: string; webhookSecret: string; prices: Prices; byId: ReadonlyMap<string, PriceOf> }
+export type PaymentsConfig = { secretKey: string; webhookSecret: string; prices: Prices; byId: ReadonlyMap<string, PriceOf>; apiBase: string }
 
 export function paymentsFromEnv(env: Record<string, string | undefined>, plans: Plans): PaymentsConfig | null {
   const secretKey = (env['STRIPE_SECRET_KEY'] ?? '').trim()
@@ -63,7 +63,12 @@ export function paymentsFromEnv(env: Record<string, string | undefined>, plans: 
     }
   }
   if (byId.size === 0) throw new Error('BYD_STRIPE_PRICES names no price')
-  return { secretKey, webhookSecret, prices, byId }
+  // Where Stripe's API is: Stripe's own, unless the built app's journeys (#1494) point a test key at
+  // a Stripe of their own. Never with a live key, which would take real money past Stripe.
+  const base = (env['STRIPE_API_BASE'] ?? '').trim()
+  if (base !== '' && !secretKey.includes('_test_')) throw new Error('STRIPE_API_BASE is for a test key only')
+  if (base !== '' && !URL.canParse(base)) throw new Error('STRIPE_API_BASE is not an address')
+  return { secretKey, webhookSecret, prices, byId, apiBase: base === '' ? STRIPE_API : base.replace(/\/$/, '') }
 }
 
 // What the start says about payments (DRIFT §8): whether they are on, test or live, and which tiers
@@ -95,11 +100,12 @@ export function signatureHolds(body: string, header: string | undefined, secret:
   })
 }
 
-// A subscription as the box reads it: its id, Stripe's status and the price ids it bills.
-export type Subscription = { id: string; status: string; prices: string[] }
+// A subscription as the box reads it: its id, Stripe's status and the price ids it bills, whether it
+// ends at the period's end instead of renewing (#1494), and when the period it is in ends.
+export type Subscription = { id: string; status: string; prices: string[]; cancelAtPeriodEnd: boolean; periodEnd: string | null }
 // The statuses in which the period is paid for: active, in a trial, or past due while Stripe still
 // retries the payment. Cancelled, unpaid, never paid and expired are not.
-const LIVE = new Set(['active', 'trialing', 'past_due'])
+export const LIVE: ReadonlySet<string> = new Set(['active', 'trialing', 'past_due'])
 // The tier a customer's subscriptions give: that of a live one at a price the box knows, or none.
 export function planOfSubscriptions(config: PaymentsConfig, subs: readonly Pick<Subscription, 'status' | 'prices'>[]): string | null {
   for (const sub of subs) {
@@ -113,7 +119,9 @@ export function planOfSubscriptions(config: PaymentsConfig, subs: readonly Pick<
 }
 
 // What the box asks of Stripe, and nothing else: a customer for an account, a Checkout page for a
-// price, a customer's subscriptions as they stand, and a subscription cancelled at once (#1520). The suite answers it with a fake; the box
+// price, a customer's subscriptions as they stand, and a subscription cancelled at once (#1520);
+// for Profil (#1494), a price as Stripe holds it, a subscription set to end at its period's end or
+// taken back, and a session in Stripe's customer portal for receipts and the card. The suite answers it with a fake; the box
 // with `stripeApi`, Stripe's REST API over fetch.
 export type StripeApi = {
   createCustomer(input: { account: string; email: string }): Promise<string>
@@ -121,10 +129,13 @@ export type StripeApi = {
   subscriptionsOf(customer: string): Promise<Subscription[]>
   priceOf(id: string): Promise<StripePrice>
   cancelNow(subscription: string): Promise<void>
+  setCancelAtPeriodEnd(subscription: string, cancel: boolean): Promise<void>
+  createPortal(input: { customer: string; returnUrl: string }): Promise<string>
 }
 // A price as Stripe holds it (#1521): its currency, its interval, and whether VAT is inside it
-// (`inclusive`), added on top (`exclusive`) or not said (`unspecified`).
-export type StripePrice = { id: string; currency: string; interval: string | null; taxBehavior: string }
+// (`inclusive`), added on top (`exclusive`) or not said (`unspecified`), and what it costs in the
+// currency's smallest unit (öre, cent), which is what the card says (#1494).
+export type StripePrice = { id: string; currency: string; interval: string | null; taxBehavior: string; amount: number | null }
 
 export const STRIPE_API = 'https://api.stripe.com'
 // Stripe's REST API: form-encoded requests, bearer secret key, JSON answers. `base` is Stripe's
@@ -167,12 +178,27 @@ export function stripeApi(secretKey: string, base = STRIPE_API, fetcher: typeof 
     async priceOf(id) {
       const body = await call('GET', `/v1/prices/${encodeURIComponent(id)}`, {})
       const recurring = body['recurring'] as { interval?: unknown } | null | undefined
-      return { id: String(body['id']), currency: String(body['currency']), interval: recurring?.interval ? String(recurring.interval) : null, taxBehavior: String(body['tax_behavior'] ?? 'unspecified') }
+      const amount = body['unit_amount']
+      return { id: String(body['id']), currency: String(body['currency']), interval: recurring?.interval ? String(recurring.interval) : null, taxBehavior: String(body['tax_behavior'] ?? 'unspecified'), amount: typeof amount === 'number' ? amount : null }
     },
     async subscriptionsOf(customer) {
       const body = await call('GET', '/v1/subscriptions', { customer, status: 'all', limit: '100' })
-      const data = (body['data'] ?? []) as { id?: unknown; status?: unknown; items?: { data?: { price?: { id?: unknown } }[] } }[]
-      return data.map((s) => ({ id: String(s.id), status: String(s.status), prices: (s.items?.data ?? []).map((i) => String(i.price?.id ?? '')) }))
+      type Item = { price?: { id?: unknown }; current_period_end?: unknown }
+      const data = (body['data'] ?? []) as { id?: unknown; status?: unknown; cancel_at_period_end?: unknown; current_period_end?: unknown; items?: { data?: Item[] } }[]
+      // The period's end is on the subscription in Stripe's older API versions and on its items in
+      // the newer ones (2025-03-31); whichever the account's version gives.
+      const end = (s: (typeof data)[number]): string | null => {
+        const at = [s.current_period_end, ...(s.items?.data ?? []).map((i) => i.current_period_end)].find((v): v is number => typeof v === 'number')
+        return at === undefined ? null : new Date(at * 1000).toISOString()
+      }
+      return data.map((s) => ({ id: String(s.id), status: String(s.status), prices: (s.items?.data ?? []).map((i) => String(i.price?.id ?? '')), cancelAtPeriodEnd: s.cancel_at_period_end === true, periodEnd: end(s) }))
+    },
+    async setCancelAtPeriodEnd(subscription, cancel) {
+      await call('POST', `/v1/subscriptions/${encodeURIComponent(subscription)}`, { cancel_at_period_end: String(cancel) })
+    },
+    async createPortal({ customer, returnUrl }) {
+      const body = await call('POST', '/v1/billing_portal/sessions', { customer, return_url: returnUrl })
+      return String(body['url'])
     },
     async cancelNow(subscription) {
       await call('DELETE', `/v1/subscriptions/${encodeURIComponent(subscription)}`, {})

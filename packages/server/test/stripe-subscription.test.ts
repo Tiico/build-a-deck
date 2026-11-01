@@ -51,13 +51,25 @@ const config = paymentsFromEnv(
 // Stripe as the suite plays it: customers it made, the checkouts it was asked for, and each
 // customer's subscriptions as they stand, which a test sets.
 // A test sets a subscription without its id; the fake names it after its customer and place.
-type SubSet = Omit<Subscription, 'id'> & { id?: string }
+type SubSet = Omit<Subscription, 'id' | 'cancelAtPeriodEnd' | 'periodEnd'> & Partial<Pick<Subscription, 'id' | 'cancelAtPeriodEnd' | 'periodEnd'>>
+const PERIOD_END = '2026-12-01T10:00:00.000Z'
 class FakeStripe implements StripeApi {
   readonly customers: { id: string; account: string; email: string }[] = []
   readonly checkouts: { customer: string; account: string; price: string; successUrl: string; cancelUrl: string }[] = []
   readonly subs = new Map<string, SubSet[]>()
   // The subscriptions cancelled at once, by id, and what a test wants to know at that moment.
   readonly cancelled: string[] = []
+  // Each cancellation at the period's end asked for, and taken back, as [subscription, cancel].
+  readonly atPeriodEnd: [string, boolean][] = []
+  readonly portals: { customer: string; returnUrl: string }[] = []
+  async setCancelAtPeriodEnd(subscription: string, cancel: boolean): Promise<void> {
+    this.atPeriodEnd.push([subscription, cancel])
+    for (const [customer, subs] of this.subs) this.subs.set(customer, subs.map((s, i) => ((s.id ?? `sub_${customer}_${i}`) === subscription ? { ...s, cancelAtPeriodEnd: cancel } : s)))
+  }
+  async createPortal(input: { customer: string; returnUrl: string }): Promise<string> {
+    this.portals.push(input)
+    return `https://billing.stripe.com/p/session/${input.customer}`
+  }
   onCancel: (id: string) => Promise<void> = () => Promise.resolve()
   asked = 0
   async createCustomer(input: { account: string; email: string }): Promise<string> {
@@ -71,7 +83,7 @@ class FakeStripe implements StripeApi {
   }
   // Every price of the box's configuration, as the RUNBOOK sets them up: VAT inside (#1521).
   readonly prices = new Map<string, StripePrice>(
-    [...config.byId].map(([id, p]) => [id, { id, currency: p.currency, interval: p.interval, taxBehavior: 'inclusive' }]),
+    [...config.byId].map(([id, p]) => [id, { id, currency: p.currency, interval: p.interval, taxBehavior: 'inclusive', amount: (p.currency === 'sek' ? 9900 : 900) * (p.interval === 'year' ? 10 : 1) }]),
   )
   async priceOf(id: string): Promise<StripePrice> {
     const price = this.prices.get(id)
@@ -80,7 +92,7 @@ class FakeStripe implements StripeApi {
   }
   async subscriptionsOf(customer: string): Promise<Subscription[]> {
     this.asked += 1
-    return (this.subs.get(customer) ?? []).map((s, i) => ({ id: `sub_${customer}_${i}`, ...s }))
+    return (this.subs.get(customer) ?? []).map((s, i) => ({ id: `sub_${customer}_${i}`, cancelAtPeriodEnd: false, periodEnd: PERIOD_END, ...s }))
   }
   async cancelNow(subscription: string): Promise<void> {
     await this.onCancel(subscription)
@@ -331,6 +343,105 @@ for (const backend of backends) {
 
     // An account that deletes itself (#1520, G6): Stripe is told to stop at once, before the
     // account is gone, so nobody is billed for an account that is not there.
+    // Pro in Profil (#1494, variant A): what the card reads, buying, the way back, cancelling at the
+    // period's end and taking it back, and Stripe's customer portal for receipts and the card.
+    describe('Pro in Profil (#1494)', () => {
+      const subscription = async (cookie: string | null) => {
+        const res = await fetch(`${run!.http}/me/subscription`, { headers: cookie ? { cookie } : {} })
+        return { status: res.status, body: res.status === 200 ? ((await res.json()) as Record<string, unknown>) : null }
+      }
+
+      it('says the tiers, the prices Stripe holds and the account’s own subscription, none for a free account', async () => {
+        await open(false)
+        const off = await someone('off')
+        expect((await subscription(off.cookie)).status).toBe(404)
+        await run!.stop()
+        await open()
+        expect((await subscription(null)).status).toBe(401)
+        const ada = await someone('ada')
+        const got = await subscription(ada.cookie)
+        expect(got.status).toBe(200)
+        expect(got.body).toEqual({
+          plan: 'free',
+          free: { plan: 'free', limits: { projects: 3, cardRowsPerProject: null, cardCopiesPerProject: null, openTables: null, tablesPer30Days: null, storageBytes: null }, print: false },
+          paid: { plan: 'pro', limits: { projects: null, cardRowsPerProject: null, cardCopiesPerProject: null, openTables: null, tablesPer30Days: null, storageBytes: null }, print: true },
+          prices: { sek: { month: 9900, year: 99000 }, eur: { month: 900, year: 9000 } },
+          subscription: null,
+        })
+      })
+
+      const post = (cookie: string | null, path: string, body: unknown = {}) =>
+        fetch(`${run!.http}/me/subscription/${path}`, { method: 'POST', headers: { 'content-type': 'application/json', ...(cookie ? { cookie } : {}) }, body: JSON.stringify(body) })
+      const subscribed = async (who: string, price = 'price_sek_m') => {
+        const one = await someone(who)
+        const cus = await customer(one.cookie)
+        stripe.subs.set(cus, [{ status: 'active', prices: [price] }])
+        await webhook(event('customer.subscription.created', cus))
+        return { ...one, cus }
+      }
+
+      it('says the account’s subscription as Stripe has it: price, interval and when it renews', async () => {
+        await open()
+        const ada = await subscribed('ada', 'price_eur_y')
+        expect((await subscription(ada.cookie)).body).toMatchObject({ plan: 'pro', subscription: { status: 'active', currency: 'eur', interval: 'year', amount: 9000, periodEnd: PERIOD_END, cancelAtPeriodEnd: false } })
+      })
+
+      // Variant A: «Säg upp Pro» in the card, at the period's end through Stripe's API, so Pro holds
+      // what is paid for and nothing more is drawn; «Fortsätt med Pro» takes it back.
+      it('cancels at the period’s end, and takes the cancellation back', async () => {
+        await open()
+        expect((await post(null, 'cancel')).status).toBe(401)
+        const bo = await someone('bo')
+        expect((await post(bo.cookie, 'cancel')).status).toBe(409)
+        const ada = await subscribed('ada')
+        const cancelled = await post(ada.cookie, 'cancel')
+        expect(cancelled.status).toBe(200)
+        expect(await cancelled.json()).toMatchObject({ plan: 'pro', subscription: { status: 'active', cancelAtPeriodEnd: true, periodEnd: PERIOD_END } })
+        expect(stripe.atPeriodEnd).toEqual([[`sub_${ada.cus}_0`, true]])
+        // Pro holds until the period ends: nothing is lapsed now.
+        expect((await db.accountPlans.planOf(ada.id))?.lapsed).toBeUndefined()
+        const resumed = await post(ada.cookie, 'resume')
+        expect(resumed.status).toBe(200)
+        expect(await resumed.json()).toMatchObject({ subscription: { cancelAtPeriodEnd: false } })
+        expect(stripe.atPeriodEnd).toEqual([[`sub_${ada.cus}_0`, true], [`sub_${ada.cus}_0`, false]])
+      })
+
+      it('sends the account to Stripe’s customer portal for receipts and the card, and back', async () => {
+        await open()
+        const bo = await someone('bo')
+        expect((await post(bo.cookie, 'portal', { back: '/profile' })).status).toBe(409)
+        const ada = await subscribed('ada')
+        const res = await post(ada.cookie, 'portal', { back: '/profile' })
+        expect(res.status).toBe(200)
+        expect(await res.json()).toEqual({ url: `https://billing.stripe.com/p/session/${ada.cus}` })
+        expect(stripe.portals).toEqual([{ customer: ada.cus, returnUrl: 'http://app.test/profile' }])
+        expect((await post(ada.cookie, 'portal', { back: '//evil.example/' })).status).toBe(400)
+      })
+
+      it('answer 502 when Stripe cannot be reached', async () => {
+        await open()
+        const ada = await subscribed('ada')
+        const down = () => Promise.reject(new Error('stripe: 500 '))
+        stripe.setCancelAtPeriodEnd = down
+        stripe.createPortal = down
+        const error = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+        const statuses = [(await post(ada.cookie, 'cancel')).status, (await post(ada.cookie, 'portal', { back: '/profile' })).status]
+        error.mockRestore()
+        expect(statuses).toEqual([502, 502])
+      })
+
+      // Stripe sends the browser back before its webhook has come (#1494, finding 1): a second
+      // checkout meanwhile would bill twice, so a customer with a live subscription is refused one
+      // whatever the account's tier says yet.
+      it('refuses a checkout to a customer Stripe already bills, before the webhook has come', async () => {
+        await open()
+        const ada = await someone('ada')
+        const cus = await customer(ada.cookie)
+        stripe.subs.set(cus, [{ status: 'active', prices: ['price_sek_m'] }])
+        expect((await checkout(ada.cookie, { currency: 'sek', interval: 'month' })).status).toBe(409)
+      })
+    })
+
     describe('an account that deletes itself (#1520)', () => {
       const erase = (cookie: string) => fetch(`${run!.http}/me?lang=sv`, { method: 'DELETE', headers: { cookie } })
       const quietly = async <T>(work: () => Promise<T>): Promise<T> => {
