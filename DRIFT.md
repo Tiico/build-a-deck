@@ -88,6 +88,66 @@ Med arenan växte de med ytterligare ~85 MiB vid de första bilderna.
 Det är render som ligger närmast sitt tak nu, med 527 MiB kvar i det tyngsta scenariot.
 Ett bord till eller en större modell bör mätas här innan det läggs till.
 
+### Pros 500 kort, med bricklek och bräde (#1533)
+
+Beslut 7 i #1469 sa att 500 unika kort per spel i Pro lasttestas på lådans tak före release.
+Mätt 2026-11-01 med samma lasttest, nu med `--cards 500 --tiles 72 --board-kb 3000`: 500 kort på var sin bild, ovanpå dem en lek med 72 hexagonbrickor på var sin bild (#1484) och ett huvudbräde (`board.rect610`) på en bild om 3600 × 2700 px och 3 MB, med ett spelarbräde för var och en av de åtta platserna (#1480).
+Det är 572 unika rader, alltså mer än Pros tak på 500 rader i alla lekar tillsammans (beslut 9), så mätningen ligger på den säkra sidan.
+En version är 576 texturer: 572 framsidor, två baksidor och brädets och spelarbrädets JPEG i högst 2048 px (K35).
+Varje sparad version ritar om alla, bräden och brickor med.
+Som jämförelse kördes 308 kort med samma kod och samma image, direkt efteråt.
+
+500 kort kördes en gång till efter #1531, som lägger brädets sida i tryckpaketet, med `--print-board`.
+När borden har spelat ber den första designern då om tryckpaketet för ett eget spel hos Testtryckeriet.
+Spelet är det stora huvudbrädet under ett foto som går ut i utfallet, och ett kort.
+Fotot är en JPEG om 7276 × 5469 px och 7,0 MB, alltså brädet med utfall i 300 DPI, strax under uppladdningens tak.
+Fasen heter `tryck`, så renderworkerns topp medan den ritar brädets tryckfil läses för sig.
+Testtryckeriet ber om vektor-PDF (`print-providers.ts`), så brädet trycks som en PDF där fotot bäddas in.
+Den rastrerade filen om 7280 × 5473 px som en partner kan be om har ingen partner bett om, och den är alltså bara räknad, inte mätt.
+
+Maskinen var en Mac, men Docker Desktops VM hade nu 8 kärnor och 9,7 GB.
+Maskinen delades med andra agenters körningar.
+Lasten var 7–17 under den första 500-körningen, 6–14 under 308-körningen och 3–9 under körningen med tryck.
+Minnestopparna beror inte på den lasten, men tiderna är en övre gräns.
+
+| Scenario | app (tak 512 MB) | render (tak 1 500 MB) | postgres (tak 768 MB) |
+|---|---|---|---|
+| 3 bord, 308 kort på 308 bilder à 250 kB | 147 | 887 | 208 |
+| 3 bord, 500 kort och 72 brickor på var sin bild, ett bräde och spelarbräden | 161 | 1 009 | 249 |
+| samma, efter #1531, borden | 162 | 1 013 | 206 |
+| samma, efter #1531, brädets tryckpaket ovanpå | 240 | 1 152 | 217 |
+
+Talen är toppar i MiB av arbetsmängden.
+Ingen container kom inom en tiondel av sitt tak, ingen dödades och ingen startades om.
+Render växer med ~120 MiB från 308 till 500 kort, och dess anonyma del var 758 MiB, mot 718 med 308 kort.
+App och Postgres rör sig knappt med borden, eftersom inga bytes går genom dem efter #1028.
+Postgres slog i taket 9 859–12 335 gånger med filcache, som förut, och den anonyma delen var 43–51 MiB.
+
+Brädets tryckpaket var tre filer: kortets två sidor och brädets PDF.
+De ritades på 2 sekunder, och zip-filen blev 7 MiB, alltså ungefär fotot.
+Det lade ~140 MiB på render, som toppade på 1 152 MiB med 348 MiB kvar till taket, och ~80 MiB på appen, som packar zip-filen i minnet.
+Det var med tre bords texturer redan i Chromiums cache, alltså det tyngsta läget.
+
+| Väntan på texturer, sekunder | bord 1 | bord 2 | bord 3 |
+|---|---|---|---|
+| 308 kort, start (309 texturer) | 235 | 83 | 160 |
+| 308 kort, ny version | 230 | 230 | 229 |
+| 500 kort med brickor och bräde, start (574 texturer) | 210 | 587 | 407 |
+| 500 kort med brickor och bräde, ny version (576 texturer) | 378 | 584 | 178 |
+| samma efter #1531, start | 426 | 387 | 387 |
+| samma efter #1531, ny version | 149 | 439 | 437 |
+
+Väntan växer i takt med antalet texturer, eftersom en worker ritar dem i tur och ordning.
+Det sista av tre Pro-bord som startas samma minut väntar 7–10 minuter.
+Med 308 kort väntade det fyra minuter på samma maskin, och sex minuter i mätningen efter #1028.
+Bordet som ritas först väntar runt tre och en halv minut.
+Texturerna cachas per innehållshash, så en ny start av samma version kostar nästan inget.
+Lådan håller alltså 500 kort i minne med god marginal, också med ett bräde som trycks samtidigt.
+Det som kostar är väntan, och den kostar bara när flera stora bord startas eller uppdateras samtidigt.
+
+Startens räkning är 574 och inte 576, eftersom bordets framsteg (`textureHashes`) inte räknar brädenas egna texturer, alltså `ownFaces`.
+Det är #1539.
+
 ### AI-frågornas kostnad för lådan (#1007)
 
 Mätt 2026-10-19 med `pnpm --filter @byd/e2e load:ai` (`packages/e2e/load/ai.ts`), som startar appen ur källkoden som containern startar den, mot Postgres, och låter den falska leverantören svara ett ord var 1,5 sekund så att varje svar håller sin anslutning i femton sekunder, som ett riktigt svar gör.

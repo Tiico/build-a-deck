@@ -52,11 +52,16 @@ const map = (item: Node): Node => ({ k: 'map', item })
 // sak. Platsernas antal och räknarna är receptets och skrivs hela av det.
 const VARIANT = record({ override: list(props), remove: leaf })
 const FACE = record({ base: list(props), variants: map(VARIANT), variantBy: leaf }, ['base', 'variants'])
+const TEMPLATE = record({ faces: map(FACE) }, ['faces'])
+const ROWS = list(record({ fields: map(cell) }, ['fields']))
 const DOC = record(
   {
     name: leaf,
-    template: record({ faces: map(FACE) }, ['faces']),
-    rows: list(record({ fields: map(cell) }, ['fields'])),
+    template: TEMPLATE,
+    rows: ROWS,
+    // Spelets andra lekar (#1484, #1487) i samma upplösning som den egna: en cell, ett lager, en
+    // ordning, så att Ada och Bo kan skriva i var sin rad i brickleken.
+    decks: list(record({ template: TEMPLATE, rows: ROWS, columns: leaf }, ['template', 'rows'])),
     columns: leaf,
     icons: map(leaf),
     credits: map(leaf),
@@ -70,7 +75,7 @@ const DOC = record(
     // Lådan (#1412): ett lås och en luft per mått, så att Ada kan låsa djupet medan Bo ändrar luften,
     // och ytorna som kortets.
     box: record({ type: leaf, clearance: props, locked: props, faces: map(FACE) }, ['type']),
-    setup: record({ zones: list(props), seats: leaf, floor: leaf, deckZone: leaf, counters: leaf, dice: leaf, turns: leaf }, ['zones', 'seats', 'floor', 'deckZone']),
+    setup: record({ zones: list(props), seats: leaf, floor: leaf, deckZone: leaf, counters: leaf, dice: leaf, turns: leaf, markers: list(record({ faces: map(FACE) })) }, ['zones', 'seats', 'floor', 'deckZone']),
   },
   ['name', 'template', 'rows', 'icons', 'setup'],
 )

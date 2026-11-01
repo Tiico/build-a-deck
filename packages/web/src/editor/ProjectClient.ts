@@ -1,6 +1,6 @@
 import type { BlockReason, Withheld } from './withheld.js'
 import { ASSET_HEAD_BYTES, assetFormatsNamed, assetRefusal, assetTypeDeclaring, pictureNameOf, type AssetCrop, type AssetKind, type SeatId, type Seating } from '@byd/protocol'
-import type { ProjectBoard, ProjectCredit, ProjectDoc, ProjectFont, ProjectRow, RuleDoc, VersionSummary } from '@byd/server'
+import type { ProjectBoard, ProjectCredit, ProjectDeck, ProjectDoc, ProjectFont, ProjectRow, RuleDoc, VersionSummary } from '@byd/server'
 import { catalogFont, type CatalogFamily, fileInSheet, fileSheetHref } from './font-catalog.js'
 import type { DocDiff, Playtest, VersionChange } from '@byd/server/doc'
 import type { Element } from '@byd/template'
@@ -8,9 +8,10 @@ import { BOX_SIDES, type BoxClearance, type BoxFace, type BoxSide } from '@byd/e
 import { Unauthorized, gameReadOnly, withCredentials, type GameReadOnly } from '../account/api.js'
 import { QuotaReached, quotaIn, quotaOf, type Quota } from '../account/quota.js'
 import { QuotaSaid, quotaWords, type QuotaDoing } from '../account/quota-words.js'
-import { applyEdit, boxFaceOf, cellColumn, changeOf, copiesOf, decideEdit, joined, plainEdits, playable, recipeOf, revertOf, type Change, type Clearable, type ColumnKind, type Die, type EditIntent, type Piece, type Recipe, type RecipeWords, type SeatRole, type Zone, type ZonePatch } from '@byd/server/doc'
+import { applyEdit, boxFaceOf, cellColumn, changeOf, copiesOf, decideEdit, joined, plainEdits, playable, recipeOf, revertOf, type Change, type Clearable, type ColumnKind, type Die, type EditIntent, type Marker, type Piece, type Recipe, type RecipeWords, type SeatRole, type Zone, type ZonePatch } from '@byd/server/doc'
 import { ASSET_PREFIX, assetBytesUrl, assetRef, assetRefOf } from './assets.js'
 import { measureAsset } from './motifs.js'
+import { newTileDeck } from './tiles.js'
 import type { Motif } from '@byd/template'
 import { freeIconName, svgBytes, symbolName, type GameSymbol } from './symbols.js'
 import { creditOf, type CatalogIcon } from './icon-catalog.js'
@@ -906,9 +907,7 @@ export class ProjectClient {
     // wire: `undefined` does not survive JSON, so an unlock written as `{ locked: undefined }`
     // would reach the actor as a patch that changes nothing, and the saved project would still
     // be locked (L15).
-    const clear = Object.entries(patch).flatMap(([key, value]) => (value === undefined ? [key as Clearable] : []))
-    const set = Object.fromEntries(Object.entries(patch).filter(([, value]) => value !== undefined)) as Partial<Element>
-    this.edit({ v: 'patchElement', face, id, patch: set, ...(clear.length ? { clear } : {}), ...(group !== undefined ? { group } : {}) }, gesture)
+    this.edit({ v: 'patchElement', face, id, ...patchOf(patch), ...(group !== undefined ? { group } : {}) }, gesture)
   }
 
   setGroupColumn(column: string | null): void {
@@ -958,9 +957,7 @@ export class ProjectClient {
   // neutrala ytan i dokumentet i samma redigering: hon ser namnet och färgen när hon börjar, och de
   // är hennes från första ändringen, i ett steg tillbaka och inte två (B4).
   patchBoxElement(face: BoxFace, id: string, patch: Partial<Element>, gesture?: string): void {
-    const clear = Object.entries(patch).flatMap(([key, value]) => (value === undefined ? [key as Clearable] : []))
-    const set = Object.fromEntries(Object.entries(patch).filter(([, value]) => value !== undefined)) as Partial<Element>
-    this.onBox(face, { v: 'patchElement', on: 'box', face, id, patch: set, ...(clear.length ? { clear } : {}) }, gesture)
+    this.onBox(face, { v: 'patchElement', on: 'box', face, id, ...patchOf(patch) }, gesture)
   }
 
   addBoxElement(face: BoxFace, element: Element): void {
@@ -1036,6 +1033,66 @@ export class ProjectClient {
   // The game's wooden pieces (#1477, K33), written whole as the dice are: one change, one step back.
   setPieces(pieces: Piece[], gesture?: string): void {
     this.edit({ v: 'setPieces', pieces }, gesture)
+  }
+
+  // The game's markers (#1483, #1487), written whole as the pieces are: one change, one step back.
+  setMarkers(markers: Marker[], gesture?: string): void {
+    this.edit({ v: 'setMarkers', markers }, gesture)
+  }
+
+  // The game's other decks (#1484, #1487), written whole: a deck added, renamed, given another shape
+  // or taken away is one change and one step back. What is drawn and written in a deck is `inDeck`.
+  setDecks(decks: ProjectDeck[], gesture?: string): void {
+    this.edit({ v: 'setDecks', decks }, gesture)
+  }
+
+  // A deck of tiles (#1487, «Hög ur en lek» and «＋ Lek»): made in the pile it was asked for, or in a
+  // new pile of its own name on the felt, which is then one step back with it (B4). Returns its id.
+  addTileDeck(pile: string | null, t: T = swedish): string {
+    const deck = newTileDeck(this.doc, pile ?? '', t)
+    const decks = [...(this.doc.decks ?? []), deck]
+    if (pile !== null) {
+      this.setDecks(decks)
+      return deck.id
+    }
+    const taken = new Set(this.doc.setup.zones.map((z) => z.id))
+    let n = 1
+    while (taken.has(`hog-${n}`)) n++
+    const zone = `hog-${n}`
+    this.editTogether(
+      [
+        { v: 'addZone', id: zone, kind: 'pile', name: deck.name },
+        { v: 'setDecks', decks: decks.map((d) => (d.id === deck.id ? { ...d, zone } : d)) },
+      ],
+      'undo.what.table',
+    )
+    return deck.id
+  }
+
+  // The edits of one deck's tab in Mall and Tabell (#1487, #1474 A): the same edits the document's
+  // own deck has, carrying the deck they are made on (`deck`), or a marker's sides as
+  // `marker:<id>`. The document's own deck is this client itself, so nothing it has ever sent changes.
+  inDeck(ref: string | null): DeckEdits {
+    if (ref === null) return this
+    const on = (intent: EditIntent, gesture?: string) => this.edit({ ...intent, deck: ref } as EditIntent, gesture)
+    return {
+      setCell: (cardRef, field, value, gesture) => on({ v: 'setCell', cardRef, field, value }, gesture),
+      addRow: (cardRef, fields = {}) => on({ v: 'addRow', cardRef, fields }),
+      removeRow: (cardRef) => on({ v: 'removeRow', cardRef }),
+      replaceRows: (rows) => on({ v: 'replaceRows', rows }),
+      addField: (field, bind, kind) => on({ v: 'addField', field, ...(bind ? { bind } : {}), ...(kind ? { kind } : {}) }),
+      moveField: (field, before) => on({ v: 'moveField', field, before }),
+      renameField: (from, to) => on({ v: 'renameField', from, to }),
+      setColumnKind: (field, kind) => on({ v: 'setColumnKind', field, kind }),
+      removeField: (field) => on({ v: 'removeField', field }),
+      patchElement: (face, id, patch, group, gesture) => on({ v: 'patchElement', face, id, ...patchOf(patch), ...(group !== undefined ? { group } : {}) }, gesture),
+      setGroupColumn: (column) => on({ v: 'setGroupColumn', column }),
+      resetElement: (face, id, group) => on({ v: 'resetElement', face, id, group }),
+      addElement: (face, element, group) => on({ v: 'addElement', face, element, ...(group !== undefined ? { group } : {}) }),
+      removeElement: (face, id, group) => on({ v: 'removeElement', face, id, ...(group !== undefined ? { group } : {}) }),
+      replaceFace: (face, base) => on({ v: 'replaceFace', face, base }),
+      moveElement: (face, id, to) => on({ v: 'moveElement', face, id, to }),
+    }
   }
 
   // A zone of the designer's own (K2): an area of a card's rows or a pile at a point, in the
@@ -2027,3 +2084,15 @@ function grownBy(doc: ProjectDoc, intent: EditIntent, measure: string): number {
     return 0
   }
 }
+
+// A patch as the wire says it (L15): a property set to `undefined` is a property taken away, said in
+// `clear`, since `undefined` does not survive JSON.
+function patchOf(patch: Partial<Element>): { patch: Partial<Element>; clear?: Clearable[] } {
+  const clear = Object.entries(patch).flatMap(([key, value]) => (value === undefined ? [key as Clearable] : []))
+  const set = Object.fromEntries(Object.entries(patch).filter(([, value]) => value !== undefined)) as Partial<Element>
+  return { patch: set, ...(clear.length ? { clear } : {}) }
+}
+
+// What Mall and Tabell edit a deck with (#1487): the client itself for the document's own deck, and
+// the same edits carrying `deck` for another (`ProjectClient.inDeck`).
+export type DeckEdits = Pick<ProjectClient, 'setCell' | 'addRow' | 'removeRow' | 'replaceRows' | 'addField' | 'moveField' | 'renameField' | 'setColumnKind' | 'removeField' | 'patchElement' | 'setGroupColumn' | 'resetElement' | 'addElement' | 'removeElement' | 'replaceFace' | 'moveElement'>

@@ -86,7 +86,7 @@ async function bordTab(felt: Size | null, desk: Size): Promise<string> {
     await screen.findByText('Skogens herrar')
     fireEvent.click(screen.getByRole('tab', { name: 'Bord' }))
     const row = await waitFor(() => document.querySelector('[data-zone-row="discard"]') as HTMLElement)
-    fireEvent.click(within(row).getByRole('button', { name: (n) => /Krönikan/.test(n) && !n.startsWith('Ta bort') }))
+    fireEvent.click(within(row).getByRole('button', { name: (n) => /Krönikan/.test(n) && !n.startsWith('Ta bort') && !n.startsWith('Lägg till') }))
     await waitFor(() => {
       if (!document.querySelector('[data-landing="discard"]')) throw new Error('no outline yet')
     })

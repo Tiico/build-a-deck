@@ -110,7 +110,7 @@ describe('the setup editor (B5, K2): what the table cannot be without', () => {
     expect(document.getElementById(name.getAttribute('aria-describedby') ?? '')?.textContent).toBe('Filten är bordet självt och kan inte tas bort.')
     expect(row('table').querySelector('.byd-setup-fast')!.hasAttribute('aria-label')).toBe(false)
 
-    fireEvent.click(within(row('draw')).getByRole('button', { name: /Draghög/ }))
+    fireEvent.click(within(row('draw')).getByRole('button', { name: /^Draghög/ }))
     // Said in the open row, and as the row's description (#558).
     expect(screen.getAllByText(/Välj en annan hög under Spelet/).some((el) => !el.classList.contains('byd-offscreen'))).toBe(true)
     fireEvent.click(screen.getByRole('button', { name: 'Hand 2 platser' }))
@@ -381,7 +381,7 @@ describe('högens bottenkort', () => {
   it('väljs bland lekens kort med sin sida, och står kvar när projektet öppnas igen', async () => {
     await run.projects.create(run.projectId, projectDoc())
     await openBord()
-    fireEvent.click(within(row('draw')).getByRole('button', { name: /Draghög/ }))
+    fireEvent.click(within(row('draw')).getByRole('button', { name: /^Draghög/ }))
 
     const card = screen.getByLabelText('Bottenkort för Draghög') as HTMLSelectElement
     expect(card.value).toBe('')
