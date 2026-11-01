@@ -5021,6 +5021,26 @@ Raden i fliken Bord väntar på prototypen (#1477), och tills dess har en träde
 
 **Aktivitetsraden** säger biten efter sort: «Ada flyttade en meeple till Spelyta», «Ada lade ned en meeple» och «Ada ställde upp en meeple».
 
+### K34. Brickor: kortet i sin egen form, och steget är typens (beslutat 2026-10-28 och 2026-11-01, #1470, #1474, #1482)
+
+Beställarens beslut i #1470 den 2026-10-28: formerna är kvadrat, sexhörning och rund (fråga 9), och en bricka kan hållas dold på handen som ett kort (fråga 10).
+Prototypen godkändes 2026-11-01 (#1474, variant A på varje yta), och en rund bricka vrids i steg om 90°.
+
+**Fyra typer i registret.** `tile.hex.52`, `tile.square.45`, `tile.round.44` och `tile.round.25`, version 1, står i `STANDARD_TYPES` (B1–B3), en per form och storlek som kortet är en per storlek.
+Måtten är prototypens: sexhörningen 52 mm mellan de raka sidorna med spetsen uppåt, kvadraten 45 mm, den runda brickan 44 mm och myntet 25 mm, alla av 2 mm kartong.
+Var och en har två tryckta ytor, `front` och `back`, med framsidan som innehåll, och staplas, blandas och vänds som ett kort; trycket har 3 mm utfall, och ingen är en lagervara.
+
+**En bricka hålls.** Typen deklarerar inte `holdable: false`, så den är inget material (K32): `move`, `draw` och `deal` lägger den i en hand som ett kort, och handen är ägarens ensam.
+Det dolda går genom `project` som kortets (B6): en bricka med baksidan upp i en hög med synligheten «ingen» lämnar varken rad, titel, text eller framsidans hash på någon plats tråd, och en bricka som visas för en plats (`showTo`) når bara den platsen. Testet läser råa frames (`wire.test.ts`).
+
+**Steget är typens, inte ett verb.** `rotationStepDeg` bland typens beteenden säger hur långt ett steg vrider: 60° för sexhörningen, 90° för kvadraten och de runda. `rotationStep` läser det, och en typ som inte säger något vrids ett kvarts varv som kortet alltid har gjort.
+`rotate` tar redan vilken vinkel som helst, så motorn vägrar ingenting utanför steget, och inget verb är nytt; ringen och tangenterna vrider ett steg (#1485).
+
+**Motorn har ingen gren för brickan.** `rotate`, `flip`, `stack`, `shuffle`, `split`, `draw` och `deal` läser typens beteenden som de läser kortets, och omspelningen ger samma bord och en blandad hög samma ordning (D4).
+En bricka staplas på ett kort och blandas i en hög med kort som motorn ser det, eftersom båda är `stackable` och `shufflable`; om en hög ska få blanda former är en fråga för leken och setupen (#1484), inte för typen.
+
+Brickor i setupen, en egen lek och tabell per brickform, bordet, telefonen och trycket byggs i #1484–#1488.
+
 ## L. Editorn (grillad 2026-09-06)
 
 E1, E2 och E3 gav principerna; det här är hur de blir konkreta.

@@ -840,17 +840,11 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         // a link, not a fetch: R2 answers a page without CORS (DRIFT §4), and the file needs none.
         onSave={async () => {
           const hash = await client.orderStill()
-          for (let i = 0; i < 240; i++) {
-            if (await client.rendered(hash)) {
-              const link = document.createElement('a')
-              link.href = client.stillUrl(hash, `${doc.name}.jpg`)
-              link.download = `${doc.name}.jpg`
-              link.click()
-              return
-            }
-            await new Promise((r) => setTimeout(r, 250))
-          }
-          throw new Error('the picture was not taken in a minute')
+          if (!(await client.whenRendered(hash))) throw new Error('the picture was not taken')
+          const link = document.createElement('a')
+          link.href = client.stillUrl(hash, `${doc.name}.jpg`)
+          link.download = `${doc.name}.jpg`
+          link.click()
         }}
         onOpenFonts={() => {
           revealThemeSection('fonts')
