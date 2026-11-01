@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Brädet på filten (#1473)</title>
+<link rel="stylesheet" href="proto.css">
+<link rel="stylesheet" href="bradet.css">
+</head>
+<body>
+<!-- PROTOTYP — slit och släng (#1473, del av #1470). Importerar ingenting ur appen; måtten kommer ur
+     matt.json, som measure.ts räknar fram med produktens egna fit-funktioner. -->
+<div class="sida">
+  <div class="protorad" role="region" aria-label="Prototypens kontroller">
+    <div class="fraga">
+      <p><b>Brädet på filten — #1473.</b> Var ligger brädet och spelarbräden, hur läses zonerna på brädets bild, och var designas det i editorn?</p>
+      <p>← → byter variant. Alla mått är kortets kortsida i vila, i px, ur <code>matt.json</code>.</p>
+    </div>
+    <div class="vaxlare" role="group" aria-label="Variant" data-grupp="v">
+      <button data-val="A" title="Brädet i filtens mitt">A ★</button>
+      <button data-val="B" title="Brädet bredvid filten">B</button>
+      <button data-val="C" title="Brädet är bordet">C</button>
+    </div>
+    <div class="vaxlare" role="group" aria-label="Yta" data-grupp="yta">
+      <button data-val="tv1920">TV 1920</button>
+      <button data-val="tv1280">TV 1280</button>
+      <button data-val="bord1280">Bord 1280</button>
+      <button data-val="telefon">Telefon 390</button>
+      <button data-val="bordflik">Editor: Bord</button>
+      <button data-val="ytan">Editor: ytan</button>
+      <button data-val="produkt">Produkt</button>
+    </div>
+    <div class="vaxlare" role="group" aria-label="Platser" data-grupp="platser">
+      <button data-val="4">4 platser</button>
+      <button data-val="8">8 platser</button>
+    </div>
+    <div class="vaxlare" role="group" aria-label="Brädet" data-grupp="brade">
+      <button data-val="kvadrat">457 × 457</button>
+      <button data-val="rektangel">610 × 457</button>
+    </div>
+    <div class="vaxlare" role="group" aria-label="Spelarbräden" data-grupp="pb">
+      <button data-val="1">Spelarbräden</button>
+      <button data-val="0">Utan</button>
+    </div>
+    <div class="matt" id="matt" aria-live="polite"></div>
+    <p class="anteckning" id="anteckning"></p>
+  </div>
+  <div class="m-scen" id="scen"></div>
+</div>
+<script src="bradet.js"></script>
+</body>
+</html>
