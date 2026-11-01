@@ -488,6 +488,29 @@ describe('comparing with an older version in the table (B4)', () => {
     expect(within(rows[1]!).queryByText('Riddare', { selector: 's' })).toBeNull()
   })
 
+  // The table is the document's own deck (#1484): a tile of another deck that changed is no card that
+  // changed, even when the two share an id.
+  it('marks no card for a change to a row of another deck with the same id', () => {
+    const tiles = (title: string) => [{ id: 'landskap', name: 'Landskap', type: { id: 'tile.hex.52', version: 1 }, template: projectDoc().template, rows: [{ id: 'dragon', fields: { title } }], zone: 'draw' }]
+    render(
+      <DataTable
+        doc={{ ...projectDoc(), decks: tiles('Drakmyr') }}
+        selectedRow={null}
+        onSelectRow={() => undefined}
+        onCell={() => undefined}
+        onAddRow={() => undefined}
+        onRemoveRow={() => undefined}
+        onReplaceRows={() => undefined}
+        onAddField={() => undefined}
+        onRemoveField={() => undefined}
+        onMoveField={() => undefined}
+        compareWith={{ rev: 1, doc: { ...projectDoc(), decks: tiles('Drakskog') } }}
+      />,
+    )
+    const rows = screen.getAllByRole('row').slice(1)
+    expect(rows.map((r) => r.getAttribute('data-change'))).toEqual(rows.map(() => null))
+  })
+
   // A version that moved only the template holds the table against itself (#702): seventy-seven
   // rows without a mark and a band reading «mallen ändrad.» left the designer to work out that the
   // table could never show her the difference. The band says it, and offers the tab that can.

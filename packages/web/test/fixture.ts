@@ -287,6 +287,8 @@ export type Running = {
   // With `payments` (#1494): the accounts' tiers, Stripe's stand-in the box asks, and the webhook's
   // secret a test signs Stripe's word with.
   payments?: { accountPlans: MemoryAccountPlanStore; stripe: StandIn; webhookSecret: string }
+  // With `plans`: each account's own tier, so a test can give one Pro and let it lapse (#1492).
+  accountPlans?: MemoryAccountPlanStore
 }
 // What Pro costs in the stand-in (A2): 99 kr / 9 € a month, ten months for a year.
 export const PRO_PRICES = {
@@ -315,6 +317,8 @@ export async function startServer(opts: { auth?: boolean; authBypass?: boolean; 
   const surveys = new MemorySurveyStore()
   const mail = new MemoryMailer()
   const auth = opts.auth ? new MemoryAuthStore() : undefined
+  // Each account's own tier (#1193), beside the tiers: a lapse (#1491) needs a tier to lapse from.
+  const accountPlans = opts.plans ? new MemoryAccountPlanStore() : undefined
   let http = ''
   // The providers the key is proved against, on a port out of this worker's own slice like the
   // server's, and a vault with a master key of the run's own.
@@ -326,7 +330,6 @@ export async function startServer(opts: { auth?: boolean; authBypass?: boolean; 
   // A guest's own erasure (#1281) is a door on the server like any other, and the erasure in the
   // store is #1279's; an account that deletes itself (#1280) is forgotten in every store here too.
   // Payments (#1494) want the tiers they sell, and Stripe's stand-in on a port of this worker's.
-  const accountPlans = opts.payments ? new MemoryAccountPlanStore() : null
   const standIn = opts.payments ? await stripeStandIn(PRO_PRICES, claim) : null
   const webhookSecret = 'whsec_web_suite'
   const paymentsConfig =
@@ -334,7 +337,7 @@ export async function startServer(opts: { auth?: boolean; authBypass?: boolean; 
       ? paymentsFromEnv({ STRIPE_SECRET_KEY: 'sk_test_web', STRIPE_WEBHOOK_SECRET: webhookSecret, BYD_STRIPE_PRICES: JSON.stringify({ pro: { sek: { month: 'price_sek_m', year: 'price_sek_y' }, eur: { month: 'price_eur_m', year: 'price_eur_y' } } }), STRIPE_API_BASE: standIn.url }, opts.plans)
       : null
   const payments = paymentsConfig ? { config: paymentsConfig, stripe: stripeApi(paymentsConfig.secretKey, paymentsConfig.apiBase) } : null
-  const erasures = store.erasures(surveys, projects, memoryForgetting({ auth: auth ?? null, projects, vault, plans: accountPlans }))
+  const erasures = store.erasures(surveys, projects, memoryForgetting({ auth: auth ?? null, projects, vault, plans: accountPlans ?? null }))
   const make = () => {
     const made = createServer({ host: new TableHost(registry, store, undefined, renders, () => reports.blocked()), store, registry, renders, projects, assets, surveys, erasures, reports, ...(auth ? { auth, mailer: mail, publicOrigin: http, authBypass: opts.authBypass } : {}), ...(opts.appOrigin ? { appOrigin: opts.appOrigin } : {}), ...(ai ? { ai } : {}), ...(opts.plans ? { plans: opts.plans } : {}), ...(opts.print ? { printProviders: printProvidersOf(STANDARD_TYPES) } : {}), ...(opts.terms ? { terms: opts.terms } : {}), ...(accountPlans ? { accountPlans } : {}), ...(payments ? { payments } : {}) })
     // Never hang up an idle connection from this end (#848). Node does after five seconds, and the
@@ -374,6 +377,7 @@ export async function startServer(opts: { auth?: boolean; authBypass?: boolean; 
     answering: (door = '/health') => untilAnswering(`http://127.0.0.1:${port}`, door),
     ...(vault && fake ? { ai: { vault, fake } } : {}),
     ...(auth ? { auth } : {}),
+    ...(accountPlans ? { accountPlans } : {}),
     ...(accountPlans && standIn ? { payments: { accountPlans, stripe: standIn, webhookSecret } } : {}),
     stop,
     // Marks every queued texture as rendered, with a stand-in for the PNG: what the render

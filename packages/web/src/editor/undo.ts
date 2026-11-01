@@ -45,6 +45,7 @@ export function whatOf(intent: EditIntent): Key {
     case 'setDice':
     case 'setPieces':
     case 'setMarkers':
+    case 'setDecks':
     case 'addZone':
     case 'insertZone':
     case 'addSeatZone':

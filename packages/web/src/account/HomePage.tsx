@@ -9,7 +9,8 @@ import { CardPreview } from '../editor/CardPreview.js'
 import { CARD_PX } from '../editor/corner.js'
 import { previewIcons } from '../editor/assets.js'
 import { previewFonts } from '../editor/fonts.js'
-import { dismissGone, duplicateProject, gameCover, gameFan, logout, myAccount, myCards, myGone, myPlayed, myProjects, myUsage, myWaiting, removeProject, renameProject, returnToTable, runningTables, startTable, type GameWaiting, type GoneGame, type Played, type ProjectSummary, type RunningTable, type TermsStanding } from './api.js'
+import { ReadOnlyOffer } from './ReadOnlyOffer.js'
+import { dismissGone, duplicateProject, gameCover, gameFan, logout, myAccount, myCards, myGone, myPlayed, myProjects, myUsage, myWaiting, removeProject, renameProject, returnToTable, runningTables, startTable, type GameWaiting, type GoneGame, type ReadOnlyWhy, type Usage, type Played, type ProjectSummary, type RunningTable, type TermsStanding } from './api.js'
 import { TermsDue, laterFor, putOff } from './terms-due.js'
 import { TermsOffer } from './TermsOffer.js'
 import { QuotaReached, type Quota } from './quota.js'
@@ -29,7 +30,7 @@ import { useSay } from '../status/StatusLive.js'
 import { noticeFor } from '../status/notice.js'
 import { usePageTitle } from '../status/DocumentTitle.js'
 import { useLang, useT, type Lang, type T } from '../i18n/index.js'
-import { CheckGlyph, ChevronGlyph, CloseGlyph, ExitGlyph, FlagGlyph, ImportGlyph, MoreGlyph, PeopleGlyph, PencilGlyph, PersonGlyph, SeatingGlyph } from '../glyphs.js'
+import { BookGlyph, CheckGlyph, ChevronGlyph, CloseGlyph, ExitGlyph, FlagGlyph, ImportGlyph, MoreGlyph, PeopleGlyph, PencilGlyph, PersonGlyph, SeatingGlyph } from '../glyphs.js'
 import './account.css'
 import { AboutLine } from './AboutLine.js'
 import { PasskeyOffer } from './PasskeyOffer.js'
@@ -162,6 +163,19 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
   // A game's own menu (G1): which card has it open, which one is being asked about, and what the
   // last table started from here was, so the code can be read off.
   const [menu, setMenu] = useState<string | null>(null)
+  // The read-only mode (#1492, variant A, G5): the account's games that its lapsed subscription
+  // leaves read-only, each with the free tier's ceiling it lies over, and those ceilings. Asked with
+  // the list, and again when the list changes, since a game removed can let the next one fit.
+  const [held, setHeld] = useState<{ games: Map<string, ReadOnlyWhy>; usage: Usage; at: string } | null>(null)
+  const [heldClosed, setHeldClosed] = useState<string | null>(() => readOnlyClosed())
+  const heldWhy = (p: ProjectSummary): ReadOnlyWhy | undefined => held?.games.get(p.id)
+  // What the game uses of the measure it lies over, as the server counted it: unique cards, not copies.
+  const heldLine = (p: ProjectSummary): string => {
+    const why = heldWhy(p)
+    if (!why) return ''
+    const measure = held?.usage.measures[why]
+    return t(`home.readOnly.why.${why}`, { cards: measure?.projects?.find((g) => g.id === p.id)?.used ?? p.cards ?? 0, limit: measure?.limit ?? 0 })
+  }
   const [asking, setAsking] = useState<ProjectSummary | null>(null)
   // A game whose «Starta nytt bord» was pressed while a table of it runs (#1145, beslut A): the
   // press asks first, because it stood one line under «Öppna bordet KOD» and was taken for it.
@@ -287,6 +301,19 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
       })
       .catch(() => setOffline(true))
   }, [http, attempt])
+  const gamesKnown = projects?.length
+  useEffect(() => {
+    if (!email || gamesKnown === undefined) return
+    let live = true
+    void myUsage(http).then((usage) => {
+      if (!live) return
+      const games = new Map((usage?.readOnly ?? []).map((g) => [g.id, g.why] as const))
+      setHeld(usage?.lapsed && games.size > 0 ? { games, at: usage.lapsed.at, usage } : null)
+    }, () => undefined)
+    return () => {
+      live = false
+    }
+  }, [http, email, gamesKnown])
   // Logged out, `/` is the landing page and the tab says so rather than promising games (#12).
   usePageTitle({ state: offline ? 'offline' : email === undefined ? 'loading' : null, route: email === null ? 'landing' : null })
   const suffix = (q: URLSearchParams) => {
@@ -356,16 +383,20 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
               {t('home.menu.open', { code: table.code })}
             </a>
           ))}
-          {startable(p) && (
-            <button
-              type="button"
-              onClick={() => {
-                setMenu(null)
-                startFrom(p)
-              }}
-            >
-              {t(runningOf(p).length > 0 ? 'home.menu.start.new' : 'home.menu.start')}
-            </button>
+          {heldWhy(p) ? (
+            <ReadOnlyChoice label={t('home.menu.start')} why={t('home.menu.readOnly')} />
+          ) : (
+            startable(p) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setMenu(null)
+                  startFrom(p)
+                }}
+              >
+                {t(runningOf(p).length > 0 ? 'home.menu.start.new' : 'home.menu.start')}
+              </button>
+            )
           )}
           {/* «Visa upp» (#1414): the game's box shown off, where the Låda tab is, which is for the
               roles that may start a table and at a desk or a tablet (L10, #1413). */}
@@ -386,6 +417,13 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
               the others see no control the server would refuse them. */}
           {canEdit(roleOf(p)) && (
             <>
+              {heldWhy(p) ? (
+                <>
+                  <ReadOnlyChoice label={t('home.menu.rename')} why={t('home.menu.readOnly')} />
+                  <ReadOnlyChoice label={t('home.menu.duplicate')} why={t('home.menu.readOnly')} />
+                </>
+              ) : (
+              <>
               <button
                 type="button"
                 onClick={() => {
@@ -419,6 +457,8 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
               >
                 {t('home.menu.duplicate')}
               </button>
+              </>
+              )}
               <button
                 type="button"
                 onClick={() => {
@@ -603,6 +643,15 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
                 setLater(true)
               }}
             />
+          ) : held && heldClosed !== held.at ? (
+            <ReadOnlyOffer
+              count={held.games.size}
+              onClose={() => {
+                closeReadOnly(held.at)
+                setHeldClosed(held.at)
+                heading.current?.focus()
+              }}
+            />
           ) : asked ? (
             <PasskeyOffer http={http} />
           ) : (
@@ -744,6 +793,15 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
                   {/* The cards and the tables, and — for whoever may read the playtest (#524) — the
                       players' survey answers and the flags new on this version (#1225). Those two
                       hold their places until what is waiting has been read. */}
+                  {heldWhy(hero) && (
+                    <span className="byd-home-read-only">
+                      <span className="byd-home-chip" data-read-only="">
+                        <BookGlyph />
+                        {t('home.readOnly.mark')}
+                      </span>
+                      <span data-read-only-why="">{heldLine(hero)}</span>
+                    </span>
+                  )}
                   <dl className="byd-home-stats">
                     <div><dt>{t('home.stat.cards')}</dt><dd>{hero.cards ?? 0}</dd></div>
                     <div><dt>{t('home.stat.tables')}</dt><dd>{hero.tables ?? 0}</dd></div>
@@ -758,7 +816,11 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
                     <a className="byd-primary" href={editorOf(hero)} onClick={toEditor(hero)}>
                       {t('home.hero.edit')}
                     </a>
-                    {heroTable ? (
+                    {heldWhy(hero) ? (
+                      <button type="button" className="byd-secondary" onClick={() => setExporting(hero)}>
+                        {t('home.menu.export')}
+                      </button>
+                    ) : heroTable ? (
                       <a className="byd-secondary" {...tableWay(heroTable, server, lang)} aria-label={t('home.running.open.aria', { code: heroTable.code, name: hero.name })}>
                         {t('home.menu.open', { code: heroTable.code })}
                       </a>
@@ -789,6 +851,7 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
                 {rest.map((p) => {
                   const live = runningOf(p).slice(0, 1)
                   const flags = waiting?.[p.id]?.playtest?.flags ?? 0
+                  const why = heldWhy(p)
                   return (
                     <div key={p.id} className="byd-home-game" data-project={p.id}>
                       {/* The game's name leads the link's name, and the card comes last (#555): going
@@ -801,9 +864,19 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
                           <span id={`home-${p.id}-line`} className="byd-muted">
                             {factsLine(t, p)}
                           </span>
-                          <span id={`home-${p.id}-played`} className="byd-muted">
-                            {playedLine(t, lang, p)}
-                          </span>
+                          {why ? (
+                            <span id={`home-${p.id}-played`} className="byd-home-read-only">
+                              <span className="byd-home-chip" data-read-only="">
+                                <BookGlyph />
+                                {t('home.readOnly.mark')}
+                              </span>
+                              <span data-read-only-why="">{heldLine(p)}</span>
+                            </span>
+                          ) : (
+                            <span id={`home-${p.id}-played`} className="byd-muted">
+                              {playedLine(t, lang, p)}
+                            </span>
+                          )}
                           {/* What is going on with the game, as chips on one line (#1204, #1282): a table
                               running, and the flags new on its newest version (G1), counted as «Väntar
                               på dig» counts them and from the same answer. */}
@@ -1157,4 +1230,33 @@ function when(t: T, lang: Lang, iso: string): string {
   if (days === 1) return t('home.when.yesterday')
   if (days < 7) return t('home.when.days', { n: days })
   return new Date(iso).toLocaleDateString(lang === 'sv' ? 'sv-SE' : 'en-GB')
+}
+
+// A choice of a game's ⋯ that writes, on a game in read-only mode (#1492): it stays where it stands,
+// so the menu reads as it always does, and says why it does not go; focusable, so the keyboard hears it.
+function ReadOnlyChoice({ label, why }: { label: string; why: string }) {
+  return (
+    <button type="button" aria-disabled="true" className="byd-game-menu-held">
+      {label}
+      <small>{why}</small>
+    </button>
+  )
+}
+
+// «Stäng» on the read-only band (#1492) holds for one lapse in this browser: the moment it lapsed is
+// what is kept, so a later lapse asks again. Storage that cannot be read is a band that stands.
+const READ_ONLY_CLOSED = 'byd-read-only-closed'
+function readOnlyClosed(): string | null {
+  try {
+    return localStorage.getItem(READ_ONLY_CLOSED)
+  } catch {
+    return null
+  }
+}
+function closeReadOnly(at: string): void {
+  try {
+    localStorage.setItem(READ_ONLY_CLOSED, at)
+  } catch {
+    // The band closes for this visit all the same.
+  }
 }

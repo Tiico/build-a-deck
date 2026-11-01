@@ -8,7 +8,7 @@ import { sharedPage, type LinkPicture } from './share.js'
 import { WebSocketServer, type WebSocket } from 'ws'
 import { z } from 'zod'
 import { ASSET_MAX_BYTES, assetFormatsNamed, assetKindDeclared, ClientMessage, PHYSICAL_VERBS, codeOfAddress, REDACTED, SEATINGS, TABLE_PROTOCOL, hostKeyOfProtocols, offersTableProtocol, sniffAsset, tokenOfProtocols, type Applied, type Seating, type ServerMessage } from '@byd/protocol'
-import { CARD_STANDARD_63x88, validateSetup, type DeckFacts, type SetupDef, type TypeRegistry } from '@byd/engine'
+import { validateSetup, type DeckFacts, type SetupDef, type TypeRegistry } from '@byd/engine'
 import { renderRules, Template, validateCard, type Motif } from '@byd/template'
 import { A5, bookletOf } from './booklet.js'
 import { contentHash, contentTypeOf, type ObjectStore, type RenderKind, type RenderRequest, type RenderStore } from '@byd/render/queue'
@@ -19,6 +19,7 @@ import { playable, setupFromProject } from './setup.js'
 import { changeOf, diffProjects, type DocDiff, type VersionChange } from './diff.js'
 import { ProjectHost, type EditorMessage, type Saved } from './project-actor.js'
 import { checkedName, type EditIntent } from './edits.js'
+import { decksOf, rowRef } from './decks.js'
 import { arrangementOf, fanFaces, namesOfProject, peekFace, type CardFace } from './names.js'
 import { boxIssues, coverOf, showsCover } from './box.js'
 import { SurveyAsk, SurveyBody, sameSender, type SurveyAnswer, type SurveyStanding, type SurveyStore } from './surveys.js'
@@ -48,7 +49,7 @@ import { AI_CAPS, ASK_MAX_BYTES, AiFlight, AskBody, answerQuestion, type AiCaps 
 import { PasskeyChallenges, login as passkeyLogin, loginOptions, register, registrationOptions, siteOf, viewOf, type Answer, type Ceremonies } from './passkeys.js'
 import { REFERRER_POLICY, UPLOAD_POLICY, pageNonce, pagePolicy, scriptHashesOf, socketOrigin } from './csp.js'
 import { DEFAULT_PLANS, QuotaReached, YOU, growth, limitOf, tableWindowFrom, type Bearer, type Limit, type Measure, type Plans, type QuotaMet, type TableCeilings } from './quotas.js'
-import { lapseAccount, planOf, readOnlyOf, usageOf, type AccountPlanStore } from './account-plans.js'
+import { lapseAccount, planOf, readOnlyOf, readOnlyWhyOf, usageOf, type AccountPlanStore } from './account-plans.js'
 import { ReadOnlyGame, gameWritten, type ReadOnlyCheck } from './read-only.js'
 import { INTERVALS, cancelForErasure, customerOfEvent, priceFault, priceFor, signatureHolds, syncCustomer, type PaymentsConfig, type StripeApi } from './payments.js'
 import { liveOfCustomer, setCancellation, subscriptionView } from './subscription.js'
@@ -238,6 +239,9 @@ const DeckBody = z.object({
   template: Template,
   rows: z.record(z.string(), z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()]))),
   icons: z.record(z.string(), z.string()),
+  // The other templates a game's rows are drawn with (#1483, #1484): its markers' and its other decks'.
+  templates: z.record(z.string(), Template).optional(),
+  drawnWith: z.record(z.string(), z.string()).optional(),
 })
 
 // Buying admission (DRIFT §9): a name, and a seat to sit at or none to watch.
@@ -534,7 +538,8 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
       const body = CreateSession.parse(JSON.parse(await readBody(req)))
       validateSetup(body.setup, opts.registry)
       const id = body.id ?? randomUUID()
-      const deck: Deck | undefined = body.deck
+      const { templates, drawnWith, ...plain } = body.deck ?? {}
+      const deck: Deck | undefined = body.deck && { ...(plain as Omit<Deck, 'templates' | 'drawnWith'>), ...(templates ? { templates } : {}), ...(drawnWith ? { drawnWith } : {}) }
       const room = admission(opts)
       // Held to the ceilings of the account that knocks, which bears the table.
       if (!(await openTable(opts, res, { id, version: body.version, setup: body.setup, ...(deck ? { deck } : {}), ...(bearer ? { accountId: bearer.id } : {}), ...room.record }, async () => YOU))) return
@@ -1563,7 +1568,15 @@ async function deckOf(opts: ServerOptions, rec: ProjectRecord): Promise<Deck> {
   const { rows, motifs } = await resolveAssets(rec.rows, opts.assets, rec.pictures ?? {})
   // The template's own pictures too (#320), keyed beside the rows' under the URL each now carries.
   const own = await resolveTemplate(rec.template, opts.assets, rec.pictures ?? {})
-  const doc = deckFromProject({ ...rec, rows, template: own.template, icons: await resolveIcons(rec.icons, opts.assets) })
+  // Every other deck's rows (#1484), as the document's own: a tile's picture is a card's.
+  const decks: NonNullable<ProjectRecord['decks']> = []
+  let dealt: Record<string, Motif> = {}
+  for (const deck of rec.decks ?? []) {
+    const resolved = await resolveAssets(deck.rows, opts.assets, rec.pictures ?? {})
+    decks.push({ ...deck, rows: resolved.rows })
+    dealt = { ...dealt, ...resolved.motifs }
+  }
+  const doc = deckFromProject({ ...rec, rows, template: own.template, icons: await resolveIcons(rec.icons, opts.assets), ...(rec.decks ? { decks } : {}) })
   // And each board's (#1479), as the template's: a board is drawn with the same tools as a card.
   const boards: Record<string, Template> = {}
   let boardMotifs: Record<string, Motif> = {}
@@ -1580,7 +1593,7 @@ async function deckOf(opts: ServerOptions, rec: ProjectRecord): Promise<Deck> {
     templates[name] = resolved.template
     drawn = { ...drawn, ...resolved.motifs }
   }
-  return { ...doc, ...(doc.boards ? { boards } : {}), ...(doc.templates ? { templates } : {}), motifs: { ...motifs, ...own.motifs, ...boardMotifs, ...drawn }, fonts: await resolveFonts(rec.fonts ?? {}, opts.assets) }
+  return { ...doc, ...(doc.boards ? { boards } : {}), ...(doc.templates ? { templates } : {}), motifs: { ...motifs, ...dealt, ...own.motifs, ...boardMotifs, ...drawn }, fonts: await resolveFonts(rec.fonts ?? {}, opts.assets) }
 }
 
 // The link's still of a game as it stands (#1417, L91), by the revision it was made of: a room's page
@@ -1673,14 +1686,18 @@ async function flaggedDecksOf(opts: ServerOptions, id: string, session: SessionR
 // be printed, and every face of the box the designer has drawn (#1459), at the box type's own print,
 // since no partner prints the box yet (F1). A remark on the box names its face as the canvas does,
 // `box.<face>`, and no card (`Finding`). An error on either stops an order.
+//
+// Every deck is checked (#1484), each row against its own deck's template and type, with that type's
+// smallest type and safe margin, and named by the name it goes by at the table (`rowRef`).
 function checkedCards(rec: ProjectRecord, opts: Pick<ServerOptions, 'registry' | 'printProviders'>, provider?: PrintProvider): Finding[] {
-  const ref = { id: CARD_STANDARD_63x88.id, version: CARD_STANDARD_63x88.version }
-  const type = opts.registry.get(ref)
-  const bleedMm = widestBleedMm(provider ? [provider] : (opts.printProviders ?? []), ref) ?? type.print.bleedMm
   const out: Finding[] = []
-  for (const row of rec.rows) {
-    for (const [face, template] of Object.entries(rec.template.faces)) {
-      for (const issue of validateCard({ type, face: template, row: row.fields, bleedMm, ...(rec.fonts ? { fonts: rec.fonts } : {}) })) out.push({ ...issue, cardRef: row.id, face })
+  for (const deck of decksOf(rec)) {
+    const type = opts.registry.get(deck.type)
+    const bleedMm = widestBleedMm(provider ? [provider] : (opts.printProviders ?? []), deck.type) ?? type.print.bleedMm
+    for (const row of deck.rows) {
+      for (const [face, template] of Object.entries(deck.template.faces)) {
+        for (const issue of validateCard({ type, face: template, row: row.fields, bleedMm, ...(rec.fonts ? { fonts: rec.fonts } : {}) })) out.push({ ...issue, cardRef: rowRef(deck.id, row.id), face })
+      }
     }
   }
   for (const { face, ...issue } of boxIssues(rec)) out.push({ ...issue, face: `box.${face}` })
@@ -2330,6 +2347,25 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
   }
   // The history (B4): every save is a version, none of them is ever rewritten. It is presented
   // as versions with a date and, for the ones that meant something, a name — never as commits.
+  // Whether a game is read-only now (#1492, G5, L2), asked by the editor as it opens a game and again
+  // when an edit of its is refused for it. The owner hears why, with the free tier's ceiling it lies
+  // over; anyone else with a part in the game hears whose it is, by the owner's name, and never her
+  // tier nor her ceilings (A2, #1198). Null when the game works as usual.
+  const readOnly = /^\/projects\/([^/]+)\/read-only$/.exec(url.pathname)
+  if (readOnly && req.method === 'GET') {
+    const gate = await owned(decodeURIComponent(readOnly[1] ?? ''))
+    if (!('rec' in gate)) {
+      json(res, gate.status, { error: gate.error })
+      return true
+    }
+    const owner = gate.rec.owner
+    const accountPlans = opts.accountPlans
+    const why = owner === undefined || !opts.auth || !accountPlans ? undefined : (await readOnlyWhyOf({ projects, accountPlans, live: (game) => editors(opts, projects).live(game) }, plans, owner)).get(gate.rec.id)
+    if (!why || owner === undefined) json(res, 200, { readOnly: null })
+    else if (account?.id === owner) json(res, 200, { readOnly: { bearer: 'you', why, limit: limitOf(plans, plans.default, why) } })
+    else json(res, 200, { readOnly: await ownerBearer(opts, owner) })
+    return true
+  }
   const versions = /^\/projects\/([^/]+)\/versions$/.exec(url.pathname)
   if (versions && req.method === 'GET') {
     const gate = await owned(decodeURIComponent(versions[1] ?? ''))

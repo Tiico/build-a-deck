@@ -284,9 +284,13 @@ async function changedAt(projects: ProjectStore, id: string): Promise<string> {
 // afresh every time, so a game deleted or a lapse lifted is felt at once. A game of somebody else's
 // is held to its owner's: what a co-editor meets is the owner's read-only mode (D3).
 export async function readOnlyOf(stores: Pick<UsageStores, 'projects' | 'accountPlans' | 'live'>, plans: Plans, owner: string): Promise<Set<string>> {
+  return new Set((await readOnlyWhyOf(stores, plans, owner)).keys())
+}
+// The same, with why each one is (#1511): the ceiling it lies over, in the order locked at the lapse.
+export async function readOnlyWhyOf(stores: Pick<UsageStores, 'projects' | 'accountPlans' | 'live'>, plans: Plans, owner: string): Promise<Map<string, ReadOnlyWhy>> {
   const own = await stores.accountPlans?.planOf(owner)
-  if (own?.lapsed === undefined) return new Set()
-  return new Set((await overFree(stores, plans, owner, own.order)).keys())
+  if (own?.lapsed === undefined) return new Map()
+  return overFree(stores, plans, owner, own.order)
 }
 const listed = (over: Map<string, ReadOnlyWhy>): HeldGame[] => [...over].map(([id, why]) => ({ id, why })).sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
 // The owner's games that lie over the default tier's ceilings, and why, whether or not its own tier

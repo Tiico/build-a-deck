@@ -214,6 +214,11 @@ input.byd-code-field { font: 700 22px/1 ui-monospace, Menlo, monospace; letter-s
 .byd-home-chip { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }
 .byd-home-live { background: #1b2a22; color: #d8ffe8; }
 .byd-home-chip[data-new-flags] { background: #2e2717; color: #f2c46d; }
+/* A game in read-only mode (#1492, variant A): the mark in the reading band's amber (#489), and the
+   ceiling it lies over beside it, in place of when it was last played. */
+.byd-home-read-only { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-top: 4px; min-width: 0; font-size: 13px; color: #e0cfa3; line-height: 1.45; }
+.byd-home-chip[data-read-only] { background: #2a2418; color: #ffd98a; border: 1px solid #4a4230; }
+.byd-home-chip[data-read-only] > .byd-glyph { width: 14px; height: 14px; }
 /* The hero (#1204, beslut B): the game last saved, its fan, and its two things to do. */
 .byd-home-hero > .byd-home-game { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 32px; padding: 28px; border-radius: 22px; background: radial-gradient(90% 120% at 0% 100%, #1d2a24, var(--byd-account-card-bg) 60%); }
 .byd-home-hero .byd-home-open { display: block; padding: 0; }
@@ -398,6 +403,11 @@ input.byd-code-field { font: 700 22px/1 ui-monospace, Menlo, monospace; letter-s
 .byd-passkey-failed { color: #ffb4c4; }
 .byd-passkey-offer-answers { display: flex; flex-wrap: wrap; gap: 8px; }
 .byd-passkey-offer-answers > button { min-height: 44px; padding: 0 16px; border-radius: 12px; font: inherit; font-weight: 700; cursor: pointer; }
+/* The read-only band (#1492, variant A): the band's shape in the reading band's amber (#489), so the
+   mode reads the same on Mina spel as in the editor; the way back on a quieter line under it. */
+.byd-read-only-offer { align-items: start; background: #2a2418; border: 1px solid #4a4230; color: #ffe4b0; --byd-secondary-line: #8a7a52; --byd-secondary-ink: #ffe4b0; }
+.byd-read-only-offer > .byd-glyph { color: #ffd98a; }
+.byd-read-only-offer small { display: block; margin-top: 4px; color: #e0cfa3; font-size: 13px; }
 /* The name's band (#1254) asks in the band itself: the field stands before its two answers, on the
    band's green, in the band's own line colour. */
 .byd-name-offer .byd-passkey-offer-answers { margin: 0; }

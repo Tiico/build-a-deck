@@ -39,13 +39,14 @@ import { useProjectClient, type ProjectTiming } from './useProjectClient.js'
 import { Arriving } from './AssetImage.js'
 import { WithheldPictures, drawnEmpty, type Withheld } from './withheld.js'
 import type { ProjectDoc } from '@byd/server'
+import { copiesOf } from '@byd/server/doc'
 import { useTableClient } from '../table/useTableClient.js'
 import { seatColor } from '../table/seatColor.js'
 import { roomAddress } from '../table/roomAddress.js'
 import type { Snapshot } from '@byd/protocol'
 import { TableEnded, type ProjectClient, type SaveFailure } from './ProjectClient.js'
 import { RENDER_STALLED_AFTER_MS, stillRendering, useStalled, type Textures } from '../table/textures.js'
-import { loginUrl, myAccount, removeProject } from '../account/api.js'
+import { loginUrl, myAccount, removeProject, type GameReadOnly } from '../account/api.js'
 import { HereFaces } from './HereDoor.js'
 import { StatusNotice } from '../status/StatusNotice.js'
 import { useSay } from '../status/StatusLive.js'
@@ -507,6 +508,14 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
     return () => clearTimeout(timer)
   }, [readingSaid])
   const sayReading = (text: string) => setReadingSaid(text)
+  // An edit refused here because the game is read-only (#1492) is answered in the reading band, as a
+  // shortcut with nothing to do is (#489): each refusal said once.
+  const refusedHere = client?.readOnlyRefused ?? 0
+  const heardRefused = useRef(0)
+  useEffect(() => {
+    if (refusedHere > heardRefused.current) setReadingSaid(t('editor.readOnly.refused'))
+    heardRefused.current = refusedHere
+  }, [refusedHere, t])
   if (!projectId) return <StatusNotice notice={unlinked('editor', t)} surface="page" links={links} />
   if (fault === 'unauthorized') {
     // Not logged in (G1): to the login card and back here after.
@@ -1273,13 +1282,23 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
           a band that says, once and in the same place on every tab, that this is read-only and
           why — and the one sentence a shortcut that has nothing to do is answered with. The tab
           panels point to it, so a keyboard entering one hears the reason too (L12). */}
-      {!client.mayEdit && (
-        <div className="byd-editor-readonly" id="byd-editor-reading" role="note" aria-label={t('editor.reading')} data-role-note>
+      {(!client.mayEdit || client.readOnly) && (
+        <div className="byd-editor-readonly" id="byd-editor-reading" role="note" aria-label={t('editor.reading')} {...(client.mayEdit ? { 'data-read-only': '' } : { 'data-role-note': '' })}>
           <BookGlyph />
-          <div>
-            <b>{t('editor.reading')}</b> — {t(client.role === 'tester' ? 'editor.role.tester' : 'editor.role.viewer')}
-            <small>{t('editor.reading.ask')}</small>
-          </div>
+          {/* The role's reading (#489) comes first: a viewer of a lapsed owner's game reads as a viewer.
+              Otherwise the game's own read-only mode (#1492, variant A), said to the owner with the
+              free tier's ceiling and to anyone else by the owner's name, never her tier. */}
+          {!client.mayEdit || !client.readOnly ? (
+            <div>
+              <b>{t('editor.reading')}</b> — {t(client.role === 'tester' ? 'editor.role.tester' : 'editor.role.viewer')}
+              <small>{t('editor.reading.ask')}</small>
+            </div>
+          ) : (
+            <div>
+              <b>{t('editor.reading')}</b> — {readOnlyLine(client.readOnly, client.doc, t)}
+              <small>{t(client.readOnly.bearer === 'you' ? 'editor.readOnly.you.ask' : 'editor.readOnly.owner.ask', ownerWords(client.readOnly, t))}</small>
+            </div>
+          )}
           <span className="byd-editor-reading-said" role="status">
             {readingSaid ?? ''}
           </span>
@@ -1328,7 +1347,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         {(stages ?? modes).map(([key]) => (
           // One panel per tab, so every tab's `aria-controls` names a panel that exists; only the
           // open one carries content, so switching mode still mounts a single canvas.
-          <div key={key} id={panelId(key)} role="tabpanel" aria-labelledby={tabId(key)} {...(!client.mayEdit ? { 'aria-describedby': 'byd-editor-reading' } : {})} tabIndex={0} hidden={(stages ? here : mode) !== key}>
+          <div key={key} id={panelId(key)} role="tabpanel" aria-labelledby={tabId(key)} {...(!client.mayEdit || client.readOnly ? { 'aria-describedby': 'byd-editor-reading' } : {})} tabIndex={0} hidden={(stages ? here : mode) !== key}>
             {(stages ? here === key : mode === key) && panel[modeOf(key as Stage)]()}
           </div>
         ))}
@@ -1630,3 +1649,14 @@ function useLineState(down: boolean): { since: string | null; resumed: boolean }
   }, [resumed])
   return { since: stamp.current, resumed }
 }
+
+// The read-only mode's sentence in the reading band (#1492): to the owner, the ceiling the game lies
+// over, with what the game uses of it counted from the document; to anyone else, whose game it is.
+function readOnlyLine(held: GameReadOnly, doc: ProjectDoc, t: T): string {
+  const game = doc.name
+  if (held.bearer === 'owner') return t('editor.readOnly.owner', { game, ...ownerWords(held, t) })
+  const used = held.why === 'cardCopiesPerProject' ? doc.rows.reduce((n, row) => n + copiesOf(row.fields), 0) : doc.rows.length
+  return t(`editor.readOnly.you.${held.why}`, { game, used, limit: held.limit ?? 0 })
+}
+const ownerWords = (held: GameReadOnly, t: T): { owner: string; Owner: string } =>
+  held.bearer === 'owner' && held.ownerName ? { owner: held.ownerName, Owner: held.ownerName } : { owner: t('quota.owner'), Owner: t('quota.owner.start') }

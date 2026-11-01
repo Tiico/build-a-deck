@@ -644,7 +644,9 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
 
   // What moved since the version being compared with (B4), and the cards that are no longer
   // there — shown after the deck, since they have no place in it any more.
-  const diff = compareWith ? diffProjects(compareWith.doc, doc) : null
+  // The table is the document's own deck (#1484): a row of another deck that moved is not one of its.
+  const whole = compareWith ? diffProjects(compareWith.doc, doc) : null
+  const diff = whole && { ...whole, rows: whole.rows.filter((r) => r.deck === undefined) }
   const changeOf = (cardRef: string) => diff?.rows.find((r) => r.cardRef === cardRef)
   const goneRows: ProjectRow[] = compareWith && diff ? compareWith.doc.rows.filter((r) => diff.rows.some((c) => c.kind === 'removed' && c.cardRef === r.id)) : []
   const wasCell = (cardRef: string, field: string) => compareWith?.doc.rows.find((r) => r.id === cardRef)?.fields[field]
