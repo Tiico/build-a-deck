@@ -3,7 +3,7 @@ import { liftDoc, stamp, type Ceilings, type ProjectDoc, type ProjectStore } fro
 import type { Role } from './roles.js'
 import { cardGrowth, type CardMeasure } from './quota-cards.js'
 import { QuotaReached, type Bearer, type Limit, type QuotaMet } from './quotas.js'
-import { ReadOnlyGame, type ReadOnlyCheck } from './read-only.js'
+import { ReadOnlyGame, onlyShrinks, type ReadOnlyCheck } from './read-only.js'
 
 // One actor owns one project (D3). A project is structurally the same as a table — shared state
 // several people change at once, which belongs in the history — so it gets the table's shape: a
@@ -166,14 +166,15 @@ export class ProjectActor {
   // What an edit comes to, decided against what stands and held to the ceilings, before anything
   // is committed: the entry the log would gain, and the document it makes.
   private async decide(asked: EditIntent, by?: string, from?: string): Promise<{ entry: AppliedEdit; next: ProjectDoc }> {
-    // A read-only game changes not at all (#1491), an edit that only shrinks it included.
-    if (await this.held()) throw new ReadOnlyGame()
     // Decided first, so what is committed is the answer and not the question (#894).
     const intent = decideEdit(this.current, asked)
     // What may be made now is asked here as well as by the verb (#694); the log's replay asks
     // only the verb, so a stricter rule about new names never makes an old log read differently.
     checkNewName(this.current, intent)
     const next = applyEdit(this.current, intent)
+    // A read-only game (#1491) may only be made smaller: rows and pictures taken away, copies
+    // lowered (beställarens beslut 2026-11-01, #1511). Anything else is refused before the log.
+    if ((await this.held()) && !onlyShrinks(this.current, next)) throw new ReadOnlyGame()
     // The owner's ceiling on the game's cards (#1195), asked of the edit as a whole — a compound
     // edit, an import of rows, a document restored — before anything is committed, so an edit that
     // would cross it is in no log and on no screen. Only growth is asked: shrinking always goes.
@@ -207,8 +208,10 @@ export class ProjectActor {
   // `by` is the account the version is saved by (#1225).
   private async makeVersion(from?: string, storage?: OwnerCeilings, edit?: { entry: AppliedEdit; next: ProjectDoc }, by?: string): Promise<Saved> {
     let result: Awaited<ReturnType<ProjectStore['replace']>>
-    // A read-only game gains no version (#1491).
-    if (!edit && (await this.held())) return { ok: false as const, reason: 'read-only' }
+    // A read-only game gains no version (#1491) but one of itself made smaller (#1511): what stands
+    // may differ from the saved version by nothing but what `onlyShrinks` lets through.
+    // A save with nothing made smaller has nothing to keep, and is refused as before.
+    if (!edit && (await this.held()) && (stamp(this.saved) === stamp(this.current) || !onlyShrinks(this.saved, this.current))) return { ok: false as const, reason: 'read-only' }
     try {
       const ceilings = storage ? await storage() : undefined
       result = edit
@@ -242,9 +245,16 @@ export class ProjectActor {
   async put(expectedRev: number, doc: ProjectDoc, by?: string, storage?: OwnerCeilings): Promise<Saved> {
     return this.serial(async () => {
       if (expectedRev !== this.rev) return { ok: false as const, reason: 'conflict' }
-      if (await this.held()) return { ok: false as const, reason: 'read-only' }
       if (stamp(doc) === stamp(this.current)) return this.makeVersion(undefined, storage, undefined, by)
-      return this.makeVersion(undefined, storage, await this.decide({ v: 'restore', doc }, by), by)
+      // A read-only game takes a document that only makes it smaller (#1511), decided as an edit is.
+      let decided: { entry: AppliedEdit; next: ProjectDoc }
+      try {
+        decided = await this.decide({ v: 'restore', doc }, by)
+      } catch (e) {
+        if (e instanceof ReadOnlyGame) return { ok: false as const, reason: 'read-only' }
+        throw e
+      }
+      return this.makeVersion(undefined, storage, decided, by)
     })
   }
 
