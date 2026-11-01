@@ -5050,6 +5050,15 @@ Leken som bordet får bär markörens mall under det namnet (`templates` och `dr
 En sida utan mall ritas tom, eftersom en bricka har båda sidorna. Markörens namn är dess titel där dess framsida syns, och dold på samma villkor som ett korts (B6).
 Editorns ändring är `setMarkers`, hela listan med sidorna i en redigering som `setPieces`, och därmed ett steg tillbaka (B4). Raden i ＋-menyn och sidornas verktyg är #1487, filtens ritning #1485 och trycket #1488; tills trycket finns står brickor utanför tryckexporten och partnerns manifest (`printedYet`), där en partner som bara trycker kort annars vägrade hela ordern.
 
+**Spelet bär mer än en lek** (#1484, beställarens beslut 8 i #1470): sjuttiotvå landskapsbrickor ur en egen mall och en egen tabell, bredvid kortens.
+Dokumentets egen lek är den det alltid haft (`template`, `rows`, `columns`, standardkortet, i `setup.deckZone`), och varje annan lek står i `decks` med ett namn i dokumentet (`id`), vad den heter, sin typ (ett kort eller en bricka, B3), sin mall, sina rader, sin kolumnordning och högen den börjar i (`zone`).
+Ett dokument skrivet före lekarna är alltså precis det dokument det var: det läses tillbaka orört och lägger samma bord, och inget skrivs om (B4). `decksOf` läser alla lekar på samma sätt, den egna med `id` null.
+Vid bordet går en rad i en annan lek under lekens namn före sitt id (`landskap:skog`, `rowRef`), så två lekar kan ha var sin rad «1» utan att dela yta, titel eller textur; dokumentet vägrar en rad i den egna leken som skulle gå under samma namn.
+`setupFromProject` lägger varje lek i sin hög som sin typ, och en zons fråga (K21) gäller den lek den är ställd mot (`fillDeck`, den egna när den inte säger något). Radernas kolumner frågas vid bordet som kortens (B5).
+Bordets `Deck` bär varje leks mall i `templates` och `drawnWith`, som markörernas, och radens titel och tryckta text är dold information på kortets villkor (B6, #412), bevisat på råa frames (`wire.test.ts`).
+Versionernas diff (B4) säger vilken lek en ändrad rad hör till (`deck` på raden; Tabell visar den egna lekens), exporten och importen (G5) bär hela dokumentet och därmed alla lekar, Fysisk kontroll (E5) läser varje lek med dess typs minsta textstorlek och skyddsmarginal, och taken på kort per spel (#1195) räknar rader och exemplar i varje lek.
+Editorns ändring är `setDecks`, hela listan i en redigering och ett steg tillbaka; flikarna per lek i Kortvägg, Mall och Tabell (#1474, variant A) och finare redigeringar per rad är #1487.
+
 Brickor i setupen, en egen lek och tabell per brickform, bordet, telefonen och trycket byggs i #1484–#1488.
 
 ## L. Editorn (grillad 2026-09-06)

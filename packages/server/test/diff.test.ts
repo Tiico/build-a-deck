@@ -142,3 +142,30 @@ describe('what one save changed, small enough for a whole history to travel (B4,
     expect(change(base(), renamed)).toMatchObject({ renamed: 'Skogens andar', reordered: true })
   })
 })
+
+// Ett spel med fler lekar (#1484): diffen säger vilken lek en ändrad rad hör till, så att historiken
+// kan visa en ändrad bricka som en bricka och inte som ett kort med samma id.
+describe('the diff of a game with more than one deck (#1484)', () => {
+  const tiles = (rows: ProjectDoc['rows'], front = 'Skog'): ProjectDoc => ({
+    ...base(),
+    decks: [{ id: 'landskap', name: 'Landskap', type: { id: 'tile.hex.52', version: 1 }, template: { faces: { ...template.faces, front: { base: [{ kind: 'text', id: 't', x: 0, y: 0, w: 40, h: 8, bind: { literal: front }, font: { family: 'sans-serif', sizePt: 9 }, color: '#111' }], variants: {} } } }, rows, zone: 'draw' }],
+  })
+
+  it('says which deck a changed, added or removed row belongs to', () => {
+    const before = tiles([{ id: 'dragon', fields: { title: 'Drakskog' } }, { id: 'sjo', fields: { title: 'Sjö' } }])
+    const after = { ...tiles([{ id: 'dragon', fields: { title: 'Drakmyr' } }, { id: 'fjall', fields: { title: 'Fjäll' } }]), rows: [base().rows[0]!, { id: 'knight', fields: { title: 'Riddaren', cost: 3, antal: 1 } }] }
+    expect(diffProjects(before, after).rows).toEqual([
+      { kind: 'changed', cardRef: 'knight', fields: [{ field: 'title', from: 'Riddare', to: 'Riddaren' }] },
+      { kind: 'changed', deck: 'landskap', cardRef: 'dragon', fields: [{ field: 'title', from: 'Drakskog', to: 'Drakmyr' }] },
+      { kind: 'removed', deck: 'landskap', cardRef: 'sjo' },
+      { kind: 'added', deck: 'landskap', cardRef: 'fjall' },
+    ])
+    expect(changeOf(2, diffProjects(before, after))).toMatchObject({ added: 1, removed: 1, changed: 2 })
+  })
+
+  it('names a deck whose template moved as a template that moved, and a deck added as its rows', () => {
+    const one = tiles([{ id: 'skog', fields: { title: 'Skog' } }])
+    expect(diffProjects(one, tiles([{ id: 'skog', fields: { title: 'Skog' } }], 'Granskog'))).toMatchObject({ rows: [], template: true })
+    expect(diffProjects(base(), one)).toMatchObject({ rows: [{ kind: 'added', deck: 'landskap', cardRef: 'skog' }], template: true })
+  })
+})

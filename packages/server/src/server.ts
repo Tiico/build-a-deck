@@ -8,7 +8,7 @@ import { sharedPage, type LinkPicture } from './share.js'
 import { WebSocketServer, type WebSocket } from 'ws'
 import { z } from 'zod'
 import { ASSET_MAX_BYTES, assetFormatsNamed, assetKindDeclared, ClientMessage, PHYSICAL_VERBS, codeOfAddress, REDACTED, SEATINGS, TABLE_PROTOCOL, hostKeyOfProtocols, offersTableProtocol, sniffAsset, tokenOfProtocols, type Applied, type Seating, type ServerMessage } from '@byd/protocol'
-import { CARD_STANDARD_63x88, validateSetup, type DeckFacts, type SetupDef, type TypeRegistry } from '@byd/engine'
+import { validateSetup, type DeckFacts, type SetupDef, type TypeRegistry } from '@byd/engine'
 import { renderRules, Template, validateCard, type Motif } from '@byd/template'
 import { A5, bookletOf } from './booklet.js'
 import { contentHash, contentTypeOf, type ObjectStore, type RenderKind, type RenderRequest, type RenderStore } from '@byd/render/queue'
@@ -19,6 +19,7 @@ import { playable, setupFromProject } from './setup.js'
 import { changeOf, diffProjects, type DocDiff, type VersionChange } from './diff.js'
 import { ProjectHost, type EditorMessage, type Saved } from './project-actor.js'
 import { checkedName, type EditIntent } from './edits.js'
+import { decksOf, rowRef } from './decks.js'
 import { arrangementOf, fanFaces, namesOfProject, peekFace, type CardFace } from './names.js'
 import { boxIssues, coverOf, showsCover } from './box.js'
 import { SurveyAsk, SurveyBody, sameSender, type SurveyAnswer, type SurveyStanding, type SurveyStore } from './surveys.js'
@@ -232,6 +233,9 @@ const DeckBody = z.object({
   template: Template,
   rows: z.record(z.string(), z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()]))),
   icons: z.record(z.string(), z.string()),
+  // The other templates a game's rows are drawn with (#1483, #1484): its markers' and its other decks'.
+  templates: z.record(z.string(), Template).optional(),
+  drawnWith: z.record(z.string(), z.string()).optional(),
 })
 
 // Buying admission (DRIFT §9): a name, and a seat to sit at or none to watch.
@@ -523,7 +527,8 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
       const body = CreateSession.parse(JSON.parse(await readBody(req)))
       validateSetup(body.setup, opts.registry)
       const id = body.id ?? randomUUID()
-      const deck: Deck | undefined = body.deck
+      const { templates, drawnWith, ...plain } = body.deck ?? {}
+      const deck: Deck | undefined = body.deck && { ...(plain as Omit<Deck, 'templates' | 'drawnWith'>), ...(templates ? { templates } : {}), ...(drawnWith ? { drawnWith } : {}) }
       const room = admission(opts)
       // Held to the ceilings of the account that knocks, which bears the table.
       if (!(await openTable(opts, res, { id, version: body.version, setup: body.setup, ...(deck ? { deck } : {}), ...(bearer ? { accountId: bearer.id } : {}), ...room.record }, async () => YOU))) return
@@ -1419,7 +1424,15 @@ async function deckOf(opts: ServerOptions, rec: ProjectRecord): Promise<Deck> {
   const { rows, motifs } = await resolveAssets(rec.rows, opts.assets, rec.pictures ?? {})
   // The template's own pictures too (#320), keyed beside the rows' under the URL each now carries.
   const own = await resolveTemplate(rec.template, opts.assets, rec.pictures ?? {})
-  const doc = deckFromProject({ ...rec, rows, template: own.template, icons: await resolveIcons(rec.icons, opts.assets) })
+  // Every other deck's rows (#1484), as the document's own: a tile's picture is a card's.
+  const decks: NonNullable<ProjectRecord['decks']> = []
+  let dealt: Record<string, Motif> = {}
+  for (const deck of rec.decks ?? []) {
+    const resolved = await resolveAssets(deck.rows, opts.assets, rec.pictures ?? {})
+    decks.push({ ...deck, rows: resolved.rows })
+    dealt = { ...dealt, ...resolved.motifs }
+  }
+  const doc = deckFromProject({ ...rec, rows, template: own.template, icons: await resolveIcons(rec.icons, opts.assets), ...(rec.decks ? { decks } : {}) })
   // And every other template the deck draws with, a marker's sides (#1483), as the template's own.
   const templates: Record<string, Template> = {}
   let drawn: Record<string, Motif> = {}
@@ -1428,7 +1441,7 @@ async function deckOf(opts: ServerOptions, rec: ProjectRecord): Promise<Deck> {
     templates[name] = resolved.template
     drawn = { ...drawn, ...resolved.motifs }
   }
-  return { ...doc, ...(doc.templates ? { templates } : {}), motifs: { ...motifs, ...own.motifs, ...drawn }, fonts: await resolveFonts(rec.fonts ?? {}, opts.assets) }
+  return { ...doc, ...(doc.templates ? { templates } : {}), motifs: { ...motifs, ...dealt, ...own.motifs, ...drawn }, fonts: await resolveFonts(rec.fonts ?? {}, opts.assets) }
 }
 
 // The link's still of a game as it stands (#1417, L91), by the revision it was made of: a room's page
@@ -1521,14 +1534,18 @@ async function flaggedDecksOf(opts: ServerOptions, id: string, session: SessionR
 // be printed, and every face of the box the designer has drawn (#1459), at the box type's own print,
 // since no partner prints the box yet (F1). A remark on the box names its face as the canvas does,
 // `box.<face>`, and no card (`Finding`). An error on either stops an order.
+//
+// Every deck is checked (#1484), each row against its own deck's template and type, with that type's
+// smallest type and safe margin, and named by the name it goes by at the table (`rowRef`).
 function checkedCards(rec: ProjectRecord, opts: Pick<ServerOptions, 'registry' | 'printProviders'>, provider?: PrintProvider): Finding[] {
-  const ref = { id: CARD_STANDARD_63x88.id, version: CARD_STANDARD_63x88.version }
-  const type = opts.registry.get(ref)
-  const bleedMm = widestBleedMm(provider ? [provider] : (opts.printProviders ?? []), ref) ?? type.print.bleedMm
   const out: Finding[] = []
-  for (const row of rec.rows) {
-    for (const [face, template] of Object.entries(rec.template.faces)) {
-      for (const issue of validateCard({ type, face: template, row: row.fields, bleedMm, ...(rec.fonts ? { fonts: rec.fonts } : {}) })) out.push({ ...issue, cardRef: row.id, face })
+  for (const deck of decksOf(rec)) {
+    const type = opts.registry.get(deck.type)
+    const bleedMm = widestBleedMm(provider ? [provider] : (opts.printProviders ?? []), deck.type) ?? type.print.bleedMm
+    for (const row of deck.rows) {
+      for (const [face, template] of Object.entries(deck.template.faces)) {
+        for (const issue of validateCard({ type, face: template, row: row.fields, bleedMm, ...(rec.fonts ? { fonts: rec.fonts } : {}) })) out.push({ ...issue, cardRef: rowRef(deck.id, row.id), face })
+      }
     }
   }
   for (const { face, ...issue } of boxIssues(rec)) out.push({ ...issue, face: `box.${face}` })

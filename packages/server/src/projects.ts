@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { BoxFace, TILES } from '@byd/engine'
+import { BoxFace, CARD_STANDARD_63x88, TILES } from '@byd/engine'
 import { CardQuery, FaceId, Picture, TypeRef, ZoneAction, ZoneBeside } from '@byd/protocol'
 import { FaceTemplate, RuleDoc, Template, liftTemplate, type Row } from '@byd/template'
 import type { Deck } from './faces.js'
@@ -11,6 +11,7 @@ import type { AssetStore } from './assets.js'
 import { assetHashesOf } from './asset-refs.js'
 import { liftBoxGrounds } from './box.js'
 import { markerRef } from './material.js'
+import { deckTemplateName, rowRef } from './decks.js'
 
 // A project is what the editor edits: the template, the rows keyed by cardRef, the icon set and
 // the table setup without its components — those come from the rows and their `antal` (L4).
@@ -33,6 +34,9 @@ const ZoneDef = z.object({
   // Which cards start here, as a question about the deck's own columns. A zone without one takes
   // no cards, and what no zone asks for lies in the deck's pile as it always has.
   fill: CardQuery.optional(),
+  // Which deck that question is asked of (#1484, K21): another deck's id, and absent the document's
+  // own, as every question written before there was more than one deck was.
+  fillDeck: z.string().min(1).optional(),
   // What a player may ask this zone for when they click it (K14). The tool ships none and knows
   // none; the recipe suggests one — a shuffle on the draw pile (#453) — the way it suggests the
   // pile itself, and the designer takes it away like anything else it laid.
@@ -204,6 +208,28 @@ export const ProjectBox = z.object({
 })
 export type ProjectBox = z.infer<typeof ProjectBox>
 
+// Another deck of the game (#1484, beställarens beslut 8 i #1470): seventy-two landscape tiles drawn
+// from a template and a table of their own, beside the cards. As the document's own deck it has a
+// template, rows and a column order, and besides those the type its rows are made as, a card or a tile
+// (B3), what the designer calls it, and the pile its rows start in when no zone asks for them. `id` is
+// the deck's name in the document, and goes before each row's id at the table (`rowRef`), so it has
+// no colon, and it is never «marker», which the markers go by.
+const deckType = (t: TypeRef) => [CARD_STANDARD_63x88, ...TILES].find((d) => d.id === t.id && d.version === t.version)
+export const ProjectDeck = z.object({
+  id: z
+    .string()
+    .regex(/^[\p{L}\p{N}_-]{1,64}$/u)
+    .refine((id) => id !== 'marker', { message: 'the markers go by «marker»' }),
+  name: z.string().min(1).max(40),
+  type: TypeRef.refine((t) => deckType(t) !== undefined, { message: 'a deck is made of cards or of tiles' }),
+  template: Template,
+  rows: z.array(ProjectRow),
+  columns: z.array(z.string()).optional(),
+  zone: z.string().min(1),
+})
+export type ProjectDeck = z.infer<typeof ProjectDeck>
+export const ProjectDecks = z.array(ProjectDeck).refine((decks) => new Set(decks.map((d) => d.id)).size === decks.length, { message: 'every deck has a name of its own' })
+
 export const ProjectDoc = z.object({
   name: z.string().min(1),
   template: Template,
@@ -257,7 +283,16 @@ export const ProjectDoc = z.object({
   theme: ProjectTheme.optional(),
   box: ProjectBox.optional(),
   setup: ProjectSetup,
+  // The game's other decks (#1484), beside the one above. Absent is a game of one deck, which is every
+  // game written before there was a second.
+  decks: ProjectDecks.optional(),
 })
+  // At the table every row goes by one name (`rowRef`), so a row of the document's own deck may not go
+  // by the name a row of another deck goes by.
+  .refine((doc) => {
+    const own = new Set(doc.rows.map((r) => r.id))
+    return (doc.decks ?? []).every((d) => d.rows.every((r) => !own.has(rowRef(d.id, r.id))))
+  }, { message: 'a card goes by the name of a row of another deck' })
 export type ProjectDoc = z.infer<typeof ProjectDoc>
 // `owner` is the account that made it (G1); a project from before accounts has none and stays open.
 export type ProjectRecord = ProjectDoc & { id: string; rev: number; owner?: string }
@@ -772,6 +807,7 @@ export function stamp(value: unknown): string {
 export function deckFromProject(doc: ProjectDoc): Deck {
   const rows: Record<string, Row> = {}
   for (const { id, fields } of doc.rows) rows[id] = fields
+  for (const deck of doc.decks ?? []) for (const { id, fields } of deck.rows) rows[rowRef(deck.id, id)] = fields
   for (const m of doc.setup.markers ?? []) rows[markerRef(m.id)] = { title: m.name }
   return {
     template: doc.template,
@@ -779,20 +815,27 @@ export function deckFromProject(doc: ProjectDoc): Deck {
     icons: doc.icons,
     ...(doc.palette ? { palette: doc.palette } : {}),
     ...(doc.fonts ? { fonts: doc.fonts } : {}),
-    ...markersOf(doc),
+    ...templatesOf(doc),
   }
 }
 
-// The markers' sides (#1483), each marker a row of its own under the name it goes by at the table
+// The templates other than the deck's own: every other deck's (#1484), and the markers' sides (#1483),
+// each marker a row of its own under the name it goes by at the table
 // (`markerRef`), drawn with a template of its own: the sides the document draws, and a side it does
 // not draw left blank, since a tile has both. The row says only what the marker is called, which is
 // its title wherever its face may be seen.
 const BLANK_SIDE: FaceTemplate = { base: [], variants: {} }
-function markersOf(doc: ProjectDoc): Pick<Deck, 'templates' | 'drawnWith'> & { rows?: Record<string, Row> } {
+function templatesOf(doc: ProjectDoc): Pick<Deck, 'templates' | 'drawnWith'> {
   const markers = doc.setup.markers ?? []
-  if (markers.length === 0) return {}
+  const decks = doc.decks ?? []
+  if (markers.length === 0 && decks.length === 0) return {}
   const templates: Record<string, Template> = {}
   const drawnWith: Record<string, string> = {}
+  // Every other deck's rows (#1484) are drawn with that deck's template.
+  for (const deck of decks) {
+    templates[deckTemplateName(deck.id)] = deck.template
+    for (const row of deck.rows) drawnWith[rowRef(deck.id, row.id)] = deckTemplateName(deck.id)
+  }
   for (const m of markers) {
     const ref = markerRef(m.id)
     const sides = TILES.find((t) => t.id === m.type.id && t.version === m.type.version)?.faces ?? []

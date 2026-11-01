@@ -2,6 +2,7 @@
 // types only from the project document, and no imports that reach the database or the network.
 import type { ProjectDoc, ProjectRow } from './projects.js'
 import { columnsOf } from './edits.js'
+import { decksOf, type GameDeck } from './decks.js'
 
 // What changed between two versions of a project (B4). The history is presented as changes in
 // the card table, which is where a designer already lives: cards added, removed and changed,
@@ -10,10 +11,12 @@ import { columnsOf } from './edits.js'
 // a machine, and the canvas shows the change better than a list can.
 import type { Cell } from './projects.js'
 export type FieldChange = { field: string; from: Cell | null; to: Cell | null }
+// `deck` is the deck the row belongs to when it is another deck than the document's own (#1484): the
+// same id may be a card in one deck and a tile in another, and a change says which it was.
 export type RowChange =
-  | { kind: 'added'; cardRef: string }
-  | { kind: 'removed'; cardRef: string }
-  | { kind: 'changed'; cardRef: string; fields: FieldChange[] }
+  | { kind: 'added'; cardRef: string; deck?: string }
+  | { kind: 'removed'; cardRef: string; deck?: string }
+  | { kind: 'changed'; cardRef: string; fields: FieldChange[]; deck?: string }
 export type DocDiff = {
   rows: RowChange[]
   // The order of the rows is the order of the deck until the first shuffle, so it is a change
@@ -50,37 +53,70 @@ export type DocDiff = {
 //
 // So: the catch-all in the history is not dead code, and it stops being reachable the day one of
 // the four is compared here. Widening this means deciding what the history should say about it.
+//
+// A game of more than one deck (#1484) is read deck by deck, the document's own first and then the
+// others in their order: a row is compared with the row of the same id in the same deck, and a deck
+// that is new or gone is all its rows added or removed. A template, a column order or a row order
+// that moved in any deck is the part that moved.
 export function diffProjects(before: ProjectDoc, after: ProjectDoc): DocDiff {
-  const olds = new Map(before.rows.map((r) => [r.id, r.fields]))
-  const news = new Map(after.rows.map((r) => [r.id, r.fields]))
+  const olds = decksOf(before)
+  const news = decksOf(after)
+  const ids = [...new Set([...olds, ...news].map((d) => d.id))]
   const rows: RowChange[] = []
-  for (const row of before.rows) {
-    const now = news.get(row.id)
-    if (!now) {
-      rows.push({ kind: 'removed', cardRef: row.id })
-      continue
-    }
-    const fields = fieldChanges(row.fields, now)
-    if (fields.length > 0) rows.push({ kind: 'changed', cardRef: row.id, fields })
-  }
-  for (const row of after.rows) if (!olds.has(row.id)) rows.push({ kind: 'added', cardRef: row.id })
-
-  const kept = before.rows.filter((r) => news.has(r.id)).map((r) => r.id)
-  const keptNow = after.rows.filter((r) => olds.has(r.id)).map((r) => r.id)
-  const diff: DocDiff = {
-    rows: rows.sort(byPosition(before, after)),
-    reordered: kept.join(' ') !== keptNow.join(' '),
+  let reordered = false
+  let columns = false
+  let template = false
+  for (const id of ids) {
+    const was = olds.find((d) => d.id === id)
+    const now = news.find((d) => d.id === id)
+    const changes = rowChanges(was?.rows ?? [], now?.rows ?? [], id)
+    rows.push(...changes.rows)
+    reordered ||= changes.reordered
     // Compared as the table reads them and not as the key is written: `columnsOf` is what lays
     // the stored order over the derivation, so an order written down that says exactly what the
     // derivation already said is not a change anybody made.
-    columns: columnsOf(before).join(' ') !== columnsOf(after).join(' '),
-    template: !same(before.template, after.template),
+    if (was && now) columns ||= columnsOf(asDoc(before, was)).join(' ') !== columnsOf(asDoc(after, now)).join(' ')
+    template ||= !same(was?.template ?? null, now?.template ?? null)
+  }
+  const diff: DocDiff = {
+    rows,
+    reordered,
+    columns,
+    template,
     setup: !same(before.setup, after.setup),
     icons: !same(before.icons, after.icons) || !same(before.credits ?? {}, after.credits ?? {}),
     rules: !same(before.rules ?? null, after.rules ?? null),
   }
   if (before.name !== after.name) diff.name = { from: before.name, to: after.name }
   return diff
+}
+
+// The rows of one deck, changed, removed and added, in the order the table shows them: the older
+// deck first, then what is new.
+function rowChanges(before: ProjectRow[], after: ProjectRow[], deck: string | null): { rows: RowChange[]; reordered: boolean } {
+  const of = deck === null ? {} : { deck }
+  const olds = new Map(before.map((r) => [r.id, r.fields]))
+  const news = new Map(after.map((r) => [r.id, r.fields]))
+  const rows: RowChange[] = []
+  for (const row of before) {
+    const now = news.get(row.id)
+    if (!now) {
+      rows.push({ kind: 'removed', ...of, cardRef: row.id })
+      continue
+    }
+    const fields = fieldChanges(row.fields, now)
+    if (fields.length > 0) rows.push({ kind: 'changed', ...of, cardRef: row.id, fields })
+  }
+  for (const row of after) if (!olds.has(row.id)) rows.push({ kind: 'added', ...of, cardRef: row.id })
+  const kept = before.filter((r) => news.has(r.id)).map((r) => r.id)
+  const keptNow = after.filter((r) => olds.has(r.id)).map((r) => r.id)
+  return { rows: rows.sort(byPosition(before, after)), reordered: kept.join(' ') !== keptNow.join(' ') }
+}
+
+// A deck read as the document `columnsOf` reads: its template, its rows and its column order.
+function asDoc(doc: ProjectDoc, deck: GameDeck): ProjectDoc {
+  const { columns: _columns, ...rest } = doc
+  return { ...rest, template: deck.template, rows: deck.rows, ...(deck.columns ? { columns: deck.columns } : {}) }
 }
 
 // Every field either side knows about, in the order the newer card lists them; a field that was
@@ -97,11 +133,11 @@ function fieldChanges(before: ProjectRow['fields'], after: ProjectRow['fields'])
 }
 
 // Changes read in the order the table shows them: the older deck first, then what is new.
-function byPosition(before: ProjectDoc, after: ProjectDoc): (a: RowChange, b: RowChange) => number {
+function byPosition(before: ProjectRow[], after: ProjectRow[]): (a: RowChange, b: RowChange) => number {
   const place = (change: RowChange): number => {
-    const old = before.rows.findIndex((r) => r.id === change.cardRef)
+    const old = before.findIndex((r) => r.id === change.cardRef)
     if (old >= 0) return old
-    return before.rows.length + after.rows.findIndex((r) => r.id === change.cardRef)
+    return before.length + after.findIndex((r) => r.id === change.cardRef)
   }
   return (a, b) => place(a) - place(b)
 }
