@@ -269,6 +269,10 @@ create table if not exists account_plans (
 -- tier, and what of its games lies over that tier's ceilings is read-only. The row keeps its tier,
 -- so lifting the lapse gives it back; giving the account a tier again sets it back to null.
 alter table account_plans add column if not exists lapsed_at timestamptz;
+-- The order the account's games are taken in while it is lapsed (#1518), locked at the lapse: a JSON
+-- array of game ids, those that fit the free tier then first. Null while the tier holds, and set back
+-- to null with `lapsed_at`.
+alter table account_plans add column if not exists lapsed_order jsonb;
 
 -- Which Stripe customer is which account (#1493, DRIFT §12): made once, when the account first asks
 -- for a checkout, so Stripe's webhooks can be read back to an account. No card and no address is
@@ -277,6 +281,15 @@ create table if not exists stripe_customers (
   account_id  bigint primary key references accounts(id) on delete cascade,
   customer_id text not null unique,
   created_at  timestamptz not null default now()
+);
+-- The Stripe customers whose subscriptions an erased account left to cancel (#1520, G6, DRIFT §12):
+-- queued before the account goes, so the erasure does not take the row with it, and deleted when
+-- Stripe has cancelled. Only Stripe's id for the customer, never the account or its address; the
+-- hourly sweep and `stripe sync` try again.
+create table if not exists stripe_cancellations (
+  customer_id text primary key,
+  queued_at   timestamptz not null default now(),
+  tries       integer not null default 0
 );
 
 -- What each game's versions name (#1197, #1192 question 4): one row per game and asset some version

@@ -17,7 +17,7 @@ const [verb, email, plan] = process.argv.slice(2)
 const url = process.env['DATABASE_URL']
 const verbs = ['set', 'clear', 'lapse', 'unlapse']
 if (!url || !email || !verbs.includes(verb ?? '') || (verb === 'set' && !plan)) {
-  console.error('usage: plan set <address> <tier> | plan clear <address> | plan lapse <address> | plan unlapse <address>   (DATABASE_URL, and BYD_PLANS for set)')
+  console.error('usage: plan set <address> <tier> | plan clear <address> | plan lapse <address> | plan unlapse <address>   (DATABASE_URL, and BYD_PLANS for set and lapse)')
   process.exit(2)
 }
 const store = PostgresLogStore.connect(url)
@@ -27,7 +27,7 @@ try {
     verb === 'set'
       ? await setPlanByAddress({ ...stores, plans: plansFromEnv(process.env) }, email, plan ?? '')
       : verb === 'lapse'
-        ? await lapsePlanByAddress(stores, email)
+        ? await lapsePlanByAddress({ ...stores, projects: store.projects(), plans: plansFromEnv(process.env) }, email)
         : verb === 'unlapse'
           ? await unlapsePlanByAddress(stores, email)
           : await clearPlanByAddress(stores, email)

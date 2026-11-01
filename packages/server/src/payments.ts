@@ -95,13 +95,13 @@ export function signatureHolds(body: string, header: string | undefined, secret:
   })
 }
 
-// A subscription as the box reads it: Stripe's status and the price ids it bills.
-export type Subscription = { status: string; prices: string[] }
+// A subscription as the box reads it: its id, Stripe's status and the price ids it bills.
+export type Subscription = { id: string; status: string; prices: string[] }
 // The statuses in which the period is paid for: active, in a trial, or past due while Stripe still
 // retries the payment. Cancelled, unpaid, never paid and expired are not.
 const LIVE = new Set(['active', 'trialing', 'past_due'])
 // The tier a customer's subscriptions give: that of a live one at a price the box knows, or none.
-export function planOfSubscriptions(config: PaymentsConfig, subs: readonly Subscription[]): string | null {
+export function planOfSubscriptions(config: PaymentsConfig, subs: readonly Pick<Subscription, 'status' | 'prices'>[]): string | null {
   for (const sub of subs) {
     if (!LIVE.has(sub.status)) continue
     for (const price of sub.prices) {
@@ -113,13 +113,14 @@ export function planOfSubscriptions(config: PaymentsConfig, subs: readonly Subsc
 }
 
 // What the box asks of Stripe, and nothing else: a customer for an account, a Checkout page for a
-// price, and a customer's subscriptions as they stand. The suite answers it with a fake; the box
+// price, a customer's subscriptions as they stand, and a subscription cancelled at once (#1520). The suite answers it with a fake; the box
 // with `stripeApi`, Stripe's REST API over fetch.
 export type StripeApi = {
   createCustomer(input: { account: string; email: string }): Promise<string>
   createCheckout(input: { customer: string; account: string; price: string; successUrl: string; cancelUrl: string }): Promise<string>
   subscriptionsOf(customer: string): Promise<Subscription[]>
   priceOf(id: string): Promise<StripePrice>
+  cancelNow(subscription: string): Promise<void>
 }
 // A price as Stripe holds it (#1521): its currency, its interval, and whether VAT is inside it
 // (`inclusive`), added on top (`exclusive`) or not said (`unspecified`).
@@ -130,7 +131,7 @@ export const STRIPE_API = 'https://api.stripe.com'
 // unless a test points it elsewhere. A request Stripe answers with an error throws, with Stripe's
 // message and never the key.
 export function stripeApi(secretKey: string, base = STRIPE_API, fetcher: typeof fetch = fetch): StripeApi {
-  const call = async (method: 'GET' | 'POST', path: string, params: Record<string, string>): Promise<Record<string, unknown>> => {
+  const call = async (method: 'GET' | 'POST' | 'DELETE', path: string, params: Record<string, string>): Promise<Record<string, unknown>> => {
     const query = new URLSearchParams(params).toString()
     const res = await fetcher(`${base}${path}${method === 'GET' && query ? `?${query}` : ''}`, {
       method,
@@ -170,8 +171,11 @@ export function stripeApi(secretKey: string, base = STRIPE_API, fetcher: typeof 
     },
     async subscriptionsOf(customer) {
       const body = await call('GET', '/v1/subscriptions', { customer, status: 'all', limit: '100' })
-      const data = (body['data'] ?? []) as { status?: unknown; items?: { data?: { price?: { id?: unknown } }[] } }[]
-      return data.map((s) => ({ status: String(s.status), prices: (s.items?.data ?? []).map((i) => String(i.price?.id ?? '')) }))
+      const data = (body['data'] ?? []) as { id?: unknown; status?: unknown; items?: { data?: { price?: { id?: unknown } }[] } }[]
+      return data.map((s) => ({ id: String(s.id), status: String(s.status), prices: (s.items?.data ?? []).map((i) => String(i.price?.id ?? '')) }))
+    },
+    async cancelNow(subscription) {
+      await call('DELETE', `/v1/subscriptions/${encodeURIComponent(subscription)}`, {})
     },
   }
 }
@@ -179,7 +183,7 @@ export function stripeApi(secretKey: string, base = STRIPE_API, fetcher: typeof 
 // The operator's way round a webhook that never came (RUNBOOK): the account by its address, read
 // from Stripe and written exactly as a webhook would. An account that never went to the checkout
 // has no customer, and nothing is asked.
-export async function syncByAddress(stores: { auth: { accountByEmail(email: string): Promise<{ id: string } | null> }; accountPlans: AccountPlanStore; stripe: StripeApi; config: PaymentsConfig }, email: string): Promise<{ ok: true; outcome: Synced } | { ok: false; why: string }> {
+export async function syncByAddress(stores: { auth: { accountByEmail(email: string): Promise<{ id: string } | null> }; accountPlans: AccountPlanStore; stripe: StripeApi; config: PaymentsConfig; lapse?: Lapse }, email: string): Promise<{ ok: true; outcome: Synced } | { ok: false; why: string }> {
   const account = await stores.auth.accountByEmail(email.trim().toLowerCase())
   if (!account) return { ok: false, why: 'no such account' }
   const customer = await stores.accountPlans.customerOf(account.id)
@@ -205,8 +209,12 @@ export function customerOfEvent(event: unknown): string | null {
 // and ends a lapse; none, on an account whose tier Stripe gave, lapses it (G5, L2, #1491). Nothing is
 // written when nothing changes. A tier the operator set (`source: 'operator'`) is never written
 // over: the operator's word stands until she clears it, and the next event then holds (DRIFT §12).
+//
+// `lapse` is how the account is lapsed: `lapseAccount`, which locks the order its games are taken
+// in (#1518), wherever the games are at hand; without it the row alone is marked.
 export type Synced = 'unknown-customer' | 'operator' | 'subscribed' | 'lapsed' | 'unchanged'
-export async function syncCustomer(stores: { accountPlans: AccountPlanStore; stripe: StripeApi; config: PaymentsConfig }, customer: string): Promise<Synced> {
+export type Lapse = (account: string) => Promise<boolean>
+export async function syncCustomer(stores: { accountPlans: AccountPlanStore; stripe: StripeApi; config: PaymentsConfig; lapse?: Lapse }, customer: string): Promise<Synced> {
   const account = await stores.accountPlans.accountOfCustomer(customer)
   if (!account) return 'unknown-customer'
   const tier = planOfSubscriptions(stores.config, await stores.stripe.subscriptionsOf(customer))
@@ -218,7 +226,7 @@ export async function syncCustomer(stores: { accountPlans: AccountPlanStore; str
     return 'subscribed'
   }
   if (!row || row.lapsed !== undefined) return 'unchanged'
-  await stores.accountPlans.lapse(account)
+  await (stores.lapse ?? ((a: string) => stores.accountPlans.lapse(a)))(account)
   return 'lapsed'
 }
 
@@ -232,4 +240,45 @@ export function priceFault(price: StripePrice, expected: PriceOf | undefined): s
   if (price.currency !== expected.currency) return `currency is ${price.currency}, not ${expected.currency}`
   if (price.interval !== expected.interval) return `interval is ${price.interval ?? 'none'}, not ${expected.interval}`
   return null
+}
+
+// What an account that deletes itself does at Stripe (#1520, G6): every subscription of its customer
+// that Stripe could still bill is cancelled at once, not at the period's end, before the account
+// goes. The customer is queued first, where the account's erasure does not reach (`stripe_
+// cancellations`), and leaves the queue when Stripe has said yes; a Stripe that does not answer
+// leaves it there for `retryCancellations`, and never stops the erasure. Without payments on the
+// box nothing can be asked, and the customer waits in the queue for them.
+export type Cancelled = 'no-customer' | 'cancelled' | 'queued'
+export async function cancelForErasure(stores: { accountPlans: AccountPlanStore; stripe: StripeApi | null }, account: string): Promise<Cancelled> {
+  const customer = await stores.accountPlans.customerOf(account)
+  if (!customer) return 'no-customer'
+  await stores.accountPlans.queueCancellation(customer)
+  return (await cancelQueued(stores, customer)) === 'cancelled' ? 'cancelled' : 'queued'
+}
+
+// The statuses Stripe can no longer bill from: cancelled, or never paid and expired.
+const ENDED = new Set(['canceled', 'incomplete_expired'])
+async function cancelQueued(stores: { accountPlans: AccountPlanStore; stripe: StripeApi | null }, customer: string): Promise<'cancelled' | 'failed'> {
+  if (!stores.stripe) return 'failed'
+  try {
+    for (const sub of await stores.stripe.subscriptionsOf(customer)) if (!ENDED.has(sub.status)) await stores.stripe.cancelNow(sub.id)
+  } catch (err) {
+    await stores.accountPlans.cancellationFailed(customer)
+    console.error(JSON.stringify({ msg: 'stripe', cancel: 'failed', error: err instanceof Error ? err.message : String(err) }))
+    return 'failed'
+  }
+  await stores.accountPlans.unqueueCancellation(customer)
+  return 'cancelled'
+}
+
+// The queue tried again (#1520): at start and every hour beside the other sweeps, and by the
+// operator with `stripe sync` and no address. Says each customer and what came of it, which is for
+// the operator's eyes only; the box's log says how many.
+export async function retryCancellations(stores: { accountPlans: AccountPlanStore; stripe: StripeApi | null }): Promise<{ customer: string; outcome: 'cancelled' | 'failed'; queued: string; tries: number }[]> {
+  const out: { customer: string; outcome: 'cancelled' | 'failed'; queued: string; tries: number }[] = []
+  for (const pending of await stores.accountPlans.pendingCancellations()) {
+    const outcome = await cancelQueued(stores, pending.customer)
+    out.push({ customer: pending.customer, outcome, queued: pending.queued, tries: pending.tries + 1 })
+  }
+  return out
 }

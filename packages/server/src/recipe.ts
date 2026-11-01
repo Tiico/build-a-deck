@@ -1,8 +1,8 @@
-import { CARD_STANDARD_63x88 } from '@byd/engine'
+import { BOARDS, CARD_STANDARD_63x88 } from '@byd/engine'
 import type { ProjectDoc } from './projects.js'
-import { CHIP_MM, DIE_MM, PIECE_MM } from './felt-sizes.js'
+import { CHIP_MM, DIE_MM, PIECE_MM, PIECE_PILE_MM } from './felt-sizes.js'
 
-export { CHIP_MM, DIE_MM, PIECE_MM }
+export { CHIP_MM, DIE_MM, PIECE_MM, PIECE_PILE_MM }
 
 // Imported by the editor as well as the server, so this module stays free of anything Node.
 // The setup as the editor holds it (B5, K2), and the recipe behind it.
@@ -122,7 +122,7 @@ export function openingSetup(recipe: Recipe, words: RecipeWords = SWEDISH_WORDS)
 }
 
 const seatsFor = (players: number): string[] => SEAT_IDS.slice(0, Math.max(1, Math.min(MAX_PLAYERS, Math.floor(players))))
-const handZone = (seat: string, i: number, count: number, deck: string, words: RecipeWords): Zone => ({ id: `hand:${seat}`, kind: 'hand', name: words.hand, visibility: 'owner', owner: seat, returnTo: deck, geometry: handGeometry(i, count) })
+const handZone = (seat: string, i: number, count: number, deck: string, words: RecipeWords, room?: Room): Zone => ({ id: `hand:${seat}`, kind: 'hand', name: words.hand, visibility: 'owner', owner: seat, returnTo: deck, geometry: handGeometry(i, count, room) })
 
 // The two zones a seat can have besides its hand, and the one place that knows what they are: the
 // area in front of the player, which the whole table sees into, and the strip its counters lie on,
@@ -141,10 +141,10 @@ const handZone = (seat: string, i: number, count: number, deck: string, words: R
 // half, byte for byte the zone view it was before this decision.
 export type SeatRole = 'mine' | 'counters'
 export type Shortcut = { label: string; at: 'top' | 'bottom' }
-export function seatZone(role: SeatRole, seat: string, i: number, count: number, counters: number, name: string, shortcut?: Shortcut): Zone {
+export function seatZone(role: SeatRole, seat: string, i: number, count: number, counters: number, name: string, shortcut?: Shortcut, room?: Room): Zone {
   return role === 'mine'
-    ? { id: `mine:${seat}`, kind: 'area', name: forSeat(name, seat), visibility: 'all', owner: seat, geometry: inFront(i, count, counters), ...(shortcut ? { shortcut } : {}) }
-    : { id: `counters:${seat}`, kind: 'area', name: forSeat(name, seat), visibility: 'all', owner: seat, geometry: countersAt(i, count, counters) }
+    ? { id: `mine:${seat}`, kind: 'area', name: forSeat(name, seat), visibility: 'all', owner: seat, geometry: inFront(i, count, counters, room), ...(shortcut ? { shortcut } : {}) }
+    : { id: `counters:${seat}`, kind: 'area', name: forSeat(name, seat), visibility: 'all', owner: seat, geometry: countersAt(i, count, counters, room) }
 }
 
 // The same zone for every seat that has not got one — what the designer asked for when they gave
@@ -158,8 +158,8 @@ export function seatZones(setup: Setup, role: SeatRole, name: string, shortcut?:
 // Genvägens `at` är en högs fråga och bara en högs (L47): en yta lägger själv ut kortet den fått
 // utan punkt, och lägger det nyaste överst, så vad som än står här om ordningen gäller inte en
 // yta. Arket har aldrig visat talet för något annat än en hög heller — en yta säger «var du vill».
-const inFrontZone = (seat: string, i: number, count: number, counters: number, words: RecipeWords): Zone => seatZone('mine', seat, i, count, counters, words.mine, { label: words.mineShortcut, at: 'top' })
-const countersZone = (seat: string, i: number, count: number, counters: number, words: RecipeWords): Zone => seatZone('counters', seat, i, count, counters, words.counters)
+const inFrontZone = (seat: string, i: number, count: number, counters: number, words: RecipeWords, room?: Room): Zone => seatZone('mine', seat, i, count, counters, words.mine, { label: words.mineShortcut, at: 'top' }, room)
+const countersZone = (seat: string, i: number, count: number, counters: number, words: RecipeWords, room?: Room): Zone => seatZone('counters', seat, i, count, counters, words.counters, undefined, room)
 
 // The knob as it stands in a setup.
 export function recipeOf(setup: Setup): Recipe {
@@ -183,7 +183,13 @@ export function applyRecipe(setup: Setup, recipe: Recipe, words: RecipeWords = S
   // on a 1200 x 800 mm table, and what stands there is not a design anyone chose but two players'
   // hands on the same millimetres. A setup that fits its seats is never touched, so no table that
   // ever worked moves.
-  const felt = floorGeometry(seats.length)
+  //
+  // The boards count too (#1480, K18, variant A of #1473): a felt that cannot hold the main board in
+  // its middle with the seats around it, or the player boards where «Framför» lies, is laid out
+  // again as large as that needs, and no larger.
+  const asked = boardsAsked(setup)
+  const room = roomFor(seats.length, asked)
+  const felt = rect(-room.felt.w / 2, -room.felt.h / 2, room.felt.w, room.felt.h)
   const floorNow = setup.zones.find((z) => z.id === setup.floor)?.geometry
   const relayout = seats.length !== setup.seats.length || !floorNow || floorNow.w < felt.w || floorNow.h < felt.h
   // The same lift, one scale down: a seat whose counters zone is shorter than the chips in it need
@@ -193,7 +199,15 @@ export function applyRecipe(setup: Setup, recipe: Recipe, words: RecipeWords = S
   const alongRim = (g: Geometry): number => Math.max(g.w, g.h)
   const reshaped = counters > 0 && seats.some((seat, i) => {
     const now = setup.zones.find((z) => z.id === `counters:${seat}`)?.geometry
-    return !now || alongRim(now) < alongRim(countersAt(i, seats.length, counters))
+    return !now || alongRim(now) < alongRim(countersAt(i, seats.length, counters, room))
+  })
+  // A player board lies where «Framför» lies, and «Framför» is then the board's own footprint, so a
+  // card played in front of a seat lands on its board (#1480). An area of another shape is laid
+  // again; one that already is the board's is left where it is.
+  const boarded = asked.player !== null && seats.some((seat, i) => {
+    const now = setup.zones.find((z) => z.id === `mine:${seat}`)?.geometry
+    const want = inFront(i, seats.length, counters, room)
+    return now !== undefined && (now.w !== want.w || now.h !== want.h)
   })
   // What every seat that already sits at the table has, and a seat that arrives therefore gets.
   const shared = (prefix: string) => setup.seats.length > 0 && setup.seats.every((s) => setup.zones.some((z) => z.id === `${prefix}:${s}`))
@@ -205,19 +219,20 @@ export function applyRecipe(setup: Setup, recipe: Recipe, words: RecipeWords = S
     .filter((z) => z.owner === undefined || staying.has(z.owner))
     .map((z) => {
       if (z.id === setup.floor) return relayout ? { ...z, geometry: felt } : z
+      if (z.kind === 'pile') return beside(z, asked, relayout ? felt : (floorNow ?? felt))
       const i = z.owner === undefined ? -1 : seats.indexOf(z.owner)
       if (i < 0) return z
-      if (relayout && z.kind === 'hand') return { ...z, geometry: handGeometry(i, seats.length) }
-      if ((relayout || reshaped) && z.id === `mine:${z.owner}`) return { ...z, geometry: inFront(i, seats.length, counters) }
-      if ((relayout || reshaped) && z.id === `counters:${z.owner}`) return { ...z, geometry: countersAt(i, seats.length, counters) }
+      if (relayout && z.kind === 'hand') return { ...z, geometry: handGeometry(i, seats.length, room) }
+      if ((relayout || reshaped || boarded) && z.id === `mine:${z.owner}`) return { ...z, geometry: inFront(i, seats.length, counters, room) }
+      if ((relayout || reshaped) && z.id === `counters:${z.owner}`) return { ...z, geometry: countersAt(i, seats.length, counters, room) }
       return z
     })
   const there = new Set(kept.map((z) => z.id))
   const arriving: Zone[] = []
   seats.forEach((seat, i) => {
-    if (!there.has(`hand:${seat}`)) arriving.push(handZone(seat, i, seats.length, setup.deckZone, words))
-    if (wantsInFront && !there.has(`mine:${seat}`)) arriving.push(inFrontZone(seat, i, seats.length, counters, words))
-    if (wantsCounters && !there.has(`counters:${seat}`)) arriving.push(countersZone(seat, i, seats.length, counters, words))
+    if (!there.has(`hand:${seat}`)) arriving.push(handZone(seat, i, seats.length, setup.deckZone, words, room))
+    if (wantsInFront && !there.has(`mine:${seat}`)) arriving.push(inFrontZone(seat, i, seats.length, counters, words, room))
+    if (wantsCounters && !there.has(`counters:${seat}`)) arriving.push(countersZone(seat, i, seats.length, counters, words, room))
   })
   return { ...setup, seats, zones: [...kept, ...arriving], counters: recipe.counters }
 }
@@ -253,6 +268,75 @@ export const floorGeometry = (count: number): Geometry => {
   return rect(-w / 2, -h / 2, w, h)
 }
 
+// The boards on the felt (#1480, variant A of #1473, K18). The main board lies in the felt's middle
+// with the piles on either side of it, and a player board lies where «Framför» lay, inside the hand.
+// The felt grows only as much as that needs, in the prototype's measures: a seat is its hand (60),
+// the seat's gap (10) and «Framför» (100) deep, or with a player board the hand, the gap and the
+// board; the main board keeps 20 mm of air to the seats, and a pile beside it takes a card and 20 mm
+// of air on either side. A felt the seats alone already make larger is not touched (eight seats).
+export type BoardSize = { w: number; h: number }
+export type BoardsAsked = { main: (BoardSize & { at: { x: number; y: number } | null }) | null; player: BoardSize | null }
+// The room a seat's zones are laid in: the felt, and the player board «Framför» is shaped as.
+export type Room = { felt: { w: number; h: number }; player: BoardSize | null }
+const HAND_DEPTH = 60
+const IN_FRONT_DEPTH = 100
+const BOARD_AIR = 20
+const PILE_CARD = { w: CARD_STANDARD_63x88.physical.widthMm, h: CARD_STANDARD_63x88.physical.heightMm }
+const PILE_ROOM = PILE_CARD.w + 2 * BOARD_AIR
+
+const sizeOfBoard = (type: { id: string; version: number }): BoardSize | null => {
+  const def = BOARDS.find((b) => b.id === type.id && b.version === type.version)
+  return def ? { w: def.physical.widthMm, h: def.physical.heightMm } : null
+}
+// Which boards the setup lays that the felt must make room for: the main board, a board in the
+// floor, and the player board, a board laid in each seat's «Framför».
+export function boardsAsked(setup: Pick<Setup, 'boards' | 'floor'>): BoardsAsked {
+  const boards = setup.boards ?? []
+  const floor = boards.find((b) => b.zone === setup.floor)
+  const seat = boards.find((b) => b.role === 'mine')
+  const main = floor ? sizeOfBoard(floor.type) : null
+  return { main: main && floor ? { ...main, at: floor.at ?? null } : null, player: seat ? sizeOfBoard(seat.type) : null }
+}
+export function roomFor(count: number, asked: BoardsAsked): Room {
+  const base = feltFor(count)
+  if (!asked.main && !asked.player) return { felt: base, player: null }
+  const depth = HAND_DEPTH + SEAT_GAP + (asked.player?.h ?? IN_FRONT_DEPTH)
+  const side = seatsAt('E', count) + seatsAt('W', count) > 0 ? depth : 0
+  const board = asked.main ?? { w: 0, h: 0 }
+  const piles = asked.main ? 2 * PILE_ROOM : 0
+  return {
+    felt: { w: Math.max(base.w, board.w + piles + 2 * side + 2 * BOARD_AIR), h: Math.max(base.h, board.h + 2 * depth + 2 * BOARD_AIR) },
+    player: asked.player,
+  }
+}
+function playerBoardAt(i: number, count: number, felt: { w: number; h: number }, b: BoardSize): Geometry {
+  const along = alongEdge(i, count) - b.w / 2
+  const inset = HAND_DEPTH + SEAT_GAP
+  switch (edgeOf(i, count)) {
+    case 'N':
+      return rect(along, -felt.h / 2 + inset, b.w, b.h)
+    case 'E':
+      return rect(felt.w / 2 - inset - b.h, along, b.h, b.w)
+    case 'W':
+      return rect(-felt.w / 2 + inset, along, b.h, b.w)
+    default:
+      return rect(along, felt.h / 2 - inset - b.h, b.w, b.h)
+  }
+}
+// A pile the main board would lie on moves out beside it, on the side it already leaned to: the
+// opening's draw pile to the left and its discard pile to the right (#1480). A pile clear of the
+// board is the designer's and stays where it is. The board's middle is its point in the floor, or
+// the floor's middle, in the floor's millimetres; `to` is the floor as it will stand.
+function beside(z: Zone, asked: BoardsAsked, to: Geometry): Zone {
+  const b = asked.main
+  if (!b) return z
+  const centre = b.at ? { x: to.x + b.at.x, y: to.y + b.at.y } : { x: to.x + to.w / 2, y: to.y + to.h / 2 }
+  const under = Math.abs(z.geometry.x - centre.x) < b.w / 2 + PILE_CARD.w / 2 + BOARD_AIR && Math.abs(z.geometry.y - centre.y) < b.h / 2 + PILE_CARD.h / 2 + BOARD_AIR
+  if (!under) return z
+  const side = z.geometry.x < centre.x ? -1 : 1
+  return { ...z, geometry: { ...z.geometry, x: centre.x + side * (b.w / 2 + BOARD_AIR + PILE_CARD.w / 2) } }
+}
+
 // Where along its own edge a seat sits: alone it sits in the middle, as it always has, and a pair
 // straddles the middle a place setting apart.
 function alongEdge(i: number, count: number): number {
@@ -261,8 +345,8 @@ function alongEdge(i: number, count: number): number {
   return (before - (seatsAt(edge, count) - 1) / 2) * PLACE_SETTING
 }
 
-export function handGeometry(i: number, count: number): Geometry {
-  const { w, h } = feltFor(count)
+export function handGeometry(i: number, count: number, room?: Room): Geometry {
+  const { w, h } = room?.felt ?? feltFor(count)
   const [x, y] = [w / 2, h / 2]
   const along = alongEdge(i, count) - SEAT_ALONG / 2
   switch (edgeOf(i, count)) {
@@ -304,8 +388,11 @@ export const countersLength = (counters: number): number => COUNTER_PITCH_MM * c
 // the two together are the seat's 500 mm. What a second counter costs is paid here and nowhere
 // else: the counters zone grows along the rim and `Framför` gives up exactly as much, so no
 // millimetre outside the seat moves and K18's envelope is untouched (#89).
-export function inFront(i: number, count: number, counters: number): Geometry {
-  const hand = handGeometry(i, count)
+export function inFront(i: number, count: number, counters: number, room?: Room): Geometry {
+  // With a player board (#1480), «Framför» is the board's footprint: as long along the rim as the
+  // board is wide, as deep as it is tall, in the middle of the seat and the seat's gap inside its hand.
+  if (room?.player) return playerBoardAt(i, count, room.felt, room.player)
+  const hand = handGeometry(i, count, room)
   const long = SEAT_ALONG - SEAT_GAP - countersLength(counters)
   switch (edgeOf(i, count)) {
     case 'N':
@@ -318,8 +405,8 @@ export function inFront(i: number, count: number, counters: number): Geometry {
       return rect(hand.x, hand.y - 110, long, 100)
   }
 }
-export function countersAt(i: number, count: number, counters: number): Geometry {
-  const hand = handGeometry(i, count)
+export function countersAt(i: number, count: number, counters: number, room?: Room): Geometry {
+  const hand = handGeometry(i, count, room)
   const long = countersLength(counters)
   const from = SEAT_ALONG - long
   switch (edgeOf(i, count)) {
@@ -522,8 +609,10 @@ export function counterSpots(zone: Geometry, counters: number): { x: number; y: 
 // every zone standing in it — a pile with its card back and the band its name and table-mode
 // handle hang in (#881). A zone that holds this one, as the floor holds every zone, stands around
 // it and not in it. Only when no such stretch exists does the row lie across the middle anyway.
-export function diceSpots(zone: Geometry, dice: number, others: Zone[] = []): { x: number; y: number }[] {
-  const pitch = DIE_MM * 1.3
+// `size` is the room a slot is spaced for: a die's, unless the zone also holds the chip a pile of
+// wooden pieces is drawn as (#1475), which is wider.
+export function diceSpots(zone: Geometry, dice: number, others: Zone[] = [], size: number = DIE_MM): { x: number; y: number }[] {
+  const pitch = size * 1.3
   const perRow = Math.max(1, Math.min(dice, Math.floor(zone.w / pitch)))
   const rows = Math.ceil(dice / perRow)
   const want = { w: perRow * pitch, h: rows * pitch }
@@ -531,15 +620,15 @@ export function diceSpots(zone: Geometry, dice: number, others: Zone[] = []): { 
   const holds = (g: Geometry): boolean => g.x <= zone.x && g.y <= zone.y && g.x + g.w >= zone.x + zone.w && g.y + g.h >= zone.y + zone.h
   // A die keeps from its neighbours the gap two dice keep between them: half of it is the margin
   // the row already has inside its pitch, the other half is grown onto what it lies beside.
-  const gap = (pitch - DIE_MM) / 2
+  const gap = (pitch - size) / 2
   const grown = (g: Geometry): Geometry => rect(g.x - gap, g.y - gap, g.w + 2 * gap, g.h + 2 * gap)
   const taken = others.filter((z) => !holds(z.geometry)).map((z) => grown(roomOf(z, HANDLE_BELOW_MM)))
   const block = freeIn(zone, taken, want, middle) ?? middle
   return Array.from({ length: Math.max(0, dice) }, (_, i) => {
     const row = Math.floor(i / perRow)
     const inRow = Math.min(perRow, dice - row * perRow)
-    const x = block.x - zone.x + (want.w - inRow * pitch) / 2 + (i % perRow) * pitch + (pitch - DIE_MM) / 2
-    const y = block.y - zone.y + row * pitch + (pitch - DIE_MM) / 2
+    const x = block.x - zone.x + (want.w - inRow * pitch) / 2 + (i % perRow) * pitch + (pitch - size) / 2
+    const y = block.y - zone.y + row * pitch + (pitch - size) / 2
     return { x: Math.round(Math.max(0, Math.min(zone.w, x))), y: Math.round(Math.max(0, Math.min(zone.h, y))) }
   })
 }

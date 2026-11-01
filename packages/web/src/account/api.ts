@@ -348,11 +348,30 @@ export async function importGame(http: string, file: Blob): Promise<{ ok: true; 
 // What the account uses and what it holds (#1193, #1198): per measure the use and the ceiling, `null`
 // for none, and cards per game for every game it owns. Null when it cannot be read — accounts off,
 // or no answer — which every surface reads as «nothing to say».
-export type Usage = { measures: Record<string, { used: number; limit: number | null; projects?: { id: string; used: number }[] }> }
+//
+// `readOnly` is the account's games in read-only mode (#1491, #1511) with the free tier's ceiling each
+// lies over, and `lapsed` its own tier and when it lapsed; both absent from a server before them.
+export type ReadOnlyWhy = 'cardRowsPerProject' | 'cardCopiesPerProject' | 'projects' | 'storageBytes'
+export type Usage = {
+  measures: Record<string, { used: number; limit: number | null; projects?: { id: string; used: number }[] }>
+  readOnly?: { id: string; why: ReadOnlyWhy }[]
+  lapsed?: { plan: string; at: string }
+}
 export async function myUsage(http: string): Promise<Usage | null> {
   const res = await fetch(`${http}/me/usage`, withCredentials()).catch(() => null)
   if (!res?.ok) return null
   return (await res.json().catch(() => null)) as Usage | null
+}
+
+// Whether a game is read-only now (#1492): for its owner why, with the free tier's ceiling it lies
+// over; for anyone else with a part in it only whose it is, by the owner's name when she has given
+// one. Null when it works as usual, and when it cannot be asked, which is then nothing to say.
+export type GameReadOnly = { bearer: 'you'; why: ReadOnlyWhy; limit: number | null } | { bearer: 'owner'; ownerName?: string }
+export async function gameReadOnly(http: string, project: string): Promise<GameReadOnly | null> {
+  const res = await fetch(`${http}/projects/${encodeURIComponent(project)}/read-only`, withCredentials()).catch(() => null)
+  if (!res?.ok) return null
+  const body = (await res.json().catch(() => null)) as { readOnly?: GameReadOnly | null } | null
+  return body?.readOnly ?? null
 }
 
 // The account's own name (#1254), here and not in `session.ts`: that module travels with every

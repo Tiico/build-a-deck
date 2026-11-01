@@ -69,10 +69,17 @@ describe('the client for Stripe’s API', () => {
   it('reads every subscription of a customer, cancelled ones too, with the prices each bills', async () => {
     answers.set('GET /v1/subscriptions', { status: 200, body: { object: 'list', data: [{ id: 'sub_1', status: 'canceled', items: { data: [{ price: { id: 'price_m' } }] } }, { id: 'sub_2', status: 'active', items: { data: [{ price: { id: 'price_y' } }] } }] } })
     expect(await stripeApi('sk_test_k', base).subscriptionsOf('cus_123')).toEqual([
-      { status: 'canceled', prices: ['price_m'] },
-      { status: 'active', prices: ['price_y'] },
+      { id: 'sub_1', status: 'canceled', prices: ['price_m'] },
+      { id: 'sub_2', status: 'active', prices: ['price_y'] },
     ])
     expect(Object.fromEntries(seen.at(-1)!.query)).toEqual({ customer: 'cus_123', status: 'all', limit: '100' })
+  })
+
+  it('cancels a subscription at once, not at the period’s end (#1520)', async () => {
+    answers.set('DELETE /v1/subscriptions/sub_2', { status: 200, body: { id: 'sub_2', status: 'canceled' } })
+    await stripeApi('sk_test_k', base).cancelNow('sub_2')
+    expect(seen.at(-1)).toMatchObject({ method: 'DELETE', path: '/v1/subscriptions/sub_2', auth: 'Bearer sk_test_k' })
+    await expect(stripeApi('sk_test_k', base).cancelNow('sub_gone')).rejects.toThrow(/404/)
   })
 
   it('throws Stripe’s message when Stripe refuses, never the key', async () => {

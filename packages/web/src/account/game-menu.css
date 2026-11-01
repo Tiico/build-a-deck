@@ -5,3 +5,7 @@
 .byd-game-menu :is(button, a):hover { background: #262a35; }
 /* A running table is opened before a new one is started (#724): a rule between the two kinds. */
 .byd-game-menu a + button { margin-top: 4px; border-top: 1px solid #262a35; border-radius: 0 0 7px 7px; }
+/* A choice that writes, on a game in read-only mode (#1492): where it always stands, in the quiet
+   ink of a choice that does not go, with the reason under it in the band's amber. */
+.byd-game-menu .byd-game-menu-held { display: grid; align-content: center; gap: 2px; color: #a7b0c4; cursor: default; }
+.byd-game-menu .byd-game-menu-held small { color: #f0d48a; font-size: 12px; }

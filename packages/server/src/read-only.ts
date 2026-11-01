@@ -76,12 +76,22 @@ const within = (limit: Limit, used: number): boolean => limit === null || used <
 // a game over neither is past the number of games or would carry the fitting ones past the storage.
 export type ReadOnlyWhy = 'cardRowsPerProject' | 'cardCopiesPerProject' | 'projects' | 'storageBytes'
 
-export function readOnlyGames(ceilings: FitCeilings, games: readonly GameStanding[]): Set<string> {
-  return new Set(readOnlyReasons(ceilings, games).keys())
+// `order` is the order locked when the tier lapsed (#1518): when it is given the games are taken in
+// it, however they have changed since, and a game it does not name, made after the lapse, comes after
+// every one it does, the most recently changed first.
+export function readOnlyGames(ceilings: FitCeilings, games: readonly GameStanding[], order?: readonly string[]): Set<string> {
+  return new Set(readOnlyReasons(ceilings, games, order).keys())
 }
 
-export function readOnlyReasons(ceilings: FitCeilings, games: readonly GameStanding[]): Map<string, ReadOnlyWhy> {
-  const newestFirst = [...games].sort((a, b) => (a.changedAt === b.changedAt ? (a.id < b.id ? -1 : a.id > b.id ? 1 : 0) : a.changedAt < b.changedAt ? 1 : -1))
+// The games the most recently changed first, those changed at the same moment in id order.
+export function newestFirstOf(games: readonly GameStanding[]): GameStanding[] {
+  return [...games].sort((a, b) => (a.changedAt === b.changedAt ? (a.id < b.id ? -1 : a.id > b.id ? 1 : 0) : a.changedAt < b.changedAt ? 1 : -1))
+}
+
+export function readOnlyReasons(ceilings: FitCeilings, games: readonly GameStanding[], order?: readonly string[]): Map<string, ReadOnlyWhy> {
+  const rank = new Map((order ?? []).map((id, i) => [id, i]))
+  const at = (g: GameStanding): number => rank.get(g.id) ?? rank.size
+  const newestFirst = newestFirstOf(games).sort((a, b) => at(a) - at(b))
   const over = new Map<string, ReadOnlyWhy>()
   const named = new Map<string, number>()
   let fitting = 0

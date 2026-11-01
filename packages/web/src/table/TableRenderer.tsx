@@ -1,5 +1,5 @@
 import { createPortal } from 'react-dom'
-import { Suspense, forwardRef, lazy, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, type KeyboardEvent as RKeyboardEvent, type MouseEvent as RMouseEvent, type ReactNode, type PointerEvent as RPointerEvent, type WheelEvent as RWheelEvent, type CSSProperties } from 'react'
+import { Suspense, forwardRef, lazy, useEffect, useMemo, useImperativeHandle, useLayoutEffect, useRef, useState, type KeyboardEvent as RKeyboardEvent, type MouseEvent as RMouseEvent, type ReactNode, type PointerEvent as RPointerEvent, type WheelEvent as RWheelEvent, type CSSProperties } from 'react'
 import { BackTexture, Texture } from './Texture.js'
 import type { Intent, Presence, Snapshot, VisibleComponentState, ZoneAction, ZoneView } from '@byd/protocol'
 import type { Peer, Pulse, Recent } from './presence.js'
@@ -11,9 +11,12 @@ import { CAMERA_MIN_MM, CAMERA_STEP, activeBounds, cameraOf, centre, fitFloor, f
 import { recallCamera, rememberCamera, type CameraMemory } from './cameraMemory.js'
 import { flatToTable, tiltedToTable, unrotate, type Point, type Rotation } from './geometry.js'
 import { CARD_MM, DIE_MM, TOKEN_MM, absoluteOf, besidePile, dropIntents, handBound, nobodysHand, type Drag, type DragTarget } from './drop.js'
-import { dieFaces, dieKind, isCounter, isDie, standIn } from '../components.js'
+import { boardMm, dieFaces, dieKind, isBoard, isCounter, isDie, materialBox, pieceKind, standIn, withoutBoards } from '../components.js'
+import { piecePiles } from './pieces.js'
+import { PieceChip, PieceFigure } from './Piece.js'
+import { PIECE_PILE_MM } from '@byd/server/felt-sizes'
 import { DieFace, type Roll } from './Die.js'
-import { cardWord, counterActs, drawOne, feltShortcuts, flipUnder, labelOf, modifierHeld, ownerOf, thingsOn, type Act } from './keyboard.js'
+import { pieceActs, cardWord, counterActs, drawOne, feltShortcuts, flipUnder, labelOf, modifierHeld, ownerOf, thingsOn, type Act } from './keyboard.js'
 import { ShortcutHelp } from './ShortcutHelp.js'
 import { CounterEntry } from './CounterEntry.js'
 import { useSay } from '../status/StatusLive.js'
@@ -336,8 +339,12 @@ type Settled = { ids: string[]; origin: Drag['origin']; pile: { id: string; x: n
 // chip — whose verbs are a counter's own and not a card's (C4, #67).
 type Ring = { target: DragTarget; x: number; y: number }
 
-export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(function TableRenderer({ view, mode, scale: fixedScale, rotate = 0, faces, onAct, peers = [], pulses = [], recent = [], shuffles = [], said = [], rolls = [], onPresence, camera, remember, onInspect, onPick, onShow, watch = false, size: fixedSize, glideMs = GLIDE_MS, margin = 0, overlay, back, seatNames = false, me = null, foldHand = null, keyboard, aimed = null, lens = false, forTheRoom = false, lit, cornerIn, startWait = null, startTile = true, more, onFit }, ref) {
+export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(function TableRenderer({ view: whole, mode, scale: fixedScale, rotate = 0, faces, onAct, peers = [], pulses = [], recent = [], shuffles = [], said = [], rolls = [], onPresence, camera, remember, onInspect, onPick, onShow, watch = false, size: fixedSize, glideMs = GLIDE_MS, margin = 0, overlay, back, seatNames = false, me = null, foldHand = null, keyboard, aimed = null, lens = false, forTheRoom = false, lit, cornerIn, startWait = null, startTile = true, more, onFit }, ref) {
   const t = useT()
+  // The boards lie under everything (#1480) and are nothing else on the table: not a card to count,
+  // lay beside, name or pick up. The felt draws them first, and reads the rest of the table without them.
+  const boards = whole.components.filter(isBoard)
+  const view = useMemo(() => withoutBoards(whole), [whole])
   const floor = view.zones.find((z) => z.id === view.floor)
   if (!floor) throw new Error(`floor ${view.floor} is not among the zones`)
   const frame = useRef<HTMLDivElement | null>(null)
@@ -814,7 +821,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
     if (!map) return
     toTable.current = map
     const at = map(e.clientX, e.clientY)
-    const ids = target.kind === 'card' || target.kind === 'counter' || target.kind === 'die' ? [target.id] : target.kind === 'counterPile' ? target.ids : []
+    const ids = target.kind === 'card' || target.kind === 'counter' || target.kind === 'die' || target.kind === 'piece' ? [target.id] : target.kind === 'counterPile' ? target.ids : []
     const origin: Drag['origin'] = {}
     for (const id of ids) {
       const c = byId.get(id)
@@ -1409,6 +1416,23 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   const ringPile = ringOn?.kind === 'counterPile' ? ringOn.ids.flatMap((id) => view.components.find((c) => c.id === id) ?? []) : undefined
 
   const areas = view.zones.filter((z) => z.kind === 'area' && z.id !== floor.id)
+  // Where the boards lie on the felt, turned as they lie, so a zone drawn on one is chalk on a
+  // picture and not an outline on felt (#1480, #1473).
+  const boardBoxes = boards.flatMap((c) => {
+    const mm = boardMm(c)
+    if (!mm) return []
+    const a = absoluteOf(whole, c)
+    const turned = Math.abs(c.rot % 180) === 90
+    const [w, h] = turned ? [mm.h, mm.w] : [mm.w, mm.h]
+    return [{ x: a.x + mm.w / 2 - w / 2, y: a.y + mm.h / 2 - h / 2, w, h }]
+  })
+  // 'whole' for a zone that is a board's own footprint, as a seat's «Framför» with its player board
+  // is: the board is the zone then, and no outline is drawn round its edge.
+  const onBoard = (g: { x: number; y: number; w: number; h: number }): 'whole' | '' | null => {
+    const near = (a: number, b: number) => Math.abs(a - b) <= 0.5
+    if (boardBoxes.some((b) => near(g.x, b.x) && near(g.y, b.y) && near(g.w, b.w) && near(g.h, b.h))) return 'whole'
+    return boardBoxes.some((b) => g.x >= b.x - 0.5 && g.y >= b.y - 0.5 && g.x + g.w <= b.x + b.w + 0.5 && g.y + g.h <= b.y + b.h + 0.5) ? '' : null
+  }
   const piles = view.zones.filter((z) => z.kind === 'pile')
   // Which of K19's four cases a zone's name is in. It is the table's own millimetres that decide,
   // so the renderer works it out and the stylesheet draws it.
@@ -1444,6 +1468,8 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   // Drawn away from where the table says it is: while carried, and while the drop waits for its
   // patch (#29).
   const shifted = new Set(drag?.started ? drag.ids : (settling?.ids ?? []))
+  // The piece in the hand is out of its pile while it is carried, and the pile stays with one fewer.
+  const woodPiles = piecePiles(view, shifted)
   const onPile = drag?.started && (drag.target.kind === 'pile' || drag.target.kind === 'pileTop') ? drag.target : null
   const liftedPile = onPile?.pile ?? null
   const liftedKind = onPile?.kind ?? null
@@ -1489,6 +1515,20 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
           onPointerUp={clearPoint}
           onPointerLeave={feltLeave}
         >
+          {/* The boards (#1480, variant A of #1473): fixed where the setup laid them and under all
+              else, so they are drawn first and never answer the pointer — a card dropped on a board
+              lands in the zone under it, as on bare felt. A board turned to its seat turns about its
+              own middle. Its side is the felt's own picture of it, nameless as a pile's back. */}
+          {boards.map((c) => {
+            const mm = boardMm(c)
+            if (!mm) return null
+            const a = absoluteOf(whole, c)
+            return (
+              <div key={c.id} className="byd-board" data-board={c.id} aria-hidden="true" style={{ left: left(a.x), top: top(a.y), width: px(mm.w), height: px(mm.h), ...(c.rot ? { transform: `rotate(${c.rot}deg)` } : {}) }}>
+                <BackTexture faces={faces} hash={c.faces?.['front']} />
+              </div>
+            )
+          })}
           {areas.map((z) => {
             const { rim, grow, anchor } = nameAt(z, floor, handOf(z.owner), rotate)
             // Whether the name above is near enough to share this one's strip of felt (#43).
@@ -1504,6 +1544,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
                 data-rim={rim}
                 data-grow={grow}
                 {...(crowded ? { 'data-mid': '' } : {})}
+                {...((b) => (b === null ? {} : { 'data-on-board': b }))(onBoard(z.geometry))}
                 style={{ left: left(z.geometry.x), top: top(z.geometry.y), width: px(z.geometry.w), height: px(z.geometry.h), ['--name-x' as string]: `${anchor.x}%`, ['--name-y' as string]: `${anchor.y}%` }}
               >
                 {!(forTheRoom && z.owner !== undefined) && <span>{z.name}</span>}
@@ -1616,6 +1657,39 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
           {loose.map((c) => {
             const a = absoluteOf(view, c)
             const m = shifted.has(c.id)
+            const wood = pieceKind(c)
+            if (wood !== null) {
+              // A wooden piece (#1475, prototype #1472 felt B). A seat's pieces not yet moved lie on one
+              // spot and are drawn as one chip with the count, by the top of them; the ones under it
+              // draw nothing and keep no stop, since a hand and a keyboard both take the top. Every
+              // other piece is its own silhouette in its seat's colour, a meeple laid down on its side.
+              // The finger's target is the chip's: 44 px on the screen over a piece that keeps its size.
+              const pile = woodPiles.get(c.id)
+              if (pile && pile.top.id !== c.id) return null
+              const box = materialBox(c)
+              const drawn = pile ? PIECE_PILE_MM : box.w
+              const corner = { x: a.x - (drawn - box.w) / 2, y: a.y - (drawn - box.w) / 2 }
+              const centre = { x: corner.x + drawn / 2, y: corner.y + drawn / 2 }
+              const hit = onAct ? hitOf(centre, drawn) : 0
+              const colour = c.cardRef ? colourOf(c.cardRef) : TABLE_GREY
+              return (
+                <div
+                  key={c.id}
+                  className="byd-piece"
+                  data-piece={c.id}
+                  data-kind={wood}
+                  data-lying={c.face === 'lying' ? 'true' : undefined}
+                  data-piece-pile={pile ? pile.ids.length : undefined}
+                  data-dragging={lifted.has(c.id) ? 'true' : undefined}
+                  {...(onAct ? handlers({ kind: 'piece', id: c.id }) : {})}
+                  {...keys(`piece:${c.id}`)}
+                  style={{ position: 'absolute', left: left(corner.x + (m ? dx : 0)), top: top(corner.y + (m ? dy : 0)), width: px(drawn), height: px(drawn) }}
+                >
+                  {pile ? <PieceChip kind={wood} colour={colour} count={pile.ids.length} /> : <PieceFigure kind={wood} colour={colour} lying={c.face === 'lying'} rot={c.rot} />}
+                  {hit > 0 && <i className="byd-token-hit" style={{ width: hit, height: hit, left: (px(drawn) - hit) / 2, top: (px(drawn) - hit) / 2 }} />}
+                </div>
+              )
+            }
             if (isDie(c)) {
               // A die (#1137, K28): its kind's outline from above and the side that is up, drawn
               // larger than life by the chip's own rule (`DIE_MM`). A die just rolled whips round on the
@@ -1901,7 +1975,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
           </button>
         )}
         {more}
-        {onAct && <ShortcutHelp where={t('help.where.felt')} shortcuts={feltShortcuts(t, undefined, drivable, me !== null, view.components.some(isDie))} named={forTheRoom} />}
+        {onAct && <ShortcutHelp where={t('help.where.felt')} shortcuts={feltShortcuts(t, undefined, drivable, me !== null, view.components.some(isDie), view.components.some((c) => pieceKind(c) !== null))} named={forTheRoom} />}
         </>,
       )}
       {entry && onAct && <CounterEntry view={view} c={entry} onSet={(value) => send([{ v: 'setCounter', component: entry.id, value }], null)} onClose={() => setEntry(null)} />}
@@ -1986,13 +2060,13 @@ function useGlide(target: Rect | null, ms: number): Rect | null {
 
 // What a ring is drawn about, for the sake of a test that has to find it again.
 const ringName = (target: Ring['target']): string =>
-  target.kind === 'card' || target.kind === 'counter' || target.kind === 'die' ? target.id : target.kind === 'counterPile' ? target.ids.join('+') : target.pile
+  target.kind === 'card' || target.kind === 'counter' || target.kind === 'die' || target.kind === 'piece' ? target.id : target.kind === 'counterPile' ? target.ids.join('+') : target.pile
 
 // The felt node a ring is opened on, keyed the way the keyboard layer knows it (`thingsOn`): where
 // focus goes back to when the ring closes (#560 P-10). A pile of chips is its first chip, and a
 // pile and its top card are one stop (#572, #723).
 const ringKey = (target: Ring['target']): string =>
-  target.kind === 'card' ? `card:${target.id}` : target.kind === 'counter' ? `counter:${target.id}` : target.kind === 'die' ? `die:${target.id}` : target.kind === 'counterPile' ? `counter:${target.ids[0] ?? ''}` : `pile:${target.pile}`
+  target.kind === 'card' ? `card:${target.id}` : target.kind === 'counter' ? `counter:${target.id}` : target.kind === 'die' ? `die:${target.id}` : target.kind === 'piece' ? `piece:${target.id}` : target.kind === 'counterPile' ? `counter:${target.ids[0] ?? ''}` : `pile:${target.pile}`
 
 // What the ring is called: the sentence the keyboard reader hears on the thing it was opened on.
 function ringLabel(view: Snapshot, target: Ring['target'], t: T): string | undefined {
@@ -2046,6 +2120,14 @@ function ringItems(view: Snapshot, ring: Ring, open: (r: Ring) => void, act: (in
   }
   // A die is never asked about — a click rolls it — so a ring on one has nothing to offer.
   if (target.kind === 'die') return []
+  // A wooden piece (#1475, #1472): a meeple is laid down and stood up again with `flip`, and every
+  // piece is moved, which the keyboard's own «Flytta till» does for a hand that cannot drag. A click
+  // never rolls it, as it would a die. The same list the keyboard's panel reads (`verbsFor`).
+  if (target.kind === 'piece') {
+    const c = view.components.find((x) => x.id === target.id)
+    if (!c) return []
+    return [...pieceActs(c, t).map((a): RadialItem => ({ label: a.label, run: a.intents ? () => act(a.intents ?? []) : null })), ...(move ? [{ label: t('ring.move'), run: move }] : [])]
+  }
   const z = view.zones.find((x) => x.id === target.pile)
   if (!z) return []
   const count = z.mode === 'count' ? z.count : z.order.length
