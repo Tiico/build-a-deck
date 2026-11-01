@@ -5091,6 +5091,18 @@ Den hämtas bara av skärmar som ritar filten (C2); trycket behåller typens upp
 Brädets bilder går genom tillgångarna som kortets (#1028).
 Trycket i 300 DPI med utfall är #1488, och till dess hoppar tryckexporten över brädet i stället för att vägra spelet.
 
+**Filten** (#1480, variant A i #1473).
+Brädet ligger mitt på den gröna filten och spelarbrädet där «Framför» låg, och filten växer bara så mycket det kräver (`roomFor` i `recipe.ts`, K18 med brädet som en term till): en plats är handen 60, luften 10 och «Framför» 100 mm djup, med spelarbräden handen, luften och brädet; huvudbrädet har 20 mm luft mot platserna, och en hög bredvid det tar ett kort och 20 mm på var sida.
+Fyra platser med det kvadratiska brädet ger 1200 × 837 mm, med spelarbräden 1200 × 937 mm, och det rektangulära brädet med spelarbräden 1296 × 937 mm; åttaplatsbordets 1800 × 1400 mm rymmer redan brädet.
+`applyRecipe` lägger ut platserna på nytt när filten är för liten för bräden, flyttar en hög som huvudbrädet skulle ligga på ut på den sida den redan lutade åt, och gör «Framför» till spelarbrädets eget fotavtryck, så att ett kort som spelas framför en plats hamnar på dess bräde.
+Filten ritar bräden först och under allt annat, och ett bräde svarar aldrig pekaren: ett kort som släpps på det hamnar i zonen under, som på bar filt.
+Allt annat som läser bordet läser det utan bräden (`withoutBoards`): telefonen, tangentbordet och var ett kort läggs.
+En zon på ett bräde är krita på en bild: streckad i kritans färg med en mörk gloria och ett svagt mörkt lager inuti, och namnet på en mörk platta över zonens egen överkant, där det står kvar i stället för att flyttas ut som filtens namn (K19).
+En zon som är ett brädes hela fotavtryck, som «Framför» med spelarbrädet, ritar ingen kant runt brädet, bara sitt namn.
+Platsernas skyltar på TV:n står fria från bräden som från högarna.
+Kortets kortsida i vila med det kvadratiska brädet och spelarbräden, mätt 2026-11-01 i den byggda appen (`board-on-felt.spec.ts`): TV 1920 × 1080 57 px vid fyra platser och 45 vid åtta, som utan bräde (K9 håller), och bordsläget 1280 × 800 46 respektive 31 px.
+Högens bricka i bordsläget når några millimeter in över brädets kant; den är en platta som ligger över allt och läses ändå.
+
 ## L. Editorn (grillad 2026-09-06)
 
 E1, E2 och E3 gav principerna; det här är hur de blir konkreta.
