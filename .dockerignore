@@ -14,3 +14,5 @@ docs
 **/.vitest-report.json
 **/.playwright-report.json
 packages/web/dist-*
+# The tests' own Playwright browsers (#1508), hundreds of MB; the render image brings its own Chromium.
+.playwright-browsers

@@ -1,0 +1,93 @@
+import { describe, expect, it } from 'vitest'
+import { BOARDS, STANDARD_TYPES, TypeRegistry, initialState, project, type DeckFacts } from '@byd/engine'
+import type { FaceTemplate } from '@byd/template'
+import type { RenderRequest } from '@byd/render/queue'
+import { printExportOf, queueFaces } from '../src/faces.js'
+import { printManifestOf } from '../src/print-files.js'
+import { ProjectDoc, deckFromProject } from '../src/projects.js'
+import { setupFromProject } from '../src/setup.js'
+import { openingSetup } from '../src/recipe.js'
+
+// Brädets yta som textur (#1479, E2, DRIFT §6): brädets mall i dokumentet ritas av den enda renderaren
+// på samma väg som ett korts sida, som ett jobb nycklat på sitt innehåll, och hashen står i vyn så att
+// filten kan hämta den. Ändrad bild är ny hash; samma bräde på fyra platser är en rendering.
+const registry = new TypeRegistry(STANDARD_TYPES)
+const square = BOARDS.find((b) => b.id === 'board.square457')!
+const player = BOARDS.find((b) => b.id === 'board.player')!
+const ref = (def: typeof square) => ({ id: def.id, version: def.version })
+const ground = (fill: string): FaceTemplate => ({ base: [{ kind: 'shape', id: 'ground', x: -3, y: -3, w: 463, h: 463, shape: 'rect', fill }], variants: {} })
+
+function docWith(fill: string): ProjectDoc {
+  return ProjectDoc.parse({
+    name: 'Brädspel',
+    template: { faces: { front: { base: [], variants: {} }, back: { base: [], variants: {} } } },
+    rows: [{ id: 'main', fields: { title: 'Ett kort som heter som brädet' } }],
+    icons: {},
+    setup: {
+      ...openingSetup({ players: 4, counters: [] }),
+      boards: [
+        { id: 'main', type: ref(square), zone: 'table', faces: { front: ground(fill) } },
+        { id: 'spelare', type: ref(player), role: 'mine', faces: { front: ground('#7a5c2e') } },
+      ],
+    },
+  })
+}
+
+async function facts(doc: ProjectDoc): Promise<{ facts: DeckFacts; jobs: RenderRequest[] }> {
+  const jobs: RenderRequest[] = []
+  const out = await queueFaces(deckFromProject(doc), setupFromProject(doc), registry, 150, 0, (job) => {
+    jobs.push(job)
+    return Promise.resolve()
+  })
+  return { facts: { faces: out.faces, titles: out.titles, texts: out.texts, ownFaces: out.ownFaces }, jobs }
+}
+
+describe('brädets yta som textur (#1479)', () => {
+  it('ritas som en textur i bordets upplösning, och hashen står i varje vy', async () => {
+    const doc = docWith('#2f6b3a')
+    const { facts: f, jobs } = await facts(doc)
+    const hash = f.ownFaces?.['main']?.['front']
+    expect(hash).toMatch(/^[0-9a-f]{64}$/)
+    const job = jobs.find((j) => j.hash === hash)!
+    expect(job).toMatchObject({ kind: { kind: 'png', dpi: 150 }, priority: 'texture' })
+    // Sidan har brädets mått och inte kortets.
+    expect(job.compiled.css).toContain('457mm')
+    const state = initialState('v1', setupFromProject(doc), registry)
+    for (const seat of ['A', 'C', null]) {
+      const seen = project(state, registry, seat, f).components.find((c) => c.type.id === square.id)!
+      expect(seen.faces).toEqual({ front: hash })
+    }
+  })
+
+  it('ritar samma spelarbräde en gång för alla platser, och kortet som delar brädets namn som ett kort', async () => {
+    const { facts: f, jobs } = await facts(docWith('#2f6b3a'))
+    const own = f.ownFaces?.['spelare']?.['front']
+    expect(jobs.filter((j) => j.hash === own)).toHaveLength(1)
+    expect(f.titles?.['main']).toBe('Ett kort som heter som brädet')
+    expect(f.faces?.['main']?.['front']).not.toBe(f.ownFaces?.['main']?.['front'])
+  })
+
+  it('ger ny hash när bilden ändras', async () => {
+    const before = (await facts(docWith('#2f6b3a'))).facts.ownFaces?.['main']?.['front']
+    const after = (await facts(docWith('#8a2b2b'))).facts.ownFaces?.['main']?.['front']
+    expect(after).toMatch(/^[0-9a-f]{64}$/)
+    expect(after).not.toBe(before)
+  })
+
+  // Brädets tryckfil i 300 DPI med utfall är #1488; till dess hindrar brädet inte trycket av korten.
+  it('stoppar inte trycket av korten: brädet listas varken som kort eller hårdvara än', () => {
+    const doc = docWith('#2f6b3a')
+    const exported = printExportOf(deckFromProject(doc), setupFromProject(doc), registry, 0)
+    expect(exported.cards.map((c) => c.cardRef)).toEqual(['main'])
+    expect(exported.hardware).toEqual([])
+    const manifest = printManifestOf(deckFromProject(doc), setupFromProject(doc), registry)
+    expect(manifest.cards.map((c) => [c.cardRef, c.type.id])).toEqual([['main', 'card.standard.63x88']])
+  })
+
+  it('ger ett bräde utan mall ingen textur', async () => {
+    const doc = docWith('#2f6b3a')
+    const blank = { ...doc, setup: { ...doc.setup, boards: [{ id: 'main', type: ref(square), zone: 'table' }] } }
+    const { facts: f } = await facts(blank)
+    expect(f.ownFaces).toEqual({})
+  })
+})

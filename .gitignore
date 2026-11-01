@@ -18,3 +18,7 @@ packages/e2e/playwright-report/
 
 # Lasttestets bygge, loggar och mätningar (#1012): resultatet står i DRIFT §1, råmaterialet stannar här.
 packages/e2e/.load/
+
+# Testernas egna Playwright-webbläsare (#1508): `pnpm browsers` fyller den, och inget annat projekt på
+# datorn kan tömma den. test-support/playwright-browsers.ts har varför.
+/.playwright-browsers/

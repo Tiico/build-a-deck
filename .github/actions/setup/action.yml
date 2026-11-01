@@ -48,14 +48,16 @@ runs:
     # arrived in the first try stays in /var/cache/apt/archives, so the second picks up where the
     # first stopped instead of starting over; and a mirror that hangs costs twelve minutes, not six
     # hours. A composite step cannot say timeout-minutes, so the clock is coreutils' `timeout`.
+    #
+    # The browser goes where the suites look for it, the repo's own .playwright-browsers/ (#1508),
+    # through the same `pnpm browsers` a worktree uses; on CI `pnpm install` leaves it to this step.
     - if: inputs.browser == 'true'
       shell: bash
-      working-directory: packages/render
       run: |
         mkdir -p ~/.cache/byd-apt
         sudo cp ~/.cache/byd-apt/*.deb /var/cache/apt/archives/ 2>/dev/null || true
         for attempt in 1 2; do
-          timeout --kill-after=30s 12m pnpm exec playwright install --with-deps chromium && break
+          timeout --kill-after=30s 12m pnpm browsers --with-deps && break
           status=$?
           if [ "$attempt" = 2 ]; then exit "$status"; fi
           echo "::warning::Chromium and its apt packages did not install (exit $status, 124 is the 12-minute clock); trying once more"

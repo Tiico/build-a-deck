@@ -54,7 +54,11 @@ export type CardTexts = Record<string, string[]>
 // Everything the compiled deck knows about a card, in one place because it is filtered in one
 // place: both the face a seat may fetch and the word a seat may hear are hidden information and
 // follow the zone's visibility together (B6).
-export type DeckFacts = { faces?: FaceHashes; titles?: CardTitles; texts?: CardTexts }
+//
+// `ownFaces` are the textures of the components whose faces the document draws itself (L91, #1479):
+// a board, keyed by its `cardRef`, which names the board in the document and never a row. Read only
+// for a type that says so (`ownFaces`), so a row and a board may share a word without sharing a face.
+export type DeckFacts = { faces?: FaceHashes; titles?: CardTitles; texts?: CardTexts; ownFaces?: FaceHashes }
 
 // With a `history` the view also learns what undo means for its seat, and — while a rewind is
 // proposed — how the table looked at the target, projected for this same view (B, C).
@@ -199,9 +203,10 @@ function view(state: TableState, registry: TypeRegistry, c: ComponentInstance, s
   const text = visible ? deck?.texts?.[c.cardRef] : undefined
   if (text !== undefined) v.text = [...text]
   if (c.counter !== undefined) v.counter = c.counter
-  const hashes = deck?.faces?.[c.cardRef]
+  // A board's side is its own drawing in the document (#1479), never a row's.
+  const def = registry.get(c.type)
+  const hashes = def.ownFaces ? cards?.ownFaces?.[c.cardRef] : deck?.faces?.[c.cardRef]
   if (hashes) {
-    const def = registry.get(c.type)
     const out: Record<string, string> = {}
     for (const [face, hash] of Object.entries(hashes)) {
       if (face === def.contentFace && !visible) continue

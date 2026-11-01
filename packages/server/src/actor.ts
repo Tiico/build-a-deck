@@ -95,7 +95,7 @@ export class TableActor {
       const deck = withoutBlocked(stored, blocked())
       // Enqueue is idempotent by hash, so loading a table twice costs nothing the second time.
       const compiled = await queueFaces(deck, state.setup, registry, TEXTURE_DPI, Date.now(), (job) => renders?.enqueue(job, record.accountId) ?? Promise.resolve())
-      cards = { faces: compiled.faces, titles: compiled.titles, texts: compiled.texts }
+      cards = { faces: compiled.faces, titles: compiled.titles, texts: compiled.texts, ownFaces: compiled.ownFaces }
     }
     return new TableActor(id, initial, state, log, registry, store, sources ?? defaultSources(), cards, renders, record.accountId, blocked)
   }
@@ -105,7 +105,7 @@ export class TableActor {
   async refreshDeck(deck: Deck, setup: SetupDef): Promise<void> {
     const renders = this.renders
     const compiled = await queueFaces(withoutBlocked(deck, this.blocked()), setup, this.registry, TEXTURE_DPI, Date.now(), (job) => renders?.enqueue(job, this.bearer) ?? Promise.resolve())
-    this.cards = { faces: compiled.faces, titles: compiled.titles, texts: compiled.texts }
+    this.cards = { faces: compiled.faces, titles: compiled.titles, texts: compiled.texts, ownFaces: compiled.ownFaces }
   }
 
   get seq(): number {
@@ -301,7 +301,7 @@ export class TableActor {
       if (!stored) return
       const renders = this.renders
       const compiled = await queueFaces(withoutBlocked(stored, this.blocked()), this.state.setup, this.registry, TEXTURE_DPI, Date.now(), (job) => renders?.enqueue(job, this.bearer) ?? Promise.resolve())
-      this.cards = { faces: compiled.faces, titles: compiled.titles, texts: compiled.texts }
+      this.cards = { faces: compiled.faces, titles: compiled.titles, texts: compiled.texts, ownFaces: compiled.ownFaces }
       for (const [sub, previous] of this.subscribers) {
         const next = this.viewFor(sub)
         const patch = diff(previous, next)
