@@ -43,6 +43,12 @@ export type AccountPlanStore = {
   // Every tier some account has, once each, in order: what the start checks the configuration
   // against. A lapsed tier is named too, since lifting the lapse gives it back.
   plansNamed(): Promise<string[]>
+  // Which Stripe customer is the account (#1493): linked once, when the account first asks for a
+  // checkout, and never moved; a second link for the account keeps the first, and a customer
+  // linked to another account is refused. The link is no tier, so taking the tier away keeps it.
+  linkCustomer(account: string, customer: string): Promise<void>
+  customerOf(account: string): Promise<string | null>
+  accountOfCustomer(customer: string): Promise<string | null>
 }
 
 export class MemoryAccountPlanStore implements AccountPlanStore {
@@ -76,6 +82,24 @@ export class MemoryAccountPlanStore implements AccountPlanStore {
   async plansNamed(): Promise<string[]> {
     return [...new Set([...this.rows.values()].map((r) => r.plan))].sort()
   }
+  private readonly customers = new Map<string, string>()
+  async linkCustomer(account: string, customer: string): Promise<void> {
+    if (this.customers.has(account)) return
+    if ([...this.customers.values()].includes(customer)) throw new Error('customer linked to another account')
+    this.customers.set(account, customer)
+  }
+  async customerOf(account: string): Promise<string | null> {
+    return this.customers.get(account) ?? null
+  }
+  async accountOfCustomer(customer: string): Promise<string | null> {
+    return [...this.customers].find(([, c]) => c === customer)?.[0] ?? null
+  }
+  // What an account that deletes itself leaves here, in memory (#1280); Postgres drops it with the
+  // account.
+  forget(account: string): void {
+    this.rows.delete(account)
+    this.customers.delete(account)
+  }
 }
 
 export class PostgresAccountPlanStore implements AccountPlanStore {
@@ -108,6 +132,17 @@ export class PostgresAccountPlanStore implements AccountPlanStore {
   async plansNamed(): Promise<string[]> {
     const rows = await this.sql<{ plan: string }[]>`select distinct plan from account_plans order by plan`
     return rows.map((r) => r.plan)
+  }
+  async linkCustomer(account: string, customer: string): Promise<void> {
+    await this.sql`insert into stripe_customers (account_id, customer_id) values (${account}, ${customer}) on conflict (account_id) do nothing`
+  }
+  async customerOf(account: string): Promise<string | null> {
+    const [row] = await this.sql<{ customer_id: string }[]>`select customer_id from stripe_customers where account_id = ${account}`
+    return row?.customer_id ?? null
+  }
+  async accountOfCustomer(customer: string): Promise<string | null> {
+    const [row] = await this.sql<{ account_id: string }[]>`select account_id::text from stripe_customers where customer_id = ${customer}`
+    return row ? String(row.account_id) : null
   }
 }
 

@@ -77,6 +77,13 @@ describe('the stack hands the app its configuration', () => {
     expect(env['BYD_PLANS']).toBe('${BYD_PLANS:-}')
   })
 
+  // Payments (#1493, DRIFT §12): the keys and the prices live in the box's .env, and a name the stack
+  // does not pass leaves payments off however they were written there.
+  it('passes Stripe’s keys and prices through, empty when unset', () => {
+    const env = serviceEnvironment(compose, 'app')
+    for (const name of ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET', 'BYD_STRIPE_PRICES']) expect(env[name]).toBe(`\${${name}:-}`)
+  })
+
   it('leaves room on a box that is not only ours', () => {
     // DRIFT §1 budgeted the whole 8 GB for this stack; the box it actually runs on was
     // already carrying its own containers and swapping. The three that are always up have

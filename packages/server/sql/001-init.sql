@@ -274,6 +274,15 @@ alter table account_plans add column if not exists lapsed_at timestamptz;
 -- to null with `lapsed_at`.
 alter table account_plans add column if not exists lapsed_order jsonb;
 
+-- Which Stripe customer is which account (#1493, DRIFT §12): made once, when the account first asks
+-- for a checkout, so Stripe's webhooks can be read back to an account. No card and no address is
+-- kept here: Stripe holds them. Goes with the account.
+create table if not exists stripe_customers (
+  account_id  bigint primary key references accounts(id) on delete cascade,
+  customer_id text not null unique,
+  created_at  timestamptz not null default now()
+);
+
 -- What each game's versions name (#1197, #1192 question 4): one row per game and asset some version
 -- of it uses, read the way `assetHashesOf` reads a document — every string anywhere in it that is
 -- an `asset:<hash>`, and every hash `pictures` has an entry for — which is what an export carries.
