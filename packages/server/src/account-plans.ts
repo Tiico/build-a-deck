@@ -5,7 +5,7 @@ import type { ProjectDoc, ProjectStore } from './projects.js'
 import type { LogStore } from './store.js'
 import { ProjectHost } from './project-actor.js'
 import { CARD_MEASURES, cardsUsed, type CardMeasure } from './quota-cards.js'
-import { checkPlansInUse, limitOf, plansFromEnv, tableWindowFrom, type Limit, type Plans } from './quotas.js'
+import { checkPlansInUse, hasPrint, limitOf, plansFromEnv, tableWindowFrom, type Limit, type Plans } from './quotas.js'
 
 // Which tier an account has (#1193, A2, #1192). A table of its own, beside the accounts, written by
 // the operator today and by Stripe later — so that paying becomes a way to change tier and not a
@@ -87,10 +87,11 @@ export async function planOf(accountPlans: AccountPlanStore | undefined, plans: 
 //
 // Cards are a ceiling per game (#1195), and are said per game: every game the account owns, by id,
 // with what it uses. `used` is the most any one of them uses, which is how near the account's games
-// stand to the ceiling — none when it owns none.
+// stand to the ceiling — none when it owns none. `print` is whether the tier has the print package
+// (#1490), a property and not a measure.
 export type Measured = { used: number; limit: Limit }
 export type PerGame = Measured & { projects: { id: string; used: number }[] }
-export type Usage = { plan: string; measures: { projects: Measured; openTables: Measured; tablesPer30Days: Measured; storageBytes: Measured; rendersPer30Days: Measured } & Record<CardMeasure, PerGame> }
+export type Usage = { plan: string; print: boolean; measures: { projects: Measured; openTables: Measured; tablesPer30Days: Measured; storageBytes: Measured; rendersPer30Days: Measured } & Record<CardMeasure, PerGame> }
 // `live` is the game as it stands (D3, #909): the running actor's document, or the saved version
 // with the log's tail replayed — the same source «Mina spel» reads a name out of. Without it, the
 // log is replayed, which is what a process with no actors running (the operator's script) has.
@@ -114,6 +115,7 @@ export async function usageOf(stores: UsageStores, plans: Plans, account: string
   const rendered = stores.renders ? await stores.renders.rendersBy(account, tableWindowFrom(now).getTime()) : 0
   return {
     plan,
+    print: hasPrint(plans, plan),
     measures: {
       projects: measured(await stores.projects.owned(account), 'projects'),
       ...cards,
