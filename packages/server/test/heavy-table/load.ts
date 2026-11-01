@@ -30,4 +30,4 @@ await store.createSession({ id: 'tungt', version: 'rev-1', setup: setupFromProje
 let queued = 0
 const renders = { enqueue: async (): Promise<EnqueueResult> => (queued++, 'queued') } as unknown as RenderStore
 const actor = await TableActor.load('tungt', new TypeRegistry(STANDARD_TYPES), store, undefined, renders)
-console.log(JSON.stringify({ loaded: actor !== null, queued, textures: actor?.textureHashes().length }))
+console.log(JSON.stringify({ loaded: actor !== null, queued, textures: actor?.allTextureHashes().length }))

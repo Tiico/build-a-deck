@@ -162,10 +162,10 @@
 }
 
 /* A board (#1480, variant A of #1473): a sheet of greyboard lying fixed under everything, its side
-   the felt's own picture of it. Blank, or while the picture is on its way, it is the board's own
-   card colour and not the waiting state's dark box: a board is no card, and a table waiting for
-   its board is a table with a plain board on it. It never answers the pointer: what is dropped on
-   it lands in the zone under it, as on bare felt. */
+   the felt's own picture of it. Blank, it is the board's own card colour. While the picture is on
+   its way it wears the waiting state as every side does since variant C of #1546 (beställarens
+   beslut 2026-11-01): the sweep in its shape and a spinner, nameless. It never answers the pointer:
+   what is dropped on it lands in the zone under it, as on bare felt. */
 .byd-board {
   position: absolute;
   box-sizing: border-box;
@@ -176,7 +176,6 @@
   overflow: hidden;
 }
 .byd-board > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: fill; }
-.byd-board > .byd-texture-state { display: none; }
 
 /* A zone on a board is chalk on a picture the designer chose, not an outline on green felt (#1473):
    a dashed line in the chalk colour with a dark halo outside it and a faint dark wash inside, and its

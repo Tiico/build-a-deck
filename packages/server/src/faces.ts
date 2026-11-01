@@ -1,4 +1,4 @@
-import { isMaterial, seatColourOf, type ComponentTypeDef, type SetupDef, type TypeRegistry } from '@byd/engine'
+import { isMaterial, seatColourOf, type ComponentTypeDef, type SetupDef, type TableState, type TypeRegistry } from '@byd/engine'
 import type { CardTexts, CardTitles, FaceHashes } from '@byd/engine'
 import { compileCard, printedText, type Compiled, type Motif, type Row, type Template } from '@byd/template'
 import { contentHash, type RenderKind, type RenderRequest } from '@byd/render/queue'
@@ -100,27 +100,76 @@ export function boardTextureKind(def: ComponentTypeDef, dpi: number): RenderKind
 
 // A table's textures in its own order (#1546, beställarens beslut A 2026-11-01): what is seen when
 // the game starts is numbered from 0 — a board, the side a card lies on when it is not under another
-// in a pile, so the backs of the piles and every face-up card — and the rest of the deck from
-// `REST_PLACE`, in the order the piles hold it, the top first. The queue hands out the lowest place
-// first (`order`, DRIFT §6), so every table's seen textures are drawn before any table's rest, and
-// then the tables take turns, card for card.
+// in a pile, so the backs of the piles and every face-up card — and the rest from `REST_PLACE` and
+// down by how deep the card lies in its zone, so two piles are drawn from the top side by side. The
+// queue hands out the lowest place first (`order`, DRIFT §6), so every table's seen textures are
+// drawn before any table's rest, and then the tables take turns, card for card. What is seen is
+// also what «Starta spelet» waits for (`seen`), and after a shuffle `placesOf` says the new order.
 export const REST_PLACE = 1_000_000
+
+// Each component of a layout, how deep it lies in its zone, and whether it lies on top: a pile shows
+// only its top, which is the first card listed in it (`materialise`); any other zone shows them all.
+function* spotsOf(setup: SetupDef): Generator<{ spec: SetupDef['components'][number]; depth: number; onTop: boolean }> {
+  const piles = new Set(setup.zones.filter((z) => z.kind === 'pile').map((z) => z.id))
+  const depths = new Map<string, number>()
+  for (const spec of setup.components) {
+    const depth = depths.get(spec.zone) ?? 0
+    depths.set(spec.zone, depth + 1)
+    yield { spec, depth, onTop: !piles.has(spec.zone) || depth === 0 }
+  }
+}
+
+// A table's places for the textures it has, as its layout now lies (#1546): the new order of a pile
+// that was shuffled, for `RenderStore.reorder`. A texture several cards share takes the best place.
+export function placesOf(layout: SetupDef, faces: FaceHashes): { hash: string; order: number }[] {
+  const best = new Map<string, number>()
+  let seen = 0
+  for (const { spec, depth, onTop } of spotsOf(layout)) {
+    for (const [face, hash] of Object.entries(faces[spec.cardRef] ?? {})) {
+      const order = onTop && face === spec.face ? seen++ : REST_PLACE + depth
+      if (order < (best.get(hash) ?? Infinity)) best.set(hash, order)
+    }
+  }
+  return [...best].map(([hash, order]) => ({ hash, order }))
+}
+
+// What is seen of a table as its layout lies (#1546, beslut A): the boards' own sides, and the side
+// each card shows where it is not under another in a pile. What «Starta spelet» waits for.
+export function seenOf(layout: SetupDef, faces: FaceHashes, ownFaces: FaceHashes = {}): string[] {
+  const seen = new Set<string>()
+  for (const perFace of Object.values(ownFaces)) for (const hash of Object.values(perFace)) seen.add(hash)
+  for (const { spec, onTop } of spotsOf(layout)) {
+    const hash = onTop ? faces[spec.cardRef]?.[spec.face] : undefined
+    if (hash) seen.add(hash)
+  }
+  return [...seen]
+}
+
+// The table as it lies now, as a layout `queueFaces` and `placesOf` read: every component in its
+// zone's order and on the face it shows, rather than as the setup first laid it.
+export function layoutOf(state: TableState): SetupDef {
+  const components: SetupDef['components'] = []
+  for (const [zone, z] of Object.entries(state.zones)) {
+    for (const id of z.order) {
+      const c = state.components[id]
+      if (c) components.push({ type: c.type, cardRef: c.cardRef, zone, face: c.face })
+    }
+  }
+  return { ...state.setup, zones: Object.values(state.zones), components }
+}
 
 function* compiledCards(deck: Deck, setup: SetupDef, registry: TypeRegistry, dpi: number, now: number, out: CompiledFaces): Generator<RenderRequest> {
   const queued = new Set<string>()
-  const places = { seen: 0, rest: REST_PLACE }
-  const job = (page: Compiled, perFace: Record<string, string>, face: string, shown: boolean, kind: RenderKind = { kind: 'png', dpi }): RenderRequest | undefined => {
+  let seenPlace = 0
+  const job = (page: Compiled, perFace: Record<string, string>, face: string, shown: boolean, depth: number, kind: RenderKind = { kind: 'png', dpi }): RenderRequest | undefined => {
     const hash = contentHash(page, kind)
     perFace[face] = hash
     if (queued.has(hash)) return undefined
     queued.add(hash)
-    const order = shown ? places.seen++ : places.rest++
+    const order = shown ? seenPlace++ : REST_PLACE + depth
     return { hash, kind, priority: 'texture', compiled: { html: page.html, css: page.css }, requestedAt: now, order }
   }
-  // A pile shows only its top, which is the first card the setup lays in it (`materialise`).
-  const piles = new Set(setup.zones.filter((z) => z.kind === 'pile').map((z) => z.id))
-  const topped = new Set<string>()
-  for (const spec of setup.components) {
+  for (const { spec, depth, onTop } of spotsOf(setup)) {
     const def = registry.get(spec.type)
     if (def.ownFaces) {
       const template = deck.boards?.[spec.cardRef]
@@ -128,13 +177,11 @@ function* compiledCards(deck: Deck, setup: SetupDef, registry: TypeRegistry, dpi
       const perFace: Record<string, string> = {}
       out.ownFaces[spec.cardRef] = perFace
       for (const [face, page] of Object.entries(compileRow({ ...deck, template }, def, {}))) {
-        const next = job(page, perFace, face, true, boardTextureKind(def, dpi))
+        const next = job(page, perFace, face, true, 0, boardTextureKind(def, dpi))
         if (next) yield next
       }
       continue
     }
-    const onTop = !piles.has(spec.zone) || !topped.has(spec.zone)
-    topped.add(spec.zone)
     if (out.faces[spec.cardRef]) continue
     // Material is no card (K32, #1471): a meeple's `cardRef` is its seat and a counter's its name, so
     // a row that shares the word is not theirs, and has no face of theirs to draw.
@@ -153,7 +200,7 @@ function* compiledCards(deck: Deck, setup: SetupDef, registry: TypeRegistry, dpi
     const perFace: Record<string, string> = {}
     out.faces[spec.cardRef] = perFace
     for (const [face, page] of Object.entries(compiled)) {
-      const next = job(page, perFace, face, onTop && face === spec.face)
+      const next = job(page, perFace, face, onTop && face === spec.face, depth)
       if (next) yield next
     }
   }

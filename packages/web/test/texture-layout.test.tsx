@@ -9,7 +9,8 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render } from '@testing-library/react'
 import { chromium, type Browser } from 'playwright'
 import type { VisibleComponentState } from '@byd/protocol'
-import { Texture } from '../src/table/Texture.js'
+import { BackTexture, Texture } from '../src/table/Texture.js'
+import { TileInCard } from '../src/table/TileInCard.js'
 
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
 const SHEETS = ['src/table/table.css', 'src/table/texture.css', 'src/online/online.css', 'src/player/player.css', 'src/buttons.css']
@@ -175,7 +176,8 @@ async function measure(state: State): Promise<Record<string, Measured>> {
               image: box(img)!,
               fallback: box(root.querySelector('[data-texture]')),
               imageVisible: shown(img),
-              nameVisible: shown(root.querySelector('span:not([data-texture]), strong')),
+              // The markup's own name beside the face, not what the state draws inside itself.
+              nameVisible: shown(root.querySelector('span:not([data-texture]):not([data-texture] *), strong')),
               // The way back belongs to the state box; a card that is itself a control must not
               // be mistaken for one (UX-37, #82).
               retry: box(root.querySelector('[data-texture] button')),
@@ -236,5 +238,95 @@ describe('the waiting card, measured where it is actually drawn', () => {
     }
     // Whatever the table's scale, the way back is never more than a look away.
     expect(seen['a card held up on the phone']!.retryVisible).toBe(true)
+  }, 60_000)
+})
+
+// Variant C of #1546 (beställarens beslut 2026-11-01): a side drawn before its texture is the
+// skeleton clipped to its shape, with the name in the shape's inscribed box and a spinner. Since
+// beslut A a tile or a board can be seen before it is drawn, and in a hexagon the name stood in
+// the narrow point (#1544). Measured in a real engine, at the size a tile is held up on the phone.
+describe('a tile or a board that is not drawn yet, measured in its shape (#1546)', () => {
+  const tileOfShape = (id: string): VisibleComponentState => ({ ...card, id: `t-${id}`, type: { id, version: 1 }, cardRef: 'skog' })
+  const TILE_CASES: Record<string, { c: VisibleComponentState; inner: (b: Box) => Box }> = {
+    // A hexagon with a point up: its widest band is between a quarter and three quarters of its height.
+    hexagon: { c: tileOfShape('tile.hex.52'), inner: (b) => ({ x: b.x, y: b.y + b.h * 0.25, w: b.w, h: b.h * 0.5 }) },
+    // A disc: the square inside it.
+    'round tile': { c: tileOfShape('tile.round.44'), inner: (b) => ({ x: b.x + b.w * 0.146, y: b.y + b.h * 0.146, w: b.w * 0.708, h: b.h * 0.708 }) },
+    'square tile': { c: tileOfShape('tile.square.45'), inner: (b) => b },
+  }
+  const inside = (a: Box, b: Box) => a.x >= b.x - 1 && a.y >= b.y - 1 && a.x + a.w <= b.x + b.w + 1 && a.y + a.h <= b.y + b.h + 1
+
+  async function measureShapes(): Promise<Record<string, { face: Box; name: Box | null; spinner: Box | null }>> {
+    const markups: Record<string, string> = {}
+    for (const [name, { c }] of Object.entries(TILE_CASES)) {
+      const { container, unmount } = render(
+        <TileInCard c={c}>
+          <Texture faces="http://faces.test" c={c} />
+        </TileInCard>,
+      )
+      markups[name] = container.innerHTML
+      unmount()
+    }
+    const board = render(<BackTexture faces="http://faces.test" hash={'d'.repeat(64)} part="board" />)
+    markups['board'] = board.container.innerHTML
+    board.unmount()
+    const page = await browser.newPage({ viewport: { width: 900, height: 700 } })
+    try {
+      const body = Object.entries(markups)
+        .map(([name, html]) =>
+          name === 'board'
+            ? `<section data-case="board"><div class="byd-board" style="position:absolute;left:400px;top:20px;width:420px;height:315px">${html}</div></section>`
+            : `<section data-case="${name}"><div class="byd-card" style="position:relative;display:inline-block;width:180px;height:252px;margin:8px">${html}</div></section>`,
+        )
+        .join('')
+      const shell = read('index.html')
+        .replace('<script type="module" src="/src/main.tsx"></script>', '')
+        .replace('</head>', `<style>${SHEETS.map(read).join('\n')}</style></head>`)
+        .replace('<div id="root"></div>', `<div id="root">${body}</div>`)
+      await page.setContent(shell, { waitUntil: 'load' })
+      return await page.evaluate((names) => {
+        const box = (el: Element | null) => {
+          if (!el) return null
+          const r = el.getBoundingClientRect()
+          return r.width > 2 && r.height > 2 ? { x: r.x, y: r.y, w: r.width, h: r.height } : null
+        }
+        return Object.fromEntries(
+          names.map((name) => {
+            const root = document.querySelector(`[data-case="${name}"]`)!
+            const state = root.querySelector('[data-texture="pending"]')!
+            // The words themselves, not the box they may stretch across.
+            const word = state.querySelector('b')
+            let said: { x: number; y: number; w: number; h: number } | null = null
+            if (word) {
+              const range = document.createRange()
+              range.selectNodeContents(word)
+              const r = range.getBoundingClientRect()
+              said = { x: r.x, y: r.y, w: r.width, h: r.height }
+            }
+            return [name, { face: box(root.querySelector('.byd-tile-face') ?? state)!, name: said, spinner: box(state.querySelector('[data-texture-spinner]')) }]
+          }),
+        )
+      }, [...Object.keys(TILE_CASES), 'board'])
+    } finally {
+      await page.close()
+    }
+  }
+
+  it('sets the name inside the widest part of its shape and turns a spinner, for every tile', async () => {
+    const seen = await measureShapes()
+    for (const [name, { inner }] of Object.entries(TILE_CASES)) {
+      const m = seen[name]!
+      expect({ [name]: m.name !== null && inside(m.name, inner(m.face)) }).toEqual({ [name]: true })
+      expect({ [name]: m.spinner !== null && inside(m.spinner, inner(m.face)) }).toEqual({ [name]: true })
+    }
+  }, 60_000)
+
+  it('turns a spinner in the middle of a board, which names nothing', async () => {
+    const m = (await measureShapes())['board']!
+    expect(m.name).toBeNull()
+    expect(m.spinner).not.toBeNull()
+    const middle = { x: m.face.x + m.face.w / 2, y: m.face.y + m.face.h / 2 }
+    expect(Math.abs(m.spinner!.x + m.spinner!.w / 2 - middle.x)).toBeLessThan(m.face.w * 0.1)
+    expect(Math.abs(m.spinner!.y + m.spinner!.h / 2 - middle.y)).toBeLessThan(m.face.h * 0.25)
   }, 60_000)
 })

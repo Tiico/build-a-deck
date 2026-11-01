@@ -71,6 +71,22 @@
   to { background-position: -50% 0; }
 }
 
+/* And a spinner over the name (#1546, variant C), at every size: since beslut A a card or a tile can
+   be drawn before its texture, and the turning ring is what says it is on its way. Under reduced
+   motion a11y.css stops it after one turn, and it stands as a still ring. The shape's own box is
+   inline (`Texture`), since this sheet is the one the first frame blocks on. */
+.byd-texture-spin {
+  flex: none;
+  width: clamp(8px, 12cqw, 30px);
+  aspect-ratio: 1;
+  box-sizing: border-box;
+  border-radius: 50%;
+  border: max(2px, 1.4cqw) solid var(--byd-texture-sweep);
+  border-top-color: var(--byd-texture-ink);
+  animation: byd-texture-spin 1s linear infinite;
+}
+@keyframes byd-texture-spin { to { transform: rotate(1turn); } }
+
 /* Lost: an honest sentence and a way back, rather than the browser's broken-image icon. */
 .byd-texture-state[data-texture='failed'] {
   background: var(--byd-texture-fail-bg);

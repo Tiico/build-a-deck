@@ -69,18 +69,19 @@ describe('ett bord med ett bräde (#1479)', () => {
     expect((await run.store.deckOf(made.id, version))?.boards?.['main']?.faces['front']?.base[0]).toMatchObject({ bind: { literal: `asset:${hash}` } })
   })
 
-  // TV:ns start väntar tills varje textur är ritad (#765), och brädets JPEG är den tyngsta ett bord har.
-  // Starten räknade bara kortens, så TV:n kunde säga klart före brädet (#1539, 574 mot 576 i #1533).
-  it('räknar brädets textur i bordets framsteg, lika många som «Uppdatera bordet» räknar', async () => {
+  // TV:ns start väntar på det som syns (#765, reviderat av beslut A i #1546), och brädet syns: dess
+  // JPEG är den tyngsta textur ett bord har, och starten räknade den inte (#1539, 574 mot 576 i #1533).
+  // «Uppdatera bordet» väntar fortfarande på allt, eftersom bytet till en ny version görs i ett drag (L5).
+  it('räknar brädets textur i det starten väntar på, och allt i det «Uppdatera bordet» väntar på', async () => {
     const { hash } = (await (await fetch(`${run.http}/assets`, { method: 'POST', headers: { 'content-type': 'image/png', cookie }, body: PNG })).json()) as { hash: string }
     const made = await startTable('p3', hash)
     const table = await run.connectTable(made.id, made.hostKey)
     await table.synced(0)
     const started = (await (await fetch(`${run.http}/sessions/${made.id}/textures`)).json()) as { total: number }
     const prepared = (await (await fetch(`${run.http}/sessions/${made.id}/prepare`, { method: 'POST', headers: { cookie } })).json()) as { total: number }
-    // The card's front and back, and the board's front.
+    // The draw pile's back and the board's front are seen; the card's front lies face down.
+    expect(started.total).toBe(2)
     expect(prepared.total).toBe(3)
-    expect(started.total).toBe(prepared.total)
   })
 
   it('lämnar en bild som lagret inte har som en tom ram på brädet', async () => {

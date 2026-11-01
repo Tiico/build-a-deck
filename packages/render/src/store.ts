@@ -36,6 +36,9 @@ export type RenderStore = {
   rendersBy(bearer: string, since: number): Promise<number>
   // The next job to run, marked running as of `now`; null when nothing is waiting.
   claim(now: number): Promise<ClaimedJob | null>
+  // New places for jobs still queued (#1546): a table whose pile was shuffled says which of its
+  // textures are drawn next. A job that is running, done or not there is left as it is.
+  reorder(places: readonly { hash: string; order: number }[]): Promise<void>
   complete(hash: string, output: Uint8Array, fit?: Fit): Promise<void>
   fail(hash: string, error: string): Promise<void>
   status(hash: string): Promise<JobStatus | null>
@@ -126,6 +129,13 @@ export class MemoryRenderStore implements RenderStore {
     next.startedAt = now
     delete next.error
     return { ...next, startedAt: now }
+  }
+
+  async reorder(places: readonly { hash: string; order: number }[]): Promise<void> {
+    for (const { hash, order } of places) {
+      const job = this.jobs.get(hash)
+      if (job?.state === 'queued') job.order = order
+    }
   }
 
   async complete(hash: string, output: Uint8Array, fit: Fit = { smallestPt: null }): Promise<void> {
