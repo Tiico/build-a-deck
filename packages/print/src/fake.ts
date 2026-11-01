@@ -128,6 +128,15 @@ function singleOrder(plan: FilePlan): OrderStep[] {
 
 const CARD = { id: 'card.standard.63x88', version: 1 }
 const die = (faces: number) => ({ id: `die.d${faces}`, version: 1 })
+// The colours a shop of wooden pieces stocks, made up as everything else here is.
+const WOOD = [
+  ['red', '#c8312b'],
+  ['blue', '#2a5caa'],
+  ['green', '#2f8a3e'],
+  ['yellow', '#f2c230'],
+  ['black', '#222222'],
+  ['white', '#f4f1ea'],
+] as const
 
 // The shape of The Game Crafter in #1199: uploads, an object tree and a cart, rasters in inches.
 // TGC's poker deck is 2.5 × 3.5 in, 825 × 1125 px at 300 dpi with an eighth of an inch of bleed;
@@ -152,6 +161,9 @@ export const MULTI_STEP_INCHES: FakeConfig = {
       sides: { front: 'face', back: 'back' },
     },
     ...[4, 6, 8, 10, 12, 20].map((n) => ({ kind: 'stock' as const, type: die(n), sku: `d${n}` })),
+    // Wooden pieces in the six colours such a shop stocks (#1478), a part number per colour: a seat
+    // whose colour it does not have gets the nearest of them.
+    ...(['meeple', 'cube', 'disc'] as const).map((kind) => ({ kind: 'stock' as const, type: { id: `piece.${kind}`, version: 1 }, sku: kind, colours: WOOD.map(([name, colour]) => ({ colour, sku: `${kind}-${name}` })) })),
   ],
   form: { kind: 'multi-step', batchSize: 100 },
   tracking: 'push',
