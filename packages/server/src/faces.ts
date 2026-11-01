@@ -106,6 +106,9 @@ export function boardTextureKind(def: ComponentTypeDef, dpi: number): RenderKind
 // drawn before any table's rest, and then the tables take turns, card for card. What is seen is
 // also what «Starta spelet» waits for (`seen`), and after a shuffle `placesOf` says the new order.
 export const REST_PLACE = 1_000_000
+// What is left of a version a table is leaving (#1549): after every table's rest, since the table
+// stops showing it the moment it switches.
+export const STALE_PLACE = 2 * REST_PLACE
 
 // Each component of a layout, how deep it lies in its zone, and whether it lies on top: a pile shows
 // only its top, which is the first card listed in it (`materialise`); any other zone shows them all.
