@@ -29,6 +29,7 @@ Versionshantering blir ett kärnbegrepp i domänmodellen, inte en bekvämlighets
 Gratisnivå med tak på projekt, kort och sessioner.
 Betald nivå ger obegränsat, playtest-analys, samarbete och exportvägar.
 Gäster spelar alltid gratis.
+Nivåerna, priset och vad playtest-analys betyder: **reviderat 2026-10-28 (#1469), se sist i avsnittet.**
 
 Motivering:
 En designer beställer 4–6 prototyper om året, vilket ger runt 25 USD i årlig marginal.
@@ -124,6 +125,21 @@ Renderingar visas inte, eftersom deras tak inte prövas.
 Med alla tak `null`, som i betan, finns kortet inte, och ingen yta ser annorlunda ut än i dag.
 
 Grindarna: `packages/web/test/quota-words.test.ts`, `quota-home.test.tsx` och `quota-editor.test.tsx` för varje yta och båda bärarna, `packages/server/test/quotas.test.ts` för namnet, och `packages/e2e/test/quota-reached.spec.ts`, där en designer i den byggda appen med `BYD_PLANS` möter sina tak.
+
+Reviderat 2026-10-28 (#1469, beställarens beslut, förslag A): **Gratis och en betald nivå, Pro.**
+- Nivåerna är två: Gratis och Pro. Det finns ingen andra betald nivå.
+- Pro kostar 99 kr / 9 € i månaden eller 990 kr / 90 € om året, alltså tio månader för ett år.
+- **Resultat är gratis.** Enkätsvaren och flaggorna i Resultat (G3) ingår på varje nivå, eftersom gratisnivån annars inte går att använda till blindtestningen A1 kräver.
+- **«Playtest-analys» betyder jämförelsen mellan versioner**, som inte är byggd än. Det är den, och inte Resultat, som hör till den betalda nivån.
+- Tryckpaketet, och tryck-PDF:erna i exporten, ingår i Pro när en riktig partner finns (F1, G5, #1209). Grinden är en egenskap på nivån i `BYD_PLANS`, inte ett tak, eftersom den inte räknar något; det är en ändring i schemat och inte bara i konfigurationen.
+- Ett utgånget abonnemang flyttar kontot till Gratis, och det som ligger över gratisnivåns tak hamnar i läsläge (L2, se G5).
+- **Inget tak för hela lådan före release.** Taken per konto skyddar inte lådan mot många konton samtidigt, men lasten mäts i betan med `usage`-skriptet, och hårdvara eller ett tak för lådan läggs till när siffrorna kräver det (DRIFT §1, §12).
+
+Öppet efter beslutet (frågorna 3, 5, 7 och 9 i #1469):
+- Gratisnivåns siffror, och om de sätts nu eller stäms av mot betans förbrukning först (fråga 3).
+- Om medredigerare bara ingår i Pro, som en grind på spelets ägare (fråga 5). Tills det är besvarat grindas medredigerare inte.
+- Pro:s tak på unika kort per spel: 500 efter ett lasttest, eller 308 som är det mätta (fråga 7).
+- Om taket på kort blir ett tak på komponenter per spel när brädspelens typer kommer, eller om varje typ får sitt eget mått (fråga 9).
 
 ### A3. Testarrekrytering: enbart delbar länk (fråga 22)
 
@@ -2539,6 +2555,7 @@ Loggen har ett hål i mitten, direkt efter det steg ni tar betalt för.
 Komplett export när som helst i dokumenterat JSON-format med alla assets, mallar, hela historiken och tryckfärdiga filer, även på gratisnivån.
 Utgånget abonnemang ger läsläge, aldrig radering.
 De tryckfärdiga filerna tas ur gratisexporten när en riktig tryckpartner finns: **reviderat 2026-10-28 (#1209), se sist i avsnittet.**
+Läsläget är det som ligger över gratisnivåns tak, inte hela kontot: **preciserat 2026-10-28 (#1469, L2), se sist i avsnittet.**
 
 Motivering:
 Målgruppen investerar två till fyra år i ett spel innan det når Kickstarter.
@@ -2600,6 +2617,16 @@ Motivering:
 Tryck-PDF:erna är samma underlag som tryckpaketet, och ett gratis underlag i exporten vore en väg runt avgiften F1 sätter på det.
 Dataägandet gäller spelet och inte trycket: tryck-PDF:erna går att härleda ur dokumentet och läses inte in vid import (#528), så den som tar med sig sitt spel förlorar ingenting som inte kan ritas igen.
 Svaret på frågan om vad som händer om bolaget läggs ner är därmed oförändrat.
+
+Preciserat 2026-10-28 (#1469, beställarens beslut, form L2): **läsläget gäller det som ligger över gratisnivåns tak.**
+- Ett utgånget abonnemang flyttar kontot till Gratis (A2). Det som ryms i gratisnivåns tak fungerar som vanligt.
+- Det som ligger över taken går att öppna, läsa och exportera, men inte ändra. Som L2 står i förslaget i #1469 startas inte heller något bord ur ett sådant spel, men ett bord går att spela upp.
+- Ett spel ligger över taket när det har fler kort än gratisnivån rymmer, och spelen utöver gratisnivåns antal är de som ändrats längst tillbaka; de senast ändrade ryms.
+- Läsläget hävs när abonnemanget förnyas, eller när spelet ryms igen, till exempel efter att ett annat spel tagits bort.
+- Ingenting raderas, och export av JSON, bilder och mallar är öppen också i läsläget. Tryck-PDF:erna följer nivån som i revideringen ovan, alltså med Pro när en riktig partner finns.
+- Den betalda nivån där tryckpaketet och tryck-PDF:erna ingår är Pro (A2, #1469).
+- Det här skiljer sig från ett nått tak under en gällande nivå, som fortfarande bara stoppar tillväxt (A2, #1192): läsläget gäller ett konto vars abonnemang har gått ut.
+- Hur läsläget syns för designern är inte beslutat och prototypas först. Om samma läsläge gäller ett betakonto som vuxit utan tak när gratisnivåns tak sätts hör till fråga 3 i #1469.
 
 ### G6. Personuppgifter: Deckster är ansvarig, och loggen maskas på plats (beslutat 2026-10-24, #1269)
 
