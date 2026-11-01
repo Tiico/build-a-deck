@@ -83,6 +83,27 @@ function setupOf(frame: string, generation: number, board: string | undefined): 
   return { ...laid, zones: [...laid.zones, TILE_PILE] }
 }
 
+/**
+ * The game whose print package the load test asks for (#1531, #1533): the big main board under a
+ * photograph that runs out into the bleed, which is the heaviest file a print package draws, and
+ * one card, whose sides reach the bleed too so that the physical checks (E5) let the package through.
+ */
+export function printGame(o: { name: string; photo: string }): ProjectDoc {
+  const full = (fill: string) => ({ base: [{ kind: 'shape' as const, id: 'bg', x: -3, y: -3, w: 69, h: 94, shape: 'rect' as const, fill }], variants: {} })
+  const opening = openingSetup({ players: 2, counters: [] })
+  const withBoard = {
+    ...opening,
+    boards: [{ id: 'huvudbrade', type: { id: 'board.rect610', version: 1 }, zone: opening.floor, faces: { front: { base: [{ kind: 'image' as const, id: 'art', x: -3, y: -3, w: 616, h: 463, bind: { literal: `asset:${o.photo}` }, fit: 'cover' as const }], variants: {} } } }],
+  }
+  return {
+    name: o.name,
+    template: { faces: { front: full('#f4ead8'), back: full('#2f4068') } },
+    rows: [{ id: 'kort-1', fields: { title: 'Kort 1' } }],
+    icons: {},
+    setup: applyRecipe(withBoard, recipeOf(withBoard)),
+  }
+}
+
 // The pile the tiles start in, face down and seen by nobody, beside the felt.
 const TILE_PILE = { id: 'brickor', kind: 'pile' as const, name: 'Brickorna', visibility: 'none' as const, geometry: { x: -160, y: 0, w: 0, h: 0, rot: 0 } }
 

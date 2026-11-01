@@ -1,8 +1,9 @@
 import { expect, test } from '../support/test.js'
-import { STANDARD_TYPES, TypeRegistry } from '@byd/engine'
+import { CARD_STANDARD_63x88, STANDARD_TYPES, TypeRegistry } from '@byd/engine'
 import { deckFromProject, ProjectDoc, queueFaces, TEXTURE_DPI } from '@byd/server'
-import { setupFromProject } from '@byd/server/doc'
-import { loadGame, picture } from '../load/deck.js'
+import { boardIssues, setupFromProject } from '@byd/server/doc'
+import { validateCard } from '@byd/template'
+import { loadGame, picture, printGame } from '../load/deck.js'
 
 // The deck the memory load test plays with (#1012). Its weight is the point: what a container
 // holds is a deck's pictures, typefaces and rows as data URLs, so a picture that is not the size it
@@ -95,4 +96,17 @@ test('a new generation of the big load game redraws every card, every tile and b
   expect(before.boards).toHaveLength(2)
   expect(after.fronts.filter((h, i) => h !== before.fronts[i])).toHaveLength(572)
   expect(after.boards.filter((h, i) => h !== before.boards[i])).toHaveLength(2)
+})
+
+// A board's print (#1531, #1533): the big board with a photograph out into the bleed, and one card
+// whose sides reach it too, so the physical checks let the package through and its files are drawn.
+test('the print game is a big board under a photograph that runs into the bleed, with no finding that stops its print', () => {
+  const doc = ProjectDoc.parse(printGame({ name: 'Tryck 1', photo: hash(4000) }))
+  const [board] = doc.setup.boards ?? []
+  expect(board?.type.id).toBe('board.rect610')
+  const art = board?.faces?.['front']?.base.find((el) => el.id === 'art')
+  expect(art).toMatchObject({ x: -3, y: -3, w: 616, h: 463, bind: { literal: `asset:${hash(4000)}` } })
+  expect(boardIssues(doc).filter((f) => f.severity === 'error')).toEqual([])
+  const card = CARD_STANDARD_63x88
+  for (const face of Object.values(doc.template.faces)) expect(validateCard({ type: card, face, row: doc.rows[0]?.fields ?? {}, bleedMm: card.print.bleedMm }).filter((f) => f.severity === 'error')).toEqual([])
 })
