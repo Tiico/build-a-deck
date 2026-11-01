@@ -257,7 +257,7 @@ export function pieceActs(c: VisibleComponentState, t: T = swedish): Act[] {
 }
 
 // How a card or a tile is turned (#1485, K34): a card a quarter turn, as it always has been; a tile
-// one step of its shape either way, «↺ Vrid 60°» and «↻ Vrid 60°» on a hexagon. The step is the
+// one step of its shape either way, «↺ Rotera 60°» and «↻ Rotera 60°» on a hexagon. The step is the
 // type's (`turnStepOf`), and every way of turning — the ring, the panel, R and Shift R — reads it here.
 export function turnActs(c: VisibleComponentState, t: T = swedish): Act[] {
   const to = (steps: 1 | -1): Intent[] => [{ v: 'rotate', component: c.id, rot: turnedBy(c, steps) }]

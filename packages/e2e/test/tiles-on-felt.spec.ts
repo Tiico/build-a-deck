@@ -8,8 +8,8 @@ import { tileGame } from '../support/game.js'
 import { expect, test } from '../support/test.js'
 
 // Brickor på filten (#1485, variant A i #1474), i den byggda appen: ett spel med en lek
-// landskapsbrickor i en dold påse. Ada drar en bricka ur påsen ut på filten och vrider den ett steg
-// med ringen, och hennes skärm och rummets TV ritar samma sexhörning, med baksidan upp och vriden 60°.
+// landskapsbrickor i en dold påse. Ada drar en bricka ur påsen ut på filten och roterar den ett steg
+// med ringen, och hennes skärm och rummets TV ritar samma sexhörning, med baksidan upp och roterad 60°.
 
 test.describe('en bricka på filten (#1485)', () => {
   test('dras ur en dold påse, vrids ett steg, och ser likadan ut på två skärmar', async ({ request, open }) => {
@@ -38,7 +38,7 @@ test.describe('en bricka på filten (#1485)', () => {
     // A click asks, and the ring turns it a sixth.
     const at = (await tile.boundingBox())!
     await page.mouse.click(at.x + at.width / 2, at.y + at.height / 2)
-    await page.getByRole('button', { name: '↻ Vrid 60°' }).click()
+    await page.getByRole('button', { name: '↻ Rotera 60°' }).click()
 
     for (const screen of [page, tv]) {
       const seen = screen.locator(`.byd-card[data-component="${id}"]`)
@@ -47,7 +47,7 @@ test.describe('en bricka på filten (#1485)', () => {
       await expect(seen).toHaveAttribute('style', /rotate\(60deg\)/)
       await expect(screen.locator('.byd-pile[data-zone="bag"]')).toHaveAttribute('data-count', '3')
     }
-    await expect(page.locator(`[data-kbd="card:${id}"]`)).toHaveAttribute('aria-label', /^Bricka, baksida, i .+, vriden 60°\. Enter öppnar handlingar\.$/)
+    await expect(page.locator(`[data-kbd="card:${id}"]`)).toHaveAttribute('aria-label', /^Bricka, baksida, i .+, roterad 60°\. Enter öppnar handlingar\.$/)
     // The tile is a hexagon in the type's proportions on both screens.
     for (const screen of [page, tv]) {
       const box = await screen.locator(`.byd-card[data-component="${id}"]`).evaluate((el) => ({ w: (el as HTMLElement).offsetWidth, h: (el as HTMLElement).offsetHeight }))

@@ -75,7 +75,7 @@ describe('the phone turns a tile, and the table hears `rotate` (#1486)', () => {
 
     // A tab is opened before anything in it is asked about (#1147).
     fireEvent.click(await screen.findByRole('tab', { name: /Framför mig/ }))
-    fireEvent.click(await screen.findByRole('button', { name: /^↻ Vrid 60°/ }))
+    fireEvent.click(await screen.findByRole('button', { name: /^↻ Rotera 60°/ }))
     await waitFor(async () => expect(await last()).toEqual({ v: 'rotate', component: mine.id, rot: 60 }))
 
     fireEvent.click(screen.getByRole('tab', { name: /Bordet/ }))
@@ -83,7 +83,7 @@ describe('the phone turns a tile, and the table hears `rotate` (#1486)', () => {
     const held = await screen.findByRole('dialog')
     // Held up in its shape, at its size against a card (K26).
     expect(held.querySelector('[data-inspect]')!.getAttribute('data-shape')).toBe('square')
-    fireEvent.click(within(held).getByRole('button', { name: /^↺ Vrid 90°/ }))
+    fireEvent.click(within(held).getByRole('button', { name: /^↺ Rotera 90°/ }))
     await waitFor(async () => expect(await last()).toEqual({ v: 'rotate', component: vete.id, rot: 270 }))
   })
 })
@@ -134,9 +134,9 @@ describe('a tile in front of me and on the table turns in its step (#1486)', () 
     render(<MineStrip view={view} faces={undefined} onOpen={() => undefined} onTurn={onTurn} />)
     const tile = view.components.find((c) => c.zone === 'mine:A')!
     const item = document.querySelector(`[data-mine-card="${tile.id}"]`)!.closest('.byd-mine-item') as HTMLElement
-    fireEvent.click(within(item).getByRole('button', { name: /^↻ Vrid 60°/ }))
+    fireEvent.click(within(item).getByRole('button', { name: /^↻ Rotera 60°/ }))
     expect(onTurn).toHaveBeenLastCalledWith([{ v: 'rotate', component: tile.id, rot: 60 }])
-    fireEvent.click(within(item).getByRole('button', { name: /^↺ Vrid 60°/ }))
+    fireEvent.click(within(item).getByRole('button', { name: /^↺ Rotera 60°/ }))
     expect(onTurn).toHaveBeenLastCalledWith([{ v: 'rotate', component: tile.id, rot: 300 }])
   })
 

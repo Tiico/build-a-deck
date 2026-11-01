@@ -5160,8 +5160,9 @@ Editorns ändring är `setDecks`, hela listan i en redigering och ett steg tillb
 Brickan ritas i sin form, i typens millimetrar, med texturen inom konturen och kartongens kant under: en sexhörning med spetsen uppåt, en kvadrat med typens hörn, och en skiva.
 Kanten är 2,5 mm djup på filten så att den syns (C1), och den faller alltid nedåt på skärmen hur brickan än är vriden; i en hög läggs 0,9 mm kant till för varje bricka under, upp till åtta.
 En komponents `x` och `y` är det övre vänstra hörnet av dess egen ruta, kortets eller brickans, som setupen lägger en markör (`piecesAt`); en bricka som dras av en hög hamnar med sitt eget hörn där den bars, och den staplas på bara där den ligger.
-Ringen har «↺ Vrid 60°» och «↻ Vrid 60°» på var sin sida om «Vänd» (90° för kvadraten och de runda), och panelen har samma två rader (`turnActs`); ett kort har kvar sin enda «Rotera».
-«Vrid» är prototypens ord, godkänt 2026-11-01 och bara för brickan: pilen och vinkeln skiljer det från «Vänd», vilket var skälet till «Rotera» för kortet (#1134).
+Ringen har «↺ Rotera 60°» och «↻ Rotera 60°» på var sin sida om «Vänd» (90° för kvadraten och de runda), och panelen har samma två rader (`turnActs`); ett kort har kvar sin enda «Rotera».
+Ett verb för både kort och bricka (beställarens beslut 2026-11-01): «Rotera», av samma skäl som #1134 valde det för kortet, eftersom «Vrid» bredvid «Vänd» var ett ord från samma bokstavsform; brickans knappar bär steget, pilen och vinkeln.
+Prototypens «Vrid» byggdes först i #1485 och ersattes i #1486.
 R vrider det som har tangentbordets fokus ett steg framåt, annars det pekaren vilar på, och Skift + R ett steg tillbaka; steget är typens (`turnStepOf`), så ett kort vrids ett kvarts varv.
 När en brickas vinkel ändras visas stegen en kort stund runt den på varje skärm, en prick för varje sätt den kan ligga och den den ligger i markerad, och under minskad rörelse utan att tona ut.
 Påsen är en dold hög som korten, ritad i brickans form: vyn säger nu vilka typer en dold zon håller och hur många av varje, den översta typen först (`types` på zonen), som en hög sexhörningar syns vara det över rummet; aldrig vilken bricka.
@@ -5170,14 +5171,14 @@ Korpusens projektioner härleddes om ur oförändrade loggar.
 Ett mynt är 18 px vid åtta platser och får räknarbrickans osynliga träffyta; en bricka som är mindre än ett finger på skärmen får den.
 Håll för att förstora (K8, K26) lyfter brickan i sin form och i ett lyft korts pixlar per millimeter, så att orden läses som på ett kort och ett mynt förblir mindre än en sexhörning; där en kortram står — «Titta», TV:ns scen, «Visa för alla» — står brickan mitt i ramen i sin sanna storlek mot kortet (`TileInCard`).
 Högen behåller kortets ruta, som dess namn, antal och handtag läggs kring och ett släpp mäts mot, och brickorna står mitt i den; antalet står på brickans överkant, eftersom ett mynt vid åtta platser annars låg helt under brickan med antalet.
-Loggen säger «Ada vred Fjäll», eller «vred en bricka» där läsaren inte ser vilken.
-Skärmläsaren hör «Rågåker, bricka i Spelyta, vriden 120°», «Bricka, baksida, i Spelyta» för en bricka vars framsida inte syns, och påsen som «Landskap, 3 brickor, överst: bricka, baksida».
+Loggen säger «Ada roterade Fjäll», eller «roterade en bricka» där läsaren inte ser vilken.
+Skärmläsaren hör «Rågåker, bricka i Spelyta, roterad 120°», «Bricka, baksida, i Spelyta» för en bricka vars framsida inte syns, och påsen som «Landskap, 3 brickor, överst: bricka, baksida».
 
 **Telefonen** (#1486, variant A i #1474).
 Brickorna står i handens rutnät efter korten, var grupp i sin ordning, i sin sanna storlek mot kortet och i sin form med kantens brun under; en markerad bricka får en stapel under sig, eftersom konturen skär bort ringen ett kort bär.
 Alt och en pil flyttar en bricka bara bland brickorna.
 TV:ns solfjäder ritar kortens baksidor och sedan brickornas i sin form, ur zonens `types`; vilken bricka det är går aldrig ut (#1485).
-I «Framför mig» har en bricka «↺ Vrid 60°» och «↻ Vrid 60°» bredvid «Ta upp», och i «Bordet» står samma två i den upplyfta brickans rad, i en yta som ingen plats äger eller som är ens egen; en annan plats yta läses bara (#414).
+I «Framför mig» har en bricka «↺ Rotera 60°» och «↻ Rotera 60°» bredvid «Ta upp», och i «Bordet» står samma två i den upplyfta brickans rad, i en yta som ingen plats äger eller som är ens egen; en annan plats yta läses bara (#414).
 Den dolda högen räknas i brickor, och dess knapp är den som redan står på varje hög, «Dra 1 till min hand».
 Brickans utseende skrivs i `tileLook.ts` och står i elementens stilattribut, inte i arket som första bilden väntar på: dess larm (#366, L40) ringde med 0,4 kB över, och en bricka ritas bara i ett spel som har en.
 
