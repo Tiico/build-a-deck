@@ -7,6 +7,8 @@ export * from './recipe.js'
 export * from './edits.js'
 // Spelets låda ur dokumentet (#1412): måtten, låsen och om leken ryms, för editorns Fysisk kontroll.
 export * from './box.js'
+// Spelets bräden (#1481): typen ett bräde pinnar och Fysisk kontroll på dess sidor.
+export * from './boards.js'
 // Personlig ångra (#1056): vad en redigering ändrade, och steget tillbaka från det.
 export { cellColumn, changeOf, joined, revertOf, type Change, type Reverted, type Revert } from './undo.js'
 export * from './setup.js'

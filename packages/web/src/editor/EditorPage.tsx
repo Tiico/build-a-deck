@@ -12,6 +12,7 @@ import type { CatalogIcon } from './icon-catalog.js'
 import type { OwnIcon } from './IconCatalog.js'
 import { TemplateCanvas } from './TemplateCanvas.js'
 import { BoxTab } from './BoxTab.js'
+import { BoardTab } from './BoardTab.js'
 import type { BoxFace } from '@byd/engine'
 import { DataTable } from './DataTable.js'
 import { AiPanel, useAiKey } from './AiPanel.js'
@@ -134,8 +135,10 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   // the same moment and not before (#1406, beslut 2 och 3, #1413), so the two are asked the one
   // question; until then the box only grows in the wall's foot.
   const startable = client?.startable === true
-  const modes = modesFor(startable)
-  const stages = room === 'desk' ? null : stagesFor(room, startable)
+  // The board's tab comes with the first board laid in Bord (#1481).
+  const boarded = (client?.doc.setup.boards?.length ?? 0) > 0
+  const modes = modesFor(startable, boarded)
+  const stages = room === 'desk' ? null : stagesFor(room, startable, boarded)
   // Below the desk «Spara» and «Uppdatera bordet» stand in the header while the header stands, as
   // they do at the desk, and the strip is the stages' own (#567, beslut B): at 820 px the two had
   // hidden Media, Regler and Bord behind them. In a low window the header scrolls away (#550), so
@@ -195,6 +198,9 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   // so going between Mall and Låda leaves each where the designer left it.
   const [boxFace, setBoxFace] = useState<BoxFace>('front')
   const [boxElement, setBoxElement] = useState<string | null>(null)
+  // The board whose side the «Bräde» tab edits (#1481), by its name, and the layer chosen on it.
+  const [boardId, setBoardId] = useState<string | null>(null)
+  const [boardElement, setBoardElement] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   // What could not happen, and what just did. Two states, because they are two different pieces
   // of news and one slot could only ever hold the later of them (#35).
@@ -873,6 +879,31 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         onAddPicture={(file) => client.addPicture(file, t)}
       />
     ),
+    // Brädet (#1481): the board's side, edited by Mall's own canvas as a face of the box is.
+    board: () => (
+      <BoardTab
+        doc={doc}
+        edit={client}
+        reading={!client.mayEdit}
+        assetBase={http}
+        motifs={deckMotifs}
+        board={boardId}
+        onSelectBoard={(id) => {
+          setBoardId(id)
+          setBoardElement(null)
+        }}
+        element={boardElement}
+        onSelectElement={setBoardElement}
+        onOpenFonts={() => {
+          revealThemeSection('fonts')
+          setStage('theme')
+        }}
+        {...(client.mayEdit ? { onCatalogFont: (family: CatalogFamily) => client.useCatalogFont(family, t) } : {})}
+        {...(client.mayEdit ? { onCatalogIcon: async (icon: CatalogIcon, gesture: string) => iconSettled(await client.chooseIcon(icon, t, gesture)) } : {})}
+        {...(client.mayEdit ? { onOwnIcon: async (own: OwnIcon, gesture: string) => iconSettled(await client.chooseOwnIcon(own.svg, own.name, own.credit, t, gesture)) } : {})}
+        onAddPicture={(file) => client.addPicture(file, t)}
+      />
+    ),
     table: () => (
       <DataTable
         doc={doc}
@@ -913,7 +944,23 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
     // One panel and not two stacked (#126): the list of running tables stands in the setup's third
     // column, beside the felt, so the whole tab is one screen and the header stays where it was.
     // «Resultat» is a view of this tab (#1010), switched at the head of its first column.
-    tables: () => <BordTab doc={doc} client={client} assetBase={http} motifs={deckMotifs} server={params.get('server')} started={table?.kind === 'new' ? table.id : null} results={results} />,
+    tables: () => (
+      <BordTab
+        doc={doc}
+        client={client}
+        assetBase={http}
+        motifs={deckMotifs}
+        server={params.get('server')}
+        started={table?.kind === 'new' ? table.id : null}
+        results={results}
+        // A board's row leads to the tab its side is drawn in, with that board chosen (#1481).
+        onDrawBoard={(id) => {
+          setBoardId(id)
+          setBoardElement(null)
+          setStage('board')
+        }}
+      />
+    ),
   }
 
   tableEndedRef.current = tableEnded
