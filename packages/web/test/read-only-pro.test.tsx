@@ -66,7 +66,7 @@ describe('Pro in the read-only band (#1532)', () => {
     await lapsed(true)
     const gone = home()
     const band = await screen.findByRole('region', { name: 'Läsläge' })
-    await waitFor(() => expect(band.textContent).toContain('Med Pro rymmer kontot det Pro rymmer igen, för 99 kr i månaden.'))
+    await waitFor(() => expect(band.textContent).toContain('Förnya Pro för 99 kr i månaden, så gäller Pros tak igen.'))
     fireEvent.click(within(band).getByRole('link', { name: 'Förnya Pro' }))
     expect(gone).toEqual([card()])
   })
@@ -75,7 +75,7 @@ describe('Pro in the read-only band (#1532)', () => {
     const { game } = await lapsed(true)
     const gone = await editor(game)
     const band = document.querySelector<HTMLElement>('#byd-editor-reading')!
-    await waitFor(() => expect(band.textContent).toContain('Med Pro rymmer kontot det Pro rymmer igen, för 99 kr i månaden.'))
+    await waitFor(() => expect(band.textContent).toContain('Förnya Pro för 99 kr i månaden, så gäller Pros tak igen.'))
     fireEvent.click(within(band).getByRole('link', { name: 'Förnya Pro' }))
     expect(gone).toEqual([card()])
   })

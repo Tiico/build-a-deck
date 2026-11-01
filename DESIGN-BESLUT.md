@@ -2705,7 +2705,7 @@ Beslutat och byggt 2026-11-01 (#1492, beställarens beslut variant A efter [prot
 - Grindarna är `packages/web/test/read-only-mode.test.tsx`, `packages/server/test/read-only-lapsed.test.ts` och `packages/e2e/test/read-only-mode.spec.ts`, där ett utgånget konto i den byggda appen möter läsläget.
 
 Beslutat och byggt 2026-11-01 (#1532, beställarens beslut samma dag, efter #1492 och #1494): **läslägets band erbjuder ägaren Pro igen, med priset.**
-- Bandet i Mina spel och editorns läsband säger till ägaren «Med Pro rymmer kontot det Pro rymmer igen, för 99 kr i månaden.» och har «Förnya Pro», som leder till kortet «Abonnemang» i Profil, på samma sätt som takbeskedet (#1494).
+- Bandet i Mina spel och editorns läsband säger till ägaren «Förnya Pro för 99 kr i månaden, så gäller Pros tak igen.» och har knappen «Förnya Pro», som leder till kortet «Abonnemang» i Profil, på samma sätt som takbeskedet (#1494).
 - Priset är det Stripe har, i läsarens valuta, läst med `GET /me/subscription`. En medredigerare ser fortfarande bara ägarens namn, aldrig hennes nivå eller ett pris, och med betalningen avstängd sägs inget pris och ingen väg till Pro.
 - Grinden är `packages/web/test/read-only-pro.test.tsx`, mot Stripes ställföreträdare på maskinen.
 
