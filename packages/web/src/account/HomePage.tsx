@@ -10,7 +10,7 @@ import { CARD_PX } from '../editor/corner.js'
 import { previewIcons } from '../editor/assets.js'
 import { previewFonts } from '../editor/fonts.js'
 import { ReadOnlyOffer } from './ReadOnlyOffer.js'
-import { dismissGone, duplicateProject, gameCover, gameFan, logout, myAccount, myCards, myGone, myPlayed, myProjects, myUsage, myWaiting, removeProject, renameProject, returnToTable, runningTables, startTable, type GameWaiting, type GoneGame, type ReadOnlyWhy, type Played, type ProjectSummary, type RunningTable, type TermsStanding } from './api.js'
+import { dismissGone, duplicateProject, gameCover, gameFan, logout, myAccount, myCards, myGone, myPlayed, myProjects, myUsage, myWaiting, removeProject, renameProject, returnToTable, runningTables, startTable, type GameWaiting, type GoneGame, type ReadOnlyWhy, type Usage, type Played, type ProjectSummary, type RunningTable, type TermsStanding } from './api.js'
 import { TermsDue, laterFor, putOff } from './terms-due.js'
 import { TermsOffer } from './TermsOffer.js'
 import { QuotaReached } from './quota.js'
@@ -158,10 +158,14 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
   // The read-only mode (#1492, variant A, G5): the account's games that its lapsed subscription
   // leaves read-only, each with the free tier's ceiling it lies over, and those ceilings. Asked with
   // the list, and again when the list changes, since a game removed can let the next one fit.
-  const [held, setHeld] = useState<{ games: Map<string, ReadOnlyWhy>; limits: Record<string, number | null>; at: string } | null>(null)
+  const [held, setHeld] = useState<{ games: Map<string, ReadOnlyWhy>; usage: Usage; at: string } | null>(null)
   const [heldClosed, setHeldClosed] = useState<string | null>(() => readOnlyClosed())
   const heldWhy = (p: ProjectSummary): ReadOnlyWhy | undefined => held?.games.get(p.id)
-  const heldLine = (p: ProjectSummary, why: ReadOnlyWhy) => t(`home.readOnly.why.${why}`, { cards: p.cards ?? 0, limit: held?.limits[why] ?? 0 })
+  // What the game uses of the measure it lies over, as the server counted it: unique cards, not copies.
+  const heldLine = (p: ProjectSummary, why: ReadOnlyWhy) => {
+    const measure = held?.usage.measures[why]
+    return t(`home.readOnly.why.${why}`, { cards: measure?.projects?.find((g) => g.id === p.id)?.used ?? p.cards ?? 0, limit: measure?.limit ?? 0 })
+  }
   const [asking, setAsking] = useState<ProjectSummary | null>(null)
   // A game whose «Starta nytt bord» was pressed while a table of it runs (#1145, beslut A): the
   // press asks first, because it stood one line under «Öppna bordet KOD» and was taken for it.
@@ -291,7 +295,7 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
     void myUsage(http).then((usage) => {
       if (!live) return
       const games = new Map((usage?.readOnly ?? []).map((g) => [g.id, g.why] as const))
-      setHeld(usage?.lapsed && games.size > 0 ? { games, at: usage.lapsed.at, limits: Object.fromEntries(Object.entries(usage.measures).map(([m, v]) => [m, v.limit])) } : null)
+      setHeld(usage?.lapsed && games.size > 0 ? { games, at: usage.lapsed.at, usage } : null)
     }, () => undefined)
     return () => {
       live = false

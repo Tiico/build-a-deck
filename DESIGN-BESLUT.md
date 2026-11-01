@@ -2658,6 +2658,14 @@ Reviderat och byggt 2026-11-01 (#1511, beställarens beslut i #1469): **ett spel
 - Gratisnivåns tak är beslutade (fråga 3 i #1469): 2 spel, 150 unika kort per spel, 1 bord åt gången, 8 bord på 30 dygn och 300 MB. De är konfiguration i lådans `BYD_PLANS` (DRIFT §12) och inte siffror i koden; utan variabeln är allt obegränsat som i betan.
 - Grindarna är `packages/server/test/read-only-lapsed.test.ts`, mot båda lagren.
 
+Beslutat och byggt 2026-11-01 (#1492, beställarens beslut variant A efter [prototypen](docs/ux-audits/2026-11-01-prisnivaer/prototyper/laslaget.html)): **hur läsläget syns för designern.**
+- **Mina spel** säger det en gång, i bandet under rubriken, efter villkoren och före namnet och passkeyn: hur många spel som är i läsläge, att abonnemanget har gått ut och kontot rymmer det Gratis rymmer, att spelen går att öppna, läsa och exportera men inte ändra eller starta bord ur, att ingenting tas bort, och vägen tillbaka: ta bort kort, exemplar eller bilder, eller ta bort ett annat spel. «Stäng» håller för den utgången i den webbläsaren.
+- **Spelet i läsläge** bär märket «Läsläge» och taket det ligger över på sin rad eller i heron, i stället för när det senast spelades. Heron får «Exportera…» där «Starta bord» stod, och ⋯ behåller sina val, där «Starta bord», «Byt namn…» och «Duplicera» säger «Inte i läsläge». Spelen som ryms ser ut som i dag.
+- **Editorn** säger det i #489:s läsband, så läsläget har en form: till ägaren taket och vad spelet använder av det, till en medredigerare bara vems spelet är, med ägarens namn och aldrig hennes nivå. En redigering som inte bara gör spelet mindre avvisas i editorn innan den skickas, med regeln aktören håller den till (`onlyShrinks`, #1511), och bandet säger «Läsläge: bara att ta bort kort, sänka Antal och ta bort bilder sparas.». Kontrollerna står kvar, eftersom att ta bort kort, sänka Antal och ta bort bilder ska gå. «Starta bord» finns inte för ett spel i läsläge. När spelet ryms igen försvinner bandet.
+- Editorn frågar `GET /projects/<id>/read-only`, som svarar ägaren `{ bearer: 'you', why, limit }` och någon annan med en roll i spelet `{ bearer: 'owner', ownerName? }`, och `null` när spelet fungerar som vanligt.
+- Ordet «Pro», ett pris och «Förnya Pro» står inte i läsläget förrän kassan finns (#1493, #1494).
+- Grindarna är `packages/web/test/read-only-mode.test.tsx`, `packages/server/test/read-only-lapsed.test.ts` och `packages/e2e/test/read-only-mode.spec.ts`, där ett utgånget konto i den byggda appen möter läsläget.
+
 ### G6. Personuppgifter: Deckster är ansvarig, och loggen maskas på plats (beslutat 2026-10-24, #1269)
 
 Beställarens beslut 2026-10-24 på frågorna F1–F7 i #1269.
