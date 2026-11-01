@@ -145,8 +145,8 @@ Texturerna cachas per innehållshash, så en ny start av samma version kostar n�
 Lådan håller alltså 500 kort i minne med god marginal, också med ett bräde som trycks samtidigt.
 Det som kostar är väntan, och den kostar bara när flera stora bord startas eller uppdateras samtidigt.
 
-Startens räkning är 574 och inte 576, eftersom bordets framsteg (`textureHashes`) inte räknar brädenas egna texturer, alltså `ownFaces`.
-Det är #1539.
+Startens räkning var 574 och inte 576, eftersom bordets framsteg (`textureHashes`) inte räknade brädenas egna texturer, alltså `ownFaces`.
+Sedan #1539 räknar starten dem, så TV:n säger inte att bordet är klart förrän brädet är ritat.
 
 ### AI-frågornas kostnad för lådan (#1007)
 

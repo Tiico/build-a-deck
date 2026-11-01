@@ -69,6 +69,20 @@ describe('ett bord med ett bräde (#1479)', () => {
     expect((await run.store.deckOf(made.id, version))?.boards?.['main']?.faces['front']?.base[0]).toMatchObject({ bind: { literal: `asset:${hash}` } })
   })
 
+  // TV:ns start väntar tills varje textur är ritad (#765), och brädets JPEG är den tyngsta ett bord har.
+  // Starten räknade bara kortens, så TV:n kunde säga klart före brädet (#1539, 574 mot 576 i #1533).
+  it('räknar brädets textur i bordets framsteg, lika många som «Uppdatera bordet» räknar', async () => {
+    const { hash } = (await (await fetch(`${run.http}/assets`, { method: 'POST', headers: { 'content-type': 'image/png', cookie }, body: PNG })).json()) as { hash: string }
+    const made = await startTable('p3', hash)
+    const table = await run.connectTable(made.id, made.hostKey)
+    await table.synced(0)
+    const started = (await (await fetch(`${run.http}/sessions/${made.id}/textures`)).json()) as { total: number }
+    const prepared = (await (await fetch(`${run.http}/sessions/${made.id}/prepare`, { method: 'POST', headers: { cookie } })).json()) as { total: number }
+    // The card's front and back, and the board's front.
+    expect(prepared.total).toBe(3)
+    expect(started.total).toBe(prepared.total)
+  })
+
   it('lämnar en bild som lagret inte har som en tom ram på brädet', async () => {
     const made = await startTable('p2', '0'.repeat(64))
     const { version } = (await run.store.loadSession(made.id))!
