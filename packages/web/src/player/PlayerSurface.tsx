@@ -10,7 +10,7 @@ import { CountersRow, MineActions, MineStrip, inFrontOf } from './SeatExtras.js'
 import { isMaterial, isTile } from '../components.js'
 import { PlaySheet } from './PlaySheet.js'
 import { DicePill, DiceSheet, diceOf } from './Dice.js'
-import { MyPieces, PieceBar, PieceSheet, TablePieces } from './PhonePieces.js'
+import { MyPieces, PieceBar, TablePieces } from './PhonePieces.js'
 import { standingRewind } from '../table/rewind.js'
 import { cardName, turnActs } from '../table/keyboard.js'
 import { TableSummary, RecentActivity } from './TableSummary.js'
@@ -26,6 +26,8 @@ import type { TurnedHand } from './turned.js'
 
 // The desk a wide window draws instead of the tabs (#1310), with its sheet: fetched only where it
 // is drawn, so neither the phone's script nor the first frame's sheet carries it.
+// The sheet of zones a chosen piece is moved to (#1476): drawn only after a press (L40).
+const PieceSheet = lazy(() => import('./PieceSheet.js'))
 const PlayerDesk = lazy(() => import('./PlayerDesk.js').then((m) => ({ default: m.PlayerDesk })))
 
 // What a player is given on a screen that cannot carry the board: the seat's own hand, the
@@ -505,6 +507,7 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
         />
       )}
       {over && piece && placing && (
+        <Suspense fallback={null}>
         <PieceSheet
           view={view}
           seat={seat}
@@ -515,6 +518,7 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
           }}
           onClose={() => setPlacing(false)}
         />
+        </Suspense>
       )}
       {over && rolling && <DiceSheet view={view} activity={activity} send={(...intents) => client.send(...intents)} onClose={() => setRolling(false)} />}
       {!desk && overlays}
