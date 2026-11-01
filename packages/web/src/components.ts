@@ -1,5 +1,5 @@
-import { CARD_STANDARD_63x88, DICE, PIECES, TOKEN_COUNTER } from '@byd/engine'
-import type { VisibleComponentState } from '@byd/protocol'
+import { BOARDS, CARD_STANDARD_63x88, DICE, PIECES, TOKEN_COUNTER } from '@byd/engine'
+import type { Snapshot, VisibleComponentState } from '@byd/protocol'
 
 // What a thing on the table is, as against where it is (`zones.ts`) or how it got there
 // (`table/drop.ts`). A component's type is a fact about the component, and the rooms that ask
@@ -33,6 +33,33 @@ export const pieceKind = (c: { type: { id: string } }): PieceKind | null => PIEC
 // A piece that is not a card: a counter or a die. The phone draws each in a place of its own — the
 // counters' pills, the dice's sheet — and never as a card in a row of cards.
 export const isPiece = (c: { type: { id: string } }): boolean => isCounter(c) || isDie(c)
+
+// A board (#1479, #1480): the main board or a seat's player board, lying fixed where the setup put it.
+// Its size is its type's, the engine's to own. It is no card and no piece: nobody picks it up, so the
+// felt draws it under everything and every other reader of the table leaves it out (`withoutBoards`).
+const BOARD_MM = new Map(BOARDS.map((b) => [b.id, { w: b.physical.widthMm, h: b.physical.heightMm }] as const))
+export const isBoard = (c: { type: { id: string } }): boolean => BOARD_MM.has(c.type.id)
+export const boardMm = (c: { type: { id: string } }): { w: number; h: number } | null => BOARD_MM.get(c.type.id) ?? null
+
+// The table as everything but the felt's floor reads it: without its boards (#1480). A board is in
+// the zone it lies in, as everything is, but it is not something lying there to count, lay a card
+// beside, name with the keyboard or list on the phone (C2): a seat's «Framför» with its player board
+// in it and nothing else holds no cards. Handed back as the very object when there is no board.
+export function withoutBoards(view: Snapshot): Snapshot {
+  const boards = new Set(view.components.filter(isBoard).map((c) => c.id))
+  if (boards.size === 0) return view
+  const per = new Map<string, number>()
+  for (const c of view.components) if (boards.has(c.id)) per.set(c.zone, (per.get(c.zone) ?? 0) + 1)
+  return {
+    ...view,
+    components: view.components.filter((c) => !boards.has(c.id)),
+    zones: view.zones.map((z) => {
+      const n = per.get(z.id)
+      if (!n) return z
+      return z.mode === 'order' ? { ...z, order: z.order.filter((id) => !boards.has(id)) } : { ...z, count: Math.max(0, z.count - n) }
+    }),
+  }
+}
 
 // A card the screen shows without the wire having handed it out (K23): a face-down bottom card
 // held up to look at. It knows only what the zone said — that there is a card, and the back it

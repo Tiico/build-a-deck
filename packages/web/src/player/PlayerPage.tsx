@@ -2,6 +2,7 @@ import { sheetPlaces } from './PlaySheet.js'
 import { playIntents } from './play.js'
 import { lazy, Suspense, useMemo, useState } from 'react'
 import { useTableClient } from '../table/useTableClient.js'
+import { withoutBoards } from '../components.js'
 import { PlayerSurface, useHandMarks } from './PlayerSurface.js'
 import { useSeatTurned } from './turned.js'
 import { useDesk } from './desk.js'
@@ -44,7 +45,9 @@ export function PlayerPage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
   const seat = params.get('seat')
   const url = params.get('server') ?? `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`
   const conn = useTableClient(sessionId && seat ? { url, sessionId, seat, ...(token ? { token } : {}), connectTimeoutMs: timing.connectTimeoutMs, retryPlanMs: timing.retryPlanMs } : null)
-  const { client, view, status, activity, refused } = conn
+  const { client, view: wire, status, activity, refused } = conn
+  // The phone draws no felt (C2), so a board is nothing on it: not a card in «Bordet» or «Framför mig» (#1480).
+  const view = useMemo(() => (wire ? withoutBoards(wire) : wire), [wire])
   // Told just before the snapshot, which is what renders the page again (#1278).
   const name = client?.admitted ?? null
   const live = useLiveStatus(conn, 'phone', timing)

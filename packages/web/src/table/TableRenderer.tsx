@@ -1,5 +1,5 @@
 import { createPortal } from 'react-dom'
-import { Suspense, forwardRef, lazy, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, type KeyboardEvent as RKeyboardEvent, type MouseEvent as RMouseEvent, type ReactNode, type PointerEvent as RPointerEvent, type WheelEvent as RWheelEvent, type CSSProperties } from 'react'
+import { Suspense, forwardRef, lazy, useEffect, useMemo, useImperativeHandle, useLayoutEffect, useRef, useState, type KeyboardEvent as RKeyboardEvent, type MouseEvent as RMouseEvent, type ReactNode, type PointerEvent as RPointerEvent, type WheelEvent as RWheelEvent, type CSSProperties } from 'react'
 import { BackTexture, Texture } from './Texture.js'
 import type { Intent, Presence, Snapshot, VisibleComponentState, ZoneAction, ZoneView } from '@byd/protocol'
 import type { Peer, Pulse, Recent } from './presence.js'
@@ -11,7 +11,7 @@ import { CAMERA_MIN_MM, CAMERA_STEP, activeBounds, cameraOf, centre, fitFloor, f
 import { recallCamera, rememberCamera, type CameraMemory } from './cameraMemory.js'
 import { flatToTable, tiltedToTable, unrotate, type Point, type Rotation } from './geometry.js'
 import { CARD_MM, DIE_MM, TOKEN_MM, absoluteOf, besidePile, dropIntents, handBound, nobodysHand, type Drag, type DragTarget } from './drop.js'
-import { dieFaces, dieKind, isCounter, isDie, standIn } from '../components.js'
+import { boardMm, dieFaces, dieKind, isBoard, isCounter, isDie, standIn, withoutBoards } from '../components.js'
 import { DieFace, type Roll } from './Die.js'
 import { cardWord, counterActs, drawOne, feltShortcuts, flipUnder, labelOf, modifierHeld, ownerOf, thingsOn, type Act } from './keyboard.js'
 import { ShortcutHelp } from './ShortcutHelp.js'
@@ -336,8 +336,12 @@ type Settled = { ids: string[]; origin: Drag['origin']; pile: { id: string; x: n
 // chip — whose verbs are a counter's own and not a card's (C4, #67).
 type Ring = { target: DragTarget; x: number; y: number }
 
-export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(function TableRenderer({ view, mode, scale: fixedScale, rotate = 0, faces, onAct, peers = [], pulses = [], recent = [], shuffles = [], said = [], rolls = [], onPresence, camera, remember, onInspect, onPick, onShow, watch = false, size: fixedSize, glideMs = GLIDE_MS, margin = 0, overlay, back, seatNames = false, me = null, foldHand = null, keyboard, aimed = null, lens = false, forTheRoom = false, lit, cornerIn, startWait = null, startTile = true, more, onFit }, ref) {
+export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(function TableRenderer({ view: whole, mode, scale: fixedScale, rotate = 0, faces, onAct, peers = [], pulses = [], recent = [], shuffles = [], said = [], rolls = [], onPresence, camera, remember, onInspect, onPick, onShow, watch = false, size: fixedSize, glideMs = GLIDE_MS, margin = 0, overlay, back, seatNames = false, me = null, foldHand = null, keyboard, aimed = null, lens = false, forTheRoom = false, lit, cornerIn, startWait = null, startTile = true, more, onFit }, ref) {
   const t = useT()
+  // The boards lie under everything (#1480) and are nothing else on the table: not a card to count,
+  // lay beside, name or pick up. The felt draws them first, and reads the rest of the table without them.
+  const boards = whole.components.filter(isBoard)
+  const view = useMemo(() => withoutBoards(whole), [whole])
   const floor = view.zones.find((z) => z.id === view.floor)
   if (!floor) throw new Error(`floor ${view.floor} is not among the zones`)
   const frame = useRef<HTMLDivElement | null>(null)
@@ -1409,6 +1413,23 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   const ringPile = ringOn?.kind === 'counterPile' ? ringOn.ids.flatMap((id) => view.components.find((c) => c.id === id) ?? []) : undefined
 
   const areas = view.zones.filter((z) => z.kind === 'area' && z.id !== floor.id)
+  // Where the boards lie on the felt, turned as they lie, so a zone drawn on one is chalk on a
+  // picture and not an outline on felt (#1480, #1473).
+  const boardBoxes = boards.flatMap((c) => {
+    const mm = boardMm(c)
+    if (!mm) return []
+    const a = absoluteOf(whole, c)
+    const turned = Math.abs(c.rot % 180) === 90
+    const [w, h] = turned ? [mm.h, mm.w] : [mm.w, mm.h]
+    return [{ x: a.x + mm.w / 2 - w / 2, y: a.y + mm.h / 2 - h / 2, w, h }]
+  })
+  // 'whole' for a zone that is a board's own footprint, as a seat's «Framför» with its player board
+  // is: the board is the zone then, and no outline is drawn round its edge.
+  const onBoard = (g: { x: number; y: number; w: number; h: number }): 'whole' | '' | null => {
+    const near = (a: number, b: number) => Math.abs(a - b) <= 0.5
+    if (boardBoxes.some((b) => near(g.x, b.x) && near(g.y, b.y) && near(g.w, b.w) && near(g.h, b.h))) return 'whole'
+    return boardBoxes.some((b) => g.x >= b.x - 0.5 && g.y >= b.y - 0.5 && g.x + g.w <= b.x + b.w + 0.5 && g.y + g.h <= b.y + b.h + 0.5) ? '' : null
+  }
   const piles = view.zones.filter((z) => z.kind === 'pile')
   // Which of K19's four cases a zone's name is in. It is the table's own millimetres that decide,
   // so the renderer works it out and the stylesheet draws it.
@@ -1489,6 +1510,20 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
           onPointerUp={clearPoint}
           onPointerLeave={feltLeave}
         >
+          {/* The boards (#1480, variant A of #1473): fixed where the setup laid them and under all
+              else, so they are drawn first and never answer the pointer — a card dropped on a board
+              lands in the zone under it, as on bare felt. A board turned to its seat turns about its
+              own middle. Its side is the felt's own picture of it, nameless as a pile's back. */}
+          {boards.map((c) => {
+            const mm = boardMm(c)
+            if (!mm) return null
+            const a = absoluteOf(whole, c)
+            return (
+              <div key={c.id} className="byd-board" data-board={c.id} aria-hidden="true" style={{ left: left(a.x), top: top(a.y), width: px(mm.w), height: px(mm.h), ...(c.rot ? { transform: `rotate(${c.rot}deg)` } : {}) }}>
+                <BackTexture faces={faces} hash={c.faces?.['front']} />
+              </div>
+            )
+          })}
           {areas.map((z) => {
             const { rim, grow, anchor } = nameAt(z, floor, handOf(z.owner), rotate)
             // Whether the name above is near enough to share this one's strip of felt (#43).
@@ -1504,6 +1539,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
                 data-rim={rim}
                 data-grow={grow}
                 {...(crowded ? { 'data-mid': '' } : {})}
+                {...((b) => (b === null ? {} : { 'data-on-board': b }))(onBoard(z.geometry))}
                 style={{ left: left(z.geometry.x), top: top(z.geometry.y), width: px(z.geometry.w), height: px(z.geometry.h), ['--name-x' as string]: `${anchor.x}%`, ['--name-y' as string]: `${anchor.y}%` }}
               >
                 {!(forTheRoom && z.owner !== undefined) && <span>{z.name}</span>}
