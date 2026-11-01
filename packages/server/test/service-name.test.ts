@@ -13,7 +13,7 @@ import { fileURLToPath } from 'node:url'
 // the mail, the credit on a bundled icon. The repo, its packages, `BYD_*` and the images keep
 // theirs; those are the workshop's names, not the product's.
 const ROOT = fileURLToPath(new URL('../../../', import.meta.url))
-const SKIPS = new Set(['node_modules', '.git', 'dist', 'build', 'coverage', '.claude', '.vite', 'test-results', 'playwright-report', '.idea'])
+const SKIPS = new Set(['node_modules', '.git', 'dist', 'build', 'coverage', '.claude', '.vite', 'test-results', 'playwright-report', '.idea', '.playwright-browsers'])
 const TEXT = /\.(md|ts|tsx|js|mjs|css|html|json|webmanifest|ya?ml|example|service|timer|sh|svg|txt)$|^(Dockerfile.*|\.env\..*)$/
 
 function files(dir: string, seen: string[] = []): string[] {

@@ -1,3 +1,6 @@
+// Playwright's browsers are the repo's own, in .playwright-browsers/ (#1508): imported first, so
+// every worker is born knowing, and checked before the run (`test-support/playwright-browsers.ts`).
+import '../../test-support/playwright-browsers.js'
 import { defineConfig } from 'vitest/config'
 import { reporting } from '../../test-support/report.js'
 import { TEST_CEILING } from '../../test-support/own-time.js'
@@ -13,5 +16,5 @@ import { TEST_CEILING } from '../../test-support/own-time.js'
 // to `PG_TEST_BUDGET` of the worker's own time, which a machine that stops running the worker
 // cannot spend for it. `test-support/own-time.ts` has what was measured.
 export default defineConfig({
-  test: { testTimeout: TEST_CEILING, setupFiles: ['./test/setup.ts'], globalSetup: ['../../test-support/one-suite-at-a-time.ts'], ...reporting() },
+  test: { testTimeout: TEST_CEILING, setupFiles: ['./test/setup.ts'], globalSetup: ['../../test-support/playwright-browsers.ts', '../../test-support/one-suite-at-a-time.ts'], ...reporting() },
 })

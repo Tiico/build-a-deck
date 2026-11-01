@@ -8,6 +8,8 @@
   },
   "scripts": {
     "prepare": "git config core.hooksPath .githooks || true",
+    "postinstall": "test ! -f test-support/playwright-browsers.ts || node test-support/playwright-browsers.ts --after-install",
+    "browsers": "node test-support/playwright-browsers.ts",
     "test": "pnpm -r --workspace-concurrency=1 test",
     "typecheck": "pnpm -r typecheck",
     "lint": "eslint .",
