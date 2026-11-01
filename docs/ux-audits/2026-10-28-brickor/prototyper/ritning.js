@@ -103,7 +103,7 @@ function cardBack(w, h) {
  */
 function pieceSvg(item, px, { edge = true, layers = 1, cls = '', label = '' } = {}) {
   const shape = item.kind === 'card' ? 'card' : item.shape
-  const { w, h } = MM[shape]
+  const { w, h } = item.mm || MM[shape]
   const e = edge ? EDGE_MM : 0
   const stackMm = edge ? Math.min(layers - 1, 8) * 0.9 : 0
   const pad = shape === 'hex' || shape === 'round' ? 0 : 0
