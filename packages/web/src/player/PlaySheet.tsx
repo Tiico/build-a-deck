@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { Snapshot } from '@byd/protocol'
-import { isCounter } from '../components.js'
+import { isCounter, isMaterial } from '../components.js'
 import { Refusal, type RefusalHandle } from '../status/Refusal.js'
 import { translate, useT, type Key, type T } from '../i18n/index.js'
 import { floorName } from '../table/keyboard.js'
@@ -46,7 +46,9 @@ function tilesOf(view: Snapshot, keep: (z: Snapshot['zones'][number]) => boolean
     const inside = byZone.get(z.id) ?? []
     return !(inside.length > 0 && inside.every(isCounter))
   })
-  return shortcutsOf(kept, view.floor).map((z) => ({ id: z.id, name: z.name, label: z.label, at: z.at, kind: z.kind, count: z.mode === 'count' ? z.count : z.order.length }))
+  // What is counted is cards (#1476): a meeple, a die or a chip lying in an area is not «kort».
+  const cards = (z: Snapshot['zones'][number]) => (z.mode === 'count' ? z.count : z.kind === 'area' ? (byZone.get(z.id) ?? []).filter((c) => !isMaterial(c)).length : z.order.length)
+  return shortcutsOf(kept, view.floor).map((z) => ({ id: z.id, name: z.name, label: z.label, at: z.at, kind: z.kind, count: cards(z) }))
 }
 
 // Where a lifted card can go (C4): every named zone that is not somebody else's, and the floor
