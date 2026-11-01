@@ -129,6 +129,23 @@ describe('a tile in the engine (#1482)', () => {
     expect(h.view('B').zones.find((z) => z.id === 'hand:A')).toMatchObject({ mode: 'count', count: 2 })
   })
 
+  // A stack of hexagons is a stack of hexagons to the whole room (#1485, #1474: «antal och form,
+  // aldrig id eller bild»): a hidden zone says what types lie in it and how many of each, the top's
+  // first, so a screen draws the bag in its shape and a hand's tiles as tiles. Nothing more.
+  it('says the types a hidden zone holds, and how many of each, the top’s type first (#1485)', () => {
+    const h = new Harness(1, withTiles())
+    h.do('A', { v: 'draw', from: 'bag', to: 'hand:A', count: 2 })
+    h.do('A', { v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
+    const bag = h.view('B').zones.find((z) => z.id === 'bag')
+    expect(bag).toMatchObject({ mode: 'count', count: LANDS.length - 2, types: [{ type: HEX, count: LANDS.length - 2 }] })
+    const hand = h.view('B').zones.find((z) => z.id === 'hand:A')
+    expect(hand).toMatchObject({ mode: 'count', count: 3, types: [{ type: { id: 'card.standard.63x88', version: 1 }, count: 1 }, { type: HEX, count: 2 }] })
+    // Neither says which tile: no row, no title and no face travels with the types.
+    expect(JSON.stringify(hand)).not.toMatch(/granskog|ragaker|tjarn|fjall/)
+    h.do('A', { v: 'draw', from: 'bag', to: 'table', count: LANDS.length - 2 })
+    expect(h.view('B').zones.find((z) => z.id === 'bag')).not.toHaveProperty('types')
+  })
+
   it('replays to the same table, and a shuffled pile to the same order (D4)', () => {
     const h = new Harness(7, withTiles())
     h.do(null, { v: 'shuffle', pile: 'bag' })
