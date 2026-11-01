@@ -450,6 +450,11 @@ function originOf(value: string | undefined): string | null {
 }
 
 // The scheme the browser reached us by: what the proxy in front says, else what the public origin is.
+// Where a way back from Stripe lands (#1493, #1494): the app's page, else the public address, else
+// the address the request came to. An origin set to nothing is no origin.
+function appBase(opts: ServerOptions, req: IncomingMessage): string {
+  return opts.appOrigin || opts.publicOrigin || `${schemeOf(opts, req)}://${req.headers.host ?? 'localhost'}`
+}
 function schemeOf(opts: ServerOptions, req: IncomingMessage): string {
   const forwarded = String(req.headers['x-forwarded-proto'] ?? '').split(',')[0]?.trim()
   return forwarded || (originOf(opts.publicOrigin)?.startsWith('https:') ? 'https' : 'http')
@@ -663,7 +668,7 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
       const customer = await opts.accountPlans.customerOf(account.id)
       if (!customer) return json(res, 409, { error: 'no stripe customer' })
       try {
-        const returnUrl = new URL(body.data.back ?? '/', opts.appOrigin ?? opts.publicOrigin ?? `${schemeOf(opts, req)}://${req.headers.host ?? 'localhost'}`).toString()
+        const returnUrl = new URL(body.data.back ?? '/', appBase(opts, req)).toString()
         return json(res, 200, { url: await payments.stripe.createPortal({ customer, returnUrl }) })
       } catch (err) {
         console.error(JSON.stringify({ msg: 'stripe', portal: 'failed', error: err instanceof Error ? err.message : String(err) }))
@@ -681,7 +686,7 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
       const own = await opts.accountPlans.planOf(account.id)
       if (own?.source === 'stripe' && own.lapsed === undefined && own.plan in payments.config.prices) return json(res, 409, { error: 'already subscribed' })
       const back = (outcome: string) => {
-        const to = new URL(body.data.back ?? '/', opts.appOrigin ?? opts.publicOrigin ?? `${schemeOf(opts, req)}://${req.headers.host ?? 'localhost'}`)
+        const to = new URL(body.data.back ?? '/', appBase(opts, req))
         to.searchParams.set('pro', outcome)
         return to.toString()
       }
