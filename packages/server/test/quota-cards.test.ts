@@ -133,6 +133,14 @@ describe('what a game uses of its cards (#1195)', () => {
     const odd = { rows: [{ id: 'a', fields: {} }, { id: 'b', fields: { antal: 'x' } }, { id: 'c', fields: { antal: -2 } }, { id: 'd', fields: { antal: 2.7 } }] }
     expect(cardsUsed(odd)).toEqual({ cardRowsPerProject: 4, cardCopiesPerProject: 3 })
   })
+
+  // Every deck is rows that are rendered and stored, and copies the table deals (#1484): seventy-two
+  // landscape tiles count as the cards do.
+  it('counts the rows and copies of every deck', () => {
+    const doc = game(3, 2)
+    const tiles = { id: 'landskap', name: 'Landskap', type: { id: 'tile.hex.52', version: 1 }, template: doc.template, rows: [{ id: 'skog', fields: { antal: 4 } }, { id: 'sjo', fields: {} }], zone: 'draw' }
+    expect(cardsUsed({ ...doc, decks: [tiles] })).toEqual({ cardRowsPerProject: 5, cardCopiesPerProject: 11 })
+  })
 })
 
 for (const backend of backends) {

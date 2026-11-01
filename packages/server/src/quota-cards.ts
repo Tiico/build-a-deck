@@ -11,10 +11,13 @@ import { growth, type Limit, type Measure, type QuotaMet } from './quotas.js'
 export const CARD_MEASURES = ['cardRowsPerProject', 'cardCopiesPerProject'] as const satisfies readonly Measure[]
 export type CardMeasure = (typeof CARD_MEASURES)[number]
 
-export function cardsUsed(doc: Pick<ProjectDoc, 'rows'>): Record<CardMeasure, number> {
+// Every deck of the game (#1484): a tile of another deck is a row rendered and stored, and a copy
+// dealt, as a card is.
+export function cardsUsed(doc: Pick<ProjectDoc, 'rows'> & Partial<Pick<ProjectDoc, 'decks'>>): Record<CardMeasure, number> {
+  const rows = [...doc.rows, ...(doc.decks ?? []).flatMap((d) => d.rows)]
   let copies = 0
-  for (const row of doc.rows) copies += copiesOf(row.fields)
-  return { cardRowsPerProject: doc.rows.length, cardCopiesPerProject: copies }
+  for (const row of rows) copies += copiesOf(row.fields)
+  return { cardRowsPerProject: rows.length, cardCopiesPerProject: copies }
 }
 
 // The game's ceiling on a measure: the owner's, since the owner bears the game (A2).
@@ -24,7 +27,7 @@ export type CardCeiling = (measure: CardMeasure) => Promise<Limit>
 // when it may not. Only a measure that grows asks its ceiling, so an edit that adds nothing — a
 // text, a template, a card taken away — is never refused, over the ceiling or not, and never costs
 // a question. A new game is one that grows from nothing.
-export async function cardGrowth(before: Pick<ProjectDoc, 'rows'>, after: Pick<ProjectDoc, 'rows'>, ceiling: CardCeiling): Promise<QuotaMet | null> {
+export async function cardGrowth(before: Pick<ProjectDoc, 'rows'> & Partial<Pick<ProjectDoc, 'decks'>>, after: Pick<ProjectDoc, 'rows'> & Partial<Pick<ProjectDoc, 'decks'>>, ceiling: CardCeiling): Promise<QuotaMet | null> {
   const was = cardsUsed(before)
   const will = cardsUsed(after)
   for (const measure of CARD_MEASURES) {

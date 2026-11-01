@@ -2,8 +2,8 @@ import type { AssetCrop as Crop, CardQuery, FaceId, ZoneAction, ZoneBeside } fro
 import { RuleBlock, isSymbolName, type Element, type FaceTemplate, type Variant } from '@byd/template'
 import { showsWholePicture } from '@byd/protocol'
 import { BOX_SIDES, BoxFace, type BoxClearance, type BoxSide } from '@byd/engine'
-import { AssetCrop, PictureName, ProjectBox, ProjectDice, ProjectMarkers, ProjectPieces } from './projects.js'
-import type { Cell, Picture, ProjectDie, ProjectMarker, ProjectPiece, ProjectCredit, ProjectDoc, ProjectFont, ProjectRow, ProjectTheme, RuleDoc } from './projects.js'
+import { AssetCrop, PictureName, ProjectBox, ProjectDecks, ProjectDice, ProjectMarkers, ProjectPieces } from './projects.js'
+import type { Cell, Picture, ProjectDeck, ProjectDie, ProjectMarker, ProjectPiece, ProjectCredit, ProjectDoc, ProjectFont, ProjectRow, ProjectTheme, RuleDoc } from './projects.js'
 import { DEFAULT_BOX_TYPE } from './box.js'
 import { applyRevert, decideRevert, type Revert } from './undo.js'
 import { columnsOf } from './columns.js'
@@ -169,6 +169,10 @@ export type EditIntent =
   // The game's markers (#1483), the whole list at once as the pieces, their sides with them: a marker
   // added, moved, counted again or drawn anew is one version and one step back (B4).
   | { v: 'setMarkers'; markers: ProjectMarker[] }
+  // The game's other decks (#1484), the whole list at once as the markers: a deck added or taken away,
+  // or a template or a row of one changed, is one version and one step back (B4). Where a deck is
+  // edited in the editor is #1487; the document's own deck keeps its own edits.
+  | { v: 'setDecks'; decks: ProjectDeck[] }
   // `geometry` is where the zone was born, decided once when the edit is made (`decideEdit`) and
   // written into the log with it (#894). Where a new zone goes is a rule that changes with a
   // deploy (#443, #480, #881), and a line that asked the rule again on replay would put the zone
@@ -601,6 +605,11 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
       const pieces = ProjectPieces.parse(intent.pieces)
       const { pieces: _gone, ...rest } = doc.setup
       return { ...doc, setup: pieces.length > 0 ? { ...rest, pieces } : rest }
+    }
+    case 'setDecks': {
+      const decks = ProjectDecks.parse(intent.decks)
+      const { decks: _gone, ...rest } = doc
+      return decks.length > 0 ? { ...rest, decks } : rest
     }
     case 'setMarkers': {
       const markers = ProjectMarkers.parse(intent.markers)
