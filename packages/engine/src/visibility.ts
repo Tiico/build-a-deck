@@ -1,6 +1,6 @@
 import type { SeatId } from '@byd/protocol'
 import type { ComponentInstance, TableState, Zone } from './state.js'
-import type { TypeRegistry } from './typedef.js'
+import type { ComponentTypeDef, TypeRegistry } from './typedef.js'
 import { bottomOf, zoneOf } from './state.js'
 
 // A `table` connection has seat === null and sees only what is public. An observer (C8) sees
@@ -38,7 +38,7 @@ export function canSeeFace(
       return seat !== null && zone.owner === seat
     case 'all': {
       const def = registry.get(component.type)
-      return def.faces.length === 1 || component.face === def.contentFace
+      return def.faces.length === 1 || showsContent(def, component.face)
     }
   }
 }
@@ -49,7 +49,7 @@ export function canSeeFace(
 export function faceUpOnTop(state: TableState, registry: TypeRegistry, component: ComponentInstance): boolean {
   const zone = zoneOf(state, component.zone)
   if (zone.kind !== 'pile' || zone.order[0] !== component.id) return false
-  return component.face === registry.get(component.type).contentFace
+  return showsContent(registry.get(component.type), component.face)
 }
 
 // A pile's bottom card lying face-up is seen by everyone too (K23): its lower edge sticks out
@@ -58,7 +58,13 @@ export function faceUpOnTop(state: TableState, registry: TypeRegistry, component
 export function faceUpAtBottom(state: TableState, registry: TypeRegistry, component: ComponentInstance): boolean {
   const zone = zoneOf(state, component.zone)
   if (zone.order.length < 2 || bottomOf(state, zone) !== component.id) return false
-  return component.face === registry.get(component.type).contentFace
+  return showsContent(registry.get(component.type), component.face)
+}
+
+// Whether the side lying up shows what the component is: its content face, or any face of a type
+// whose every face shows it (#1471), as a meeple lying down.
+export function showsContent(def: ComponentTypeDef, face: string): boolean {
+  return def.everyFaceShows === true || face === def.contentFace
 }
 
 // Overrides are knowledge granted in a place; they do not travel with the component.

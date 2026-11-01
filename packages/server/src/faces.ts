@@ -1,4 +1,4 @@
-import type { ComponentTypeDef, SetupDef, TypeRegistry } from '@byd/engine'
+import { isMaterial, type ComponentTypeDef, type SetupDef, type TypeRegistry } from '@byd/engine'
 import type { CardTexts, CardTitles, FaceHashes } from '@byd/engine'
 import { compileCard, printedText, type Compiled, type Motif, type Row, type Template } from '@byd/template'
 import { contentHash, type RenderRequest } from '@byd/render/queue'
@@ -50,6 +50,9 @@ function* compiledCards(deck: Deck, setup: SetupDef, registry: TypeRegistry, dpi
   const seen = new Set<string>()
   for (const spec of setup.components) {
     if (out.faces[spec.cardRef]) continue
+    // Material is no card (K32, #1471): a meeple's `cardRef` is its seat and a counter's its name, so
+    // a row that shares the word is not theirs, and has no face of theirs to draw.
+    if (isMaterial(registry.get(spec.type))) continue
     const row = deck.rows[spec.cardRef]
     if (!row) continue
     // The designer's title with its capitals and its diacritics (#412). A row that has none says

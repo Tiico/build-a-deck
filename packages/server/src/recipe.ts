@@ -1,8 +1,8 @@
 import { CARD_STANDARD_63x88 } from '@byd/engine'
 import type { ProjectDoc } from './projects.js'
-import { CHIP_MM, DIE_MM } from './felt-sizes.js'
+import { CHIP_MM, DIE_MM, PIECE_MM } from './felt-sizes.js'
 
-export { CHIP_MM, DIE_MM }
+export { CHIP_MM, DIE_MM, PIECE_MM }
 
 // Imported by the editor as well as the server, so this module stays free of anything Node.
 // The setup as the editor holds it (B5, K2), and the recipe behind it.
@@ -18,6 +18,8 @@ export type Counter = NonNullable<Setup['counters']>[number]
 export type Recipe = { players: number; counters: Counter[] }
 // One line of the game's dice (K5, #1139): which kind, how many, and in which zone or seat role.
 export type Die = NonNullable<Setup['dice']>[number]
+// One line of the game's wooden pieces (#1471): which kind, how many, and where, as a die's line.
+export type Piece = NonNullable<Setup['pieces']>[number]
 
 export const SEAT_IDS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'] as const
 export const MAX_PLAYERS = SEAT_IDS.length

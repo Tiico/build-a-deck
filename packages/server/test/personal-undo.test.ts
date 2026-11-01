@@ -142,6 +142,7 @@ const EVERY: Record<EditIntent['v'], { mine: (doc: ProjectDoc) => EditIntent; th
   setGroupColumn: { mine: () => ({ v: 'setGroupColumn', column: null }) },
   setRecipe: { mine: () => ({ v: 'setRecipe', recipe: { players: 3, counters: [{ name: 'Liv', start: 20 }, { name: 'Guld', start: 0 }] } }) },
   setDice: { mine: () => ({ v: 'setDice', dice: [{ faces: 6, count: 2, role: 'mine' }, { faces: 20, count: 1, zone: 'table', perSeat: true }] }) },
+  setPieces: { mine: () => ({ v: 'setPieces', pieces: [{ kind: 'meeple', count: 5, role: 'mine' }, { kind: 'cube', count: 2, zone: 'table', perSeat: true }] }) },
   addZone: { mine: () => ({ v: 'addZone', id: 'hog-1', kind: 'pile', name: 'Hög 1' }) },
   removeZone: { mine: () => ({ v: 'removeZone', id: 'discard' }) },
   addSeatZone: {

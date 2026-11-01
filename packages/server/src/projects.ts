@@ -61,6 +61,22 @@ export const ProjectDie = z
   .refine((d) => (d.zone === undefined) !== (d.role === undefined), { message: 'a die lies in a zone or in a role, and only one' })
 export type ProjectDie = z.infer<typeof ProjectDie>
 export const ProjectDice = z.array(ProjectDie)
+// One line of the game's wooden pieces (#1471): a meeple, a cube or a disc, how many, and where, as a
+// line of dice says it (K28, K31). `kind` names a type of the `piece.` family in the registry. A piece
+// laid for a seat wears the seat's colour (L11), so `role`, or `perSeat` on a shared area, gives each
+// seat `count` of its own colour; a line in a shared area without `perSeat` lays pieces of no seat.
+export const ProjectPiece = z
+  .object({
+    kind: z.enum(['meeple', 'cube', 'disc']),
+    count: z.number().int().min(1).max(20),
+    perSeat: z.boolean().optional(),
+    zone: z.string().min(1).optional(),
+    role: z.string().min(1).optional(),
+    at: MaterialAt.optional(),
+  })
+  .refine((d) => (d.zone === undefined) !== (d.role === undefined), { message: 'a piece lies in a zone or in a role, and only one' })
+export type ProjectPiece = z.infer<typeof ProjectPiece>
+export const ProjectPieces = z.array(ProjectPiece)
 export const ProjectSetup = z.object({
   zones: z.array(ZoneDef),
   seats: z.array(z.string().min(1)),
@@ -93,6 +109,9 @@ export const ProjectSetup = z.object({
   // area each seat has (`front` is `front:A`, `front:B` …), which gives every seat `count` of its
   // own. `perSeat` on a shared area makes the count follow the players: `count` for each seat.
   dice: ProjectDice.optional(),
+  // The game's wooden pieces (#1471): meeples, cubes and discs, line by line as the dice. Absent is a
+  // game without any, which is every game written before there were pieces.
+  pieces: ProjectPieces.optional(),
 })
 const Cell = z.union([z.string(), z.number(), z.boolean(), z.null()])
 export type Cell = z.infer<typeof Cell>

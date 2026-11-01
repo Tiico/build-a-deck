@@ -1,4 +1,4 @@
-import { CARD_STANDARD_63x88, DICE, TOKEN_COUNTER } from '@byd/engine'
+import { CARD_STANDARD_63x88, DICE, PIECES, TOKEN_COUNTER } from '@byd/engine'
 import type { VisibleComponentState } from '@byd/protocol'
 
 // What a thing on the table is, as against where it is (`zones.ts`) or how it got there
@@ -23,6 +23,12 @@ export const dieKind = (c: { type: { id: string } }): string | null => {
   const n = dieFaces(c)
   return n === null ? null : `d${n}`
 }
+
+// A wooden piece (#1471): a meeple, a cube or a disc, one type each in the `piece.` family. Its kind
+// is what a sentence calls it; its `cardRef` is the seat whose colour it wears (L11), never a name.
+const PIECE_KINDS = new Map(PIECES.map((p) => [p.id, p.id.slice('piece.'.length) as PieceKind] as const))
+export type PieceKind = 'meeple' | 'cube' | 'disc'
+export const pieceKind = (c: { type: { id: string } }): PieceKind | null => PIECE_KINDS.get(c.type.id) ?? null
 
 // A piece that is not a card: a counter or a die. The phone draws each in a place of its own — the
 // counters' pills, the dice's sheet — and never as a card in a row of cards.

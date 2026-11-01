@@ -1,5 +1,5 @@
 import { matches } from '@byd/protocol'
-import { CARD_STANDARD_63x88, DICE, TOKEN_COUNTER, type SetupDef } from '@byd/engine'
+import { CARD_STANDARD_63x88, DICE, PIECES, TOKEN_COUNTER, type SetupDef } from '@byd/engine'
 import { layMaterial } from './material.js'
 import type { ProjectDoc } from './projects.js'
 
@@ -20,8 +20,8 @@ export function setupFromProject(doc: Pick<ProjectDoc, 'rows' | 'setup'>): Setup
     const zone = asked.find((z) => matches(z.fill ?? [], fields))?.id ?? doc.setup.deckZone
     for (let i = 0; i < copies; i++) components.push({ type, cardRef, zone, face: 'back' })
   }
-  // The game's material (#1292): every seat's counters (C4) at their start values, and the dice
-  // (K5, #1136) one side up. The side is the document's and not a roll: a table is laid the same
+  // The game's material (#1292): every seat's counters (C4) at their start values, the dice
+  // (K5, #1136) one side up, and the wooden pieces (#1471). The side is the document's and not a roll: a table is laid the same
   // way every time, and the first roll is a line in the log like every other (D4). Where each piece
   // lies is `layMaterial`'s answer, which the editor's felt asks too.
   const token = { id: TOKEN_COUNTER.id, version: TOKEN_COUNTER.version }
@@ -29,6 +29,13 @@ export function setupFromProject(doc: Pick<ProjectDoc, 'rows' | 'setup'>): Setup
     const at = { x: piece.x, y: piece.y }
     if (piece.line.kind === 'counter') {
       components.push({ type: token, cardRef: piece.name ?? '', zone: piece.zone, face: 'front', counter: piece.counter ?? 0, ...at })
+      continue
+    }
+    if (piece.line.kind === 'piece') {
+      // A wooden piece (#1471) wears its seat's colour (L11): the seat is its `cardRef`, as a counter's
+      // name is, and a piece of no seat has none. It is laid on its first face, a meeple standing.
+      const def = PIECES.find((t) => t.id === `piece.${piece.kind ?? ''}`)
+      if (def) components.push({ type: { id: def.id, version: def.version }, cardRef: piece.owner ?? '', zone: piece.zone, face: def.contentFace, ...at })
       continue
     }
     const def = DICE.find((t) => t.behaviours.rollable !== false && t.behaviours.rollable.faces === piece.faces)

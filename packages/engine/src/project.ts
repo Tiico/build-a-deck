@@ -2,7 +2,7 @@ import type { Activity, Applied, RewindProposal, SeatEdge, SeatId, Snapshot, Tab
 
 import { undoTarget, type History } from './decide.js'
 import { bottomOf, componentOf, type ComponentInstance, type TableState, type Zone } from './state.js'
-import type { TypeRegistry } from './typedef.js'
+import { isMaterial, type TypeRegistry } from './typedef.js'
 import { canSeeFace, canSeeZoneOrder, faceUpAtBottom, faceUpOnTop } from './visibility.js'
 import { turnOrder } from './turn.js'
 
@@ -173,8 +173,11 @@ function grantedTo(c: ComponentInstance, seat: SeatId | null): boolean {
   return seat !== null && (c.shownTo.includes(seat) || c.peekedBy.includes(seat))
 }
 
-function view(state: TableState, registry: TypeRegistry, c: ComponentInstance, seat: SeatId | null, deck?: DeckFacts, observer = false): VisibleComponentState {
+function view(state: TableState, registry: TypeRegistry, c: ComponentInstance, seat: SeatId | null, cards?: DeckFacts, observer = false): VisibleComponentState {
   const visible = canSeeFace(state, registry, c, seat, observer)
+  // Material is no card (K32, #1471): a meeple's `cardRef` is its seat and a counter's its name, so a
+  // row of the deck that shares the word is not theirs to be called or drawn by.
+  const deck = isMaterial(registry.get(c.type)) ? undefined : cards
   const v: VisibleComponentState = {
     id: c.id,
     type: c.type,
