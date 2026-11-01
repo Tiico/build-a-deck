@@ -516,7 +516,10 @@ En variabel som inte är giltig JSON eller inte håller schemat stoppar starten,
 Vilken nivå ett konto har står i tabellen `account_plans`, som Stripe skriver till när betalningen kopplas på; ett konto utan rad har standarden.
 I dag sätter operatören den över Tailscale (§10), med lådans egen `BYD_PLANS` så att en nivå lådan inte har aldrig skrivs:
 `pnpm --filter @byd/server plan set <adress> <nivå>` och `plan clear <adress>`.
-`pnpm --filter @byd/server usage` skriver varje kontos nivå, om den har tryckpaketet, förbrukning och tak, för prisbeslutet, och skickar ingenting någonstans.
+Byggt 2026-11-01 (#1491): ett abonnemang som gått ut är en utgång på kontots rad i `account_plans` (`lapsed_at`), och operatören sätter och häver den med `plan lapse <adress>` och `plan unlapse <adress>`; Stripe skriver samma sak när abonnemangen kopplas på.
+Ett utgånget konto hålls till standardnivån, alltså Gratis, och de av dess spel som ligger över gratisnivåns tak är i läsläge (G5, L2); `plan set` ger kontot en nivå igen och häver utgången.
+Raden behåller sin nivå medan den är utgången, så starten håller fortfarande `BYD_PLANS` mot den, och standardnivån finns alltid, eftersom schemat kräver att standarden är en av nivåerna.
+`pnpm --filter @byd/server usage` skriver varje kontos nivå, om den har tryckpaketet, en utgång och spelen i läsläge, förbrukning och tak, för prisbeslutet, och skickar ingenting någonstans.
 Lagring (`storageBytes`, #1197) är det kontots spel nämner i någon version, räknat ur databasen; ett borttaget spel frigör sitt, men bytesen ligger kvar i R2 (§4).
 Renderingar (`rendersPer30Days`) läses ur renderköns logg `render_log` i samma databas, så skriptet behöver ingen annan anslutning.
 

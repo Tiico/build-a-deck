@@ -773,6 +773,84 @@ describe('the printed text is hidden information, like the title (#551, B6)', ()
   }, 60_000)
 })
 
+// A tile is hidden information on exactly a card's terms (#1482, B6): face-down in a pile nobody may
+// look into, it leaves neither its row, its title, its printed words nor its front's hash on any
+// seat's wire; and a tile shown to one seat reaches that seat and no other. It goes through the one
+// projection a card goes through, and the proof is the frames that left the server (D4).
+describe('a hidden tile on the wire (#1482, B6)', () => {
+  const HEX = { id: 'tile.hex.52', version: 1 }
+  const front = deck.template.faces['front']!
+  const rules = { kind: 'text' as const, id: 'rules', x: 5, y: 20, w: 40, h: 20, bind: { field: 'rules' }, font: { family: 'sans-serif', sizePt: 9 }, color: '#111' }
+  const lands: Record<string, { title: string; rules: string }> = {
+    granskog: { title: 'Granskogen', rules: 'Ger två trä' },
+    tjarn: { title: 'Tjärnen', rules: 'Ger en fisk' },
+    fjall: { title: 'Fjället', rules: 'Ger tre sten' },
+  }
+  const tiled = {
+    ...deck,
+    template: { faces: { ...deck.template.faces, front: { ...front, base: [...front.base, rules] } } },
+    rows: { ...deck.rows, ...lands },
+  }
+  const withBag = () => {
+    const setup = twoSeatSetup()
+    const bag = { id: 'bag', kind: 'pile' as const, name: 'Påse', visibility: 'none' as const, geometry: { x: 0, y: 200, w: 0, h: 0, rot: 0 } }
+    return { ...setup, zones: [...setup.zones, bag], components: [...setup.components, ...Object.keys(lands).map((cardRef) => ({ type: HEX, cardRef, zone: 'bag', face: 'back' }))] }
+  }
+  const SECRET = /granskog|tjarn|fjall|Granskogen|Tjärnen|Fjället|Ger två trä|Ger en fisk|Ger tre sten/
+
+  it('leaves no row, title, text or front hash in any seat’s frames, and a tile shown to one seat reaches only it', async () => {
+    const res = await fetch(`${run.http}/sessions`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', ...(await run.bearer()) },
+      body: JSON.stringify({ id: 'tiles', version: 'v1', setup: withBag(), deck: tiled }),
+    })
+    expect(res.status).toBe(201)
+    registerRoom('tiles', (await res.json()) as { code: string; hostKey: string })
+    const a = await connect('tiles', 'A')
+    const b = await connect('tiles', 'B')
+    const table = await connect('tiles', null)
+    // The observer looks into every pile (C8), and is how the test learns the fronts' hashes that
+    // must not cross to anyone else.
+    const eva = await connect('tiles', null, { role: 'observer', name: 'Eva' })
+    for (const c of [a, b, table, eva]) await c.synced(0)
+
+    const inBag = eva.view!.components.filter((c) => c.zone === 'bag')
+    expect(inBag.map((c) => c.type)).toEqual([HEX, HEX, HEX])
+    expect(inBag.map((c) => c.title).sort()).toEqual(['Fjället', 'Granskogen', 'Tjärnen'])
+    const fronts = inBag.map((c) => c.faces?.['front'])
+    for (const f of fronts) expect(f).toMatch(/^[0-9a-f]{64}$/)
+
+    for (const seat of [a, b, table]) {
+      const frames = seat.frames.join('\n')
+      expect(frames).not.toMatch(SECRET)
+      for (const f of fronts) expect(frames).not.toContain(f)
+      expect(componentsOnWire(seat).filter((c) => c.zone === 'bag')).toHaveLength(0)
+      expect(seat.view!.zones.find((z) => z.id === 'bag')).toMatchObject({ mode: 'count', count: 3 })
+    }
+
+    // Ada draws a tile into her hand (beslut 10) and shows it to Bo alone.
+    await a.send('A', { v: 'draw', from: 'bag', to: 'hand:A', count: 1 })
+    await a.synced(1)
+    const held = a.view!.components.find((c) => c.zone === 'hand:A' && c.type.id === HEX.id)!
+    expect(held.cardRef).toEqual(expect.any(String))
+    const shownFront = held.faces!['front']!
+    const shown = lands[held.cardRef!]!
+    const unseen = Object.entries(lands).filter(([id]) => id !== held.cardRef)
+
+    await a.send('A', { v: 'showTo', components: [held.id], seats: ['B'] })
+    for (const c of [a, b, table]) await c.synced(2)
+    expect(b.view!.components.find((c) => c.id === held.id)).toMatchObject({ cardRef: held.cardRef, title: shown.title, text: [shown.rules], faces: { front: shownFront } })
+    const bFrames = b.frames.join('\n')
+    for (const [id, row] of unseen) {
+      expect(bFrames).not.toContain(JSON.stringify(id))
+      expect(bFrames).not.toContain(row.title)
+    }
+    const tableFrames = table.frames.join('\n')
+    expect(tableFrames).not.toMatch(SECRET)
+    expect(tableFrames).not.toContain(shownFront)
+  }, 60_000)
+})
+
 // Whose turn it is (K30) is no secret: every view hears it in the same patch.
 describe('the turn on the wire', () => {
   it('reaches every view in a patch when it is given', async () => {
