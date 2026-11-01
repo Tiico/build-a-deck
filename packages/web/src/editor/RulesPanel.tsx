@@ -1121,11 +1121,8 @@ function Booklet({ client, book, game }: { client: ProjectClient; book: RuleDoc;
     setPlaced({ of, is: 'working' })
     try {
       const hash = await client.orderBooklet(t)
-      for (let i = 0; i < 120 && current(); i++) {
-        if (await client.rendered(hash)) return setPlaced({ of, is: { hash } })
-        await new Promise((r) => setTimeout(r, 250))
-      }
-      setPlaced({ of, is: { error: t('rules.booklet.failed') } })
+      if (await client.whenRendered(hash, current)) return setPlaced({ of, is: { hash } })
+      if (current()) setPlaced({ of, is: { error: t('rules.booklet.failed') } })
     } catch (err) {
       setPlaced({ of, is: { error: saidOr(err, t('rules.booklet.orderFailed')) } })
     }
