@@ -13,7 +13,7 @@ import { changeOf, revertOf } from '../src/undo.js'
 // färgen är platsens (L11, beställarens beslut 2 i #1470).
 const four = (patch: Partial<Setup>): Pick<ProjectDoc, 'rows' | 'setup'> => ({ rows: [], setup: ProjectSetup.parse({ ...openingSetup({ players: 4, counters: [] }), ...patch }) })
 const piecesOf = (setup: ReturnType<typeof setupFromProject>) => setup.components.filter((c) => c.type.id.startsWith('piece.'))
-const middle = (c: { x?: number | undefined; y?: number | undefined }) => ({ x: (c.x ?? NaN) + PIECE_MM / 2, y: (c.y ?? NaN) + PIECE_MM / 2 })
+const middle = (c: { x?: number | undefined; y?: number | undefined }) => ({ x: (c.x ?? NaN) + PIECE_MM.meeple / 2, y: (c.y ?? NaN) + PIECE_MM.meeple / 2 })
 const tally = (setup: ReturnType<typeof setupFromProject>) =>
   piecesOf(setup).reduce<Record<string, number>>((n, d) => ({ ...n, [`${d.zone} ${d.type.id}`]: (n[`${d.zone} ${d.type.id}`] ?? 0) + 1 }), {})
 
@@ -22,8 +22,9 @@ describe('setupens trädelar (#1471)', () => {
     const setup = setupFromProject(four({ pieces: [{ kind: 'meeple', count: 5, role: 'mine' }] }))
     expect(tally(setup)).toEqual({ 'mine:A piece.meeple': 5, 'mine:B piece.meeple': 5, 'mine:C piece.meeple': 5, 'mine:D piece.meeple': 5 })
     for (const m of piecesOf(setup)) expect(m).toMatchObject({ type: { id: MEEPLE.id, version: MEEPLE.version }, face: 'standing', cardRef: m.zone.slice('mine:'.length) })
-    // Fem bitar på fem ställen i varje yta.
-    expect(new Set(piecesOf(setup).filter((m) => m.zone === 'mine:A').map((m) => `${m.x},${m.y}`)).size).toBe(5)
+    // Fem bitar på ett ställe i varje yta: det som inte flyttats är en hög, som räknarnas (#1472 B).
+    // Högen är bara var de ligger; motorn har fortfarande fem pjäser.
+    expect(new Set(piecesOf(setup).filter((m) => m.zone === 'mine:A').map((m) => `${m.x},${m.y}`)).size).toBe(1)
   })
 
   it('vänder en platsytas punkt mot varje plats kant (K31)', () => {
@@ -42,6 +43,9 @@ describe('setupens trädelar (#1471)', () => {
     const cubes = piecesOf(setup).filter((c) => c.type.id === 'piece.cube')
     expect(cubes.map((c) => c.cardRef)).toEqual(['A', 'A', 'B', 'B', 'C', 'C', 'D', 'D'])
     expect(cubes.every((c) => c.face === 'front')).toBe(true)
+    // Varje plats kuber är sin egen hög, och de tre färglösa skivorna en till.
+    const spots = (id: string) => new Set(piecesOf(setup).filter((c) => c.type.id === id).map((c) => `${c.x},${c.y}`)).size
+    expect([spots('piece.cube'), spots('piece.disc')]).toEqual([4, 1])
     // En skiva som ingen plats har fått har ingen färg.
     expect(piecesOf(setup).filter((c) => c.type.id === 'piece.disc').map((c) => c.cardRef)).toEqual(['', '', ''])
   })

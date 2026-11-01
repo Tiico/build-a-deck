@@ -2664,10 +2664,17 @@ Reviderat och byggt 2026-11-01 (#1511, beställarens beslut i #1469): **ett spel
 - I läsläget får rader tas bort, ett korts Antal sänkas och bilder tas bort, men inget annat. Det ersätter meningen ovan om att en redigering som bara krymper spelet avvisas.
 - Regeln är `onlyShrinks` i `packages/server/src/read-only.ts`, och den dömer två dokument, före och efter, så att en sammansatt redigering, ett helt dokument över HTTP (`PUT /projects/<id>`) och en version hålls till samma regel som en enskild redigering. En bild tas bort som `removePicture` gör det; rader i en annan ordning, ett högre Antal, en ny rad, bild eller text och allt annat är en ändring och avvisas som förut.
 - Aktören frågar regeln i beslutssteget, före commit. `PUT /projects/<id>` släpps därför förbi dörren för ett spel i läsläge, och aktören läser kroppen mot det som står; ett dokument som ändrar något annat svarar 402 med `{ error: 'read-only' }` som förut. «Spara» gör en version när det som står bara är den sparade versionen gjord mindre.
-- Ett spel som krympts så att det ryms lämnar läsläget utan att något lagras, eftersom regeln räknas om vid varje fråga. En krympning är en ändring, så spelet blir det senast ändrade och tar en plats före äldre spel som ryms.
+- Ett spel som krympts så att det ryms lämnar läsläget, när det finns en plats för det i ordningen som låstes vid utgången (#1518, nedan).
 - `GET /me/usage` säger `readOnly` som `{ id, why }` per spel, där `why` är taket spelet ligger över: `cardRowsPerProject`, `cardCopiesPerProject`, `projects` eller `storageBytes`, i den ordningen. `ifLapsed` säger samma sak för ett konto vars egen nivå fortfarande gäller, alltså vilka spel som skulle hamna i läsläge om den gick ut nu (#1494); ett konto på standardnivån har ingen sådan.
 - Gratisnivåns tak är beslutade (fråga 3 i #1469): 2 spel, 150 unika kort per spel, 1 bord åt gången, 8 bord på 30 dygn och 300 MB. De är konfiguration i lådans `BYD_PLANS` (DRIFT §12) och inte siffror i koden; utan variabeln är allt obegränsat som i betan.
 - Grindarna är `packages/server/test/read-only-lapsed.test.ts`, mot båda lagren.
+
+Beslutat och byggt 2026-11-01 (#1518, beställarens beslut i #1469): **läslägets ordning låses när abonnemanget går ut.**
+- Vid utgången sparas ordningen spelen tas i: de som ryms i gratisnivån då först, sedan resten, vardera senast ändrat först. Den står på kontots rad i `account_plans` (`lapsed_order`) och tas bort när utgången hävs eller kontot får en nivå igen.
+- Senare redigeringar flyttar inte ett spel i ordningen. Att ändra eller krympa ett spel kan därför bara ta det spelet ur läsläget, aldrig skjuta in ett annat; ett spel med för många kort som krymps så att det ryms tar en plats bara om det finns en ledig.
+- Ett spel som skapas efter utgången hamnar sist. Ett spel som tas bort lämnar sin plats till nästa i ordningen.
+- Utgången görs av `lapseAccount` i `packages/server/src/account-plans.ts`, som `plan lapse`, Stripes webhook och `stripe sync` (#1493) använder.
+- Grindarna är `packages/server/test/read-only-lapsed.test.ts` och `account-plans.test.ts`, mot båda lagren.
 
 ### G6. Personuppgifter: Deckster är ansvarig, och loggen maskas på plats (beslutat 2026-10-24, #1269)
 
@@ -5055,6 +5062,19 @@ Testtryckeriet låtsas ha alla åtta platsfärger, «meeple-red» och så vidare
 Tryckpaketets sida listar en sort som en rad med antalet, och färgerna under den med var sitt antal och sin silhuett i platsens färg; LASMIG säger dem i ord, «3 × meeple, röd».
 
 **Aktivitetsraden** säger biten efter sort: «Ada flyttade en meeple till Spelyta», «Ada lade ned en meeple» och «Ada ställde upp en meeple».
+
+**Filten** (#1475, prototypen i #1472, beställarens val 2026-11-01: filten B).
+Det som ännu inte flyttats är en hög: en plats stående pjäser av en sort som ligger på samma punkt i en yta ritas som en enda mörk bricka med figuren och antalet, som räknarnas hög (#89).
+Högen är bara en ritning och var bitarna ligger, aldrig ett begrepp i motorn eller loggen: setupen lägger en rads bitar i en färg på en punkt (`layMaterial`), filten och tangentbordet läser högen ur det (`piecePiles`), och en bit som dras ut är sin egen så fort bordet sagt var den hamnade.
+Ett drag i brickan tar den översta pjäsen, och tangentbordet når högen som ett stopp, den översta.
+En liggande meeple ligger alltid för sig.
+Varje flyttad pjäs ritas som sin silhuett uppifrån i platsens färg: meeplen som den kända figuren, kuben som en rundad kvadrat och skivan som en rund bricka med en ring innanför kanten, eftersom en gul skiva annars liknar räknarens bärnstensfärgade bricka.
+En liggande meeple är samma silhuett på sidan, utan skugga.
+Pjäserna ritas större än skalan, som tärningen: meeplen på tärningens 30 mm, kuben på 20 och skivan på 24 (`PIECE_MM`), och högens bricka på 44 mm (`PIECE_PILE_MM`), med fingrets mål på 44 px på varje skärm.
+Ingen platsfärg når 3:1 mot den gröna filten, så varje figur har ett hårfint band i filtens krita, som platsens kant; det mäts på målade pixlar i alla åtta platsfärger.
+Ett klick på en pjäs slår den aldrig: det öppnar ringen med «Lägg ner» eller «Res upp» för en meeple och «Flytta…», och F, Cmd/Ctrl-klick och dubbelklick lägger ned och reser upp den.
+M öppnar «Flytta till» med filtens ytor och ingen hand och inget kort, eftersom en pjäs aldrig staplas (K16, K32).
+Skärmläsaren hör sort, platsens namn i genitiv, om den ligger, och var: «meeple, Adas, i Spelyta» och för högen «3 meeples, Adas, i Framför A».
 
 ### K34. Brickor: kortet i sin egen form, och steget är typens (beslutat 2026-10-28 och 2026-11-01, #1470, #1474, #1482)
 

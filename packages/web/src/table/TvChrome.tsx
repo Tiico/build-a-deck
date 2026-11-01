@@ -7,6 +7,7 @@ import { PlaceLists, type ReadCard } from './PlaceLists.js'
 import { Texture } from './Texture.js'
 import { hue } from './hue.js'
 import { cardWord } from './keyboard.js'
+import { isMaterial } from '../components.js'
 import { SHOW_MS, componentOf } from './presence.js'
 import { Help } from '../editor/HelpDrawer.js'
 import { useT } from '../i18n/index.js'
@@ -332,13 +333,14 @@ function lineOf(view: Snapshot, activity: readonly Activity[], card: VisibleComp
 // The newest line that is about a card the screen can still draw. Walked from the end rather than
 // read off the last line alone: a flip is followed by lines about nothing — a seat sitting down, a
 // shuffle — and the panel should not empty itself because somebody else did something else.
+// Only a card is held up: a die, a chip or a wooden piece has no face to show the room (#1475).
 function lastCard(view: Snapshot, activity: readonly Activity[]): VisibleComponentState | null {
   for (let i = activity.length - 1; i >= 0; i--) {
     const line = activity[i]
     const id = line === undefined ? null : componentOf(line)
     if (id === null) continue
     const card = view.components.find((c) => c.id === id)
-    if (card) return card
+    if (card && !isMaterial(card)) return card
   }
   return null
 }

@@ -135,7 +135,8 @@ export function useFeltKeyboard(view: Snapshot | null, felt: boolean, options: F
       // says which die, never the pointer — a die the pointer rests on is not the one asked about.
       if (event.key.toLowerCase() === 'm') {
         const key = at instanceof HTMLElement ? at.closest<HTMLElement>('[data-kbd]')?.dataset.kbd : undefined
-        const die = now.things.find((t) => t.key === key && t.kind === 'die')
+        // A wooden piece is moved the same way (#1475, #1472): the keys of a die are the keys of a piece.
+        const die = now.things.find((t) => t.key === key && (t.kind === 'die' || t.kind === 'piece'))
         if (!die) return
         event.preventDefault()
         now.moveDie(die)

@@ -1,7 +1,7 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import WebSocket from 'ws'
 import { MemoryAssetStore, MemoryAuthStore, MemoryLogStore, MemoryProjectStore, PostgresLogStore, type AuthStore, type LogStore } from '../src/index.js'
-import { MemoryAccountPlanStore, type AccountPlanStore } from '../src/account-plans.js'
+import { MemoryAccountPlanStore, lapseAccount, type AccountPlanStore } from '../src/account-plans.js'
 import type { AssetStore } from '../src/assets.js'
 import type { EditIntent } from '../src/edits.js'
 import type { EditorMessage } from '../src/project-actor.js'
@@ -48,6 +48,14 @@ describe('which games of a lapsed account are read-only', () => {
     const at = '2026-10-01T00:00:00Z'
     expect(sorted(readOnlyGames({ ...none, projects: 1 }, [game('b', at), game('a', at)]))).toEqual(['b'])
     expect(sorted(readOnlyGames({ ...none, projects: 1 }, [game('a', at), game('b', at)]))).toEqual(['b'])
+  })
+
+  // The order locked when the tier lapsed (#1518, beställarens beslut 2026-11-01): the games are
+  // taken in it, whenever they changed since, and a game made after the lapse comes last.
+  it('take the games in the order locked at the lapse, a game made since it last', () => {
+    const games = [game('a', '2026-10-05T00:00:00Z'), game('b', '2026-10-04T00:00:00Z'), game('c', '2026-10-03T00:00:00Z'), game('n', '2026-10-06T00:00:00Z')]
+    expect(sorted(readOnlyGames({ ...none, projects: 2 }, games, ['c', 'b', 'a']))).toEqual(['a', 'n'])
+    expect(sorted(readOnlyGames({ ...none, projects: 3 }, games, ['c', 'b', 'a']))).toEqual(['n'])
   })
 
   // Why each one is (#1511): the ceiling it lies over, so the page can say it in the reader's words.
@@ -200,7 +208,7 @@ for (const backend of backends) {
       return editor
     }
     // Ada with Pro and three games, the oldest first, so the oldest is the one past the free tier's two.
-    const ada = async (rows: [number, number, number] = [1, 1, 1]) => {
+    const ada = async (rows: number[] = [1, 1, 1]) => {
       const who = await someone('ada')
       await db.accountPlans.setPlan(who.id, 'pro', 'operator')
       const ids: string[] = []
@@ -211,6 +219,8 @@ for (const backend of backends) {
       return { ...who, oldest: ids[0]!, ids }
     }
     type Held = { id: string; why: string }
+    // The lapse as the operator's script and Stripe make it (#1518): the order locked with it.
+    const lapse = (account: string, plans: Plans = tiers) => lapseAccount({ projects: db.projects, accountPlans: db.accountPlans }, plans, account)
     const usage = async (cookie: string) => (await (await send('GET', '/me/usage', cookie)).json()) as { plan: string; print: boolean; lapsed?: { plan: string; at: string }; readOnly: Held[]; ifLapsed: Held[] }
     const ids = (held: Held[]) => held.map((g) => g.id)
     const saveOver = async (cookie: string, id: string, name: string) => {
@@ -287,9 +297,9 @@ for (const backend of backends) {
     // read-only game, and nothing else. A shrink goes into the log and may be saved as a version; a
     // whole document written over HTTP goes when it is only a shrink of what stands.
     it('lets a read-only game be made smaller: rows and pictures taken away, copies lowered, and saved', async () => {
-      const a = await ada([1, 1, 4])
-      await db.accountPlans.lapse(a.id)
-      const big = a.ids[2]!
+      const a = await ada([1, 4])
+      await lapse(a.id)
+      const big = a.ids[1]!
       const editor = await edit(big, a.cookie)
       expect((await editor.edit({ v: 'setCell', cardRef: 'kort-4', field: 'antal', value: 0 })).v).toBe('edits')
       expect((await editor.edit(retitle('Drake'))).v).toBe('refused')
@@ -326,6 +336,49 @@ for (const backend of backends) {
       // An account on the default tier has nothing to lapse from.
       await db.accountPlans.clearPlan(b.id)
       expect(await usage(b.cookie)).toMatchObject({ readOnly: [], ifLapsed: [] })
+    })
+
+    // The order is locked when the tier lapses (#1518): an edit, a shrink included, never moves a game
+    // in it, so no game is pushed into read-only by another one changing; a game made smaller so that
+    // it fits leaves read-only when there is a place for it, and only then.
+    it('locks the order at the lapse, so changing one game never puts another into read-only', async () => {
+      const a = await ada()
+      await lapse(a.id)
+      expect(ids((await usage(a.cookie)).readOnly)).toEqual([a.oldest])
+      // The oldest is made smaller, which changes it last of all, and it stays where it was.
+      const old = await edit(a.oldest, a.cookie)
+      expect((await old.edit({ v: 'setCell', cardRef: 'kort-1', field: 'antal', value: 0 })).v).toBe('edits')
+      const mid = await edit(a.ids[1]!, a.cookie)
+      expect((await mid.edit(retitle('Drake'))).v).toBe('edits')
+      expect(ids((await usage(a.cookie)).readOnly)).toEqual([a.oldest])
+      expect((await mid.edit(retitle('Drake igen'))).v).toBe('edits')
+      // A game made since the lapse comes last.
+      expect((await send('DELETE', `/projects/${a.ids[2]!}`, a.cookie)).status).toBe(200)
+      expect(ids((await usage(a.cookie)).readOnly)).toEqual([])
+    })
+
+    it('lets a game over the cards leave read-only when made smaller, without moving another', async () => {
+      // One game fits and two are over the cards: the older of the two, made smaller, takes the free place.
+      const a = await ada([1, 4, 4])
+      const [fits, big, newer] = a.ids
+      await lapse(a.id)
+      expect(ids((await usage(a.cookie)).readOnly).sort()).toEqual([big, newer].sort())
+      const editor = await edit(big!, a.cookie)
+      expect((await editor.edit({ v: 'removeRow', cardRef: 'kort-4' })).v).toBe('edits')
+      expect((await editor.edit(retitle('Drake'))).v).toBe('edits')
+      expect(ids((await usage(a.cookie)).readOnly)).toEqual([newer])
+      expect(ids((await usage(a.cookie)).readOnly)).not.toContain(fits)
+    })
+
+    it('forgets the order when the lapse is lifted, and locks a new one at the next', async () => {
+      const a = await ada()
+      await lapse(a.id)
+      expect((await db.accountPlans.planOf(a.id))?.order).toEqual([a.ids[2], a.ids[1], a.oldest])
+      await db.accountPlans.unlapse(a.id)
+      expect((await db.accountPlans.planOf(a.id))?.order).toBeUndefined()
+      await lapse(a.id)
+      await db.accountPlans.setPlan(a.id, 'pro', 'operator')
+      expect((await db.accountPlans.planOf(a.id))?.order).toBeUndefined()
     })
 
     it('holds a game with more unique cards than the free tier to read-only the same way', async () => {

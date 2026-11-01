@@ -1,7 +1,7 @@
 import type { Intent, Snapshot, SplitRow, VisibleComponentState, ZoneBeside, ZoneView } from '@byd/protocol'
 import { CHIP_MM, DIE_MM as RECIPE_DIE_MM } from '@byd/server/felt-sizes'
 import { zoneAt, type Drop } from '../zones.js'
-import { isCounter, isDie } from '../components.js'
+import { isMaterial, materialBox } from '../components.js'
 import { union, type Rect } from './camera.js'
 import { handExtent, handRotation, type TableMode } from './hand.js'
 import { laidIn } from './lay.js'
@@ -109,7 +109,9 @@ export function cardOnFloor(c: Point, rot: number, floor: Rect): boolean {
 // `move` each chip already travelled by.
 // A die (#1137) travels as a chip does, by itself and onto no pile; a click on it is a roll and not a
 // question, so it has a target of its own rather than borrowing the chip's.
-export type DragTarget = { kind: 'card'; id: string } | { kind: 'counter'; id: string } | { kind: 'die'; id: string } | { kind: 'counterPile'; ids: string[] } | { kind: 'pileTop'; pile: string } | { kind: 'pile'; pile: string }
+// A wooden piece (#1475) travels as a die does, and a click on it asks, as a card's does. A pile of
+// pieces is no target of its own: what a hand takes off it is its top piece, by itself (#1472 B).
+export type DragTarget = { kind: 'card'; id: string } | { kind: 'counter'; id: string } | { kind: 'die'; id: string } | { kind: 'piece'; id: string } | { kind: 'counterPile'; ids: string[] } | { kind: 'pileTop'; pile: string } | { kind: 'pile'; pile: string }
 export type Drag = {
   target: DragTarget
   // Cards moving together (a card drag); their absolute positions when the drag began.
@@ -213,12 +215,16 @@ function aimedAt(view: Snapshot, d: Drag, mode: TableMode): Intent[] {
     const s = keptOnFelt(view, dest.zone, { x: dest.x, y: dest.y, w: TOKEN_MM, h: TOKEN_MM })
     return ids.map((id): Intent => ({ v: 'move', component: id, to: dest.zone, x: dest.x + s.x, y: dest.y + s.y }))
   }
-  // A die lies where it was let go of, as a chip does: it stacks on nothing and joins no pile.
-  if (d.target.kind === 'die') {
-    const o = d.origin[d.target.id] ?? d.grab
+  // A die lies where it was let go of, as a chip does: it stacks on nothing and joins no pile. So does
+  // a wooden piece (#1475), in the square of its own kind.
+  if (d.target.kind === 'die' || d.target.kind === 'piece') {
+    const id = d.target.id
+    const o = d.origin[id] ?? d.grab
     const dest = pieceAt(view, { x: o.x + dx, y: o.y + dy })
-    const s = keptOnFelt(view, dest.zone, { x: dest.x, y: dest.y, w: DIE_MM, h: DIE_MM })
-    return [{ v: 'move', component: d.target.id, to: dest.zone, x: dest.x + s.x, y: dest.y + s.y }]
+    const c = view.components.find((x) => x.id === id)
+    const size = c ? materialBox(c).w : DIE_MM
+    const s = keptOnFelt(view, dest.zone, { x: dest.x, y: dest.y, w: size, h: size })
+    return [{ v: 'move', component: id, to: dest.zone, x: dest.x + s.x, y: dest.y + s.y }]
   }
   if (d.target.kind === 'pileTop') {
     const pile = zones.get(d.target.pile)
@@ -323,9 +329,10 @@ export function hitAt(view: Snapshot, p: Point, ignore: ReadonlySet<string>, ign
   const zones = new Map(view.zones.map((z) => [z.id, z]))
   for (const c of [...view.components].reverse()) {
     if (ignore.has(c.id)) continue
-    // Only a card is something to stack on (K1): a die and a chip are `stackable: false`, and a
-    // card let go of over one lies on the felt rather than asking for a stack the table refuses.
-    if (isDie(c) || isCounter(c)) continue
+    // Only a card is something to stack on (K1): a die, a chip and a wooden piece are
+    // `stackable: false`, and a card let go of over one lies on the felt rather than asking for a
+    // stack the table refuses.
+    if (isMaterial(c)) continue
     const z = zones.get(c.zone)
     if (!z || z.kind !== 'area') continue
     if (inside(p, { x: z.geometry.x + c.x, y: z.geometry.y + c.y })) return { kind: 'card', id: c.id, zone: c.zone }
