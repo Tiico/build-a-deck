@@ -150,6 +150,17 @@ Byggt 2026-11-01 (#1490, skiva 1 av 5 i #1469): **Pro i `BYD_PLANS`, med tryckpa
 - Själva grinden på tryckpaketet och på `tryck/` i exporten är inte byggd: den väntar på partnern och byggs i #1209:s spår, och läser `hasPrint`. Gratisnivåns siffror och Pro:s tak på kort är konfiguration och sätts inte här (frågorna 3 och 7), och medredigerare grindas inte (fråga 5).
 - Grindarna är `packages/server/test/quotas.test.ts`, `plans-at-start.test.ts`, `account-plans.test.ts` och `quota-projects.test.ts`, mot båda lagren.
 
+Byggt 2026-11-01 (#1493, skiva 4 av 5 i #1469, beställarens beslut 2026-11-01: testläget först, med en fake i sviten): **abonnemanget på Pro via Stripe.**
+- Konfigurationen är lådans `.env` (DRIFT §12): `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` och `BYD_STRIPE_PRICES`, Stripes pris-id per nivå, valuta och intervall. Inget pris och inget nivånamn står i koden. Utan variablerna är betalningen avstängd och lådan som förut; hälften av dem stoppar starten.
+- `POST /me/subscription/checkout` med valuta, `month` eller `year` och en väg tillbaka i appen skickar ett inloggat konto till Stripes Checkout, så inga kortuppgifter passerar lådan. Kontot får en Stripe-kund första gången, och kopplingen står i `stripe_customers`. Ett konto som redan har Pro från Stripe får 409, så att ingen dras två gånger.
+- `POST /stripe/webhook` godtar bara en kropp med giltig signatur, gjord inom fem minuter. Händelsen tas aldrig som sanningen: kundens abonnemang läses som de står hos Stripe och skrivs med `setPlan` eller `lapse` och källan `stripe` (`syncCustomer` i `packages/server/src/payments.ts`). Därför ändrar en händelse som kommer två gånger, sent eller i fel ordning ingenting fel, och ingenting skrivs när ingenting ändras.
+- Ett levande abonnemang (`active`, `trialing`, `past_due`) ger Pro och häver en utgång; inget levande abonnemang gör ett konto vars nivå Stripe gav utgånget, och läsläget från #1491 gäller.
+- En nivå med källan `operator` skrivs aldrig över av Stripe, tills operatören tar bort den med `plan clear`.
+- Moms är inte avgjord: priset är med moms som en EU-konsument ser det, och hur den tas ut bekräftar beställaren före de skarpa nycklarna (fråga 2 i #1469).
+- Ett konto som raderar sig själv säger ännu inte upp sitt abonnemang hos Stripe; RUNBOOK §10 säger hur det görs för hand tills det byggs.
+- Hur Pro köps, syns och sägs upp i webben är #1494, som prototypas först.
+- Grindarna är `packages/server/test/payments.test.ts` (konfigurationen, signaturen och vad abonnemangen ger), `stripe-subscription.test.ts` (kassan och webhooken mot båda lagren, med en fake för Stripe), `stripe-api.test.ts` (klienten mot en ställföreträdare på maskinen), `payments-at-start.test.ts` och `deploy.test.ts`. Inget anrop går till Stripe i `pnpm test`.
+
 ### A3. Testarrekrytering: enbart delbar länk (fråga 22)
 
 Ingen testpanel, ingen matchning, ingen ömsesidighetsmekanik, ingen öppen lobbylista.
@@ -5063,7 +5074,48 @@ Det dolda går genom `project` som kortets (B6): en bricka med baksidan upp i en
 **Motorn har ingen gren för brickan.** `rotate`, `flip`, `stack`, `shuffle`, `split`, `draw` och `deal` läser typens beteenden som de läser kortets, och omspelningen ger samma bord och en blandad hög samma ordning (D4).
 En bricka staplas på ett kort och blandas i en hög med kort som motorn ser det, eftersom båda är `stackable` och `shufflable`; om en hög ska få blanda former är en fråga för leken och setupen (#1484), inte för typen.
 
+**Identiska markörer** (#1483): trettio guldmynt, eller skademarkörer, är en mall i n exemplar och ingen lek.
+Dokumentet bär dem i `setup.markers` som lådan bär sina ytor (L91): en `FaceTemplate` per sida, den pinnade bricktypen (B3), ett namn i dokumentet (`id`) och vad markören heter (`name`), och setupens rad som en tärnings (K28, K31): antal, en yta alla delar (`zone`, med `perSeat` för ett antal per spelare) eller en yta varje plats har (`role`), och en punkt (`at`).
+Till skillnad från en tärning får en markör ligga i en hög, en bank att ta ur: där ligger exemplaren som kort i högen och en punkt betyder ingenting.
+I en yta ligger de på rad kring punkten, eller kring ytans mitt; i en yta per plats sägs punkten från plats A:s stol och vänds mot varje plats kant.
+`layMarkers` säger var varje exemplar ligger och `setupFromProject` lägger dem, med framsidan upp; ett dokument utan markörer läses tillbaka orört.
+
+**En markör ritas en gång.** Vid bordet heter varje exemplar markören (`marker:<id>` som `cardRef`), aldrig en rad, så ett kort och en markör som delar ett ord delar varken yta, titel eller textur.
+Leken som bordet får bär markörens mall under det namnet (`templates` och `drawnWith` i `Deck`), och den enda kompilatorn ritar sidorna en gång per innehållshash: trettio mynt är två texturer, och en ändrad framsida ger alla trettio en ny hash.
+En sida utan mall ritas tom, eftersom en bricka har båda sidorna. Markörens namn är dess titel där dess framsida syns, och dold på samma villkor som ett korts (B6).
+Editorns ändring är `setMarkers`, hela listan med sidorna i en redigering som `setPieces`, och därmed ett steg tillbaka (B4). Raden i ＋-menyn och sidornas verktyg är #1487, filtens ritning #1485 och trycket #1488; tills trycket finns står brickor utanför tryckexporten och partnerns manifest (`printedYet`), där en partner som bara trycker kort annars vägrade hela ordern.
+
 Brickor i setupen, en egen lek och tabell per brickform, bordet, telefonen och trycket byggs i #1484–#1488.
+
+### K35. Brädet: brädtyperna, brädet i dokumentet och dess textur (beslutat 2026-10-28 och 2026-11-01, #1470, #1473, #1479)
+
+Beställarens beslut i #1470 den 2026-10-28: brädet ligger fast där setupen lade det och går inte att flytta vid bordet (fråga 6); de första bräden är ett huvudbräde i några mått och spelarbräden per plats, och tvåsidiga bräden kommer senare (fråga 7); brädets sidor går i tryckpaketet som PDF med utfall redan i betan (fråga 12).
+Prototypen #1473 godkändes 2026-11-01 i variant A: brädet mitt på filten, spelarbräden där «Framför» ligger, och sidan designas i en egen flik «Bräde» som «Låda» (L91).
+
+**Typerna.** Tre typer i `STANDARD_TYPES`, en per storlek som tärningarnas sorter: `board.square457` (457 × 457 mm) och `board.rect610` (610 × 457 mm) som huvudbräden, och `board.player` (240 × 150 mm), prototypens mått.
+En sida, `front`, och inget går att stapla, blanda, slå eller vända; `flippable` blir sant den dag ett bräde har två sidor.
+Tryckprofilen har 3 mm utfall och 5 mm skyddsmarginal i 300 DPI.
+`physical.shape` är det platta arket, `rect`: vikningen är partnerns att säga (beslut 12) och ritas inte.
+
+**Fast.** Typen säger `movable: false` bland sina beteenden, och motorn läser vägran ur typen som K32:s (`isFixed`): `move` och `rotate` av brädet vägras, och en `draw`, `deal` eller `split` som skulle ta med det vägras hel.
+Brädet säger också `holdable: false` och hålls alltså aldrig (K32).
+Allt annat flyttas fritt över det.
+Inget nytt verb.
+
+**Dokumentet.** `setup.boards` är en lista, och varje bräde bär sina sidor som lådan bär sina (L91): en `FaceTemplate` per sida, ritad med samma mallsystem som korten (E2).
+Ett bräde har ett namn (`id`), som är dess `cardRef` vid bordet och aldrig en rad i leken; den brädtyp spelet pinnar (`type`, B3); och var det ligger: `zone`, en yta alla delar, för huvudbrädet, eller `role`, en yta varje plats har, som lägger ett bräde per plats vänt mot platsens kant; och `at`, brädets mitt i ytans millimeter, sagd från plats A:s stol som en tärnings punkt (K31), annars ytans mitt.
+`layBoards` säger var varje bräde ligger, och `setupFromProject` lägger bräden först, så att allt annat ligger på dem.
+`x` och `y` är brädets övre vänstra hörn som det står innan det vrids, så att det vrids kring sin egen mitt till punkten, och `rot` är 0, 90, 180 eller 270 efter platsens kant.
+Ett dokument utan bräde har ingen post och läses tillbaka orört.
+
+**Texturen.** Typen säger `ownFaces`: dess sidor kommer ur dokumentets egen mall och inte ur en rad. `queueFaces` kompilerar varje sida med den enda kompilatorn och köar den som en textur i samma DPI som ett kort, så att filten ritar brädet i samma pixlar per millimeter, nycklad på innehållet (DRIFT §6): samma spelarbräde på åtta platser är en rendering, och en ändrad bild är en ny hash.
+Hashen går till vyn genom `project` i `DeckFacts.ownFaces`, i fältet `faces` som ett korts, och läses bara för en typ som säger `ownFaces`, så att ett kort och ett bräde kan heta samma sak utan att dela yta.
+Ingen ändring i `packages/protocol`.
+Ett jobb för det största brädet, 610 × 457 mm i 150 DPI, är 3602 × 2699 px, och det ryms under renderns minnestak (1,5 GB, DRIFT §6).
+Mätt 2026-11-01 i #1479 som summan av Chromiums processers RSS medan jobbet ritades: 0,5 GB för en jämn bild över hela brädet, och 1,07 GB för det värsta fallet, en 3600 × 2700 px bild av brus, som också gav en textur på 28 MB.
+En textur så stor är filtens att hämta (#1480), och den hämtas bara av skärmar som ritar filten (C2).
+Brädets bilder går genom tillgångarna som kortets (#1028).
+Trycket i 300 DPI med utfall är #1488, och till dess hoppar tryckexporten över brädet i stället för att vägra spelet.
 
 ## L. Editorn (grillad 2026-09-06)
 

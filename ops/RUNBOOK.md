@@ -430,3 +430,29 @@ Ett ångrat ja:
    Filerna är redan anonymiserade och bär inga personuppgifter (DRIFT §7), men ett ångrat ja ska betyda att borden inte används.
 
 **Att avgöra före utskick.** Om redan hämtade, anonymiserade bord ska tas bort ur korpusen vid ett ångrat ja (steg 4), eller bara inga nya hämtas, är beställarens beslut; utkastet tar bort dem.
+
+## 10. Abonnemang via Stripe
+
+Hur betalningen är kopplad står i DRIFT §12 (#1493): nycklarna och pris-id:na i `.env`, webhooken på `https://deckster.se/stripe/webhook`, och Stripes besked som skriver kontots nivå i `account_plans` med källan `stripe`.
+Efter en ändring i `.env`: `docker compose up -d app`, och läs raden `"msg":"payments"` i `docker compose logs app`; den säger `on`, `test` eller `live` och vilka nivåer som går att köpa, eller vad som är fel.
+
+**Före de skarpa nycklarna.** Bekräfta med beställaren hur momsen tas ut (fråga 2 i #1469, till exempel Stripe Tax), skapa produkten Pro med de fyra priserna i live-läget, lägg upp webhooken där med händelserna `customer.subscription.created`, `customer.subscription.updated` och `customer.subscription.deleted`, och byt alla tre variablerna på en gång: live-lägets pris-id och signeringshemlighet är andra än testlägets.
+
+**En webhook som inte kommer fram.** Stripe försöker igen i upp till tre dygn, och Dashboard visar varje försök under webhookens händelser.
+1. Läs `docker compose logs app | grep '"msg":"stripe"'`. Ingen rad alls betyder att anropet inte når appen: kontrollera att Cloudflare inte utmanar eller stryper vägen (DRIFT §9) och att traefik släpper igenom den. `400` i Dashboard betyder att signaturen inte håller: `STRIPE_WEBHOOK_SECRET` hör inte till den här webhooken eller det här läget.
+2. Rätta orsaken och skicka om händelsen från Dashboard («Resend»); en händelse som kommer två gånger ändrar ingenting fel.
+3. För ett enskilt konto som inte kan vänta, läs dess abonnemang från Stripe och skriv dem som webhooken skulle, över Tailscale med lådans variabler:
+
+```sh
+DATABASE_URL=postgres://… BYD_PLANS='…' STRIPE_SECRET_KEY=… STRIPE_WEBHOOK_SECRET=… BYD_STRIPE_PRICES='…' \
+  pnpm --filter @byd/server stripe sync ada@example.com
+```
+
+Svaret säger `subscribed`, `lapsed`, `unchanged`, `operator` (kontot har en nivå operatören satt, som Stripe aldrig skriver över) eller varför inget gjordes.
+
+**En återbetalning.** Görs i Stripes Dashboard: betalningen återbetalas under kunden, helt eller delvis.
+En återbetalning ändrar inte nivån av sig själv, eftersom abonnemanget fortfarande gäller.
+Ska kontot också lämna Pro, säg upp abonnemanget i Dashboard, direkt och inte vid periodens slut; webhooken gör då kontot utgånget, och läsläget gäller för det som ligger över gratisnivåns tak (G5).
+Ett konto som ska behålla Pro utan att betala, till exempel efter ett fel som är vårt, får nivån av operatören (`plan set <adress> pro`, källan `operator`), som Stripe sedan inte skriver över.
+
+**Ett konto som raderar sig själv** säger ännu inte upp sitt abonnemang hos Stripe (DRIFT §12). Sök upp kunden i Dashboard på adressen och säg upp abonnemanget direkt, så att ingen dras för ett konto som inte finns.
