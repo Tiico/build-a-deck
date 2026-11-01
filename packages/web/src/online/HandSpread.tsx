@@ -7,6 +7,9 @@ import { useRoving } from '../editor/roving.js'
 import { handLabel } from '../table/keyboard.js'
 import { useT } from '../i18n/index.js'
 import { spreadStyle } from './fan.js'
+import { isTile, tileOf, tilesLast } from '../components.js'
+import { TileInCard } from '../table/TileInCard.js'
+import { HOLDS_A_TILE } from '../table/tileLook.js'
 
 export type HandSpreadProps = {
   cards: readonly VisibleComponentState[]
@@ -40,8 +43,9 @@ export type HandSpreadProps = {
 // they are and stay reachable; a surface that covers the only Ångra on the page has made it
 // unreachable and not merely hidden. When the hand is larger than the screen the grid scrolls in
 // its own box and the page never does, which is L10's rule for the data table applied here.
-export function HandSpread({ cards, faces, onOpen, onTurn, onClose, columns, turned }: HandSpreadProps) {
+export function HandSpread({ cards: held, faces, onOpen, onTurn, onClose, columns, turned }: HandSpreadProps) {
   const t = useT()
+  const cards = tilesLast(held)
   const n = cards.length
   const roving = useRoving({ ids: cards.map((c) => c.id), selected: null, orientation: 'both' })
   const first = cards[0]?.id
@@ -86,7 +90,8 @@ export function HandSpread({ cards, faces, onOpen, onTurn, onClose, columns, tur
                 data-spread-card={c.id}
                 aria-label={handLabel(c, false, t, turned?.has(c.id) === true)}
                 data-turned={turned?.has(c.id) === true ? 'true' : undefined}
-                style={{ ['--hue' as string]: hue(c.cardRef ?? ''), ...(turned?.has(c.id) === true ? TURNED_GROUND : {}) }}
+                data-shape={tileOf(c)?.shape}
+                style={{ ['--hue' as string]: hue(c.cardRef ?? ''), ...(turned?.has(c.id) === true && !isTile(c) ? TURNED_GROUND : {}), ...(isTile(c) ? HOLDS_A_TILE : {}) }}
                 tabIndex={item.tabIndex}
                 ref={item.ref}
                 onFocus={item.onFocus}
@@ -106,7 +111,9 @@ export function HandSpread({ cards, faces, onOpen, onTurn, onClose, columns, tur
                   item.onKeyDown(e)
                 }}
               >
-                <HandFace faces={faces} c={c} turned={turned?.has(c.id) === true} />
+                <TileInCard c={c}>
+                  <HandFace faces={faces} c={c} turned={turned?.has(c.id) === true} />
+                </TileInCard>
               </button>
             )
           })}

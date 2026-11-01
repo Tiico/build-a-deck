@@ -8,7 +8,7 @@ import { useT, type T } from '../i18n/index.js'
 import { returnPile } from '../table/handName.js'
 import { TileInCard } from '../table/TileInCard.js'
 import { HOLDS_A_TILE, TILE_MARK } from '../table/tileLook.js'
-import { isTile, tileOf } from '../components.js'
+import { isTile, tileOf, tilesLast } from '../components.js'
 
 export type HandGridProps = {
   view: Snapshot
@@ -51,7 +51,7 @@ export function HandGrid({ view, selected, onToggle, onOpen, onReorder, faces, t
   // A hand's tiles stand after its cards (#1486, variant A of #1474), each in its own order: a tile
   // is held as a card is, and a hand that mixed them looked like a deck dropped on the floor.
   const raw = view.components.filter((c) => c.zone === `hand:${view.seat}`).reverse()
-  const hand = [...raw.filter((c) => !isTile(c)), ...raw.filter(isTile)]
+  const hand = tilesLast(raw)
   const order = [...selected]
   const last = order.at(-1) ?? null
   const grid = useRef<HTMLDivElement>(null)

@@ -5182,6 +5182,12 @@ I «Framför mig» har en bricka «↺ Rotera 60°» och «↻ Rotera 60°» bre
 Den dolda högen räknas i brickor, och dess knapp är den som redan står på varje hög, «Dra 1 till min hand».
 Brickans utseende skrivs i `tileLook.ts` och står i elementens stilattribut, inte i arket som första bilden väntar på: dess larm (#366, L40) ringde med 0,4 kB över, och en bricka ritas bara i ett spel som har en.
 
+**Skrivbordets hand** (#1538, variant A i #1474).
+På `/online` och i `/play`:s skrivbordsläge gör handen som telefonen: solfjädern, kolumnen, raden och «Visa alla» ritar brickorna efter korten, i sin form och i sin sanna storlek mot kortet, och en bricka bärs ut ur handen i sin form.
+I kolumnen, där korten överlappar nedifrån och bara remsan överst syns, står en bricka överst i sin ram, utom den sista som ritas hel.
+En bricka som lyfts för att läsas behåller konturens proportioner, i de millimeter ett kort lyfts i, som på filten.
+Panelen handen öppnar med Enter har «↺ Rotera 60°» och «↻ Rotera 60°» (90° för kvadrat och rund) i stället för kortets «Rotera».
+
 Brickor i setupen, en egen lek och tabell per brickform, bordet, telefonen och trycket byggs i #1484–#1488.
 
 ### K35. Brädet: brädtyperna, brädet i dokumentet och dess textur (beslutat 2026-10-28 och 2026-11-01, #1470, #1473, #1479)
