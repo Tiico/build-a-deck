@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import { describe, expect, it } from 'vitest'
 import { contentHash } from '../src/hash.js'
 
@@ -25,5 +26,16 @@ describe('contentHash', () => {
       { kind: 'png', dpi: 300 },
     ] as const) expect(contentHash(page, other), JSON.stringify(other)).not.toBe(tgc)
     expect(contentHash({ ...page, html: '<div data-card data-bleed="3"></div>' }, { kind: 'raster', format: 'png', widthPx: 819, heightPx: 1114 })).not.toBe(tgc)
+  })
+
+  // The felt's board is a JPEG of its own quality (#1480, beställarens beslut 2026-11-01): another
+  // quality is another picture, and a raster that names none keeps the key it always had.
+  it('tells a JPEG apart by its quality, and keeps the old key for one that names none', () => {
+    const page = { html: '<div data-card></div>', css: '' }
+    const at90 = contentHash(page, { kind: 'raster', format: 'jpg', widthPx: 2048, heightPx: 1534, quality: 90 })
+    expect(at90).not.toBe(contentHash(page, { kind: 'raster', format: 'jpg', widthPx: 2048, heightPx: 1534, quality: 80 }))
+    expect(at90).not.toBe(contentHash(page, { kind: 'raster', format: 'jpg', widthPx: 2048, heightPx: 1534 }))
+    const old = createHash('sha256').update('raster:jpg:2048x1534\n').update(page.css).update('\n--\n').update(page.html).digest('hex')
+    expect(contentHash(page, { kind: 'raster', format: 'jpg', widthPx: 2048, heightPx: 1534 })).toBe(old)
   })
 })

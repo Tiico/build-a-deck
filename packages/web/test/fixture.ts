@@ -9,6 +9,7 @@ import { MemoryReportStore, blocking } from '../../server/src/reports.js'
 import { AiKeyVault, MemoryAiKeyStore } from '../../server/src/ai-keys.js'
 import { providersFromEnv } from '../../server/src/ai-providers.js'
 import type { Plans } from '../../server/src/quotas.js'
+import { MemoryAccountPlanStore } from '../../server/src/account-plans.js'
 import type { TermsRegister } from '@byd/server/terms'
 import { printProvidersOf } from '../../server/src/print-providers.js'
 import { fakeAiProvider, type FakeAiProvider } from '../../../test-support/fake-ai-provider.js'
@@ -281,6 +282,8 @@ export type Running = {
   ai?: { vault: AiKeyVault; fake: FakeAiProvider }
   // With `auth`: the accounts, so a test can name one by its address (#1001).
   auth?: MemoryAuthStore
+  // With `plans`: each account's own tier, so a test can give one Pro and let it lapse (#1492).
+  accountPlans?: MemoryAccountPlanStore
 }
 // Enough to tell two fixtures apart within a worker, which is as far as a port ever travels.
 let fixtures = 0
@@ -302,6 +305,8 @@ export async function startServer(opts: { auth?: boolean; authBypass?: boolean; 
   const surveys = new MemorySurveyStore()
   const mail = new MemoryMailer()
   const auth = opts.auth ? new MemoryAuthStore() : undefined
+  // Each account's own tier (#1193), beside the tiers: a lapse (#1491) needs a tier to lapse from.
+  const accountPlans = opts.plans ? new MemoryAccountPlanStore() : undefined
   let http = ''
   // The providers the key is proved against, on a port out of this worker's own slice like the
   // server's, and a vault with a master key of the run's own.
@@ -314,7 +319,7 @@ export async function startServer(opts: { auth?: boolean; authBypass?: boolean; 
   // store is #1279's; an account that deletes itself (#1280) is forgotten in every store here too.
   const erasures = store.erasures(surveys, projects, memoryForgetting({ auth: auth ?? null, projects, vault }))
   const make = () => {
-    const made = createServer({ host: new TableHost(registry, store, undefined, renders, () => reports.blocked()), store, registry, renders, projects, assets, surveys, erasures, reports, ...(auth ? { auth, mailer: mail, publicOrigin: http, authBypass: opts.authBypass } : {}), ...(opts.appOrigin ? { appOrigin: opts.appOrigin } : {}), ...(ai ? { ai } : {}), ...(opts.plans ? { plans: opts.plans } : {}), ...(opts.print ? { printProviders: printProvidersOf(STANDARD_TYPES) } : {}), ...(opts.terms ? { terms: opts.terms } : {}) })
+    const made = createServer({ host: new TableHost(registry, store, undefined, renders, () => reports.blocked()), store, registry, renders, projects, assets, surveys, erasures, reports, ...(auth ? { auth, mailer: mail, publicOrigin: http, authBypass: opts.authBypass } : {}), ...(opts.appOrigin ? { appOrigin: opts.appOrigin } : {}), ...(ai ? { ai } : {}), ...(opts.plans ? { plans: opts.plans } : {}), ...(accountPlans ? { accountPlans } : {}), ...(opts.print ? { printProviders: printProvidersOf(STANDARD_TYPES) } : {}), ...(opts.terms ? { terms: opts.terms } : {}) })
     // Never hang up an idle connection from this end (#848). Node does after five seconds, and the
     // client in this same process sends its next request on the connection it pooled: on a box
     // where a worker is descheduled for longer than that, the two meet on one socket and the
@@ -351,6 +356,7 @@ export async function startServer(opts: { auth?: boolean; authBypass?: boolean; 
     answering: (door = '/health') => untilAnswering(`http://127.0.0.1:${port}`, door),
     ...(vault && fake ? { ai: { vault, fake } } : {}),
     ...(auth ? { auth } : {}),
+    ...(accountPlans ? { accountPlans } : {}),
     stop,
     // Marks every queued texture as rendered, with a stand-in for the PNG: what the render
     // container would do, without Chromium. A limit renders only that many, which is a worker

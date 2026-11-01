@@ -5,7 +5,7 @@ import { catalogFont, type CatalogFamily, fileInSheet, fileSheetHref } from './f
 import type { DocDiff, Playtest, VersionChange } from '@byd/server/doc'
 import type { Element } from '@byd/template'
 import { BOX_SIDES, type BoxClearance, type BoxFace, type BoxSide } from '@byd/engine'
-import { Unauthorized, withCredentials } from '../account/api.js'
+import { Unauthorized, gameReadOnly, withCredentials, type GameReadOnly } from '../account/api.js'
 import { QuotaReached, quotaIn, quotaOf, type Quota } from '../account/quota.js'
 import { QuotaSaid, quotaWords, type QuotaDoing } from '../account/quota-words.js'
 import { applyEdit, boxFaceOf, cellColumn, changeOf, copiesOf, decideEdit, joined, plainEdits, playable, recipeOf, revertOf, type Change, type Clearable, type ColumnKind, type Die, type EditIntent, type Piece, type Recipe, type RecipeWords, type SeatRole, type Zone, type ZonePatch } from '@byd/server/doc'
@@ -16,7 +16,7 @@ import { freeIconName, svgBytes, symbolName, type GameSymbol } from './symbols.j
 import { creditOf, type CatalogIcon } from './icon-catalog.js'
 import { iconsOf, starterSet, themeFamilies, themeIconFiles, themeIntent, type Theme } from './themes.js'
 import type { EditorMessage, Presence } from '@byd/server'
-import { canDelete, canEdit, canStartTables, type Role } from '@byd/server/doc'
+import { canDelete, canEdit, canStartTables, onlyShrinks, type Role } from '@byd/server/doc'
 import { translate, type Key, type T } from '../i18n/index.js'
 import { Said, saidOr } from '../i18n/said.js'
 import { termsDueIn } from '../account/terms-due.js'
@@ -223,6 +223,13 @@ export class ProjectClient {
   public you: Presence | null = null
   // What this account may do with the project (D3): a viewer or a test leader may not edit it.
   public role: Role | null = null
+  // Whether the game is read-only now (#1492, G5, L2): its owner's subscription has lapsed and the
+  // game lies over the free tier. Asked as the editor opens, again when an edit is refused for it,
+  // and after an edit of this editor's lands while it holds, since a game made smaller may fit.
+  // `readOnlyRefused` counts the edits refused here for it, so the page can say each one.
+  public readOnly: GameReadOnly | null = null
+  public readOnlyRefused = 0
+  private askingReadOnly = false
   // The document as the server holds it, in a form two documents can be compared in. "Unsaved"
   // is the difference between that and `doc`, never a memory of something having been typed
   // (#8): an edit that writes the value already there changes nothing, and taking an edit back
@@ -267,6 +274,7 @@ export class ProjectClient {
     const { id, rev, owner: _owner, ...doc } = rec
     const client = new ProjectClient(opts.http, opts.id, doc, rev, opts.dropAfterMs ?? DEFAULT_TIMING.dropAfterMs)
     client.connect(opts.name ?? (opts.t ?? swedish)('editor.here.someone'))
+    void client.askReadOnly()
     return client
   }
 
@@ -387,6 +395,8 @@ export class ProjectClient {
         // confirming it holds the edit, and a status that waits on that (#297, L33) has no other
         // way to hear it.
         if (mine.length > 0 || theirs.length > 0) this.notify()
+        // A game in read-only mode made smaller may fit again (#1511): asked once the actor holds it.
+        if (this.readOnly && message.edits.length > 0) void this.askReadOnly()
         return
       }
       case 'here':
@@ -419,6 +429,8 @@ export class ProjectClient {
           this.notify()
           return
         }
+        // A game that became read-only while it was open (#1492): asked again, so the band says it.
+        if (message.why === 'read-only') void this.askReadOnly()
         const quota = message.why === 'quota' ? quotaIn(message.quota) : null
         if (message.to !== 'edit') {
           this.finishSave({ ok: false, reason: refusedSave(message.why), ...(quota ? { quota } : {}) })
@@ -444,6 +456,21 @@ export class ProjectClient {
         this.refuseEdit()
         return
       }
+    }
+  }
+
+  // Whether the game is read-only now (#1492), asked of the server; one question at a time.
+  async askReadOnly(): Promise<void> {
+    if (this.askingReadOnly) return
+    this.askingReadOnly = true
+    try {
+      const now = await gameReadOnly(this.http, this.id)
+      if (JSON.stringify(now) !== JSON.stringify(this.readOnly)) {
+        this.readOnly = now
+        this.notify()
+      }
+    } finally {
+      this.askingReadOnly = false
     }
   }
 
@@ -553,7 +580,7 @@ export class ProjectClient {
   // stands exactly when this is true, and the box's tab comes with it (#1406, beslut 3); the server
   // refuses the rest. The tables a game already has are the role's alone (`mayStartTables`).
   get startable(): boolean {
-    return this.mayStartTables && playable(this.doc)
+    return this.mayStartTables && playable(this.doc) && this.readOnly === null
   }
 
   // The door for everything that sends bytes before it edits (#489): a file chosen by a role that
@@ -611,6 +638,13 @@ export class ProjectClient {
     // document refuses never happened, so it must cost neither a version nor a step back (#41,
     // B4). `applyEdit` throws from here, with the stack untouched and nothing sent.
     const next = applyEdit(this.doc, intent)
+    // A game in read-only mode may only be made smaller (#1511): anything else is refused here,
+    // before it is sent or becomes a step, by the rule the actor holds it to (#1492).
+    if (this.readOnly && !onlyShrinks(this.doc, next)) {
+      this.readOnlyRefused += 1
+      this.notify()
+      return
+    }
     // What this edit changed, part by part, against the document it was made on (#1056): that is
     // what a step back takes back, and nothing a co-editor did before or after it. A new edit is a
     // new branch, so what was taken back stops waiting to come forward.

@@ -338,6 +338,25 @@ for (const backend of backends) {
       expect(await usage(b.cookie)).toMatchObject({ readOnly: [], ifLapsed: [] })
     })
 
+    // What the editor asks when it opens a game (#1492): whether the game is read-only, and for the
+    // owner why, with the ceiling; a co-editor hears only whose it is, by the owner's name, never her
+    // tier nor her ceilings (A2, #1198). Somebody with no part in the game learns nothing.
+    it('tells an editor whether its game is read-only: the owner why, a co-editor whose', async () => {
+      const a = await ada([1, 1, 4])
+      const big = a.ids[2]!
+      const bo = await someone('bo')
+      const cy = await someone('cy')
+      await db.projects.share(big, bo.id, 'editor')
+      await db.auth.setName(a.id, 'Ada')
+      const state = async (cookie: string) => send('GET', `/projects/${big}/read-only`, cookie)
+      expect(await (await state(a.cookie)).json()).toEqual({ readOnly: null })
+      await lapse(a.id)
+      expect(await (await state(a.cookie)).json()).toEqual({ readOnly: { bearer: 'you', why: 'cardRowsPerProject', limit: 3 } })
+      expect(await (await state(bo.cookie)).json()).toEqual({ readOnly: { bearer: 'owner', ownerName: 'Ada' } })
+      expect((await state(cy.cookie)).status).toBe(403)
+      expect(await (await send('GET', `/projects/${a.ids[0]!}/read-only`, a.cookie)).json()).toEqual({ readOnly: null })
+    })
+
     // The order is locked when the tier lapses (#1518): an edit, a shrink included, never moves a game
     // in it, so no game is pushed into read-only by another one changing; a game made smaller so that
     // it fits leaves read-only when there is a place for it, and only then.

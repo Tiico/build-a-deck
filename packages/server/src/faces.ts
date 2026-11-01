@@ -1,7 +1,7 @@
 import { TILES, isMaterial, seatColourOf, type ComponentTypeDef, type SetupDef, type TypeRegistry } from '@byd/engine'
 import type { CardTexts, CardTitles, FaceHashes } from '@byd/engine'
 import { compileCard, printedText, type Compiled, type Motif, type Row, type Template } from '@byd/template'
-import { contentHash, type RenderRequest } from '@byd/render/queue'
+import { contentHash, type RenderKind, type RenderRequest } from '@byd/render/queue'
 import { titleOfFields } from './names.js'
 
 // `fonts` is what the version is pinned to (B3), already resolved to something a page can load.
@@ -74,14 +74,27 @@ export type CompiledFaces = { faces: FaceHashes; titles: CardTitles; texts: Card
 // compiled them all before handing any on held all of them at once, and took the app past its heap
 // at the start of a table. Each card's new jobs are yielded before the next card is compiled, so a
 // page lives only until it is queued.
+// The felt's own picture of a board (#1480, beställarens beslut 2026-11-01): a JPEG at quality 90,
+// at most 2048 px on its long side and never denser than a card's texture, so the felt draws it at
+// a card's pixels per millimetre or fewer. A big board in a card's 150 DPI was 3602 × 2699 px, and a
+// PNG of a photograph on it tens of megabytes for every screen that draws the felt. The print keeps
+// the type's own resolution (#1488); this is the table's.
+export const BOARD_TEXTURE_MAX_PX = 2048
+export const BOARD_TEXTURE_QUALITY = 90
+export function boardTextureKind(def: ComponentTypeDef, dpi: number): RenderKind {
+  const { widthMm, heightMm } = def.physical
+  const perMm = Math.min(dpi / 25.4, BOARD_TEXTURE_MAX_PX / Math.max(widthMm, heightMm))
+  return { kind: 'raster', format: 'jpg', quality: BOARD_TEXTURE_QUALITY, widthPx: Math.round(widthMm * perMm), heightPx: Math.round(heightMm * perMm) }
+}
+
 function* compiledCards(deck: Deck, setup: SetupDef, registry: TypeRegistry, dpi: number, now: number, out: CompiledFaces): Generator<RenderRequest> {
   const seen = new Set<string>()
-  const job = (page: Compiled, perFace: Record<string, string>, face: string): RenderRequest | undefined => {
-    const hash = contentHash(page, { kind: 'png', dpi })
+  const job = (page: Compiled, perFace: Record<string, string>, face: string, kind: RenderKind = { kind: 'png', dpi }): RenderRequest | undefined => {
+    const hash = contentHash(page, kind)
     perFace[face] = hash
     if (seen.has(hash)) return undefined
     seen.add(hash)
-    return { hash, kind: { kind: 'png', dpi }, priority: 'texture', compiled: { html: page.html, css: page.css }, requestedAt: now }
+    return { hash, kind, priority: 'texture', compiled: { html: page.html, css: page.css }, requestedAt: now }
   }
   for (const spec of setup.components) {
     const def = registry.get(spec.type)
@@ -91,7 +104,7 @@ function* compiledCards(deck: Deck, setup: SetupDef, registry: TypeRegistry, dpi
       const perFace: Record<string, string> = {}
       out.ownFaces[spec.cardRef] = perFace
       for (const [face, page] of Object.entries(compileRow({ ...deck, template }, def, {}))) {
-        const next = job(page, perFace, face)
+        const next = job(page, perFace, face, boardTextureKind(def, dpi))
         if (next) yield next
       }
       continue
