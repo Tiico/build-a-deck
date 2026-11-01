@@ -8,7 +8,7 @@ import { TableRenderer, type FeltFit, type TableHandle } from '../table/TableRen
 import { previewOf } from '../setup/preview.js'
 import { MIN_MM, NUDGE_MM, onTableOf, sizedBy } from './zone-geometry.js'
 import { useNumberDraft } from './number-draft.js'
-import { layMaterial, newAreaSpot, newPileSpot, pasteSpot, placeLine, type Counter, type Die, type Geometry, type MaterialLine, type Setup, type Zone } from '@byd/server/doc'
+import { layMaterial, newAreaSpot, newPileSpot, pasteSpot, placeLine, type Counter, type Die, type Geometry, type MaterialLine, type Piece, type Setup, type Zone } from '@byd/server/doc'
 import type { ProjectClient } from './ProjectClient.js'
 import { useT, type T } from '../i18n/index.js'
 import { Help } from './HelpDrawer.js'
@@ -302,8 +302,13 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside, lead }: Se
             else if (what.kind === 'seat') addSeat(what.role)
             else if (what.kind === 'die') {
               const dice = setup.dice ?? []
-              client.setDice([...dice, movedTo({ faces: 6, count: 1, zone: '' }, what.place)])
+              client.setDice([...dice, movedTo<Die>({ faces: 6, count: 1, zone: '' }, what.place)])
               born(`die:${dice.length}`)
+            } else if (what.kind === 'piece') {
+              // Five meeples, the kind most games lay per player (#1472 B); the row changes the kind.
+              const pieces = setup.pieces ?? []
+              client.setPieces([...pieces, movedTo<Piece>({ kind: 'meeple', count: 5, zone: '' }, what.place)])
+              born(`piece:${pieces.length}`)
             } else if (what.kind === 'counter') {
               const counters = client.recipe.counters
               turnCounters([...counters, newCounter(counters, t, what.role)])
@@ -315,6 +320,7 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside, lead }: Se
           focusMaterial={focusMaterial}
           onFocused={() => setFocusMaterial(null)}
           onDice={(dice) => client.setDice(dice)}
+          onPieces={(pieces) => client.setPieces(pieces)}
           onCounters={turnCounters}
           typing={counterTyping}
         />
@@ -786,13 +792,10 @@ const snap = (mm: number) => Math.round(mm / SNAP_MM) * SNAP_MM
 
 // One handle for a line's pieces in one zone (#1292): the box around them on the felt, and the
 // middle a drag or an arrow moves.
-type MaterialHandle = { key: string; line: MaterialLine; zone: string; zoneName: string; faces?: number; name?: string; box: { x: number; y: number; w: number; h: number }; center: { x: number; y: number } }
+type MaterialHandle = { key: string; line: MaterialLine; zone: string; zoneName: string; faces?: number; name?: string; kind?: Piece['kind']; box: { x: number; y: number; w: number; h: number }; center: { x: number; y: number } }
 function materialHandles(setup: Setup): MaterialHandle[] {
   const byKey = new Map<string, MaterialHandle>()
   for (const p of layMaterial(setup)) {
-    // The wooden pieces' rows in this tab are #1477, after its prototype (#1472); until then a piece
-    // has no handle rather than one that calls it a counter (#1471).
-    if (p.line.kind === 'piece') continue
     const zone = setup.zones.find((z) => z.id === p.zone)
     if (!zone) continue
     const key = `${p.line.kind}:${p.line.index}@${p.zone}`
@@ -800,11 +803,16 @@ function materialHandles(setup: Setup): MaterialHandle[] {
     const y = zone.geometry.y + p.y
     const was = byKey.get(key)
     const box = was ? { x: Math.min(was.box.x, x), y: Math.min(was.box.y, y), w: Math.max(was.box.x + was.box.w, x + p.size) - Math.min(was.box.x, x), h: Math.max(was.box.y + was.box.h, y + p.size) - Math.min(was.box.y, y) } : { x, y, w: p.size, h: p.size }
-    byKey.set(key, { key, line: p.line, zone: zone.id, zoneName: zone.name, ...(p.faces !== undefined ? { faces: p.faces } : {}), ...(p.name !== undefined ? { name: p.name } : {}), box, center: { x: box.x + box.w / 2, y: box.y + box.h / 2 } })
+    byKey.set(key, { key, line: p.line, zone: zone.id, zoneName: zone.name, ...(p.faces !== undefined ? { faces: p.faces } : {}), ...(p.name !== undefined ? { name: p.name } : {}), ...(p.kind !== undefined ? { kind: p.kind } : {}), box, center: { x: box.x + box.w / 2, y: box.y + box.h / 2 } })
   }
   return [...byKey.values()]
 }
-const whatOf = (h: MaterialHandle, t: T): string => (h.line.kind === 'die' ? t('setup.material.die', { n: h.line.index + 1, kind: `d${h.faces ?? 6}` }) : t('setup.material.counter', { name: h.name ?? '' }))
+const whatOf = (h: MaterialHandle, t: T): string =>
+  h.line.kind === 'die'
+    ? t('setup.material.die', { n: h.line.index + 1, kind: `d${h.faces ?? 6}` })
+    : h.line.kind === 'piece'
+      ? t('setup.material.piece', { n: h.line.index + 1, kind: t(`setup.piece.kind.${h.kind ?? 'meeple'}`) })
+      : t('setup.material.counter', { name: h.name ?? '' })
 // The innermost area under a point on the felt, the one a piece let go there lies in.
 function areaUnder(setup: Setup, p: { x: number; y: number }): Zone | undefined {
   const g = (z: Zone) => z.geometry
@@ -813,12 +821,13 @@ function areaUnder(setup: Setup, p: { x: number; y: number }): Zone | undefined 
     .sort((a, b) => g(a).w * g(a).h - g(b).w * g(b).h)[0]
 }
 // A piece taken to a point (#1292): its line written where `placeLine` says it lies now, the dice
-// as the whole list and a counter as the recipe it is part of, each one step back per grab (L14).
+// and the wooden pieces (#1477) each as the whole list and a counter as the recipe it is part of, each one step back per grab (L14).
 // False when nothing under the point can hold it, and the piece stays where it was.
 function place(client: ProjectClient, setup: Setup, t: T, line: MaterialLine, center: { x: number; y: number }, gesture?: string): boolean {
   const next = placeLine(setup, line, center)
   if (!next) return false
   if (line.kind === 'die') client.setDice((setup.dice ?? []).map((d, i) => (i === line.index ? (next as Die) : d)), gesture)
+  else if (line.kind === 'piece') client.setPieces((setup.pieces ?? []).map((d, i) => (i === line.index ? (next as Piece) : d)), gesture)
   else client.setRecipe({ ...client.recipe, counters: client.recipe.counters.map((c, i) => (i === line.index ? (next as Counter) : c)) }, recipeWords(t), gesture)
   return true
 }

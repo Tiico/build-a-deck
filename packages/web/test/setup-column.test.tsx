@@ -34,6 +34,8 @@ const rows = () => [...document.querySelectorAll('[data-zone-row], [data-zone-fa
 const list = (name: string) => screen.getByRole('list', { name })
 // Namnet på varje rad direkt i en lista, utan det som står i raderna under.
 const names = (name: string) => [...list(name).querySelectorAll(':scope > li')].map((li) => (li.querySelector('.byd-setup-name') as HTMLElement).textContent)
+// Ett vals namn i ＋-menyn: det som står på knappen, utan undertexten (#1477, «meeple, kub eller skiva»).
+const itemName = (b: HTMLElement) => b.getAttribute('aria-label') ?? b.textContent
 // Öppnar ＋-menyn på en rad och trycker ett av dess val.
 const addVia = (node: string, item: string) => {
   fireEvent.click(screen.getByRole('button', { name: `Lägg till i ${node}` }))
@@ -101,7 +103,7 @@ describe('bordet som träd (#1403, beslut C)', () => {
     expect(plus.getAttribute('aria-expanded')).toBe('false')
     fireEvent.click(plus)
     const menu = screen.getByRole('menu', { name: 'Lägg till i Spelyta' })
-    expect(within(menu).getAllByRole('menuitem').map((b) => b.textContent)).toEqual(['＋ Yta', '＋ Hög', '＋ Tärning'])
+    expect(within(menu).getAllByRole('menuitem').map(itemName)).toEqual(['＋ Yta', '＋ Hög', '＋ Tärning', '＋ Pjäs'])
     // Menyn tar fokus på sitt första val, och Escape lämnar det tillbaka till ＋.
     await waitFor(() => expect(document.activeElement).toBe(within(menu).getByRole('menuitem', { name: '＋ Yta' })))
     fireEvent.keyDown(menu, { key: 'Escape' })
@@ -217,5 +219,72 @@ describe('en tärning vars yta försvinner (#1403, #1139)', () => {
     await waitFor(async () => expect((await truth()).setup.dice).toEqual([{ faces: 6, count: 1, zone: 'table' }]))
     expect(screen.queryByRole('combobox', { name: 'Yta för tärning 1' })).toBeNull()
     expect(screen.queryByText(/Ytan finns inte längre/)).toBeNull()
+  })
+})
+
+// Trädelarna i trädet (#1477, editorvariant B i #1472): en enda «＋ Pjäs» i ＋-menyn, som «＋ Tärning»,
+// och sorten väljs i raden bland meeple, kub och skiva. Raden säger «5 × meeple · per spelare», och
+// öppnas till sort, antal och hur en meeple börjar. Färgen är platsens (L11) och väljs inte.
+describe('pjäserna i trädet (#1477)', () => {
+  it('lägger fem meeples per spelare ur «＋ Pjäs», byter sort i raden och låter en meeple börja liggande', async () => {
+    await openBord()
+    addVia('Varje plats', '＋ Yta per plats')
+    fireEvent.click(screen.getByRole('button', { name: 'Lägg till i Framför' }))
+    const menu = screen.getByRole('menu', { name: 'Lägg till i Framför' })
+    expect(within(menu).getAllByRole('menuitem').map(itemName)).toEqual(['＋ Tärning', '＋ Pjäs', '＋ Räknare'])
+    expect(within(menu).getByRole('menuitem', { name: '＋ Pjäs' }).textContent).toContain('meeple, kub eller skiva')
+    fireEvent.click(within(menu).getByRole('menuitem', { name: '＋ Pjäs' }))
+    await waitFor(async () => expect((await truth()).setup.pieces).toEqual([{ kind: 'meeple', count: 5, role: 'mine' }]))
+    expect(names('Framför')).toEqual(['5 × meeple per spelare'])
+    // Den nya raden står öppen, och antalet har fokus: ＋ lämnade en med raden.
+    const count = screen.getByRole('spinbutton', { name: 'Antal för pjäs 1' })
+    await waitFor(() => expect(document.activeElement).toBe(count))
+
+    const sort = screen.getByRole('group', { name: 'Sort för pjäs 1' })
+    expect(within(sort).getAllByRole('button').map((b) => [b.textContent, b.getAttribute('aria-pressed')])).toEqual([
+      ['meeple', 'true'],
+      ['kub', 'false'],
+      ['skiva', 'false'],
+    ])
+    const start = screen.getByRole('group', { name: 'Hur pjäs 1 börjar' })
+    fireEvent.click(within(start).getByRole('button', { name: 'Liggande' }))
+    await waitFor(async () => expect((await truth()).setup.pieces).toEqual([{ kind: 'meeple', count: 5, role: 'mine', lying: true }]))
+
+    // En kub har ingen sida att ligga på: sorten byts, raden står kvar och «Börjar» försvinner.
+    fireEvent.click(within(sort).getByRole('button', { name: 'kub' }))
+    await waitFor(async () => expect((await truth()).setup.pieces).toEqual([{ kind: 'cube', count: 5, role: 'mine' }]))
+    expect(names('Framför')).toEqual(['5 × kub per spelare'])
+    expect(screen.queryByRole('group', { name: 'Hur pjäs 1 börjar' })).toBeNull()
+
+    fireEvent.change(count, { target: { value: '3' } })
+    fireEvent.keyDown(count, { key: 'Enter' })
+    await waitFor(async () => expect((await truth()).setup.pieces).toEqual([{ kind: 'cube', count: 3, role: 'mine' }]))
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ta bort pjäs 1' }))
+    await waitFor(async () => expect((await truth()).setup.pieces).toBeUndefined())
+    expect(screen.queryByRole('list', { name: 'Framför' })).toBeNull()
+  })
+
+  it('har «＋ Pjäs» på Spelyta, och en pjäs där räknas totalt eller per spelare', async () => {
+    await openBord()
+    addVia('Spelyta', '＋ Pjäs')
+    await waitFor(async () => expect((await truth()).setup.pieces).toEqual([{ kind: 'meeple', count: 5, zone: 'table' }]))
+    expect(names('Spelyta')).toEqual(['Draghög leken', 'Kasthög', '5 × meeple totalt'])
+    fireEvent.change(screen.getByRole('combobox', { name: 'Hur antalet räknas för pjäs 1' }), { target: { value: 'perSeat' } })
+    await waitFor(async () => expect((await truth()).setup.pieces).toEqual([{ kind: 'meeple', count: 5, zone: 'table', perSeat: true }]))
+  })
+
+  // Som tärningen: en rad vars yta tas bort står kvar under Spelyta och säger varför.
+  it('står kvar med ett besked när dess yta tas bort, och tar en ny yta ur en väljare', async () => {
+    await openBord()
+    addVia('Spelyta', '＋ Yta')
+    await waitFor(() => expect(row('yta-1')).toBeTruthy())
+    addVia('Yta 1', '＋ Pjäs')
+    await waitFor(async () => expect((await truth()).setup.pieces).toEqual([{ kind: 'meeple', count: 5, zone: 'yta-1' }]))
+    fireEvent.click(screen.getByRole('button', { name: 'Ta bort Yta 1' }))
+    await waitFor(() => expect(screen.getByText(/Ytan finns inte längre, så pjäsen läggs inte på bordet/)).toBeTruthy())
+    expect(names('Spelyta')).toEqual(['Draghög leken', 'Kasthög', '5 × meeple totalt'])
+    fireEvent.change(screen.getByRole('combobox', { name: 'Yta för pjäs 1' }), { target: { value: 'zone:table' } })
+    await waitFor(async () => expect((await truth()).setup.pieces).toEqual([{ kind: 'meeple', count: 5, zone: 'table' }]))
   })
 })
