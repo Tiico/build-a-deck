@@ -5,6 +5,7 @@ import { useT } from '../i18n/index.js'
 import { cardWord } from './keyboard.js'
 import { isTile, tileOf } from '../components.js'
 import { TileInCard } from './TileInCard.js'
+import { HOLDS_A_TILE } from './tileLook.js'
 
 // "Titta" (K8): one card large, on this screen and nobody else's. The pointer gets here by
 // holding a card down; the keyboard gets here from the address panel, and needs a way out that
@@ -31,7 +32,7 @@ export function CardLook({ card, faces, onClose }: { card: VisibleComponentState
         onClose()
       }}
     >
-      <div data-inspect={card.id} data-face={face} data-shape={tileOf(card)?.shape} style={card.cardRef === null ? undefined : { ['--hue' as string]: hue(card.cardRef) }}>
+      <div data-inspect={card.id} data-face={face} data-shape={tileOf(card)?.shape} style={{ ...(card.cardRef === null ? {} : { ['--hue' as string]: hue(card.cardRef) }), ...(isTile(card) ? HOLDS_A_TILE : {}) }}>
         <TileInCard c={card}>
           <Texture faces={faces} c={card} retry />
           <span>{cardWord(card) ?? ''}</span>

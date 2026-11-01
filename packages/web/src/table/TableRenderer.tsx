@@ -34,6 +34,7 @@ import { DragDoor } from '../editor/DragDoor.js'
 import { RING_AIR, RING_REACH, ringCentre } from './ring.js'
 import { liftBox, type Edges } from './lift.js'
 import { TileInCard } from './TileInCard.js'
+import { BOARD_BACK, HOLDS_A_TILE, edgeLook, faceLook, outline } from './tileLook.js'
 import { useSmallestPt } from './smallest.js'
 import { Lifted } from './Lifted.js'
 import { useLetGoWhereMouseArrives, type Pointing } from './arrival.js'
@@ -1808,11 +1809,15 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
             const step = turnStepOf(c)
             const ways = Math.round(360 / step)
             const at = Math.round((((c.rot % 360) + 360) % 360) / step) % ways
+            // A dot for each way it can lie, round it at a little more than its own reach, turned
+            // about its middle; the one it lies at amber and larger.
+            const r = px(box.h / 2) + 9
             return (
-              <div key={`detents-${id}-${n}`} className="byd-detents" data-detents={id} aria-hidden="true" style={{ left: left(a.x + box.w / 2), top: top(a.y + box.h / 2), ['--r' as string]: `${px(box.h / 2) + 9}px` }}>
-                {Array.from({ length: ways }, (_, i) => (
-                  <i key={i} data-at={i === at ? '' : undefined} style={{ rotate: `${i * step}deg` }} />
-                ))}
+              <div key={`detents-${id}-${n}`} className="byd-detents" data-detents={id} aria-hidden="true" style={{ position: 'absolute', width: 0, height: 0, zIndex: 55, pointerEvents: 'none', left: left(a.x + box.w / 2), top: top(a.y + box.h / 2) }}>
+                {Array.from({ length: ways }, (_, i) => {
+                  const d = i === at ? 10 : 6
+                  return <i key={i} data-at={i === at ? '' : undefined} style={{ position: 'absolute', left: -d / 2, top: -d / 2 - r, width: d, height: d, borderRadius: '50%', background: i === at ? '#f0b64a' : '#c9c3b8', boxShadow: '0 0 0 1px rgba(0, 0, 0, 0.55)', transformOrigin: `${d / 2}px ${d / 2 + r}px`, rotate: `${i * step}deg` }} />
+                })}
               </div>
             )
           })}
@@ -1849,7 +1854,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
                 data-shape={tile?.shape}
                 data-face={face}
                 data-back={!c?.cardRef && back ? 'own' : undefined}
-                style={{ position: 'absolute', left: left(p.drag.x), top: top(p.drag.y), width: px(box.w), height: px(box.h), transform: `rotate(${c?.rot ?? 0}deg)`, ['--peer' as string]: colourOf(p.seat), ...(c?.cardRef ? { ['--hue' as string]: hue(c.cardRef) } : {}) }}
+                style={{ position: 'absolute', left: left(p.drag.x), top: top(p.drag.y), width: px(box.w), height: px(box.h), transform: `rotate(${c?.rot ?? 0}deg)`, ['--peer' as string]: colourOf(p.seat), ...(c?.cardRef ? { ['--hue' as string]: hue(c.cardRef) } : {}), ...(tile ? { ...HOLDS_A_TILE, borderRadius: 0 } : {}) }}
               >
                 {tile ? (
                   <TileBody shape={tile.shape} face={face} rot={c?.rot ?? 0} px={px}>
@@ -2061,7 +2066,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
       )}
       {held && (
         <div className="byd-inspect" onClick={() => setHeld(null)}>
-          <div data-inspect={held.id} data-face={held.cardRef === null ? 'back' : 'front'} data-shape={tileOf(held)?.shape} style={held.cardRef === null ? undefined : { ['--hue' as string]: hue(held.cardRef) }}>
+          <div data-inspect={held.id} data-face={held.cardRef === null ? 'back' : 'front'} data-shape={tileOf(held)?.shape} style={{ ...(held.cardRef === null ? {} : { ['--hue' as string]: hue(held.cardRef) }), ...(isTile(held) ? HOLDS_A_TILE : {}) }}>
             <TileInCard c={held}>
               <Texture faces={faces} c={held} retry />
               <span>{cardWord(held) ?? ''}</span>
@@ -2290,21 +2295,22 @@ const TILE_EDGE_MM = 2.5
 const TILE_LAYER_MM = 0.9
 const TILE_LAYERS = 8
 // A tile's body (#1485): its edges under it, deepest first, and its printed side over them, both cut
-// to the tile's outline by `table.css`. The edge always falls down the screen, as the light that
+// to the tile's outline (`tileLook`). The edge always falls down the screen, as the light that
 // shows it falls, however the tile is turned: it is offset against the turn of the box it lies in.
-function TileEdges({ shape, rot, px, layers }: { shape: TileShape; rot: number; px: (mm: number) => number; layers: number }) {
+// `inset` stands it in the middle of a box larger than itself, as a pile's card box.
+function TileEdges({ shape, rot, px, layers, inset }: { shape: TileShape; rot: number; px: (mm: number) => number; layers: number; inset?: string | undefined }) {
   const a = (rot * Math.PI) / 180
   const under = Math.max(1, Math.min(layers, TILE_LAYERS))
   return Array.from({ length: under }, (_, i) => under - 1 - i).map((i) => {
     const d = Math.max(1.5, px(TILE_EDGE_MM + i * TILE_LAYER_MM))
-    return <i key={`edge-${i}`} className="byd-tile-edge" data-shape={shape} data-layer={i} aria-hidden="true" style={{ translate: `${(d * Math.sin(a)).toFixed(2)}px ${(d * Math.cos(a)).toFixed(2)}px` }} />
+    return <i key={`edge-${i}`} className="byd-tile-edge" data-shape={shape} data-layer={i} aria-hidden="true" style={{ ...edgeLook(shape, i), ...(inset ? { inset } : {}), translate: `${(d * Math.sin(a)).toFixed(2)}px ${(d * Math.cos(a)).toFixed(2)}px` }} />
   })
 }
 function TileBody({ shape, face, rot, px, children }: { shape: TileShape; face: 'front' | 'back'; rot: number; px: (mm: number) => number; children: ReactNode }) {
   return (
     <>
       <TileEdges shape={shape} rot={rot} px={px} layers={1} />
-      <span className="byd-tile-face" data-shape={shape} data-face={face}>
+      <span className="byd-tile-face" data-shape={shape} data-face={face} style={faceLook(shape, face)}>
         {children}
       </span>
     </>
@@ -2354,6 +2360,8 @@ function Card({ c, left, top, px, dragging, hiding = false, carried, by, faces, 
         transform: `rotate(${c.rot}deg)`,
         ...(shown.cardRef === null ? {} : { ['--hue' as string]: hue(shown.cardRef) }),
         ...(by ? { ['--peer' as string]: by.colour } : {}),
+        // The box draws nothing of a card's own; lifted, its shadow follows the outline.
+        ...(tile ? { ...HOLDS_A_TILE, borderRadius: 0, ...(dragging ? { filter: 'drop-shadow(0 0 12px rgba(0, 0, 0, 0.6))' } : {}) } : {}),
       }}
     >
       {tile ? (
@@ -2394,7 +2402,7 @@ function Ghost({ card, zone, faces, back, hiding = false, left, top, px }: { car
     </>
   )
   return (
-    <div className="byd-card" data-ghost data-dragging="true" data-hiding={hiding ? '' : undefined} data-shape={tile?.shape} data-face={face} data-back={own ? 'own' : undefined} style={{ position: 'absolute', left, top, width: px(box.w), height: px(box.h), pointerEvents: 'none', ...(shown?.cardRef ? { ['--hue' as string]: hue(shown.cardRef) } : {}) }}>
+    <div className="byd-card" data-ghost data-dragging="true" data-hiding={hiding ? '' : undefined} data-shape={tile?.shape} data-face={face} data-back={own ? 'own' : undefined} style={{ position: 'absolute', left, top, width: px(box.w), height: px(box.h), pointerEvents: 'none', ...(shown?.cardRef ? { ['--hue' as string]: hue(shown.cardRef) } : {}), ...(tile ? { ...HOLDS_A_TILE, borderRadius: 0, filter: 'drop-shadow(0 0 12px rgba(0, 0, 0, 0.6))' } : {}) }}>
       {tile ? (
         <TileBody shape={tile.shape} face={face} rot={0} px={px}>
           {body}
@@ -2481,7 +2489,13 @@ function Pile({ zone, count, topCard, bottomCard, faces, back, left, top, px, li
   const layers = Math.min(Math.max(count, 0), 12)
   const step = Math.min(1.2, (px(CARD_MM.h) * MAX_THICKNESS) / 11)
   const thickness = tile ? undefined : Array.from({ length: layers }, (_, i) => `0 ${-i * step}px 0 #1f2b4a`).join(', ')
-  const edges = tile && count > 0 ? <TileEdges shape={tile.shape} rot={zone.geometry.rot} px={px} layers={count} /> : null
+  // The pile keeps a card's box, which its name, its count and its handle are laid out round and a
+  // drop is measured against; a pile of tiles stands in the middle of it in its own size.
+  const inset = tile ? `${px((CARD_MM.h - box.h) / 2)}px ${px((CARD_MM.w - box.w) / 2)}px` : undefined
+  const edges = tile && count > 0 ? <TileEdges shape={tile.shape} rot={zone.geometry.rot} px={px} layers={count} inset={inset} /> : null
+  // The top, the bottom and the fan's backs of a pile of tiles: cut to the outline, the board's
+  // back where the face is away, and a faint ground where the pile is empty.
+  const cut = (face: 'front' | 'back'): CSSProperties => (tile ? { ...outline(tile.shape), inset, padding: 0, border: 0, boxShadow: 'none', ...(count === 0 ? { background: 'rgba(255, 255, 255, 0.12)' } : face === 'back' ? { background: BOARD_BACK } : {}) } : {})
   // The pile's bottom card (K23, variant A): let out under the pile by its lower edge, drawn
   // before the top so the top covers all but that edge. It is the same card node as the top —
   // the same texture path, the same back, the same hue — because a second way to draw a card is
@@ -2526,9 +2540,7 @@ function Pile({ zone, count, topCard, bottomCard, faces, back, left, top, px, li
       data-dynamic={zone.dynamic ? 'true' : 'false'}
       data-dragging={lifted ? 'true' : undefined}
       data-shuffling={playing ? (still ? 'pulse' : 'fan') : undefined}
-      // The pile keeps a card's box, which its name, its count and its handle are laid out round and
-      // a drop is measured against, and a pile of tiles stands in the middle of it in its own size.
-      style={{ position: 'absolute', left: left - px(CARD_MM.w / 2), top: top - px(CARD_MM.h / 2), width: px(CARD_MM.w), height: px(CARD_MM.h), transform: `rotate(${zone.geometry.rot}deg)`, ...(tile ? { ['--tile-x' as string]: `${px((CARD_MM.w - box.w) / 2)}px`, ['--tile-y' as string]: `${px((CARD_MM.h - box.h) / 2)}px` } : {}) }}
+      style={{ position: 'absolute', left: left - px(CARD_MM.w / 2), top: top - px(CARD_MM.h / 2), width: px(CARD_MM.w), height: px(CARD_MM.h), transform: `rotate(${zone.geometry.rot}deg)`, ...(tile ? { ['--tile-y' as string]: `${px((CARD_MM.h - box.h) / 2)}px` } : {}) }}
       {...points}
       {...pileKeys}
     >
@@ -2539,7 +2551,7 @@ function Pile({ zone, count, topCard, bottomCard, faces, back, left, top, px, li
           data-face={bottomCard?.cardRef ? 'front' : 'back'}
           data-back={bottomOwn ? 'own' : undefined}
           {...bottomInspects}
-          style={{ transform: `translateY(${px(BOTTOM_EDGE_MM)}px)`, ...(bottomCard?.cardRef ? { ['--hue' as string]: hue(bottomCard.cardRef) } : {}) }}
+          style={{ transform: `translateY(${px(BOTTOM_EDGE_MM)}px)`, ...(bottomCard?.cardRef ? { ['--hue' as string]: hue(bottomCard.cardRef) } : {}), ...cut(bottomCard?.cardRef ? 'front' : 'back') }}
         >
           {bottomOwn}
           <Texture faces={faces} c={bottomCard} />
@@ -2553,7 +2565,7 @@ function Pile({ zone, count, topCard, bottomCard, faces, back, left, top, px, li
         data-back={own ? 'own' : undefined}
         {...topInspects}
         {...topHandlers}
-        style={{ ...(thickness ? { boxShadow: thickness } : {}), ...(topCard?.cardRef ? { ['--hue' as string]: hue(topCard.cardRef) } : {}) }}
+        style={{ ...(thickness ? { boxShadow: thickness } : {}), ...(topCard?.cardRef ? { ['--hue' as string]: hue(topCard.cardRef) } : {}), ...cut(topCard?.cardRef ? 'front' : 'back') }}
       >
         {own}
         <Texture faces={faces} c={topCard} />
@@ -2562,7 +2574,7 @@ function Pile({ zone, count, topCard, bottomCard, faces, back, left, top, px, li
       {fanned && (
         <div className="byd-pile-fan" key={`fan-${shuffle}`} aria-hidden="true">
           {FAN.map(([out, turn], i) => (
-            <i key={i} className="byd-pile-fan-card" data-face="back" data-back={fanBack ? 'own' : undefined} style={{ ['--fan-out' as string]: `${out}%`, ['--fan-turn' as string]: `${turn}deg` }}>
+            <i key={i} className="byd-pile-fan-card" data-face="back" data-back={fanBack ? 'own' : undefined} style={{ ['--fan-out' as string]: `${out}%`, ['--fan-turn' as string]: `${turn}deg`, ...cut('back') }}>
               {fanBack}
             </i>
           ))}
@@ -2702,6 +2714,11 @@ function Hand({ zone, color, rot, countAt, countIn = false, counted = true, fold
   const count = zone.mode === 'count' ? zone.count : zone.order.length
   const fan = folded ? 0 : Math.min(count, FAN_MAX)
   const shown = cards ? Math.min(cards.length, FAN_MAX) : fan
+  // What the backs are backs of (#1486, variant A of #1474): a hand held up shows its tiles among
+  // its cards by their shape, and only by it. The zone says which types it holds; the cards' backs
+  // come first and the tiles' after them, as the hand's owner holds them.
+  const backs = zone.mode === 'count' && zone.types ? [...zone.types].sort((a, b) => Number(isTile(a)) - Number(isTile(b))).flatMap((k) => Array.from({ length: k.count }, () => k)) : []
+  const held = cards ? [...cards.filter((c) => !isTile(c)), ...cards.filter(isTile)] : undefined
   const box = { left: px(HAND_CARD_BOX.x), top: px(HAND_CARD_BOX.y), width: px(HAND_CARD_BOX.w), height: px(HAND_CARD_BOX.h) }
   const place = (i: number, spread: boolean) => {
     const { step, tilt } = fanPlace(i, shown, spread)
@@ -2720,22 +2737,32 @@ function Hand({ zone, color, rot, countAt, countIn = false, counted = true, fold
       style={{ left, top, transform: `rotate(${rot}deg)`, ['--seat' as string]: color, ['--hand-unrot' as string]: `${-rot}deg`, ['--hand-drop' as string]: `${px(HAND_COUNT_MM)}px`, ['--hand-lift' as string]: `${px(HAND_COUNT_ABOVE_MM)}px` }}
     >
       <div className="byd-hand-fan">
-        {folded ? null : cards ? (
-          cards.slice(0, FAN_MAX).map((c, i) => (
+        {folded ? null : held ? (
+          held.slice(0, FAN_MAX).map((c, i) => (
               <i
                 key={c.id}
                 className="byd-hand-card"
                 data-component={c.id}
+                data-shape={tileOf(c)?.shape}
                 data-face={c.cardRef === null ? 'back' : 'front'}
-                style={{ ...box, transform: place(i, true), ...(c.cardRef === null ? {} : { ['--hue' as string]: hue(c.cardRef) }) }}
+                style={{ ...box, transform: place(i, true), ...(c.cardRef === null ? {} : { ['--hue' as string]: hue(c.cardRef) }), ...(isTile(c) ? HOLDS_A_TILE : {}) }}
                 {...(reach?.(c) ?? {})}
               >
-                <Texture faces={faces} c={c} />
-                <span>{cardWord(c) ?? ''}</span>
+                <TileInCard c={c}>
+                  <Texture faces={faces} c={c} />
+                  <span>{cardWord(c) ?? ''}</span>
+                </TileInCard>
               </i>
           ))
         ) : (
-          Array.from({ length: fan }, (_, i) => <i key={i} className="byd-back" style={{ ...box, transform: place(i, false) }} />)
+          Array.from({ length: fan }, (_, i) => {
+            const tile = tileOf(backs[i])
+            return (
+              <i key={i} className="byd-back" data-shape={tile?.shape} style={{ ...box, transform: place(i, false), ...(tile ? HOLDS_A_TILE : {}) }}>
+                {tile && <TileInCard c={{ type: backs[i]!.type, cardRef: null }} />}
+              </i>
+            )
+          })
         )}
       </div>
       {/* How much the hand holds, and — while a card is on its way into it — how much it is

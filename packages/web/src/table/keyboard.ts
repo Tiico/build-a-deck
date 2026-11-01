@@ -54,7 +54,7 @@ export const cardWord = (c: VisibleComponentState | undefined): string | null =>
 
 // A card's own name is the designer's and is never translated (B5); the words for a card this
 // view may not see are the tool's.
-export const cardName = (c: VisibleComponentState | undefined, t: T = swedish): string => cardWord(c) ?? t('kbd.hidden')
+export const cardName = (c: VisibleComponentState | undefined, t: T = swedish): string => cardWord(c) ?? t(c && isTile(c) ? 'kbd.tile.back' : 'kbd.hidden')
 // A zone in a sentence: its designer's name, or — for a pile made on the felt, which has none of its
 // own (K1) — the area it lies in (#714). `pileTitle` is the same at the head of a label.
 export const zoneName = (view: Snapshot, id: string, t: T): string => {

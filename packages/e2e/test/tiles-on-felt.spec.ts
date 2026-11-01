@@ -1,34 +1,15 @@
 import { TILE_HEX } from '@byd/engine'
-import { deckFromProject, type ProjectDoc } from '@byd/server'
+import { deckFromProject } from '@byd/server'
 import { setupFromProject } from '@byd/server/doc'
-import type { Template } from '@byd/template'
 import { join, tableOf, withQuery } from '../support/api.js'
 import { pastTheWaitingRoom } from '../support/waiting.js'
 import { DESK } from '../support/devices.js'
-import { gameDoc } from '../support/game.js'
+import { tileGame } from '../support/game.js'
 import { expect, test } from '../support/test.js'
 
 // Brickor på filten (#1485, variant A i #1474), i den byggda appen: ett spel med en lek
 // landskapsbrickor i en dold påse. Ada drar en bricka ur påsen ut på filten och vrider den ett steg
 // med ringen, och hennes skärm och rummets TV ritar samma sexhörning, med baksidan upp och vriden 60°.
-const hex = { id: TILE_HEX.id, version: TILE_HEX.version }
-
-function tileGame(): ProjectDoc {
-  const doc = gameDoc({ players: 2, counters: [], cards: 6 })
-  const floor = doc.setup.zones.find((z) => z.id === doc.setup.floor)!.geometry
-  const bag = { id: 'bag', kind: 'pile' as const, name: 'Landskap', visibility: 'none' as const, geometry: { x: floor.x + floor.w / 2, y: floor.y + floor.h / 2, w: 0, h: 0, rot: 0 } }
-  const lands: Template = {
-    faces: {
-      front: { base: [{ kind: 'text' as const, id: 't', x: 6, y: 24, w: 40, h: 10, bind: { field: 'title' }, font: { family: 'sans-serif', sizePt: 10, weight: 700 }, color: '#111' }], variants: {} },
-      back: { base: [{ kind: 'shape' as const, id: 'bg', x: 0, y: 0, w: 52, h: 61, shape: 'rect' as const, fill: '#4a3424' }], variants: {} },
-    },
-  }
-  return {
-    ...doc,
-    setup: { ...doc.setup, zones: [...doc.setup.zones, bag] },
-    decks: [{ id: 'landskap', name: 'Landskap', type: hex, template: lands, rows: ['Granskog', 'Tjärn', 'Fjäll', 'Rågåker'].map((title, i) => ({ id: `l${i + 1}`, fields: { title } })), columns: ['title'], zone: 'bag' }],
-  }
-}
 
 test.describe('en bricka på filten (#1485)', () => {
   test('dras ur en dold påse, vrids ett steg, och ser likadan ut på två skärmar', async ({ request, open }) => {

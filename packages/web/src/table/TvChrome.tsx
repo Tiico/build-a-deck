@@ -6,6 +6,7 @@ import { QrCode } from './QrCode.js'
 import { PlaceLists, type ReadCard } from './PlaceLists.js'
 import { Texture } from './Texture.js'
 import { TileInCard } from './TileInCard.js'
+import { HOLDS_A_TILE } from './tileLook.js'
 import { isTile, tileOf } from '../components.js'
 import { hue } from './hue.js'
 import { cardWord } from './keyboard.js'
@@ -218,7 +219,7 @@ export function TvChrome({ view, activity, roomCode, joinUrl, host, title, versi
       data-inspect={shown.id}
       data-face={shown.cardRef === null ? 'back' : 'front'}
       data-shape={tileOf(shown)?.shape}
-      style={shown.cardRef === null ? undefined : { ['--hue' as string]: hue(shown.cardRef) }}
+      style={{ ...(shown.cardRef === null ? {} : { ['--hue' as string]: hue(shown.cardRef) }), ...(isTile(shown) ? HOLDS_A_TILE : {}) }}
     >
       <TileInCard c={shown}>
         <Texture faces={faces} c={shown} />
@@ -246,7 +247,7 @@ export function TvChrome({ view, activity, roomCode, joinUrl, host, title, versi
         {showing && (
           <div className="byd-tv-show" role="status" aria-labelledby="tv-show" onClick={onDismiss}>
             <figure>
-              <div data-tv-show={showing.card.id} data-shape={tileOf(showing.card)?.shape} style={{ ...(showing.card.cardRef === null ? {} : { ['--hue' as string]: hue(showing.card.cardRef) }), ...(showNeed > 0 ? { ['--byd-show-need-h' as string]: `${showNeed}px` } : {}) }}>
+              <div data-tv-show={showing.card.id} data-shape={tileOf(showing.card)?.shape} style={{ ...(showing.card.cardRef === null ? {} : { ['--hue' as string]: hue(showing.card.cardRef) }), ...(showNeed > 0 ? { ['--byd-show-need-h' as string]: `${showNeed}px` } : {}), ...(isTile(showing.card) ? HOLDS_A_TILE : {}) }}>
                 <TileInCard c={showing.card}>
                   <Texture faces={faces} c={showing.card} />
                   <span>{cardWord(showing.card)}</span>

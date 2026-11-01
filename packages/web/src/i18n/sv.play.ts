@@ -10,6 +10,8 @@ export const svPlay = {
   'play.session.seat.missing': 'Bord eller plats saknas.',
   'play.cards.one': '{n} kort',
   'play.cards.other': '{n} kort',
+  'play.tiles.one': '{n} bricka',
+  'play.tiles.other': '{n} brickor',
   'play.latest': 'Senaste dragen',
   // Bordet självt som handlande: det som ingen enskild plats gjorde.
   'play.table': 'Bordet',

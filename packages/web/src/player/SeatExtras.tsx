@@ -1,11 +1,13 @@
 import { useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
 import { CounterEntry } from '../table/CounterEntry.js'
-import type { Snapshot, VisibleComponentState } from '@byd/protocol'
+import type { Intent, Snapshot, VisibleComponentState } from '@byd/protocol'
 import { hue } from '../table/hue.js'
 import { Texture } from '../table/Texture.js'
-import { cardName, cardWord } from '../table/keyboard.js'
+import { TileInCard } from '../table/TileInCard.js'
+import { HOLDS_A_TILE } from '../table/tileLook.js'
+import { cardName, cardWord, turnActs } from '../table/keyboard.js'
 import { targetsOf, type Placement } from './PlaySheet.js'
-import { isCounter, isMaterial } from '../components.js'
+import { isCounter, isMaterial, isTile, tileOf } from '../components.js'
 import type { RefusalHandle } from '../status/Refusal.js'
 import { useT } from '../i18n/index.js'
 import { MinusGlyph, PlusGlyph } from '../glyphs.js'
@@ -90,13 +92,15 @@ export type MineStripProps = {
   onOpen(c: VisibleComponentState): void
   onTake?(c: VisibleComponentState): void
   onPlay?(c: VisibleComponentState, zone: string, at: Placement): void
+  // A tile turned one step either way (#1486): the intents `turnActs` says, sent as they are.
+  onTurn?(intents: Intent[]): void
   pending?: boolean
   heading?: boolean
   refusal?: RefusalHandle
   refusedCard?: string | null
   refusedZone?: string | null
 }
-export function MineStrip({ view, faces, onOpen, onTake, onPlay, pending, heading = true, refusal, refusedCard, refusedZone }: MineStripProps) {
+export function MineStrip({ view, faces, onOpen, onTake, onPlay, onTurn, pending, heading = true, refusal, refusedCard, refusedZone }: MineStripProps) {
   const t = useT()
   const mine = inFrontOf(view)
   const shortcuts = targetsOf(view, t).filter(target => target.kind === 'pile' && view.zones.find(z => z.id === target.id)?.shortcut)
@@ -119,14 +123,17 @@ export function MineStrip({ view, faces, onOpen, onTake, onPlay, pending, headin
                 className="byd-mine-card"
                 data-mine-card={c.id}
                 data-face={face}
+                data-shape={tileOf(c)?.shape}
                 aria-label={face === 'known' ? t('player.mine.down.label', { name: cardName(c, t) }) : cardName(c, t)}
                 style={known ? { ['--hue' as string]: hue(c.cardRef ?? '') } : undefined}
                 onClick={() => onOpen(c)}
               >
-                <i className="byd-mine-face">
-                  {/* Before the texture: the texture's own fallback hides every name that follows it. */}
-                  {face === 'known' && <span className="byd-mine-down" aria-hidden="true">{t('player.mine.down')}</span>}
-                  <Texture faces={faces} c={c} />
+                <i className="byd-mine-face" style={isTile(c) ? HOLDS_A_TILE : undefined}>
+                  <TileInCard c={c}>
+                    {/* Before the texture: the texture's own fallback hides every name that follows it. */}
+                    {face === 'known' && <span className="byd-mine-down" aria-hidden="true">{t('player.mine.down')}</span>}
+                    <Texture faces={faces} c={c} />
+                  </TileInCard>
                 </i>
                 <strong aria-hidden="true">{cardWord(c) ?? ''}</strong>
               </button>
@@ -142,6 +149,13 @@ export function MineStrip({ view, faces, onOpen, onTake, onPlay, pending, headin
                   {t('player.mine.take')}
                 </button>
               )}
+              {/* A tile turns in its shape's step, either way (#1486, variant A of #1474): the felt's
+                  ring's two verbs, said the same. */}
+              {onTurn && isTile(c) && turnActs(c, t).map((a) => (
+                <button type="button" className="byd-mine-quick" key={a.key} data-turn-tile={a.key} disabled={pending} aria-label={`${a.label}, ${cardName(c, t)}`} onClick={() => onTurn(a.intents ?? [])}>
+                  {a.label}
+                </button>
+              ))}
               {onPlay && shortcuts.map(target => (
                 <button
                   type="button"
