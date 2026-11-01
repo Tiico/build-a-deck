@@ -4,6 +4,14 @@ Prototypen till bricka 1/7 i #1470.
 Beställarens beslut 2026-10-28 står fast och prövas inte här: unika brickor med egen datatabell ingår i release, formerna är kvadrat, sexhörning och rund, en bricka får hållas dold på handen, sexhörningens 60° är en fråga för gränssnittet (`rotate` finns), och C2 står kvar.
 Inget nytt verb behövs i någon variant.
 
+## Beslut 2026-11-01
+
+Beställaren valde variant A på varje yta: hög och ring med «Vrid» i formens steg på filten, samma rad som korten med brickans egen form i telefonen, och en flik per lek i Kortvägg, Mall och Tabell i editorn.
+En rund bricka vrids i steg om 90°.
+Byggskivorna är #1484–#1487.
+
+## Prototypen
+
 Prototypen är `prototyper/index.html`, servad över http (`python3 -m http.server` i `prototyper/`).
 `?yta=filt|telefon|editor|kopia&v=A|B|C` väljer yta och variant, och ← → byter variant.
 A är rekommendationen på varje yta och öppnas först.
