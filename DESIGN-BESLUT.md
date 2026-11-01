@@ -2649,6 +2649,15 @@ Byggt 2026-11-01 (#1491, skiva 2 av 5 i #1469): **läsläget L2 på servern.**
 - Ett konto som bara nått ett tak under en gällande nivå beter sig som förut: bara tillväxt stoppas.
 - Grindarna är `packages/server/test/read-only-lapsed.test.ts` (regeln utan HTTP, och REST, editorns linje och `GET /me/usage` mot båda lagren) och `account-plans.test.ts` (utgången och skriptets rapport).
 
+Reviderat och byggt 2026-11-01 (#1511, beställarens beslut i #1469): **ett spel i läsläge får göras mindre, och `GET /me/usage` säger varför.**
+- I läsläget får rader tas bort, ett korts Antal sänkas och bilder tas bort, men inget annat. Det ersätter meningen ovan om att en redigering som bara krymper spelet avvisas.
+- Regeln är `onlyShrinks` i `packages/server/src/read-only.ts`, och den dömer två dokument, före och efter, så att en sammansatt redigering, ett helt dokument över HTTP (`PUT /projects/<id>`) och en version hålls till samma regel som en enskild redigering. En bild tas bort som `removePicture` gör det; rader i en annan ordning, ett högre Antal, en ny rad, bild eller text och allt annat är en ändring och avvisas som förut.
+- Aktören frågar regeln i beslutssteget, före commit. `PUT /projects/<id>` släpps därför förbi dörren för ett spel i läsläge, och aktören läser kroppen mot det som står; ett dokument som ändrar något annat svarar 402 med `{ error: 'read-only' }` som förut. «Spara» gör en version när det som står bara är den sparade versionen gjord mindre.
+- Ett spel som krympts så att det ryms lämnar läsläget utan att något lagras, eftersom regeln räknas om vid varje fråga. En krympning är en ändring, så spelet blir det senast ändrade och tar en plats före äldre spel som ryms.
+- `GET /me/usage` säger `readOnly` som `{ id, why }` per spel, där `why` är taket spelet ligger över: `cardRowsPerProject`, `cardCopiesPerProject`, `projects` eller `storageBytes`, i den ordningen. `ifLapsed` säger samma sak för ett konto vars egen nivå fortfarande gäller, alltså vilka spel som skulle hamna i läsläge om den gick ut nu (#1494); ett konto på standardnivån har ingen sådan.
+- Gratisnivåns tak är beslutade (fråga 3 i #1469): 2 spel, 150 unika kort per spel, 1 bord åt gången, 8 bord på 30 dygn och 300 MB. De är konfiguration i lådans `BYD_PLANS` (DRIFT §12) och inte siffror i koden; utan variabeln är allt obegränsat som i betan.
+- Grindarna är `packages/server/test/read-only-lapsed.test.ts`, mot båda lagren.
+
 ### G6. Personuppgifter: Deckster är ansvarig, och loggen maskas på plats (beslutat 2026-10-24, #1269)
 
 Beställarens beslut 2026-10-24 på frågorna F1–F7 i #1269.
@@ -5017,7 +5026,14 @@ Hur färgen ritas avgörs av prototypen (#1472) och byggs med bordet (#1475).
 **Setupen.** Dokumentet har `setup.pieces` som tärningarna har `setup.dice` (K28, K31): sort (`kind`), antal, en yta alla delar (`zone`, med `perSeat` för ett antal per plats) eller en yta varje plats har (`role`), och en punkt (`at`).
 `layMaterial` och `setupFromProject` lägger ut dem, en per plats vänd mot platsens kant, och en delad ytas rad per spelare ger varje plats sina i dess färg; en rad utan plats ger bitar utan färg.
 Editorns ändring är `setPieces`, hela listan i en redigering som `setDice`, och därmed ett steg tillbaka (B4).
-Raden i fliken Bord väntar på prototypen (#1477), och tills dess har en trädel inget handtag i filten.
+**Fliken Bord** (#1477, editorvariant B i prototypen #1472, godkänd 2026-11-01): ＋-menyn på en yta har en enda «＋ Pjäs» med undertexten «meeple, kub eller skiva», bredvid «＋ Tärning», och sorten väljs i raden, som tärningens sort (K28).
+Menyn står därmed still när familjen växer, och en rad byter sort utan att tas bort.
+Raden säger «5 × meeple · per spelare» under ytan den ligger i (L89), och öppnas till sort, antal och, för en meeple, «Börjar stående» eller «Liggande» (`lying` på raden; bara en meeple har en sida att ligga på).
+En ny rad är fem meeples, eftersom det är vad de flesta spel lägger per spelare.
+Färgen är platsens och väljs inte i raden.
+En rad vars yta tas bort står kvar under Spelyta med ett besked och en väljare, som tärningens.
+Varje rad har ett handtag i filten ur samma `layMaterial` som bordet läggs ur (K31), pilarna flyttar det 10 mm och Skift 50, och ett grepp är ett steg tillbaka (L14).
+En rad som läggs på en punkt ligger mitt på den i hela millimeter, med ett jämnt avstånd mellan bitarna: med det gamla avståndet låg en rad med två bitar en halv millimeter från sin punkt, och varje pil drog den en millimeter åt sidan.
 
 **Aktivitetsraden** säger biten efter sort: «Ada flyttade en meeple till Spelyta», «Ada lade ned en meeple» och «Ada ställde upp en meeple».
 
@@ -5060,6 +5076,36 @@ Versionernas diff (B4) säger vilken lek en ändrad rad hör till (`deck` på ra
 Editorns ändring är `setDecks`, hela listan i en redigering och ett steg tillbaka; flikarna per lek i Kortvägg, Mall och Tabell (#1474, variant A) och finare redigeringar per rad är #1487.
 
 Brickor i setupen, en egen lek och tabell per brickform, bordet, telefonen och trycket byggs i #1484–#1488.
+
+### K35. Brädet: brädtyperna, brädet i dokumentet och dess textur (beslutat 2026-10-28 och 2026-11-01, #1470, #1473, #1479)
+
+Beställarens beslut i #1470 den 2026-10-28: brädet ligger fast där setupen lade det och går inte att flytta vid bordet (fråga 6); de första bräden är ett huvudbräde i några mått och spelarbräden per plats, och tvåsidiga bräden kommer senare (fråga 7); brädets sidor går i tryckpaketet som PDF med utfall redan i betan (fråga 12).
+Prototypen #1473 godkändes 2026-11-01 i variant A: brädet mitt på filten, spelarbräden där «Framför» ligger, och sidan designas i en egen flik «Bräde» som «Låda» (L91).
+
+**Typerna.** Tre typer i `STANDARD_TYPES`, en per storlek som tärningarnas sorter: `board.square457` (457 × 457 mm) och `board.rect610` (610 × 457 mm) som huvudbräden, och `board.player` (240 × 150 mm), prototypens mått.
+En sida, `front`, och inget går att stapla, blanda, slå eller vända; `flippable` blir sant den dag ett bräde har två sidor.
+Tryckprofilen har 3 mm utfall och 5 mm skyddsmarginal i 300 DPI.
+`physical.shape` är det platta arket, `rect`: vikningen är partnerns att säga (beslut 12) och ritas inte.
+
+**Fast.** Typen säger `movable: false` bland sina beteenden, och motorn läser vägran ur typen som K32:s (`isFixed`): `move` och `rotate` av brädet vägras, och en `draw`, `deal` eller `split` som skulle ta med det vägras hel.
+Brädet säger också `holdable: false` och hålls alltså aldrig (K32).
+Allt annat flyttas fritt över det.
+Inget nytt verb.
+
+**Dokumentet.** `setup.boards` är en lista, och varje bräde bär sina sidor som lådan bär sina (L91): en `FaceTemplate` per sida, ritad med samma mallsystem som korten (E2).
+Ett bräde har ett namn (`id`), som är dess `cardRef` vid bordet och aldrig en rad i leken; den brädtyp spelet pinnar (`type`, B3); och var det ligger: `zone`, en yta alla delar, för huvudbrädet, eller `role`, en yta varje plats har, som lägger ett bräde per plats vänt mot platsens kant; och `at`, brädets mitt i ytans millimeter, sagd från plats A:s stol som en tärnings punkt (K31), annars ytans mitt.
+`layBoards` säger var varje bräde ligger, och `setupFromProject` lägger bräden först, så att allt annat ligger på dem.
+`x` och `y` är brädets övre vänstra hörn som det står innan det vrids, så att det vrids kring sin egen mitt till punkten, och `rot` är 0, 90, 180 eller 270 efter platsens kant.
+Ett dokument utan bräde har ingen post och läses tillbaka orört.
+
+**Texturen.** Typen säger `ownFaces`: dess sidor kommer ur dokumentets egen mall och inte ur en rad. `queueFaces` kompilerar varje sida med den enda kompilatorn och köar den som en textur i samma DPI som ett kort, så att filten ritar brädet i samma pixlar per millimeter, nycklad på innehållet (DRIFT §6): samma spelarbräde på åtta platser är en rendering, och en ändrad bild är en ny hash.
+Hashen går till vyn genom `project` i `DeckFacts.ownFaces`, i fältet `faces` som ett korts, och läses bara för en typ som säger `ownFaces`, så att ett kort och ett bräde kan heta samma sak utan att dela yta.
+Ingen ändring i `packages/protocol`.
+Ett jobb för det största brädet, 610 × 457 mm i 150 DPI, är 3602 × 2699 px, och det ryms under renderns minnestak (1,5 GB, DRIFT §6).
+Mätt 2026-11-01 i #1479 som summan av Chromiums processers RSS medan jobbet ritades: 0,5 GB för en jämn bild över hela brädet, och 1,07 GB för det värsta fallet, en 3600 × 2700 px bild av brus, som också gav en textur på 28 MB.
+En textur så stor är filtens att hämta (#1480), och den hämtas bara av skärmar som ritar filten (C2).
+Brädets bilder går genom tillgångarna som kortets (#1028).
+Trycket i 300 DPI med utfall är #1488, och till dess hoppar tryckexporten över brädet i stället för att vägra spelet.
 
 ## L. Editorn (grillad 2026-09-06)
 

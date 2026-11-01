@@ -27,6 +27,8 @@ export function printManifestOf(deck: Deck, setup: SetupDef, registry: TypeRegis
     }
     if (spec.counter !== undefined) continue
     if (!printedYet(type)) continue
+    // A board (#1479) is drawn from its own template, not a row, and goes to print as #1488 says.
+    if (type.ownFaces) continue
     const row = deck.rows[spec.cardRef]
     if (!row) throw new Error(`deck has no row "${spec.cardRef}" for print`)
     const faces = Object.fromEntries(Object.entries(compileRow(deckFor(deck, spec.cardRef), type, row)).map(([face, page]) => [face, contentHash(page, { kind: 'pdf' })]))

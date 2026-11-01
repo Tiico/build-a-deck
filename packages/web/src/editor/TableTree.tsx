@@ -1,14 +1,14 @@
 import { useContext, useEffect, useId, useRef, useState, type KeyboardEvent as RKeyboardEvent, type ReactNode } from 'react'
 import type { ProjectDoc } from '@byd/server'
 import type { ZoneBeside } from '@byd/protocol'
-import { counterId, titleOfRow, type Counter, type Die, type SeatRole, type Setup, type Zone, type ZonePatch } from '@byd/server/doc'
+import { counterId, titleOfRow, type Counter, type Die, type Piece, type SeatRole, type Setup, type Zone, type ZonePatch } from '@byd/server/doc'
 import { useT, type Key } from '../i18n/index.js'
 import { ChevronGlyph, CloseGlyph } from '../glyphs.js'
 import { Help } from './HelpDrawer.js'
 import { useGesture } from './gesture.js'
 import { landingOf } from './landing.js'
 import { Reading, diePlaces, fixed, placeOf, rowsOf, type Family } from './setup-rows.js'
-import { CounterFields, DieFields, MaterialRow, dieWords, type MaterialKey } from './MaterialRow.js'
+import { CounterFields, DieFields, MaterialRow, PieceFields, dieWords, pieceWords, type MaterialKey } from './MaterialRow.js'
 
 // The table as a tree (#1403, beställarens beslut C): the list in Bord's column mirrors the felt,
 // where everything lies in something. The floor is the root of what stands on the table — the
@@ -20,8 +20,9 @@ import { CounterFields, DieFields, MaterialRow, dieWords, type MaterialKey } fro
 // The row is the handle a keyboard can reach and the only way to a zone that lies under another;
 // opening one shows what the zone is, and the × takes it away — or says, where the × would be, why
 // this one stays.
-export type AddWhat = { kind: 'area' | 'pile' } | { kind: 'seat'; role: SeatRole } | { kind: 'die'; place: string } | { kind: 'counter'; role: string | undefined }
-type AddItem = { label: string; pick(): void }
+export type AddWhat = { kind: 'area' | 'pile' } | { kind: 'seat'; role: SeatRole } | { kind: 'die'; place: string } | { kind: 'piece'; place: string } | { kind: 'counter'; role: string | undefined }
+// `hint` says under the label what a word the designer may not know yet covers (#1477, «Pjäs»).
+type AddItem = { label: string; hint?: string; pick(): void }
 
 export function TableTree({
   setup,
@@ -39,6 +40,7 @@ export function TableTree({
   focusMaterial,
   onFocused,
   onDice,
+  onPieces,
   onCounters,
   typing,
 }: {
@@ -54,6 +56,7 @@ export function TableTree({
   focusMaterial: MaterialKey | null
   onFocused(): void
   onDice(dice: Die[]): void
+  onPieces(pieces: Piece[]): void
   onCounters(counters: Counter[], gesture?: string): void
   typing: { visit: Record<string, unknown>; token(): string }
   onSelect(id: string | null): void
@@ -79,21 +82,24 @@ export function TableTree({
     </ZoneRow>
   )
   const dieIn = (place: string): AddItem => ({ label: t('setup.die.add'), pick: () => onAdd({ kind: 'die', place }) })
+  // One «＋ Pjäs» for the whole family of wooden pieces, the kind chosen in the row (#1477, #1472 B).
+  const pieceIn = (place: string): AddItem => ({ label: t('setup.piece.add'), hint: t('setup.piece.add.hint'), pick: () => onAdd({ kind: 'piece', place }) })
+  const materialIn = (place: string): AddItem[] => [dieIn(place), pieceIn(place)]
   const floorAdds: AddItem[] = [
     { label: t('setup.addArea'), pick: () => onAdd({ kind: 'area' }) },
     { label: t('setup.addPile'), pick: () => onAdd({ kind: 'pile' }) },
-    ...(floor ? [dieIn(`zone:${floor.id}`)] : []),
+    ...(floor ? materialIn(`zone:${floor.id}`) : []),
   ]
   const seatAdds: AddItem[] = [
     { label: t('setup.addSeatArea'), pick: () => onAdd({ kind: 'seat', role: 'mine' }) },
     { label: t('setup.addSeatCounters'), pick: () => onAdd({ kind: 'seat', role: 'counters' }) },
     { label: t('setup.counter.add'), pick: () => onAdd({ kind: 'counter', role: undefined }) },
-    ...(seatArea ? [dieIn(`role:${seatArea.role}`)] : []),
+    ...(seatArea ? materialIn(`role:${seatArea.role}`) : []),
   ]
   // A counter lies in the seats' counters zone unless the designer put it in another area each
   // seat has (K31): in the counters family it is a counter with no role to say.
   const familyAdds = (family: Family): AddItem[] | undefined =>
-    family.first.kind === 'area' ? [dieIn(`role:${family.role}`), { label: t('setup.counter.add'), pick: () => onAdd({ kind: 'counter', role: family.role === 'counters' ? undefined : family.role }) }] : undefined
+    family.first.kind === 'area' ? [...materialIn(`role:${family.role}`), { label: t('setup.counter.add'), pick: () => onAdd({ kind: 'counter', role: family.role === 'counters' ? undefined : family.role }) }] : undefined
   const seatsAdd = useAddMenu(t('setup.seats.node'), seatAdds)
 
   // The material, each line under the zone it lies in (K31). A die whose place is gone stands
@@ -115,6 +121,20 @@ export function TableTree({
   }
   const diceAt = (place: string) => dice.flatMap((die, i) => (placeOf(die) === place ? [dieRow(die, i, false)] : []))
   const homelessDice = dice.flatMap((die, i) => (known.has(placeOf(die)) ? [] : [dieRow(die, i, true)]))
+  // The wooden pieces' lines (#1477), each under the zone it lies in as a die's, and one whose area
+  // is gone standing under the floor and asking for another.
+  const pieces = setup.pieces ?? []
+  const pieceRow = (piece: Piece, i: number, gone: boolean) => {
+    const key: MaterialKey = `piece:${i}`
+    const words = pieceWords(piece, t)
+    return (
+      <MaterialRow key={key} id={key} kind="piece" piece={piece.kind} label={words.label} detail={words.detail} removeLabel={t('setup.piece.remove', { n: i + 1 })} open={openMaterial === key || gone} onOpen={(open) => onOpenMaterial(open ? key : null)} onRemove={() => { onOpenMaterial(null); onPieces(pieces.filter((_, j) => j !== i)) }}>
+        <PieceFields piece={piece} n={i + 1} places={places} gone={gone} focus={focusMaterial === key} onFocused={onFocused} onChange={(next) => onPieces(pieces.map((d, j) => (j === i ? next : d)))} />
+      </MaterialRow>
+    )
+  }
+  const piecesAt = (place: string) => pieces.flatMap((piece, i) => (placeOf(piece) === place ? [pieceRow(piece, i, false)] : []))
+  const homelessPieces = pieces.flatMap((piece, i) => (known.has(placeOf(piece)) ? [] : [pieceRow(piece, i, true)]))
   const counterRow = (c: Counter, i: number, note?: ReactNode) => {
     const key: MaterialKey = `counter:${i}`
     return (
@@ -149,6 +169,7 @@ export function TableTree({
         <Help topic={t('setup.tree.help.topic')}>
           <p>{t('setup.tree.help')}</p>
           <p>{t('setup.dice.help')}</p>
+          <p>{t('setup.pieces.help')}</p>
           <p>{t('setup.counters.help')}</p>
         </Help>
       </div>
@@ -159,9 +180,11 @@ export function TableTree({
             floor,
             floorAdds,
             <ul aria-label={floor.name}>
-              {onTable.map((zone) => zoneRow(zone, zone.kind === 'area' ? [dieIn(`zone:${zone.id}`)] : undefined, diceAt(`zone:${zone.id}`)))}
+              {onTable.map((zone) => zoneRow(zone, zone.kind === 'area' ? materialIn(`zone:${zone.id}`) : undefined, [...diceAt(`zone:${zone.id}`), ...piecesAt(`zone:${zone.id}`)]))}
               {diceAt(`zone:${floor.id}`)}
+              {piecesAt(`zone:${floor.id}`)}
               {homelessDice}
+              {homelessPieces}
             </ul>,
           )}
         <li data-seats-root>
@@ -178,7 +201,7 @@ export function TableTree({
               it.kind === 'zone' ? (
                 zoneRow(it.zone)
               ) : (
-                <FamilyRow key={it.family.role} family={it.family} setup={setup} open={opened.includes(it.family.role)} add={familyAdds(it.family)} material={[...diceAt(`role:${it.family.role}`), ...countersAt(it.family.role)]} onOpen={() => onOpen(it.family.role)}>
+                <FamilyRow key={it.family.role} family={it.family} setup={setup} open={opened.includes(it.family.role)} add={familyAdds(it.family)} material={[...diceAt(`role:${it.family.role}`), ...piecesAt(`role:${it.family.role}`), ...countersAt(it.family.role)]} onOpen={() => onOpen(it.family.role)}>
                   {it.family.zones.map((zone) => zoneRow(zone))}
                 </FamilyRow>
               ),
@@ -250,17 +273,21 @@ function useAddMenu(name: string, items: AddItem[] | undefined): { button: React
     ),
     list: open ? (
       <div ref={menu} role="menu" id={id} className="byd-setup-add-menu" aria-label={label} onKeyDown={keys}>
-        {items.map((item) => (
+        {items.map((item, i) => (
           <button
             key={item.label}
             type="button"
             role="menuitem"
+            // A hint is said after the name rather than in it, so the item is called what it adds.
+            aria-label={item.hint !== undefined ? item.label : undefined}
+            aria-describedby={item.hint !== undefined ? `${id}-hint-${i}` : undefined}
             onClick={() => {
               close()
               item.pick()
             }}
           >
             {item.label}
+            {item.hint !== undefined && <small id={`${id}-hint-${i}`}>{item.hint}</small>}
           </button>
         ))}
       </div>

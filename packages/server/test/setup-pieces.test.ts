@@ -46,6 +46,28 @@ describe('setupens trädelar (#1471)', () => {
     expect(piecesOf(setup).filter((c) => c.type.id === 'piece.disc').map((c) => c.cardRef)).toEqual(['', '', ''])
   })
 
+  // Fliken Bords handtag (#1477) är lådan runt raden, och dess mitt är där pilarna flyttar raden ifrån.
+  // En rad med två bitar låg en halv millimeter från sin punkt, så att varje pil drog den en
+  // millimeter åt sidan: raden ska ligga mitt på sin punkt i hela millimeter, med vilket antal som helst.
+  it('lägger en rad mitt på sin punkt, så att lådan runt den har punkten som mitt', () => {
+    for (const count of [1, 2, 3, 4]) {
+      const setup = four({ pieces: [{ kind: 'meeple', count, zone: 'table', at: { x: 300, y: 200 } }] }).setup
+      const laid = layMaterial(setup).filter((p) => p.line.kind === 'piece')
+      const left = Math.min(...laid.map((p) => p.x))
+      const right = Math.max(...laid.map((p) => p.x + p.size))
+      expect((left + right) / 2, `${count} bitar`).toBe(300)
+    }
+  })
+
+  // «Börjar stående/liggande» i radens fält (#1477, editorvariant B i #1472): en meeple kan läggas ut
+  // liggande, som bonden i Carcassonne, och bara en meeple har två sidor att börja på.
+  it('lägger en meeple liggande när raden säger det, och bara en meeple kan börja liggande', () => {
+    const setup = setupFromProject(four({ pieces: [{ kind: 'meeple', count: 2, role: 'mine', lying: true }] }))
+    expect(piecesOf(setup).every((m) => m.face === 'lying')).toBe(true)
+    const base = four({}).setup
+    expect(() => ProjectSetup.parse({ ...base, pieces: [{ kind: 'cube', count: 1, zone: 'table', lying: true }] })).toThrow()
+  })
+
   it('tar bara sorter som finns, och en rad säger antingen en yta eller en yta per plats', () => {
     const base = four({}).setup
     expect(() => ProjectSetup.parse({ ...base, pieces: [{ kind: 'pawn', count: 1, zone: 'table' }] })).toThrow()

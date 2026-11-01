@@ -74,12 +74,50 @@ describe('materialet i filten (#1292)', () => {
     await waitFor(() => expect(document.querySelector('[data-status-live="polite"]')?.textContent).toMatch(/^Räknare .* i Räknare A · \d+, \d+ mm$/))
   })
 
-  // Trädelarnas rad i fliken Bord är #1477 och väntar på en prototyp; fram till dess har en meeple
-  // inget handtag i filten, i stället för ett som kallar den en räknare (#1471).
-  it('ger ingen meeple ett handtag förrän fliken Bord bär trädelar', async () => {
+  // Trädelarna (#1477, K31): en meeples rad har ett handtag i filten ur samma `layMaterial` som bordet
+  // läggs ur, och pilarna flyttar den 10 mm, Skift 50, som tärningen.
+  it('flyttar en meeples rad med pilarna och sparar punkten i ytan', async () => {
     const doc = projectDoc()
-    await openBord({ ...doc, setup: { ...doc.setup, pieces: [{ kind: 'meeple', count: 2, zone: 'table' }] } })
-    await screen.findByRole('tab', { name: 'Bord', selected: true })
-    expect(document.querySelectorAll('[data-material]')).toHaveLength(0)
+    const withMeeples: ProjectDoc = { ...doc, setup: { ...doc.setup, pieces: [{ kind: 'meeple', count: 2, zone: 'table' }] } }
+    await openBord(withMeeples)
+    const handle = await screen.findByRole('button', { name: 'Pjäs 1, meeple i Spelyta' })
+    // Raden flyttas som den rad den är: båda meeplarna lika långt.
+    const row = (d: ProjectDoc) => layMaterial(d.setup).filter((p) => p.line.kind === 'piece' && p.zone === 'table').map((p) => ({ x: p.x, y: p.y }))
+    const before = row(withMeeples)
+    expect(before).toHaveLength(2)
+    const by = (from: { x: number; y: number }[], dx: number, dy: number) => from.map((p) => ({ x: p.x + dx, y: p.y + dy }))
+
+    // Den första flytten ger raden en punkt, och en rad på en punkt har sitt eget jämna avstånd mellan
+    // bitarna, så den kan hamna en millimeter från tio; därefter är varje steg exakt, utan glidning.
+    fireEvent.keyDown(handle, { key: 'ArrowLeft' })
+    await waitFor(async () => expect((await truth()).setup.pieces?.[0]?.at).toBeDefined())
+    const moved = row(await truth())
+    moved.forEach((p, i) => {
+      expect(Math.abs(p.x - (before[i]!.x - 10))).toBeLessThanOrEqual(1)
+      expect(p.y).toBe(before[i]!.y)
+    })
+    expect((await truth()).setup.pieces).toEqual([{ kind: 'meeple', count: 2, zone: 'table', at: expect.any(Object) }])
+    await waitFor(() => expect(document.querySelector('[data-status-live="polite"]')?.textContent).toMatch(/^Pjäs 1, meeple i Spelyta · \d+, \d+ mm$/))
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Pjäs 1, meeple i Spelyta' }), { key: 'ArrowUp', shiftKey: true })
+    await waitFor(async () => expect(row(await truth())).toEqual(by(moved, 0, -50)))
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Pjäs 1, meeple i Spelyta' }), { key: 'ArrowRight' })
+    await waitFor(async () => expect(row(await truth())).toEqual(by(moved, 10, -50)))
+  })
+
+  // Ett grepp är ett steg tillbaka (L14): ett ändrat antal i raden är en redigering, och Ctrl+Z tar
+  // tillbaka just den.
+  it('gör ett ändrat antal till en redigering som ett steg tillbaka tar tillbaka', async () => {
+    await openBord()
+    addVia('Spelyta', '＋ Pjäs')
+    await waitFor(async () => expect((await truth()).setup.pieces).toEqual([{ kind: 'meeple', count: 5, zone: 'table' }]))
+    const count = screen.getByRole('spinbutton', { name: 'Antal för pjäs 1' })
+    fireEvent.change(count, { target: { value: '7' } })
+    fireEvent.keyDown(count, { key: 'Enter' })
+    await waitFor(async () => expect((await truth()).setup.pieces?.[0]?.count).toBe(7))
+    ;(document.activeElement as HTMLElement | null)?.blur()
+
+    fireEvent.keyDown(document, { key: 'z', ctrlKey: true })
+    await waitFor(async () => expect((await truth()).setup.pieces).toEqual([{ kind: 'meeple', count: 5, zone: 'table' }]))
+    expect(screen.getByRole('button', { name: /^5 × meeple/ })).toBeTruthy()
   })
 })

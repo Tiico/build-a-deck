@@ -36,7 +36,7 @@ function entries(): Entry[] {
 // they carry references too, but an SVG path writes each line-to with the same letter and a
 // number after it, which no honest reference regex can tell apart from a decision.
 const READS = /\.(md|ts|tsx|css)$/
-const SKIPS = new Set(['node_modules', '.git', 'dist', 'build', 'coverage', '.claude', '.vite', 'test-results', 'playwright-report'])
+const SKIPS = new Set(['node_modules', '.git', 'dist', 'build', 'coverage', '.claude', '.vite', 'test-results', 'playwright-report', '.playwright-browsers'])
 const FROZEN = join(ROOT, 'docs', 'ux-audits')
 
 function sources(dir = ROOT, seen: string[] = []): string[] {
