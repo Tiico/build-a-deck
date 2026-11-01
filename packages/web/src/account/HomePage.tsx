@@ -162,7 +162,9 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
   const [heldClosed, setHeldClosed] = useState<string | null>(() => readOnlyClosed())
   const heldWhy = (p: ProjectSummary): ReadOnlyWhy | undefined => held?.games.get(p.id)
   // What the game uses of the measure it lies over, as the server counted it: unique cards, not copies.
-  const heldLine = (p: ProjectSummary, why: ReadOnlyWhy) => {
+  const heldLine = (p: ProjectSummary): string => {
+    const why = heldWhy(p)
+    if (!why) return ''
     const measure = held?.usage.measures[why]
     return t(`home.readOnly.why.${why}`, { cards: measure?.projects?.find((g) => g.id === p.id)?.used ?? p.cards ?? 0, limit: measure?.limit ?? 0 })
   }
@@ -776,7 +778,7 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
                         <BookGlyph />
                         {t('home.readOnly.mark')}
                       </span>
-                      <span data-read-only-why="">{heldLine(hero, heldWhy(hero)!)}</span>
+                      <span data-read-only-why="">{heldLine(hero)}</span>
                     </span>
                   )}
                   <dl className="byd-home-stats">
@@ -847,7 +849,7 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
                                 <BookGlyph />
                                 {t('home.readOnly.mark')}
                               </span>
-                              <span data-read-only-why="">{heldLine(p, why)}</span>
+                              <span data-read-only-why="">{heldLine(p)}</span>
                             </span>
                           ) : (
                             <span id={`home-${p.id}-played`} className="byd-muted">
