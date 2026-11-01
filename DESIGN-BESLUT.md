@@ -156,10 +156,17 @@ Byggt 2026-11-01 (#1493, skiva 4 av 5 i #1469, beställarens beslut 2026-11-01: 
 - `POST /stripe/webhook` godtar bara en kropp med giltig signatur, gjord inom fem minuter. Händelsen tas aldrig som sanningen: kundens abonnemang läses som de står hos Stripe och skrivs med `setPlan` eller `lapse` och källan `stripe` (`syncCustomer` i `packages/server/src/payments.ts`). Därför ändrar en händelse som kommer två gånger, sent eller i fel ordning ingenting fel, och ingenting skrivs när ingenting ändras.
 - Ett levande abonnemang (`active`, `trialing`, `past_due`) ger Pro och häver en utgång; inget levande abonnemang gör ett konto vars nivå Stripe gav utgånget, och läsläget från #1491 gäller.
 - En nivå med källan `operator` skrivs aldrig över av Stripe, tills operatören tar bort den med `plan clear`.
-- Moms är inte avgjord: priset är med moms som en EU-konsument ser det, och hur den tas ut bekräftar beställaren före de skarpa nycklarna (fråga 2 i #1469).
+- Momsen tas ut med Stripe Tax, och priset är inklusive moms (se nedan, #1521).
 - Ett konto som raderar sig själv säger ännu inte upp sitt abonnemang hos Stripe; RUNBOOK §10 säger hur det görs för hand tills det byggs.
 - Hur Pro köps, syns och sägs upp i webben är #1494, som prototypas först.
 - Grindarna är `packages/server/test/payments.test.ts` (konfigurationen, signaturen och vad abonnemangen ger), `stripe-subscription.test.ts` (kassan och webhooken mot båda lagren, med en fake för Stripe), `stripe-api.test.ts` (klienten mot en ställföreträdare på maskinen), `payments-at-start.test.ts` och `deploy.test.ts`. Inget anrop går till Stripe i `pnpm test`.
+
+Beslutat och byggt 2026-11-01 (#1521, beställarens beslut 2026-11-01 i #1469): **momsen tas ut med Stripe Tax, och priset är inklusive moms.**
+- 99 kr eller 9 € i månaden, och 990 kr eller 90 € om året, är vad kunden betalar. Stripe Tax räknar svensk moms och EU-moms via OSS efter kundens land och tar den ur priset, aldrig ovanpå.
+- Kassan skapas med automatisk skatt, frågar efter kundens land så som Stripe Tax kräver, och sparar adressen på kunden så att förnyelserna beskattas likadant.
+- Priserna sätts upp i Stripe med momsen inräknad (`tax_behavior: inclusive`, RUNBOOK §10). Kassan frågar Stripe om priset innan den skickar någon dit, och ett pris med moms ovanpå, utan besked om moms, eller i en annan valuta eller ett annat intervall än `BYD_STRIPE_PRICES` säger säljs aldrig (`priceFault` i `packages/server/src/payments.ts`).
+- Stripe Tax påslaget med registreringarna och beställarens OSS-registrering hos Skatteverket är förutsättningar för de skarpa nycklarna.
+- Grindarna är `packages/server/test/stripe-subscription.test.ts` (kassan mot Stripe-faken) och `stripe-api.test.ts` (kassans och prisets fält i klienten).
 
 ### A3. Testarrekrytering: enbart delbar länk (fråga 22)
 

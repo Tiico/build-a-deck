@@ -50,7 +50,7 @@ import { REFERRER_POLICY, UPLOAD_POLICY, pageNonce, pagePolicy, scriptHashesOf, 
 import { DEFAULT_PLANS, QuotaReached, YOU, growth, limitOf, tableWindowFrom, type Bearer, type Limit, type Measure, type Plans, type QuotaMet, type TableCeilings } from './quotas.js'
 import { planOf, readOnlyOf, usageOf, type AccountPlanStore } from './account-plans.js'
 import { ReadOnlyGame, gameWritten, type ReadOnlyCheck } from './read-only.js'
-import { INTERVALS, customerOfEvent, priceFor, signatureHolds, syncCustomer, type PaymentsConfig, type StripeApi } from './payments.js'
+import { INTERVALS, customerOfEvent, priceFault, priceFor, signatureHolds, syncCustomer, type PaymentsConfig, type StripeApi } from './payments.js'
 import { NO_CARDS, cardGrowth, cardsUsed, type CardMeasure } from './quota-cards.js'
 import { checkRegister, openToTheDue, termsInForce, termsStanding, type TermsRegister, type TermsStanding } from './terms.js'
 import { entry, isMasked, type ErasureStore } from './erase.js'
@@ -640,6 +640,11 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
           await opts.accountPlans.linkCustomer(account.id, await payments.stripe.createCustomer({ account: account.id, email: account.email }))
           // Two checkouts at once make two customers at Stripe and link the first: both use it.
           customer = await opts.accountPlans.customerOf(account.id)
+        }
+        const fault = priceFault(await payments.stripe.priceOf(price), payments.config.byId.get(price))
+        if (fault) {
+          console.error(JSON.stringify({ msg: 'stripe', checkout: 'refused', price, fault }))
+          return json(res, 502, { error: 'stripe unavailable' })
         }
         const checkoutUrl = await payments.stripe.createCheckout({ customer: customer ?? '', account: account.id, price, successUrl: back('paid'), cancelUrl: back('cancelled') })
         return json(res, 200, { url: checkoutUrl })

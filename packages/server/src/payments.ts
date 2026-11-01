@@ -13,7 +13,9 @@ import type { Plans } from './quotas.js'
 // with; and `BYD_STRIPE_PRICES`, the price ids per tier, currency and interval, as JSON:
 //   {"pro":{"sek":{"month":"price_…","year":"price_…"},"eur":{"month":"price_…","year":"price_…"}}}
 // None of them is in the repo, and no price is a number in the code: what a tier costs is the
-// price Stripe holds under the id. Without any of them payments are off and the box starts as it
+// price Stripe holds under the id. Each price is set up in Stripe with VAT inside it (`tax_behavior:
+// inclusive`), and Stripe Tax reckons the VAT on the customer's country (#1521, ops/RUNBOOK.md §10);
+// a checkout at a price that is not is refused (`priceFault`). Without any of them payments are off and the box starts as it
 // always did. Half of them, or prices that cannot be read, stop the start: a box must never quietly
 // take money it cannot record, nor quietly fail to take it.
 
@@ -117,7 +119,11 @@ export type StripeApi = {
   createCustomer(input: { account: string; email: string }): Promise<string>
   createCheckout(input: { customer: string; account: string; price: string; successUrl: string; cancelUrl: string }): Promise<string>
   subscriptionsOf(customer: string): Promise<Subscription[]>
+  priceOf(id: string): Promise<StripePrice>
 }
+// A price as Stripe holds it (#1521): its currency, its interval, and whether VAT is inside it
+// (`inclusive`), added on top (`exclusive`) or not said (`unspecified`).
+export type StripePrice = { id: string; currency: string; interval: string | null; taxBehavior: string }
 
 export const STRIPE_API = 'https://api.stripe.com'
 // Stripe's REST API: form-encoded requests, bearer secret key, JSON answers. `base` is Stripe's
@@ -149,8 +155,18 @@ export function stripeApi(secretKey: string, base = STRIPE_API, fetcher: typeof 
         'line_items[0][quantity]': '1',
         success_url: successUrl,
         cancel_url: cancelUrl,
+        // VAT through Stripe Tax (#1521, A2): reckoned on the customer's country, which Checkout asks
+        // for as Stripe Tax needs it, and keeps on the customer for the renewals.
+        'automatic_tax[enabled]': 'true',
+        billing_address_collection: 'auto',
+        'customer_update[address]': 'auto',
       })
       return String(body['url'])
+    },
+    async priceOf(id) {
+      const body = await call('GET', `/v1/prices/${encodeURIComponent(id)}`, {})
+      const recurring = body['recurring'] as { interval?: unknown } | null | undefined
+      return { id: String(body['id']), currency: String(body['currency']), interval: recurring?.interval ? String(recurring.interval) : null, taxBehavior: String(body['tax_behavior'] ?? 'unspecified') }
     },
     async subscriptionsOf(customer) {
       const body = await call('GET', '/v1/subscriptions', { customer, status: 'all', limit: '100' })
@@ -204,4 +220,16 @@ export async function syncCustomer(stores: { accountPlans: AccountPlanStore; str
   if (!row || row.lapsed !== undefined) return 'unchanged'
   await stores.accountPlans.lapse(account)
   return 'lapsed'
+}
+
+// Whether a price may be sold (#1521, beställarens beslut 2026-11-01): the price is with VAT, so
+// Stripe Tax takes the VAT out of it and never adds it on top, and it is the currency and interval
+// the configuration calls it. Says what is wrong, or null; the checkout asks it of Stripe before
+// it sends anyone there, so a price set up wrong in Dashboard is never sold.
+export function priceFault(price: StripePrice, expected: PriceOf | undefined): string | null {
+  if (!expected) return 'not in BYD_STRIPE_PRICES'
+  if (price.taxBehavior !== 'inclusive') return `tax_behavior is ${price.taxBehavior}, not inclusive`
+  if (price.currency !== expected.currency) return `currency is ${price.currency}, not ${expected.currency}`
+  if (price.interval !== expected.interval) return `interval is ${price.interval ?? 'none'}, not ${expected.interval}`
+  return null
 }
