@@ -1,0 +1,410 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp: köpa och säga upp Pro (#1494)</title>
+<link rel="stylesheet" href="proto.css">
+<link rel="stylesheet" href="bas.css">
+<link rel="stylesheet" href="ytor.css">
+<style>
+  /* ── Frågan ──────────────────────────────────────────────────────────────────────────────
+     #1494 (Prisnivåer 5/5): var en designer köper, ser och säger upp Pro, och hur ett nått tak
+     erbjuder Pro (beslut 2026-11-01 i #1469: takbeskedet får säga priset och «uppgradera»).
+     Pro: 99 kr / 9 € i månaden eller 990 kr / 90 € om året (A2). Kassan är Stripes (#1493), testläge.
+     Tre varianter:
+       A  Kortet i Profil: köp, status och uppsägning i ett kort i Profil, uppsägningen i appen.
+       B  Pro-sidan och Stripes portal: en egen sida som jämför, och hanteringen hos Stripe.
+       C  Där taket nås: köpet är en dialog där behovet uppstod, och tillbakavägen gör klart det man
+          försökte göra.
+     Gratisnivåns siffror och Pro:s kort per spel är platshållare (frågorna 3 och 7): streckade.
+     Stripes egna sidor ritas inte; de står som en grå ruta.
+     PROTOTYP. Slängs när beslutet står i DESIGN-BESLUT (A2).
+     ────────────────────────────────────────────────────────────────────────────────────── */
+  .tillbaka { text-decoration: none; color: #9aa3b8; }
+  .abo h2 { display: flex; align-items: center; gap: 10px; }
+  .niva { display: inline-flex; align-items: center; min-height: 24px; padding: 0 10px; border-radius: 999px; font-size: 12px; font-weight: 750; letter-spacing: .3px; }
+  .niva[data-n='gratis'] { background: #262a35; color: #dce3f2; }
+  .niva[data-n='pro'] { background: #1f3a5c; color: #cfe3ff; border: 1px solid #4a6fd4; }
+  .jmf { margin: 0; display: grid; grid-template-columns: 70px minmax(0, 1fr); gap: 8px 14px; font-size: 13px; line-height: 1.5; }
+  .jmf dt { color: #9aa3b8; font-weight: 700; }
+  .jmf dd { margin: 0; color: #dce3f2; }
+  .jmf dd b { color: #fff; }
+  .period { justify-self: start; display: inline-flex; padding: 3px; gap: 3px; border-radius: 10px; background: #11131a; border: 1px solid #2f333d; border-width: 1px; margin: 0; }
+  .period legend { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .period label { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 14px; border-radius: 8px; color: #c3cbdd; font-weight: 650; cursor: pointer; }
+  .period input { position: absolute; opacity: 0; }
+  .period label:has(input:checked) { background: #262a35; color: #fff; box-shadow: inset 0 0 0 1px #6f7a90; }
+  .period label:has(input:focus-visible) { outline: 3px solid #9cc6ff; outline-offset: 2px; }
+  .period small { color: #7dd3a0; font-weight: 600; font-size: 12px; }
+  .kop { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; }
+  .k-blå { min-height: 46px; padding: 0 18px; border: 0; border-radius: 12px; background: #4a7fe0; color: #fff; font-weight: 750; font-size: 15px; }
+  .k-blå.liten { min-height: 44px; font-size: 14px; padding: 0 14px; }
+  .status { margin: 0; padding: 12px 14px; border-radius: 10px; line-height: 1.5; font-size: 14px; }
+  .status b { color: #fff; }
+  .status[data-ton='ok'] { background: #16281f; border: 1px solid #2c5a40; color: #d8ffe8; }
+  .status[data-ton='vanta'] { background: #1b2233; border: 1px solid #34456a; color: #d6e2ff; }
+  .status[data-ton='neutral'] { background: #1b1d23; border: 1px solid #2f333d; color: #c3cbdd; }
+  .status[data-ton='varn'] { background: #2a2418; border: 1px solid #4a4230; color: #ffe4b0; }
+  .status .snurr { display: inline-block; width: 12px; height: 12px; margin-right: 6px; border: 2px solid #6f8fd0; border-top-color: transparent; border-radius: 50%; vertical-align: -1px; }
+  .fraga { display: grid; gap: 10px; padding: 14px 16px; border-radius: 12px; background: #1b1f2a; border: 1px solid #3b4358; }
+  .fraga p { margin: 0; line-height: 1.5; color: #dce3f2; }
+  .fraga ul { margin: 0; padding-left: 18px; color: #dce3f2; line-height: 1.6; }
+  .fraga .knapprad { justify-content: flex-start; }
+  .k-farlig { min-height: 44px; padding: 0 16px; border: 1px solid #c86464; border-radius: 12px; background: transparent; color: #ffc9c9; font-weight: 700; font-size: 14px; }
+  .stripe { display: grid; place-items: center; align-content: center; gap: 10px; height: 100%; background: repeating-linear-gradient(135deg, #e9ebef 0 14px, #f3f4f6 14px 28px); color: #3a3f4b; font: 15px system-ui, sans-serif; text-align: center; padding: 20px; }
+  .stripe b { font-size: 18px; }
+  .stripe .ruta { max-width: 460px; padding: 18px 22px; border-radius: 12px; background: #fff; box-shadow: 0 6px 24px rgb(0 0 0 / 12%); line-height: 1.55; }
+  .stripe button { margin-top: 10px; min-height: 44px; padding: 0 16px; border-radius: 8px; border: 1px solid #3a3f4b; background: #fff; color: #222; font-weight: 700; }
+  /* B: Pro-sidan */
+  .prosida { height: 100%; overflow: auto; background: #0f1117; color: #e6e6e6; font: 14px system-ui, sans-serif; padding: 0 20px 40px; }
+  .prosida .inne { max-width: 880px; margin: 0 auto; display: grid; gap: 20px; padding-top: 28px; }
+  .prosida h1 { margin: 0; font-size: 34px; }
+  .prosida .ingress { margin: 0; color: #c3cbdd; font-size: 16px; line-height: 1.55; max-width: 60ch; }
+  .tabell-jmf { width: 100%; border-collapse: separate; border-spacing: 0; border: 1px solid #262a35; border-radius: 14px; overflow: hidden; font-size: 14px; }
+  .tabell-jmf th, .tabell-jmf td { padding: 12px 16px; border-bottom: 1px solid #20232b; text-align: left; vertical-align: top; }
+  .tabell-jmf thead th { background: #171a23; font-size: 18px; color: #fff; }
+  .tabell-jmf thead th small { display: block; font-size: 14px; font-weight: 600; color: #9aa3b8; margin-top: 2px; }
+  .tabell-jmf th[scope='row'] { color: #9aa3b8; font-weight: 600; width: 34%; }
+  .tabell-jmf td.pro { background: rgb(74 127 224 / 7%); color: #fff; }
+  .tabell-jmf thead th.pro { background: #1a2338; }
+  .tabell-jmf tr:last-child > * { border-bottom: 0; }
+  .prosida .botten { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; }
+  .prosida .smatt { margin: 0; color: #9aa3b8; font-size: 13px; line-height: 1.5; }
+  .sida[data-bredd='390'] .prosida { padding: 0 16px 32px; }
+  .sida[data-bredd='390'] .prosida h1 { font-size: 28px; }
+  .sida[data-bredd='390'] .tabell-jmf th, .sida[data-bredd='390'] .tabell-jmf td { padding: 10px; font-size: 13px; }
+  .sida[data-bredd='390'] .tabell-jmf th[scope='row'] { width: 30%; }
+  .aborad { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+  .aborad .liten { flex: 1 1 260px; }
+  /* C: dialogen */
+  .kopdialog { width: min(560px, 100%); }
+  .kopdialog .vad { margin: 4px 0 14px; padding: 12px 14px; border-radius: 10px; background: #11131a; border: 1px solid #262a35; color: #c3cbdd; font-size: 14px; line-height: 1.5; }
+  .kopdialog .vad b { color: #fff; }
+  .val { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 0; padding: 0; border: 0; }
+  .val legend { font-size: 14px; font-weight: 700; margin-bottom: 8px; padding: 0; }
+  .val label { display: grid; gap: 2px; padding: 12px 14px; border-radius: 12px; border: 1px solid #3b4358; background: #11131a; cursor: pointer; }
+  .val label:has(input:checked) { border-color: #4a7fe0; box-shadow: 0 0 0 1px #4a7fe0; background: #141b2b; }
+  .val label:has(input:focus-visible) { outline: 3px solid #9cc6ff; outline-offset: 2px; }
+  .val input { position: absolute; opacity: 0; }
+  .val b { font-size: 18px; color: #fff; }
+  .val span { color: #9aa3b8; font-size: 13px; }
+  .val small { color: #7dd3a0; font-size: 12px; font-weight: 650; }
+  .kopdialog .knappar .prim { background: #4a7fe0; color: #fff; }
+  .kopdialog .liten-text { color: #9aa3b8; font-size: 13px; line-height: 1.5; margin: 12px 0 0; }
+  .pro-chip { display: inline-flex; align-items: center; min-height: 28px; padding: 0 10px; border-radius: 999px; background: #1f3a5c; color: #cfe3ff; border: 1px solid #4a6fd4; font-size: 12px; font-weight: 750; text-decoration: none; }
+  /* Takbeskedet med Pro */
+  .hm-notice .k-lank { color: #ffd0a8; min-height: 44px; }
+  .hm-notice .k-uppg { min-height: 44px; padding: 0 14px; border: 1px solid #e0a0a0; border-radius: 10px; background: transparent; color: #fff; font-weight: 700; }
+  .notisband .uppg { flex: none; min-height: 40px; padding: 0 12px; border: 1px solid #8a7a52; border-radius: 8px; background: transparent; color: #ffe4b0; font: inherit; font-weight: 700; white-space: nowrap; }
+</style>
+</head>
+<body>
+<div class="protorad" role="region" aria-label="Prototypens rad (inte en del av förslaget)">
+  <div class="fraga-p fraga">
+    <p><b>PROTOTYP #1494: köpa, se och säga upp Pro.</b> Pro kostar 99 kr / 9 € i månaden eller 990 kr / 90 € om året. Stripes egna sidor ritas inte. Gratisnivåns siffror och Pro:s kort per spel är platshållare (<span class="ph">streckade</span>, frågorna 3 och 7 i #1469).</p>
+    <p>Växla variant med A/B/C eller ← →. Välj steg i resan och kontots läge; knapparna i ytan går också vidare.</p>
+  </div>
+  <div class="vaxlare" role="group" aria-label="Variant" id="vaxlare"></div>
+  <div class="grupp"><span>Steg</span><div class="flikar" id="ytor"></div></div>
+  <div class="grupp" id="beskedgrupp"><span>Stripes besked</span><div class="flikar" id="besked"></div></div>
+  <div class="grupp"><span>Kontot</span><div class="flikar" id="konto"></div></div>
+  <div class="grupp"><span>Valuta</span><div class="flikar" id="valuta"></div></div>
+  <div class="grupp"><span>Bredd</span><div class="flikar" id="bredd"></div></div>
+  <button type="button" id="omstart">Börja om steget</button>
+  <p class="anteckning" id="anteckning"></p>
+</div>
+<main class="scen"><div id="ram"><p class="etikett" id="etikett"></p><div class="sida" id="sida"></div></div></main>
+
+<script>
+const P = {
+  import: 'M8 2.5v7.25M5 6.75l3 3 3-3M3 12.75h10',
+  person: 'M3.25 13.75c0-2.75 2.1-4.25 4.75-4.25s4.75 1.5 4.75 4.25',
+  exit: 'M9.5 2.75H4a1 1 0 0 0-1 1v8.5a1 1 0 0 0 1 1h5.5M6.5 8h7M11 5.25 13.75 8 11 10.75',
+  left: 'M13 8H3M7 4 3 8l4 4',
+  warn: 'M8 2.25 14.25 13.25H1.75zM8 6.5v3.25M8 11.6v.01',
+  out: 'M9.5 2.75h3.75v3.75M13.25 2.75 7.5 8.5M11.5 9.5v3a.75.75 0 0 1-.75.75h-7a.75.75 0 0 1-.75-.75v-7a.75.75 0 0 1 .75-.75h3',
+  undo: 'M5.5 3.75 2.75 6.5 5.5 9.25M3 6.5h6.25a3.5 3.5 0 0 1 0 7H7',
+  redo: 'M10.5 3.75l2.75 2.75-2.75 2.75M13 6.5H6.75a3.5 3.5 0 0 0 0 7H9',
+}
+const C = { person: [[8, 5.25, 2.5]] }
+const g = (n) => `<svg class="g" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="${P[n]}"/>${(C[n] ?? []).map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}"/>`).join('')}</svg>`
+const ph = (x) => `<span class="ph" title="Platshållare: inte beslutat (frågorna 3 och 7 i #1469)">${x}</span>`
+
+const V = {
+  A: { namn: 'A: kortet i Profil · rekommenderas',
+    not: '<b>Allt om abonnemanget står i ett kort i Profil</b>, ovanför Förbrukning: nivån, en jämförelse på två rader, månad eller år, och knappen till Stripes kassa. Med Pro står i samma kort vad det kostar och när det förnyas, och <b>«Säg upp Pro» är en knapp av samma storlek som köpet</b>, med en fråga i appen som säger vad som händer med spelen. Kvitton och betalkort ligger hos Stripes kundportal. Takbeskedet får en mening och en knapp till kortet. <span class="plus">+ en plats för köp, status och uppsägning, där Förbrukning redan står; uppsägningen säger vad som hamnar i läsläge; minst ny yta</span> <span class="minus">− Pro säljs inte där designern arbetar, utan ett steg bort; uppsägningen i appen är kod vi äger (Stripe-anrop, fake i sviten)</span>' },
+  B: { namn: 'B: Pro-sidan och Stripes portal',
+    not: '<b>En egen sida, /pro,</b> jämför Gratis och Pro i en tabell och har köpet. Profil har en rad: nivån och vägen dit. Med Pro öppnar «Hantera abonnemanget» <b>Stripes kundportal</b>, där uppsägning, kort och kvitton finns. Tillbakavägen är en egen sida med Stripes besked. <span class="plus">+ plats att förklara vad Pro ger; ingen uppsägningskod hos oss; portalen sköter kort, kvitton och moms</span> <span class="minus">− uppsägningen sker utanför Deckster och säger inte vilka spel som hamnar i läsläge; en ny sida som ser ut som marknadsföring i ett verktyg</span>' },
+  C: { namn: 'C: där taket nås',
+    not: '<b>Köpet är en dialog</b> som öppnas där taket nåddes (och från Profil): vad du försökte göra, vad Pro ändrar för just det, månad eller år. <b>Tillbakavägen landar där du var</b> och gör klart handlingen. Kontot bär ett «Pro»-märke i Mina spels rad, och Profil har uppsägningen i samma dialogform. <span class="plus">+ köpet svarar på det designern just ville; ingen tappar tråden efter betalningen</span> <span class="minus">− en dialog per yta och en tillbakaväg per handling att bygga och testa; ett märke i raden visar nivån hela tiden; köpet blir mest synligt i stunden av frustration</span>' },
+}
+const YTOR = { profil: 'Profil', tak: 'Taket nås (Mina spel)', taked: 'Taket nås (editorn)', kassa: 'Till kassan', tillbaka: 'Tillbaka', saga: 'Säga upp' }
+const BESKED = { ok: 'gick igenom', vanta: 'väntar', avbrot: 'avbröts' }
+const KONTO = { gratis: 'Gratis', pro: 'Pro', uppsagt: 'Pro, uppsagt', miss: 'Pro, betalning misslyckades' }
+const VALUTA = { kr: 'kronor', eur: 'euro' }
+
+const q = new URLSearchParams(location.search)
+let v = (q.get('v') || 'A').toUpperCase()
+let yta = q.get('yta') || 'profil'
+let besked = q.get('besked') || 'ok'
+let konto = q.get('konto') || 'gratis'
+let valuta = q.get('valuta') || 'kr'
+let bredd = q.get('bredd') || '1280'
+let st = {}
+const omstart = () => { st = { ar: q.get('ar') === '1', fraga: q.get('fraga') === '1', klar: false }; q.delete('ar'); q.delete('fraga') }
+omstart()
+
+const pris = (ar = st.ar) => valuta === 'kr' ? (ar ? '990 kr om året' : '99 kr i månaden') : (ar ? '90 € om året' : '9 € i månaden')
+const kort = (ar) => valuta === 'kr' ? (ar ? '990 kr' : '99 kr') : (ar ? '90 €' : '9 €')
+const GRATIS = () => `${ph(2)} spel, ${ph(150)} kort per spel, 1 bord åt gången, ${ph(8)} bord på 30 dygn, ${ph('300 MB')}`
+const PRO = () => `<b>obegränsat antal spel</b>, ${ph(500)} kort per spel, 3 bord åt gången, obegränsat antal bord, 10 GB, och tryckpaketet när en tryckpartner finns`
+const FORNYAS = '1 dec 2026'
+const LASLAGE = ['Drakhamnen', "Sal's Saloon"]
+const periodVal = () => `<fieldset class="period"><legend>Betala</legend><label><input type="radio" name="per" value="m" ${!st.ar ? 'checked' : ''} data-do="man">Per månad</label><label><input type="radio" name="per" value="a" ${st.ar ? 'checked' : ''} data-do="ar">Per år <small>2 månader gratis</small></label></fieldset>`
+
+// ── Mina spel (för takbeskedet) ─────────────────────────────────────────────────────────────────
+function bar(chip = false) {
+  return `<div class="hm-bar"><span class="hm-mark"><i></i>Deckster</span>
+    <button class="hm-knapp" aria-label="Importera spel…">${g('import')}<span class="ord">Importera</span></button>
+    <button class="hm-knapp">+ <span class="ord">Nytt spel</span></button>
+    ${chip ? `<a class="pro-chip" href="#" title="Ditt abonnemang, i Profil">Pro</a>` : ''}
+    <span class="hm-who"><span class="adr">nicklas@example.com</span><span class="ikon" title="Profil">${g('person')}</span><span class="ikon" title="Logga ut">${g('exit')}</span></span></div>`
+}
+function takMening() {
+  // #1198:s tre delar, och sedan Pro: priset och «uppgradera» (beslut 2026-11-01).
+  return `<b>Inget nytt spel skapades.</b> Ditt konto rymmer ${ph(2)} spel, och du har ${ph(2)}. Ta bort ett spel du inte behöver för att få plats; exportera det först om du vill ha det kvar.`
+}
+function takNotice() {
+  const proRad = v === 'A' ? `<div class="rad2"><span>Med Pro rymmer kontot obegränsat antal spel, för ${pris(false)}.</span><button class="k-uppg" data-do="profil">Uppgradera till Pro</button></div>`
+    : v === 'B' ? `<div class="rad2"><span>Eller uppgradera till Pro, ${pris(false)}, så rymmer kontot obegränsat antal spel.</span><button class="k-uppg" data-do="prosida">Se vad Pro ger</button></div>`
+    : `<div class="rad2"><button class="k-uppg" data-do="dialog">Uppgradera till Pro, ${pris(false)}</button></div>`
+  return `<div class="hm-notice" role="alert">${takMening()}${proRad}</div>`
+}
+function heroOch(resten = '') {
+  return `<section class="hero" style="--rgb:125 211 160"><div class="fan" style="--c:#7a4a2a"><i></i><i></i><i></i></div>
+    <div class="hero-text"><h2 class="hm-h2">Fortsätt där du slutade</h2><strong>Kvällsmarknaden</strong><span class="rad">Version 3 sparad i dag</span>
+      <div class="stats"><div><b>146</b><span>kort</span></div><div><b>4</b><span>spelare</span></div><div><b>2</b><span>bord</span></div><div><b>i går</b><span>senast spelat</span></div></div>
+      <div class="knapprad"><button class="k-prim">Öppna editorn</button><button class="k-sek">Starta bord</button></div></div><button class="mer" aria-label="Spelets val">⋯</button></section>
+    <h2 class="hm-h2">Övriga spel</h2><div class="rader"><div class="spelrad"><span class="tumme" style="--c:#3f6f45"></span><div class="txt"><strong>Skogens herrar</strong><span class="rad">v2 · 88 kort · 3 spelare</span><span class="rad">1 bord · senast 19 okt</span></div><button class="mer" aria-label="Val">⋯</button></div><div class="ny-ruta">+ Nytt spel</div></div>${resten}`
+}
+function minaSpel(over, chip = false, dialog = '') {
+  return `<div class="hm" style="position:relative">${bar(chip)}<div class="hm-grid"><div class="hm-main"><h1>Mina spel</h1>${over}${heroOch()}</div>
+    <aside class="hm-side pagar"><h2 class="hm-h2">Pågår nu</h2><div class="bordkort"><header><span>Kvällsmarknaden</span><b>P3XNJH</b></header><button>Öppna bordet</button></div>
+    <div class="rumskod"><label for="kod">Har du en rumskod?</label><div><input id="kod"><button>Gå med</button></div></div></aside></div>${dialog}</div>`
+}
+
+// ── Profil ──────────────────────────────────────────────────────────────────────────────────────
+function forbrukning() {
+  const r = (n, s, u, l, p, cls = '') => `<dt>${n}${s ? `<small>${s}</small>` : ''}</dt><dd class="bar-dd" style="margin:0"><div class="bar" ${cls}><i style="--p:${p}%"></i></div></dd><dd ${cls.includes('fullt') ? 'data-fullt' : ''}>${u} av ${l}</dd>`
+  if (konto === 'pro' || konto === 'uppsagt' || konto === 'miss') return `<section class="pkort"><h2>Förbrukning</h2><p class="liten">Det ditt konto rymmer med Pro, och hur mycket som används.</p>
+    <dl class="forbr">${r('Bord öppna nu', '', 1, 3, 33)}${r('Lagring', 'bilder och typsnitt i alla versioner av dina spel', '640 MB', '10 GB', 6)}</dl></section>`
+  return `<section class="pkort"><h2>Förbrukning</h2><p class="liten">Det ditt konto rymmer, och hur mycket som används.</p>
+    <dl class="forbr">${r('Spel', '', 2, ph(2), 100, 'data-fullt')}${r('Bord öppna nu', '', 1, 1, 100, 'data-fullt')}${r('Bord startade', 'de senaste 30 dygnen', 5, ph(8), 62)}${r('Lagring', 'bilder och typsnitt i alla versioner av dina spel', '240 MB', ph('300 MB'), 80, 'data-nara')}</dl></section>`
+}
+function statusRad() {
+  if (yta !== 'tillbaka') return ''
+  if (besked === 'ok') return `<p class="status" data-ton="ok" role="status"><b>Du har Pro nu.</b> Tack. Kvittot kommer med mejl från Stripe, och nästa betalning är ${FORNYAS}.</p>`
+  if (besked === 'vanta') return `<p class="status" data-ton="vanta" role="status"><span class="snurr" aria-hidden="true"></span><b>Betalningen är gjord.</b> Vi väntar på Stripes besked, det brukar ta några sekunder. Du behöver inte betala igen.</p>`
+  return `<p class="status" data-ton="neutral" role="status"><b>Inget köptes.</b> Du har kvar Gratis, och ingenting har dragits.</p>`
+}
+function aboA() {
+  const k = yta === 'tillbaka' ? (besked === 'ok' ? 'pro' : 'gratis') : konto
+  if (yta === 'saga' && st.klar) return aboAUppsagt()
+  if (k === 'gratis' && yta === 'tillbaka' && besked === 'vanta') return `<section class="pkort abo" id="abonnemang" aria-labelledby="abo-h"><h2 id="abo-h">Abonnemang <span class="niva" data-n="gratis">Gratis</span></h2>${statusRad()}<p class="liten">Köpet går inte att göra igen medan beskedet väntar. Tar det mer än en minut säger sidan det, och Pro slås på när beskedet kommer, också om du lämnar sidan.</p></section>`
+  if (k === 'gratis') return `<section class="pkort abo" id="abonnemang" ${yta === 'tak' ? 'data-fram' : ''} aria-labelledby="abo-h"><h2 id="abo-h">Abonnemang <span class="niva" data-n="gratis">Gratis</span></h2>${statusRad()}
+    <dl class="jmf"><dt>Gratis</dt><dd>${GRATIS()}.</dd><dt>Pro</dt><dd>${PRO()}.</dd></dl>
+    <div class="kop">${periodVal()}<button class="k-blå" data-do="kassa">Uppgradera till Pro, ${pris()}</button></div>
+    <p class="liten">Priset är med moms. Du betalar hos Stripe och säger upp när du vill, här i Profil; Pro gäller då perioden ut.</p></section>`
+  if (k === 'uppsagt') return aboAUppsagt()
+  const miss = k === 'miss'
+  return `<section class="pkort abo" id="abonnemang" aria-labelledby="abo-h"><h2 id="abo-h">Abonnemang <span class="niva" data-n="pro">Pro</span></h2>${statusRad()}
+    ${miss ? `<p class="status" data-ton="varn" role="status"><b>Betalningen för december gick inte igenom.</b> Pro gäller medan Stripe försöker igen, till 8 dec. Byt betalkort så fortsätter det som vanligt.</p>` : ''}
+    <p style="margin:0;font-size:15px;color:#fff">${pris(false)} · ${miss ? 'betalningen försöks igen' : `förnyas ${FORNYAS}`}</p>
+    <p class="liten">Med Pro: ${PRO()}.</p>
+    ${yta === 'saga' && st.fraga ? fragaA() : `<div class="knapprad" style="justify-content:flex-start">${miss ? `<button class="k-blå liten">Byt betalkort</button>` : ''}<button class="k-sek liten" data-do="fraga">Säg upp Pro</button><button class="k-lank">Kvitton och betalkort ${g('out')}</button></div>`}</section>`
+}
+function fragaA() {
+  return `<div class="fraga" role="group" aria-labelledby="fraga-h"><p id="fraga-h"><b>Säga upp Pro?</b> Pro gäller till ${FORNYAS}, och du betalar ingenting mer. Sedan rymmer kontot det Gratis rymmer, och de här spelen går att läsa och exportera men inte ändra:</p>
+    <ul>${LASLAGE.map((n) => `<li>${n}</li>`).join('')}</ul><p class="liten" style="margin:0">Ingenting tas bort, och du kan fortsätta med Pro när som helst före ${FORNYAS}.</p>
+    <div class="knapprad"><button class="k-farlig" data-do="sagupp">Säg upp</button><button class="k-sek liten" data-do="behall" data-fokus>Behåll Pro</button></div></div>`
+}
+function aboAUppsagt() {
+  return `<section class="pkort abo" id="abonnemang" aria-labelledby="abo-h"><h2 id="abo-h">Abonnemang <span class="niva" data-n="pro">Pro</span></h2>
+    <p class="status" data-ton="neutral" role="status"><b>Pro är uppsagt</b> och gäller till ${FORNYAS}. Inget mer dras. Efter det hamnar ${LASLAGE.join(' och ')} i läsläge.</p>
+    <div class="knapprad" style="justify-content:flex-start"><button class="k-blå liten">Fortsätt med Pro</button><button class="k-lank">Kvitton ${g('out')}</button></div></section>`
+}
+function aboB() {
+  const k = konto
+  if (k === 'gratis') return `<section class="pkort" aria-labelledby="abo-h"><h2 id="abo-h">Abonnemang</h2><div class="aborad"><span class="niva" data-n="gratis">Gratis</span><span class="liten">${GRATIS()}.</span><button class="k-sek liten" data-do="prosida">Se Pro</button></div></section>`
+  const txt = k === 'uppsagt' ? `Uppsagt, gäller till ${FORNYAS}.` : k === 'miss' ? 'Betalningen gick inte igenom; Stripe försöker igen till 8 dec.' : `${pris(false)}, förnyas ${FORNYAS}.`
+  return `<section class="pkort" aria-labelledby="abo-h"><h2 id="abo-h">Abonnemang</h2><div class="aborad"><span class="niva" data-n="pro">Pro</span><span class="liten">${txt}</span><button class="k-sek liten" data-do="portal">Hantera abonnemanget ${g('out')}</button></div>
+    <p class="liten">Uppsägning, betalkort och kvitton sköts hos Stripe.</p></section>`
+}
+function aboC() {
+  const k = konto
+  if (k === 'gratis') return `<section class="pkort" aria-labelledby="abo-h"><h2 id="abo-h">Abonnemang <span class="niva" data-n="gratis">Gratis</span></h2><p class="liten">${GRATIS()}. Pro ger ${PRO()}.</p><div class="knapprad" style="justify-content:flex-start"><button class="k-blå liten" data-do="dialog">Uppgradera till Pro…</button></div></section>`
+  const uppsagt = k === 'uppsagt' || st.klar
+  return `<section class="pkort" aria-labelledby="abo-h"><h2 id="abo-h">Abonnemang <span class="niva" data-n="pro">Pro</span></h2>
+    <p style="margin:0;font-size:15px;color:#fff">${uppsagt ? `Uppsagt, gäller till ${FORNYAS}` : `${pris(false)} · förnyas ${FORNYAS}`}</p>
+    <div class="knapprad" style="justify-content:flex-start">${uppsagt ? `<button class="k-blå liten">Fortsätt med Pro</button>` : `<button class="k-sek liten" data-do="sagdialog">Säg upp Pro…</button>`}<button class="k-lank">Kvitton och betalkort ${g('out')}</button></div></section>`
+}
+function profil(over = '') {
+  const abo = v === 'A' ? aboA() : v === 'B' ? aboB() : aboC()
+  return `<div class="pf" style="position:relative"><div class="profil">
+    <a class="tillbaka" href="#">${g('left')} Mina spel</a><h1>Profil</h1><p class="liten" style="margin-top:-8px">nicklas@example.com</p>
+    <section class="pkort"><h2>AI-nyckel</h2><p class="liten">Anthropic · nyckeln som slutar på x7Qd</p></section>
+    <section class="pkort"><h2>Passkeys</h2><p class="liten">iCloud-nyckelring · MacBook · Safari</p></section>
+    ${abo}${forbrukning()}
+    <section class="pkort"><h2>Språk</h2><p class="liten">Svenska</p></section></div>${over}</div>`
+}
+
+// ── B: Pro-sidan ────────────────────────────────────────────────────────────────────────────────
+function proSida(top = '') {
+  const rad = (n, a, b) => `<tr><th scope="row">${n}</th><td>${a}</td><td class="pro">${b}</td></tr>`
+  return `<div class="prosida"><div class="hm-bar"><span class="hm-mark"><i></i>Deckster</span><a class="tillbaka" href="#">${g('left')} Mina spel</a></div><div class="inne">
+    ${top}
+    <h1>Deckster Pro</h1>
+    <p class="ingress">För dig som har fler spel i gång, större lekar eller flera bord samtidigt. Gratis räcker för ett kortspel i normal storlek och två speltest i veckan.</p>
+    ${periodVal()}
+    <table class="tabell-jmf"><thead><tr><th scope="col"><span class="off">Vad</span></th><th scope="col">Gratis<small>0 kr</small></th><th scope="col" class="pro">Pro<small>${pris()}</small></th></tr></thead><tbody>
+      ${rad('Spel', ph(2), 'obegränsat')}${rad('Unika kort per spel', ph(150), ph(500))}${rad('Bord åt gången', '1', '3')}${rad('Bord på 30 dygn', ph(8), 'obegränsat')}${rad('Lagring', ph('300 MB'), '10 GB')}${rad('Resultat och enkäter', 'ja', 'ja')}${rad('Export av spelet', 'ja', 'ja')}${rad('Tryckpaketet', 'när en tryckpartner finns: nej', 'när en tryckpartner finns: ja')}
+    </tbody></table>
+    <div class="botten"><button class="k-blå" data-do="kassa">Uppgradera till Pro, ${pris()}</button><p class="smatt">Priset är med moms. Du betalar hos Stripe och säger upp när du vill under Profil; Pro gäller perioden ut.</p></div>
+  </div></div>`
+}
+function tillbakaB() {
+  const s = besked === 'ok' ? `<p class="status" data-ton="ok" role="status"><b>Du har Pro nu.</b> Kvittot kommer med mejl från Stripe. Nästa betalning är ${FORNYAS}.</p><div class="knapprad" style="justify-content:flex-start"><button class="k-prim">Till Mina spel</button></div>`
+    : besked === 'vanta' ? `<p class="status" data-ton="vanta" role="status"><span class="snurr" aria-hidden="true"></span><b>Betalningen är gjord.</b> Vi väntar på Stripes besked, det brukar ta några sekunder. Du behöver inte betala igen.</p>`
+    : `<p class="status" data-ton="neutral" role="status"><b>Inget köptes.</b> Du har kvar Gratis, och ingenting har dragits.</p>`
+  return `<div class="prosida"><div class="hm-bar"><span class="hm-mark"><i></i>Deckster</span></div><div class="inne"><h1>${besked === 'avbrot' ? 'Deckster Pro' : 'Tack'}</h1>${s}${besked === 'avbrot' ? `<div class="knapprad" style="justify-content:flex-start"><button class="k-blå liten" data-do="kassa">Försök igen</button><button class="k-sek liten">Till Mina spel</button></div>` : ''}</div></div>`
+}
+
+// ── C: dialogerna ───────────────────────────────────────────────────────────────────────────────
+function kopDialog(fran = 'tak') {
+  return `<div class="skymning" style="z-index:30"><div class="dialog kopdialog" role="dialog" aria-modal="true" aria-labelledby="kd-h">
+    <h2 id="kd-h">Uppgradera till Pro</h2>
+    ${fran === 'tak' ? `<div class="vad">Du försökte skapa ett tredje spel, och Gratis rymmer ${ph(2)}. <b>Med Pro rymmer kontot obegränsat antal spel</b>, och spelet skapas när du kommer tillbaka.</div>` : ''}
+    <p class="liten" style="margin:0 0 12px">Pro ger ${PRO()}.</p>
+    <fieldset class="val"><legend>Betala</legend>
+      <label><input type="radio" name="cp" ${!st.ar ? 'checked' : ''} data-do="man"><b>${kort(false)}</b><span>i månaden</span></label>
+      <label><input type="radio" name="cp" ${st.ar ? 'checked' : ''} data-do="ar"><b>${kort(true)}</b><span>om året</span><small>2 månader gratis</small></label></fieldset>
+    <p class="liten-text">Priset är med moms. Du betalar hos Stripe och kan säga upp när du vill under Profil.</p>
+    <div class="knappar"><button class="sek" data-do="stang">Inte nu</button><button class="prim" data-do="kassa">Till betalningen</button></div></div></div>`
+}
+function sagDialog() {
+  return `<div class="skymning" style="z-index:30"><div class="dialog kopdialog" role="alertdialog" aria-modal="true" aria-labelledby="sd-h">
+    <h2 id="sd-h">Säga upp Pro?</h2>
+    <p>Pro gäller till ${FORNYAS}, och du betalar ingenting mer. Sedan rymmer kontot det Gratis rymmer, och ${LASLAGE.join(' och ')} går att läsa och exportera men inte ändra.</p>
+    <p class="liten-text">Ingenting tas bort, och du kan fortsätta med Pro när som helst före ${FORNYAS}.</p>
+    <div class="knappar"><button class="sek" data-do="stang" data-fokus>Behåll Pro</button><button class="prim" style="background:#b84a4a" data-do="sagupp">Säg upp</button></div></div></div>`
+}
+function stripe(vad) {
+  const t = vad === 'portal'
+    ? `<b>Stripes kundportal (testläge)</b><span>Ritas av Stripe: abonnemanget, «Avsluta abonnemang», betalkort och kvitton. Deckster får beskedet med en webhook.</span>`
+    : `<b>Stripes kassa (testläge)</b><span>Ritas av Stripe: Pro, ${pris()}, kort eller Swish/Klarna efter vad kontot har påslaget. Testkortet 4242 4242 4242 4242.</span>`
+  return `<div class="stripe"><div class="ruta">${t}<br><button data-do="tillbaka">Betala (låtsas)</button> <button data-do="avbryt">Tillbaka till Deckster</button></div></div>`
+}
+
+// ── Editorn (takbeskedet för kort) ──────────────────────────────────────────────────────────────
+function editorTak() {
+  if (bredd === '390') return `<div style="padding:40px 20px;color:#c8b98d;font:14px system-ui">Editorn är ett skrivbordsverktyg (L12) och ritas här från 1024.</div>`
+  const FLIKAR = ['Kortvägg', 'Mall', 'Tabell', 'Speltema', 'Media', 'Regler', 'Bord']
+  const knapp = v === 'A' ? `<button class="uppg">Uppgradera till Pro</button>` : v === 'B' ? `<button class="uppg">Se vad Pro ger</button>` : `<button class="uppg" data-do="dialoged">Uppgradera till Pro…</button>`
+  const KORT = [['skogsvandring', 'Skogsvandring', 'Dra ett kort.', 2], ['guldfynd', 'Guldfynd', 'Få 2 guld.', 2], ['bjornen', 'Björnen', 'Göra 3 skada.', 1], ['ravens', 'Korpens vaka', 'Titta på översta kortet.', 3], ['regn', 'Höstregn', 'Alla kastar ett kort.', 2], ['ek', 'Den gamla eken', 'Vila: få 1 liv.', 1], ['dimma', 'Dimma', 'Byt plats med en granne.', 2], ['svamp', 'Svampring', 'Dra två, kasta ett.', 2]]
+  return `<div class="ed byd-editor" style="position:relative"><header class="ed-huvud"><span class="hem">Mina spel</span><span class="namn">Skogens herrar</span><button class="dorr" aria-label="Spelets val">⋯</button><span class="ver">v2</span><span class="angra"><button aria-label="Ångra">${g('undo')}</button><button aria-label="Gör om">${g('redo')}</button></span><span class="spacer"></span>
+    <nav class="ed-flikar" role="tablist">${FLIKAR.map((n) => `<button role="tab" aria-selected="${n === 'Tabell'}">${n}</button>`).join('')}</nav><span class="spacer"></span><span class="dela"><i>N</i><span>Dela</span></span><button class="ed-knapp kantad">Spara</button><button class="ed-knapp primar starta"><span>Starta</span><em>⌄</em></button></header>
+    <div class="notisband">${g('warn')}<p role="alert"><b>Kortet lades inte till.</b> Skogens herrar har ${ph(150)} av ${ph(150)} kort, så många som ett spel rymmer på ditt konto. Ta bort eller slå ihop kort; fler exemplar går alltid: ändra Antal. ${v === 'C' ? '' : `Med Pro rymmer ett spel ${ph(500)} kort, för ${pris(false)}.`}</p>${knapp}<button class="stang" aria-label="Stäng meddelandet">×</button></div>
+    <div class="arbete"><div class="t-krona"><input class="t-sok" placeholder="Sök i alla fält…" aria-label="Sök"><span class="t-chips"></span><button class="t-box">Importera ▾</button></div>
+    <div class="t-vy"><div class="t-rulla" style="overflow:hidden"><table class="t-data"><colgroup><col style="width:44px"><col style="width:130px"><col style="width:220px"><col><col style="width:80px"><col style="width:44px"></colgroup>
+    <thead><tr><th class="bock"><input type="checkbox" aria-label="Markera alla"></th><th class="id"><span class="sort"><span>ID</span></span></th><th><span class="sort"><span>Namn</span></span></th><th><span class="sort"><span>Text</span></span></th><th><span class="sort"><span>Antal</span></span></th><th class="spar"><button>+</button></th></tr></thead>
+    <tbody>${KORT.map((k) => `<tr><td class="bock"><input type="checkbox" aria-label="${k[1]}"></td><td class="id">${k[0]}</td><td><span class="las">${k[1]}</span></td><td><span class="las">${k[2]}</span></td><td><span class="las" style="text-align:right">${k[3]}</span></td><td class="spar"><button aria-label="Ta bort">×</button></td></tr>`).join('')}</tbody></table><button class="t-ny">+ Nytt kort</button></div></div>
+    <p class="fot"><span>150 kort</span><span class="tyst">Sorterat efter ID</span></p></div>${st.dialog ? kopDialogEd() : ''}</div>`
+}
+function kopDialogEd() {
+  return kopDialog('ed').replace('<h2 id="kd-h">Uppgradera till Pro</h2>', `<h2 id="kd-h">Uppgradera till Pro</h2><div class="vad">Skogens herrar har ${ph(150)} kort, så många som Gratis rymmer. <b>Med Pro rymmer ett spel ${ph(500)} kort</b>, och kortet läggs till när du kommer tillbaka.</div>`)
+}
+
+// ── Steget ──────────────────────────────────────────────────────────────────────────────────────
+function ritaYta() {
+  if (yta === 'kassa') return stripe('kassa')
+  if (yta === 'taked') return editorTak()
+  if (v === 'A') {
+    if (yta === 'tak') return minaSpel(takNotice())
+    return profil()
+  }
+  if (v === 'B') {
+    if (yta === 'tak') return minaSpel(takNotice())
+    if (yta === 'tillbaka') return tillbakaB()
+    if (yta === 'saga') return st.portal !== false ? stripe('portal') : profil()
+    if (yta === 'profil' && st.visaPro) return proSida()
+    return profil()
+  }
+  // C
+  if (yta === 'tak') return minaSpel(takNotice(), false, st.dialog ? kopDialog('tak') : '')
+  if (yta === 'tillbaka') {
+    const s = besked === 'ok' ? `<div class="hm-ok" role="status"><b>Du har Pro nu.</b> Kontot rymmer obegränsat antal spel, och ditt nya spel kan skapas. <div class="knapprad" style="justify-content:flex-start;margin-top:10px"><button class="k-prim liten">Skapa spelet</button></div></div>`
+      : besked === 'vanta' ? `<p class="status" data-ton="vanta" role="status"><span class="snurr" aria-hidden="true"></span><b>Betalningen är gjord.</b> Vi väntar på Stripes besked; spelet går att skapa så fort det kommit. Du behöver inte betala igen.</p>`
+      : `<p class="status" data-ton="neutral" role="status"><b>Inget köptes.</b> Du har kvar Gratis, och ingenting har dragits. Kontot rymmer fortfarande ${ph(2)} spel.</p>`
+    return minaSpel(s, besked === 'ok')
+  }
+  if (yta === 'saga') return profil(st.klar ? '' : sagDialog())
+  return profil()
+}
+
+const sida = document.getElementById('sida')
+function flikar(id, alt, cur, set) {
+  const el = document.getElementById(id)
+  el.innerHTML = Object.entries(alt).map(([k, n]) => `<button type="button" aria-pressed="${k === cur}" data-k="${k}">${n}</button>`).join('')
+  el.onclick = (e) => { const b = e.target.closest('button'); if (b) { set(b.dataset.k); omstart(); rita() } }
+}
+function rita() {
+  document.getElementById('vaxlare').innerHTML = Object.keys(V).map((k) => `<button type="button" aria-pressed="${k === v}" data-v="${k}">${k}</button>`).join('')
+  flikar('ytor', YTOR, yta, (k) => { yta = k; if (k === 'saga' && konto === 'gratis') konto = 'pro' })
+  flikar('besked', BESKED, besked, (k) => (besked = k))
+  flikar('konto', KONTO, konto, (k) => (konto = k))
+  flikar('valuta', VALUTA, valuta, (k) => (valuta = k))
+  flikar('bredd', { 1440: '1440', 1280: '1280', 1024: '1024', 390: '390' }, bredd, (k) => (bredd = k))
+  document.getElementById('beskedgrupp').hidden = yta !== 'tillbaka'
+  document.getElementById('anteckning').innerHTML = V[v].not
+  document.getElementById('etikett').innerHTML = `<b>${V[v].namn}</b> · ${YTOR[yta]}${yta === 'tillbaka' ? ` (${BESKED[besked]})` : ''} · ${KONTO[konto]} · ${bredd} px`
+  const w = +bredd, h = +(q.get('h') || (bredd === '390' ? 844 : 800))
+  sida.style.width = w + 'px'; sida.style.height = h + 'px'; sida.dataset.bredd = bredd
+  sida.innerHTML = ritaYta()
+  history.replaceState(null, '', '?' + new URLSearchParams({ v, yta, besked, konto, valuta, bredd }))
+  const f = sida.querySelector('[data-fokus]'); if (f) f.focus({ preventScroll: true })
+}
+document.getElementById('vaxlare').onclick = (e) => { const b = e.target.closest('button'); if (b) { v = b.dataset.v; omstart(); rita() } }
+document.getElementById('omstart').onclick = () => { omstart(); rita() }
+sida.onclick = (e) => {
+  const b = e.target.closest('[data-do]'); if (!b) return
+  const d = b.dataset.do
+  if (d === 'man') st.ar = false
+  else if (d === 'ar') st.ar = true
+  else if (d === 'kassa') yta = 'kassa'
+  else if (d === 'tillbaka') { yta = 'tillbaka'; besked = 'ok' }
+  else if (d === 'avbryt') { yta = 'tillbaka'; besked = 'avbrot' }
+  else if (d === 'profil') yta = 'profil'
+  else if (d === 'prosida') { yta = 'profil'; st.visaPro = true }
+  else if (d === 'portal') { yta = 'saga' }
+  else if (d === 'dialog') st.dialog = true
+  else if (d === 'dialoged') st.dialog = true
+  else if (d === 'stang') { st.dialog = false; if (yta === 'saga') { yta = 'profil' } }
+  else if (d === 'fraga') { yta = 'saga'; st.fraga = true }
+  else if (d === 'behall') { st.fraga = false; yta = 'profil' }
+  else if (d === 'sagdialog') { yta = 'saga' }
+  else if (d === 'sagupp') { st.klar = true; st.fraga = false; konto = 'uppsagt' }
+  rita()
+}
+addEventListener('keydown', (e) => {
+  if (e.target.closest('input, textarea, [contenteditable]')) return
+  const ks = Object.keys(V), i = ks.indexOf(v)
+  if (e.key === 'ArrowRight') { v = ks[(i + 1) % ks.length]; omstart(); rita() }
+  if (e.key === 'ArrowLeft') { v = ks[(i + ks.length - 1) % ks.length]; omstart(); rita() }
+})
+if (q.get('dialog') === '1') st.dialog = true
+if (q.get('visaPro') === '1') st.visaPro = true
+rita()
+</script>
+</body>
+</html>
