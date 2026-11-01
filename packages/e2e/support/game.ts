@@ -71,3 +71,25 @@ export function gameDoc(game: Game = {}): ProjectDoc {
 // *identity* leaking from a card's *existence* being known — and only the first is a leak.
 const WORDS = ['Björn', 'Varg', 'Räv', 'Lo', 'Järv', 'Älg', 'Hjort', 'Grävling', 'Utter', 'Mård', 'Hare', 'Ekorre', 'Korp', 'Uggla', 'Falk', 'Örn']
 export const cardTitle = (i: number): string => `${WORDS[i % WORDS.length]} ${Math.floor(i / WORDS.length) + 1}`
+
+/**
+ * A game with a deck of hexagon landscape tiles in a hidden bag in the middle of the felt (#1484,
+ * #1485): the cards as `gameDoc` makes them, and four tiles named so a spec can tell them apart.
+ */
+export const TILE_TITLES = ['Granskog', 'Tjärn', 'Fjäll', 'Rågåker']
+export function tileGame(game: Game = {}): ProjectDoc {
+  const doc = gameDoc({ players: 2, counters: [], cards: 6, ...game })
+  const floor = doc.setup.zones.find((z) => z.id === doc.setup.floor)?.geometry ?? { x: 0, y: 0, w: 0, h: 0, rot: 0 }
+  const bag = { id: 'bag', kind: 'pile' as const, name: 'Landskap', visibility: 'none' as const, geometry: { x: floor.x + floor.w / 2, y: floor.y + floor.h / 2, w: 0, h: 0, rot: 0 } }
+  const lands: Template = {
+    faces: {
+      front: { base: [{ kind: 'text', id: 't', x: 6, y: 24, w: 40, h: 10, bind: { field: 'title' }, font: { family: 'sans-serif', sizePt: 10, weight: 700 }, color: '#111' }], variants: {} },
+      back: { base: [{ kind: 'shape', id: 'bg', x: 0, y: 0, w: 52, h: 61, shape: 'rect', fill: '#4a3424' }], variants: {} },
+    },
+  }
+  return {
+    ...doc,
+    setup: { ...doc.setup, zones: [...doc.setup.zones, bag] },
+    decks: [{ id: 'landskap', name: 'Landskap', type: { id: 'tile.hex.52', version: 1 }, template: lands, rows: TILE_TITLES.map((title, i) => ({ id: `l${i + 1}`, fields: { title } })), columns: ['title'], zone: 'bag' }],
+  }
+}

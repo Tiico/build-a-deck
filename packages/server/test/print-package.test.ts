@@ -295,7 +295,7 @@ describe('the print package of a game', () => {
     const book = await call('GET', '/projects/p1/print-package/files/regelhafte.pdf?provider=fake-multi-step')
     expect(book.headers.get('content-type')).toBe('application/pdf')
     expect((await call('GET', '/projects/p1/print-package/files/nothing.png?provider=fake-multi-step')).status).toBe(404)
-  }, 120_000)
+  }, 90_000)
 
   // A background that reaches the type's 3 mm reaches the bleed where no partner is asked, and
   // falls short for a partner that wants an eighth of an inch (E5, #1207): its card files are left

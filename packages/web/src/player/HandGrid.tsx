@@ -6,6 +6,9 @@ import { useRoving } from '../editor/roving.js'
 import { handLabel } from '../table/keyboard.js'
 import { useT, type T } from '../i18n/index.js'
 import { returnPile } from '../table/handName.js'
+import { TileInCard } from '../table/TileInCard.js'
+import { HOLDS_A_TILE, TILE_MARK } from '../table/tileLook.js'
+import { isTile, tileOf } from '../components.js'
 
 export type HandGridProps = {
   view: Snapshot
@@ -45,7 +48,10 @@ export function HandGrid({ view, selected, onToggle, onOpen, onReorder, faces, t
   // the zone, which is index 0 of the projection's order, so reading the order backwards is what
   // makes the hand grow towards the reading direction: the card that just arrived is last, and the
   // cards already held keep the places the eye left them in.
-  const hand = view.components.filter((c) => c.zone === `hand:${view.seat}`).reverse()
+  // A hand's tiles stand after its cards (#1486, variant A of #1474), each in its own order: a tile
+  // is held as a card is, and a hand that mixed them looked like a deck dropped on the floor.
+  const raw = view.components.filter((c) => c.zone === `hand:${view.seat}`).reverse()
+  const hand = [...raw.filter((c) => !isTile(c)), ...raw.filter(isTile)]
   const order = [...selected]
   const last = order.at(-1) ?? null
   const grid = useRef<HTMLDivElement>(null)
@@ -95,10 +101,11 @@ export function HandGrid({ view, selected, onToggle, onOpen, onReorder, faces, t
             className="byd-grid-card"
             data-hand-card={c.id}
             data-selected={marked ? 'true' : 'false'}
+            data-shape={tileOf(c)?.shape}
             {...(faceDown ? { 'data-turned': 'true' } : {})}
             aria-label={handLabel(c, marked, t, faceDown)}
             aria-pressed={marked}
-            style={{ ['--hue' as string]: hue(c.cardRef ?? ''), ...(faceDown ? TURNED_GROUND : {}) }}
+            style={{ ['--hue' as string]: hue(c.cardRef ?? ''), ...(faceDown && !isTile(c) ? TURNED_GROUND : {}), ...(isTile(c) ? HOLDS_A_TILE : {}) }}
             tabIndex={item.tabIndex}
             ref={item.ref}
             onFocus={() => {
@@ -114,8 +121,10 @@ export function HandGrid({ view, selected, onToggle, onOpen, onReorder, faces, t
               // arrow move a layer or a column everywhere else in this tool.
               if (e.altKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
                 e.preventDefault()
-                const to = at + (e.key === 'ArrowRight' ? 1 : -1)
-                if (to >= 0 && to < hand.length) onReorder?.(c, to)
+                // Among its own kind: a tile goes past tiles and a card past cards, to the place the
+                // one it passes holds in the hand's own order.
+                const past = hand[at + (e.key === 'ArrowRight' ? 1 : -1)]
+                if (past && isTile(past) === isTile(c)) onReorder?.(c, raw.indexOf(past))
                 return
               }
               if (e.key === 'Enter') {
@@ -132,9 +141,13 @@ export function HandGrid({ view, selected, onToggle, onOpen, onReorder, faces, t
             }}
             onClick={() => onToggle(c)}
           >
-            <HandFace faces={faces} c={c} turned={faceDown} Word="strong" />
+            <TileInCard c={c}>
+              <HandFace faces={faces} c={c} turned={faceDown} Word="strong" />
+            </TileInCard>
             {/* Where in the order of a several-card play this card goes. */}
             {marked && order.length > 1 && <i className="byd-grid-at" aria-hidden="true">{order.indexOf(c.id) + 1}</i>}
+            {/* A marked tile is marked by a bar under it: an outline cuts off the ring a card wears. */}
+            {marked && isTile(c) && <i aria-hidden="true" data-tile-marked style={TILE_MARK} />}
           </button>
         )
       })}

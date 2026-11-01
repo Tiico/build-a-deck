@@ -8,6 +8,9 @@ import { useSmallestPt } from '../table/smallest.js'
 import { cycleTab } from '../table/cycleTab.js'
 import { readingWidth } from '../legibility.js'
 import { ChevronGlyph } from '../glyphs.js'
+import { TileInCard } from '../table/TileInCard.js'
+import { isTile, tileOf } from '../components.js'
+import { HOLDS_A_TILE } from '../table/tileLook.js'
 
 // How far a thumb goes across the card before it is a step to the next one and not a tap.
 const SWIPE_PX = 40
@@ -99,7 +102,8 @@ export function HeldCard({ card, faces, onClose, actions, row, onStep, smallestP
       <div
         data-inspect={card.id}
         data-face="front"
-        style={{ ['--hue' as string]: hue(card.cardRef ?? '') }}
+        data-shape={tileOf(card)?.shape}
+        style={{ ['--hue' as string]: hue(card.cardRef ?? ''), ...(isTile(card) ? HOLDS_A_TILE : {}) }}
         onPointerDown={event => { keep(event); swipe.current = { x: event.clientX, stepped: false } }}
         onPointerUp={event => {
           const begun = swipe.current
@@ -117,8 +121,10 @@ export function HeldCard({ card, faces, onClose, actions, row, onStep, smallestP
           if (begun && !begun.stepped) onClose()
         }}
       >
-        <Texture faces={faces} c={card} retry />
-        <span>{cardWord(card)}</span>
+        <TileInCard c={card}>
+          <Texture faces={faces} c={card} retry />
+          <span>{cardWord(card)}</span>
+        </TileInCard>
       </div>
       {lines.length > 0 && (
         <div id={printed} className="byd-offscreen">
