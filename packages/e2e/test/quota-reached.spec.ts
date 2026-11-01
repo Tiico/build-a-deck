@@ -15,7 +15,10 @@ test.use({ viewport: DESK.viewport, locale: 'sv-SE' })
 // its own beside it, on the same app and database.
 let planned: { origin: string; stop: () => Promise<void> }
 test.beforeAll(async () => {
-  planned = await serverWith({ BYD_PLANS: JSON.stringify({ default: 'free', plans: { free: { projects: 1, cardRowsPerProject: 4, openTables: 1 } } }) })
+  // Pro is named, though nobody here has it: the run's database is shared, and a journey before this
+  // one (the read-only mode's, #1492, or Pro's, #1494) leaves an account whose tier is `pro`, which a
+  // configuration without it refuses to start on (#1193).
+  planned = await serverWith({ BYD_PLANS: JSON.stringify({ default: 'free', plans: { free: { projects: 1, cardRowsPerProject: 4, openTables: 1 }, pro: {} } }) })
 })
 test.afterAll(async () => {
   await planned?.stop()
