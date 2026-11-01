@@ -5162,6 +5162,15 @@ Platsernas skyltar på TV:n står fria från bräden som från högarna.
 Kortets kortsida i vila med det kvadratiska brädet och spelarbräden, mätt 2026-11-01 i den byggda appen (`board-on-felt.spec.ts`): TV 1920 × 1080 57 px vid fyra platser och 45 vid åtta, som utan bräde (K9 håller), och bordsläget 1280 × 800 46 respektive 31 px.
 Högens bricka i bordsläget når några millimeter in över brädets kant; den är en platta som ligger över allt och läses ändå.
 
+**Editorn** (#1481, variant A i #1473).
+Brädet läggs i fliken Bord: «＋ Bräde» på Spelyta lägger huvudbrädet, och «＋ Spelarbräde» på Framför lägger ett spelarbräde per plats där det ligger; menyn erbjuder bara det som inte redan ligger.
+Brädets rad säger mått och att det ligger fast, öppnas till storleken (huvudbrädet i 457 × 457 eller 610 × 457 mm) och vägen till fliken «Bräde», och × tar bort det.
+Allt det är `setBoards`, hela listan i en redigering som tärningarna, och därmed ett steg tillbaka (B4); filten och platserna läggs ut för bräden i samma redigering, och var zonerna hamnade skrivs i raden som `setRecipe`:s `places` (#895).
+Fliken «Bräde» står efter Låda när spelet har ett bräde, och brädets sida ritas där med Mall:s duk, lager, verktyg och egenskaper, som lådans ytor (L91): kortets egna verb märkta `on: 'board'`, med ytan som brädets namn och sidan, `main.front`.
+Zonerna från Bord ligger ovanpå sidan som låsta konturer, så att bilden kan ritas runt dem.
+Sidan ritas av samma kompilator på brädet i Bords filt, innan något är sparat eller renderat, och huvudbrädet har en skylt på filten som öppnar dess rad.
+Fysisk kontroll (E5) mäter en ritad sida med brädtypens egen `print` i brädets eget mått (`boardIssues`).
+
 ## L. Editorn (grillad 2026-09-06)
 
 E1, E2 och E3 gav principerna; det här är hur de blir konkreta.
