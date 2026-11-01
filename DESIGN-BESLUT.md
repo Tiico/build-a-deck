@@ -150,6 +150,17 @@ Byggt 2026-11-01 (#1490, skiva 1 av 5 i #1469): **Pro i `BYD_PLANS`, med tryckpa
 - Själva grinden på tryckpaketet och på `tryck/` i exporten är inte byggd: den väntar på partnern och byggs i #1209:s spår, och läser `hasPrint`. Gratisnivåns siffror och Pro:s tak på kort är konfiguration och sätts inte här (frågorna 3 och 7), och medredigerare grindas inte (fråga 5).
 - Grindarna är `packages/server/test/quotas.test.ts`, `plans-at-start.test.ts`, `account-plans.test.ts` och `quota-projects.test.ts`, mot båda lagren.
 
+Byggt 2026-11-01 (#1493, skiva 4 av 5 i #1469, beställarens beslut 2026-11-01: testläget först, med en fake i sviten): **abonnemanget på Pro via Stripe.**
+- Konfigurationen är lådans `.env` (DRIFT §12): `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` och `BYD_STRIPE_PRICES`, Stripes pris-id per nivå, valuta och intervall. Inget pris och inget nivånamn står i koden. Utan variablerna är betalningen avstängd och lådan som förut; hälften av dem stoppar starten.
+- `POST /me/subscription/checkout` med valuta, `month` eller `year` och en väg tillbaka i appen skickar ett inloggat konto till Stripes Checkout, så inga kortuppgifter passerar lådan. Kontot får en Stripe-kund första gången, och kopplingen står i `stripe_customers`. Ett konto som redan har Pro från Stripe får 409, så att ingen dras två gånger.
+- `POST /stripe/webhook` godtar bara en kropp med giltig signatur, gjord inom fem minuter. Händelsen tas aldrig som sanningen: kundens abonnemang läses som de står hos Stripe och skrivs med `setPlan` eller `lapse` och källan `stripe` (`syncCustomer` i `packages/server/src/payments.ts`). Därför ändrar en händelse som kommer två gånger, sent eller i fel ordning ingenting fel, och ingenting skrivs när ingenting ändras.
+- Ett levande abonnemang (`active`, `trialing`, `past_due`) ger Pro och häver en utgång; inget levande abonnemang gör ett konto vars nivå Stripe gav utgånget, och läsläget från #1491 gäller.
+- En nivå med källan `operator` skrivs aldrig över av Stripe, tills operatören tar bort den med `plan clear`.
+- Moms är inte avgjord: priset är med moms som en EU-konsument ser det, och hur den tas ut bekräftar beställaren före de skarpa nycklarna (fråga 2 i #1469).
+- Ett konto som raderar sig själv säger ännu inte upp sitt abonnemang hos Stripe; RUNBOOK §10 säger hur det görs för hand tills det byggs.
+- Hur Pro köps, syns och sägs upp i webben är #1494, som prototypas först.
+- Grindarna är `packages/server/test/payments.test.ts` (konfigurationen, signaturen och vad abonnemangen ger), `stripe-subscription.test.ts` (kassan och webhooken mot båda lagren, med en fake för Stripe), `stripe-api.test.ts` (klienten mot en ställföreträdare på maskinen), `payments-at-start.test.ts` och `deploy.test.ts`. Inget anrop går till Stripe i `pnpm test`.
+
 ### A3. Testarrekrytering: enbart delbar länk (fråga 22)
 
 Ingen testpanel, ingen matchning, ingen ömsesidighetsmekanik, ingen öppen lobbylista.
