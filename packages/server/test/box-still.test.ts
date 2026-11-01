@@ -90,14 +90,14 @@ describe('länkbilden följer heron (#1417)', () => {
     expect(picture.status).toBe(200)
     expect(picture.headers.get('content-type')).toBe('image/jpeg')
     expect(jpegSize(new Uint8Array(await picture.arrayBuffer()))).toEqual({ w: 1200, h: 630 })
-  }, 120_000)
+  }, 90_000)
 
   it('keeps the hand on the landing page, whatever any game has', async () => {
     await links()
     await send('POST', '/projects/p1/box/opened')
     await run.renderAll()
     expect(await tags('/')).toMatchObject({ image: HAND, twitter: HAND })
-  }, 120_000)
+  }, 90_000)
 
   // «Spara bilden» (#1417): the same rendering, asked for from «Visa upp» by whoever may read the game,
   // and handed over as a file to keep rather than a picture to show.
@@ -113,5 +113,5 @@ describe('länkbilden följer heron (#1417)', () => {
     expect(saved.status).toBe(200)
     expect(saved.headers.get('content-disposition')).toMatch(/^attachment; filename="Skogens r.d\.jpg"; filename\*=UTF-8''Skogens%20r%C3%A5d\.jpg$/)
     expect((await fetch(`${run.http}/projects/p1/still`, { method: 'POST' })).status).toBe(401)
-  }, 120_000)
+  }, 90_000)
 })

@@ -59,5 +59,5 @@ describe('referenslistan mot riktiga bilder (#1273)', () => {
     expect(found?.reference.source).toBe('borttagen i testet')
     expect(found?.distance).toBeLessThanOrEqual(PDQ_MATCH_DISTANCE)
     expect(matchReference((await screened(other)).imageHash, list)).toBeNull()
-  }, 120_000)
+  }, 90_000)
 })
