@@ -1,4 +1,4 @@
-import { TILES, isMaterial, seatColourOf, type ComponentTypeDef, type SetupDef, type TypeRegistry } from '@byd/engine'
+import { isMaterial, seatColourOf, type ComponentTypeDef, type SetupDef, type TypeRegistry } from '@byd/engine'
 import type { CardTexts, CardTitles, FaceHashes } from '@byd/engine'
 import { compileCard, printedText, type Compiled, type Motif, type Row, type Template } from '@byd/template'
 import { contentHash, type RenderKind, type RenderRequest } from '@byd/render/queue'
@@ -43,9 +43,20 @@ export function compileRow(deck: Deck, type: ComponentTypeDef, row: Row, bleed: 
   return compileCard({ template: deck.template, type, row, icons: deck.icons, ...(bleed === false ? {} : { bleed }), ...(deck.palette ? { palette: deck.palette } : {}), ...(deck.fonts ? { fonts: deck.fonts } : {}), ...(deck.motifs ? { motifs: deck.motifs } : {}) })
 }
 
-// A tile (#1482, #1483) goes to print as #1488 says: its own files, the identical ones once. Until
-// then it stands outside the print, where a partner that prints only cards would refuse the order.
-export const printedYet = (type: ComponentTypeDef): boolean => !TILES.some((t) => t.id === type.id)
+// Every printed side of one component, compiled for print (#1488): a card's or a tile's from its row
+// with the template the row is drawn with (a marker's own, #1483), and a board's from the board's own
+// template under its name (#1479), since it is no row. A board nobody has drawn yet has nothing to
+// print, and says so with null; a card whose row is gone is an error, as it always was.
+export function printedSides(deck: Deck, type: ComponentTypeDef, cardRef: string, bleed: boolean | number = false): Record<string, Compiled> | null {
+  if (type.ownFaces) {
+    const template = deck.boards?.[cardRef]
+    if (!template || Object.keys(template.faces).length === 0) return null
+    return compileRow({ ...deck, template }, type, {}, bleed)
+  }
+  const row = deck.rows[cardRef]
+  if (!row) throw new Error(`deck has no row "${cardRef}" for print`)
+  return compileRow(deckFor(deck, cardRef), type, row, bleed)
+}
 
 export type PrintCard = { cardRef: string; faces: Record<string, string> }
 // Hardware is what the partner packs rather than prints (#1140): a stock die, by type and count.
@@ -173,13 +184,10 @@ export function printExportOf(deck: Deck, setup: SetupDef, registry: TypeRegistr
     // A seat's counter is a token, not a card (C4): it names no row of the deck and there is
     // nothing card-shaped to print for it.
     if (spec.counter !== undefined) continue
-    if (!printedYet(registry.get(spec.type))) continue
-    // A board (#1479) is drawn from its own template, not a row, and goes to print as #1488 says.
-    if (registry.get(spec.type).ownFaces) continue
-    const row = deck.rows[spec.cardRef]
-    if (!row) throw new Error(`deck has no row "${spec.cardRef}" for print`)
-    // The type's own bleed: this is the print where no partner is asked (G5's export, #1207).
-    const compiled = compileRow(deckFor(deck, spec.cardRef), registry.get(spec.type), row, true)
+    // The type's own bleed: this is the print where no partner is asked (G5's export, #1207). A
+    // board and a tile go to print as a card does (#1488), each from what it is drawn with.
+    const compiled = printedSides(deck, registry.get(spec.type), spec.cardRef, true)
+    if (compiled === null) continue
     const faces: Record<string, string> = {}
     for (const [face, out] of Object.entries(compiled)) {
       const hash = contentHash(out, { kind: 'pdf' })

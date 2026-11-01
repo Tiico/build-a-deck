@@ -5230,6 +5230,13 @@ Zonerna från Bord ligger ovanpå sidan som låsta konturer, så att bilden kan 
 Sidan ritas av samma kompilator på brädet i Bords filt, innan något är sparat eller renderat, och huvudbrädet har en skylt på filten som öppnar dess rad.
 Fysisk kontroll (E5) mäter en ritad sida med brädtypens egen `print` i brädets eget mått (`boardIssues`).
 
+**Trycket** (#1488, beställarens beslut 12 i #1470): brädets och brickornas sidor går med i tryckpaketet och exporten redan i betan, som filer med utfall ur den enda renderaren (E2), efter tryckeriets krav som kortens.
+Ett bräde ritas ur sin egen mall under sitt namn och en markör ur sin (`printedSides`), aldrig ur en rad; ett bräde som ingen ritat har ingen fil.
+Varje exemplar är en post i manifestet som ett korts kopia, och likadana brickor delar sina filer, en per sida.
+Fysisk kontroll (E5) läser brädets och markörernas sidor vid det utfall som trycks, och ett fel i dem stoppar ordern som ett fel i ett kort, med brädets eller markörens namn.
+Testtryckeriet trycker dem som vektor-PDF; flerstegsfaken som raster i 300 DPI, där det stora brädet är 7 280 × 5 473 px och ritas inom render-containerns tak (DRIFT §6), mätt i kontraktssviten med de riktiga filerna.
+Sidan listar dem under leken som «Bräden och brickor», och den och LASMIG säger att stansark och vikning är ett steg 2 med en vald partner, som lådans filer (L91).
+
 ## L. Editorn (grillad 2026-09-06)
 
 E1, E2 och E3 gav principerna; det här är hur de blir konkreta.
