@@ -4,7 +4,7 @@
 window.Editor = (() => {
   const names = { A: 'En flik per lek', B: 'Växel i huvudet', C: 'Kortgrupp med egen form' }
   const notes = {
-    A: `<b>A · En flik per lek (rekommenderas).</b> Huvudet är oförändrat. Kortväggen visar varje lek som ett eget avsnitt med sin form och sitt antal. Mall och Tabell får en rad med en flik per lek överst, «Kort» och «Landskap ⬡», och «＋ Lek» bredvid. Brickans form, mått och steg står i Malls egenskaper, under «Brickan». I Bord väljer ＋-menyns «Bricka» mellan en markör (en bild, ritas på raden) och en hög ur en lek.
+    A: `<b>A · En flik per lek (rekommenderas).</b> Huvudet är oförändrat. Kortväggen visar varje lek som ett eget avsnitt med sin form och sitt antal. Mall och Tabell får en rad med en flik per lek överst, «Kort» och «Landskap <i class="hexi" aria-hidden="true"></i>», och «＋ Lek» bredvid. Brickans form, mått och steg står i Malls egenskaper, under «Brickan». I Bord väljer ＋-menyns «Bricka» mellan en markör (en bild, ritas på raden) och en hög ur en lek.
     <br><span class="plus">+ Växer till tre och fyra lekar utan att huvudet ändras. Tabellen behåller sina kolumner per lek. Den som bara har kort ser ingenting nytt förrän en andra lek finns.</span> <span class="minus">− En flikrad till i Mall och Tabell, och lekfliken måste minnas när man byter mellan dem.</span>`,
     B: `<b>B · Växel i huvudet.</b> En växel «Kort · Landskap» står i huvudet före flikarna och byter hela editorn: Kortväggen, Mall och Tabell visar bara den valda leken. Speltema, Media, Regler, Bord och Låda är spelets och tonas ner i växeln när de är öppna.
     <br><span class="plus">+ Tydligast vilken lek man arbetar i, överallt. Flikarna inuti är exakt som i dag.</span> <span class="minus">− Huvudet är redan fullt vid 1280 (flikarna når till Spara). Två växlar på olika nivåer, och en som ibland inte gäller. En tredje lek gör växeln till en meny.</span>`,
@@ -83,35 +83,35 @@ window.Editor = (() => {
   function header() {
     const tabs = [['wall', 'Kortvägg'], ['template', 'Mall'], ['table', 'Tabell'], ['theme', 'Speltema'], ['media', 'Media'], ['rules', 'Regler'], ['tables', 'Bord'], ['box', 'Låda']]
     const perDeck = ['wall', 'template', 'table'].includes(tab)
-    const sw = V === 'B' ? `<div class="vaxel${perDeck ? '' : ' av'}" role="group" aria-label="Lek"><button data-lek="kort" aria-pressed="${deck === 'kort'}">Kort</button><button data-lek="land" aria-pressed="${deck === 'land'}">Landskap ⬡</button><button aria-label="Ny lek">＋</button></div>` : ''
+    const sw = V === 'B' ? `<div class="vaxel${perDeck ? '' : ' av'}" role="group" aria-label="Lek"><button data-lek="kort" aria-pressed="${deck === 'kort'}">Kort</button><button data-lek="land" aria-pressed="${deck === 'land'}">Landskap <i class="hexi" aria-hidden="true"></i></button><button aria-label="Ny lek">＋</button></div>` : ''
     return `<header class="ed-huvud"><span class="hem">Mina spel</span><strong>Skogens råd</strong><span class="rev">v3</span>${sw}
       <nav class="ed-flikar" role="tablist" aria-label="Editorlägen">${tabs.map(([k, l]) => `<button role="tab" data-tab="${k}" aria-selected="${tab === k}">${V === 'C' && k === 'wall' ? 'Kortvägg' : l}</button>`).join('')}</nav>
       <span class="spacer"></span><span class="sparat">Sparat</span><button class="ed-knapp primar">Starta bord</button><span class="who">NO</span></header>`
   }
   function deckTabs() {
     if (V !== 'A') return ''
-    return `<div class="lekar" role="group" aria-label="Lek"><button data-lek="kort" aria-pressed="${deck === 'kort'}">Kort <small>${CARDS.length}</small></button><button data-lek="land" aria-pressed="${deck === 'land'}">Landskap ⬡ <small>${TILES.length}</small></button><button class="ny">＋ Lek</button></div>`
+    return `<div class="lekar" role="group" aria-label="Lek"><button data-lek="kort" aria-pressed="${deck === 'kort'}">Kort <small>${CARDS.length}</small></button><button data-lek="land" aria-pressed="${deck === 'land'}">Landskap <i class="hexi" aria-hidden="true"></i> <small>${TILES.length}</small></button><button class="ny">＋ Lek</button></div>`
   }
 
   function wall() {
     const cards = `<section><h2>Kort <small>${CARDS.length} kort · 63 × 88 mm${V === 'C' ? ' · grupp' : ''}</small>${V === 'A' ? '<button class="m-knapp" data-go="template:kort">Mall ›</button><button class="m-knapp" data-go="table:kort">Tabell ›</button>' : ''}</h2><div class="rutor">${CARDS.map((c) => `<button aria-label="${c.namn}">${cardOf(c, 1.55)}</button>`).join('')}</div></section>`
     const land = `<section><h2>Landskap <small>${TILES.length} brickor · ${SHAPE_NAME[shape]} ${Math.round(dmm().w)} mm · vrids ${STEP[shape]}°${V === 'C' ? ' · grupp med egen form' : ''}</small>${V === 'A' ? '<button class="m-knapp" data-go="template:land">Mall ›</button><button class="m-knapp" data-go="table:land">Tabell ›</button>' : ''}</h2><div class="rutor">${TILES.map((t) => `<button aria-label="${t.namn}">${tileOf(t, 1.65)}</button>`).join('')}</div></section>`
     if (V === 'B') return `<div class="vagg">${deck === 'kort' ? cards : land}</div>`
-    if (V === 'C') return `<div class="vagg"><div class="grupp-chips lekar"><button aria-pressed="true">Alla <small>24</small></button><button>Kort <small>6</small></button><button>Landskap ⬡ <small>18</small></button><button class="ny">＋ Grupp</button></div>${cards}${land}</div>`
+    if (V === 'C') return `<div class="vagg"><div class="grupp-chips lekar"><button aria-pressed="true">Alla <small>24</small></button><button>Kort <small>6</small></button><button>Landskap <i class="hexi" aria-hidden="true"></i> <small>18</small></button><button class="ny">＋ Grupp</button></div>${cards}${land}</div>`
     return `<div class="vagg">${cards}${land}<div class="nylek"><button class="m-knapp">＋ Ny lek</button><span>Kort, eller brickor i en egen form. Varje lek får sin mall och sin tabell.</span></div></div>`
   }
 
   function template() {
     const isLand = deck === 'land'
-    const krona = `<div class="m-krona">${V === 'A' ? deckTabs() : ''}${V === 'C' ? `<label>Mall<select class="meny" data-mallval><option value="kort"${deck === 'kort' ? ' selected' : ''}>Kort (grupp Kort)</option><option value="land"${isLand ? ' selected' : ''}>Landskap ⬡ (grupp Landskap)</option></select></label>` : ''}
+    const krona = `<div class="m-krona">${V === 'A' ? deckTabs() : ''}${V === 'C' ? `<label>Mall<select class="meny" data-mallval><option value="kort"${deck === 'kort' ? ' selected' : ''}>Kort (grupp Kort)</option><option value="land"${isLand ? ' selected' : ''}>Landskap, sexhörning (grupp Landskap)</option></select></label>` : ''}
       <span class="sidor"><button aria-pressed="true">Framsida</button><button aria-pressed="false">Baksida</button></span><span class="spacer"></span><label>Förhandsvisa<select class="meny"><option>${isLand ? 'Granskog' : 'Rådslag'}</option></select></label></div>`
     const px = isLand ? 360 / dmm().h : 4.6
     const piece = isLand ? tileOf(TILES[0], px) : cardOf(CARDS[0], px)
     const w = isLand ? dmm().w * px : 63 * px, h = isLand ? dmm().h * px : 88 * px
     const sel = isLand ? { x: 0, y: 0.62 * h, w, h: Math.min(11, dmm().h * 0.2) * px } : { x: 5, y: h * 0.45 + 6 * px, w: w - 10, h: 10 * px }
-    const layers = isLand ? [['Namn', 'kolumnen Namn', true], ['Namnband', ''], ['Värde', 'kolumnen Värde'], ['Värdets ring', ''], ['Landskapets bild', 'väljs av kolumnen Landskap (L3)']] : [['Text', 'kolumnen Text'], ['Namn', 'kolumnen Namn', true], ['Bild', 'skog']]
+    const layers = isLand ? [['Namn', 'kolumnen Namn', true], ['Namnband', ''], ['Värde', 'kolumnen Värde'], ['Värdets ring', ''], ['Bild', 'kolumnen Landskap (L3)']] : [['Text', 'kolumnen Text'], ['Namn', 'kolumnen Namn', true], ['Bild', 'skog']]
     const props = isLand ? `<div class="m-sek"><h3>Brickan</h3>
-        <label>Form</label><div class="formval" role="group" aria-label="Form">${[['hex', '⬡ Sexhörning'], ['square', '◻ Kvadrat'], ['round', '○ Rund']].map(([k, l]) => `<button data-form="${k}" aria-pressed="${shape === k}">${l}</button>`).join('')}</div>
+        <label>Form</label><div class="formval" role="group" aria-label="Form">${[['hex', '<i class="hexi" aria-hidden="true"></i> Sexhörning'], ['square', '◻ Kvadrat'], ['round', '○ Rund']].map(([k, l]) => `<button data-form="${k}" aria-pressed="${shape === k}">${l}</button>`).join('')}</div>
         <div class="m-rader"><label>${shape === 'hex' ? 'Mellan sidorna' : shape === 'round' ? 'Diameter' : 'Sida'}<input value="${Math.round(dmm().w)} mm"></label><label>Kartong<input value="2 mm"></label></div>
         <label>Vrids i steg<select><option>${STEP[shape]}° (formens)</option><option>Fritt</option></select></label>
         <label class="vaxel"><input type="checkbox" checked> Får hållas på handen, dold som ett kort</label>
@@ -145,7 +145,7 @@ window.Editor = (() => {
 
   function tables() {
     const newDeck = V === 'A' ? 'Den blir en flik i Mall och Tabell.' : V === 'B' ? 'Den kommer i huvudets växel.' : 'Den blir en grupp med egen form.'
-    const choice = menu ? `<div class="meny" role="menu" aria-label="Lägg till i Spelyta"><button role="menuitem">▭ Yta</button><button role="menuitem">▯ Hög</button><button role="menuitem">⚂ Tärning</button><button role="menuitem" aria-expanded="true">⬡ Bricka <small>två sorter</small></button>
+    const choice = menu ? `<div class="meny" role="menu" aria-label="Lägg till i Spelyta"><button role="menuitem">▭ Yta</button><button role="menuitem">▯ Hög</button><button role="menuitem">⚂ Tärning</button><button role="menuitem" aria-expanded="true"><i class="hexi" aria-hidden="true"></i> Bricka <small>två sorter</small></button>
       <div class="val2"><button data-lagg="markor"><b>Markör</b>${pieceSvg({ kind: 'coin', shape: 'round', up: true }, 1.2, { edge: false })}<span>En bild i n exemplar: mynt, skada, ett märke. Ytorna ritas på raden, som lådans.</span><em>Kostar: en rad i Bord</em></button>
       <button data-lagg="lek"><b>Hög ur en lek</b>${tileOf(TILES[0], 0.8)}<span>En bild per rad i en egen tabell. Välj leken, eller gör en ny. ${newDeck}</span><em>Kostar: en lek med mall och tabell</em></button></div></div>` : ''
     return `<div class="bord"><div class="kol"><div class="remsa-spel">4 spelare · medurs · leken i Draghög</div><div class="trad">

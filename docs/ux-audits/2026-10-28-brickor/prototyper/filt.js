@@ -299,7 +299,7 @@ window.Filt = (() => {
 
   function extras(ex) {
     const b = (key, lab, cur, on) => `<button data-${key}="${on}" aria-pressed="${cur === on}">${lab}</button>`
-    ex.innerHTML = `<span>Form:</span>${b('form', '⬡ Sexhörning', S.shape, 'hex')}${b('form', '◻ Kvadrat', S.shape, 'square')}${b('form', '○ Rund', S.shape, 'round')}
+    ex.innerHTML = `<span>Form:</span>${b('form', '<i class="hexi" aria-hidden="true"></i> Sexhörning', S.shape, 'hex')}${b('form', '◻ Kvadrat', S.shape, 'square')}${b('form', '○ Rund', S.shape, 'round')}
       <span style="margin-left:8px">Skala:</span>${b('skala', 'Passa', scaleKey, 'fit')}${b('skala', 'TV 4 platser', scaleKey, 'tv4')}${b('skala', 'TV 8 platser', scaleKey, 'tv8')}
       <button data-nolla="1">Börja om</button>`
     ex.querySelectorAll('[data-form]').forEach((el) => el.onclick = () => { S.shape = el.dataset.form; reset(); extras(ex); render() })

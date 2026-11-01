@@ -159,7 +159,7 @@ window.Telefon = (() => {
   }
   function extras(ex) {
     const b = (lab, on) => `<button data-form="${on}" aria-pressed="${shape === on}">${lab}</button>`
-    ex.innerHTML = `<span>Form:</span>${b('⬡ Sexhörning', 'hex')}${b('◻ Kvadrat', 'square')}${b('○ Rund', 'round')}<span style="margin-left:8px">Flik:</span>${[['hand', 'Handen'], ['mine', 'Framför mig'], ['table', 'Bordet']].map(([k, l]) => `<button data-flik="${k}" aria-pressed="${tab === k}">${l}</button>`).join('')}<button data-nolla>Börja om</button>`
+    ex.innerHTML = `<span>Form:</span>${b('<i class="hexi" aria-hidden="true"></i> Sexhörning', 'hex')}${b('◻ Kvadrat', 'square')}${b('○ Rund', 'round')}<span style="margin-left:8px">Flik:</span>${[['hand', 'Handen'], ['mine', 'Framför mig'], ['table', 'Bordet']].map(([k, l]) => `<button data-flik="${k}" aria-pressed="${tab === k}">${l}</button>`).join('')}<button data-nolla>Börja om</button>`
     ex.querySelectorAll('[data-form]').forEach((el) => el.onclick = () => { shape = el.dataset.form; extras(ex); render() })
     ex.querySelectorAll('[data-flik]').forEach((el) => el.onclick = () => { tab = el.dataset.flik; extras(ex); render() })
     ex.querySelector('[data-nolla]').onclick = () => { reset(); sel = null; render() }
