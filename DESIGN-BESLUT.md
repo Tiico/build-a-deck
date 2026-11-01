@@ -5126,7 +5126,9 @@ Påsen är en dold hög som korten, ritad i brickans form: vyn säger nu vilka t
 Samma fält låter telefonen och TV:n rita brickornas baksidor i en hand (#1486).
 Korpusens projektioner härleddes om ur oförändrade loggar.
 Ett mynt är 18 px vid åtta platser och får räknarbrickans osynliga träffyta; en bricka som är mindre än ett finger på skärmen får den.
-Håll för att förstora (K8, K26) lyfter brickan i sina egna proportioner och lika hög som ett kort, i sin form.
+Håll för att förstora (K8, K26) lyfter brickan i sin form och i ett lyft korts pixlar per millimeter, så att orden läses som på ett kort och ett mynt förblir mindre än en sexhörning; där en kortram står — «Titta», TV:ns scen, «Visa för alla» — står brickan mitt i ramen i sin sanna storlek mot kortet (`TileInCard`).
+Högen behåller kortets ruta, som dess namn, antal och handtag läggs kring och ett släpp mäts mot, och brickorna står mitt i den; antalet står på brickans överkant, eftersom ett mynt vid åtta platser annars låg helt under brickan med antalet.
+Loggen säger «Ada vred Fjäll», eller «vred en bricka» där läsaren inte ser vilken.
 Skärmläsaren hör «Rågåker, bricka i Spelyta, vriden 120°», «Bricka, baksida, i Spelyta» för en bricka vars framsida inte syns, och påsen som «Landskap, 3 brickor, överst: bricka, baksida».
 
 Brickor i setupen, en egen lek och tabell per brickform, bordet, telefonen och trycket byggs i #1484–#1488.

@@ -309,6 +309,9 @@ export const svPlay = {
   'activity.you': 'Du',
   'activity.hand.other': '{name:s} hand',
   'activity.rotate': '{who} roterade ett kort',
+  'activity.rotate.tile': '{who} vred en bricka',
+  'activity.rotate.tile.named': '{who} vred {card}',
+  'activity.flip.tile': '{who} vände en bricka',
   'activity.flip': '{who} vände ett kort',
   'activity.flip.named': '{who} vände {card}',
   // A wooden piece is said by its kind (#1471), never by its seat's letter.

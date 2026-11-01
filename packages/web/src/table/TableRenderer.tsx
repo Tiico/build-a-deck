@@ -33,6 +33,7 @@ import { Question } from '../editor/Question.js'
 import { DragDoor } from '../editor/DragDoor.js'
 import { RING_AIR, RING_REACH, ringCentre } from './ring.js'
 import { liftBox, type Edges } from './lift.js'
+import { TileInCard } from './TileInCard.js'
 import { useSmallestPt } from './smallest.js'
 import { Lifted } from './Lifted.js'
 import { useLetGoWhereMouseArrives, type Pointing } from './arrival.js'
@@ -2052,9 +2053,11 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
       )}
       {held && (
         <div className="byd-inspect" onClick={() => setHeld(null)}>
-          <div data-inspect={held.id} data-face={held.cardRef === null ? 'back' : 'front'} data-shape={tileOf(held)?.shape} style={{ ...(held.cardRef === null ? {} : { ['--hue' as string]: hue(held.cardRef) }), ...(isTile(held) ? { aspectRatio: `${footprintOf(held).w} / ${footprintOf(held).h}`, height: 'auto' } : {}) }}>
-            <Texture faces={faces} c={held} retry />
-            <span>{cardWord(held) ?? ''}</span>
+          <div data-inspect={held.id} data-face={held.cardRef === null ? 'back' : 'front'} data-shape={tileOf(held)?.shape} style={held.cardRef === null ? undefined : { ['--hue' as string]: hue(held.cardRef) }}>
+            <TileInCard c={held}>
+              <Texture faces={faces} c={held} retry />
+              <span>{cardWord(held) ?? ''}</span>
+            </TileInCard>
           </div>
         </div>
       )}
@@ -2515,7 +2518,9 @@ function Pile({ zone, count, topCard, bottomCard, faces, back, left, top, px, li
       data-dynamic={zone.dynamic ? 'true' : 'false'}
       data-dragging={lifted ? 'true' : undefined}
       data-shuffling={playing ? (still ? 'pulse' : 'fan') : undefined}
-      style={{ position: 'absolute', left: left - px(box.w / 2), top: top - px(box.h / 2), width: px(box.w), height: px(box.h), transform: `rotate(${zone.geometry.rot}deg)` }}
+      // The pile keeps a card's box, which its name, its count and its handle are laid out round and
+      // a drop is measured against, and a pile of tiles stands in the middle of it in its own size.
+      style={{ position: 'absolute', left: left - px(CARD_MM.w / 2), top: top - px(CARD_MM.h / 2), width: px(CARD_MM.w), height: px(CARD_MM.h), transform: `rotate(${zone.geometry.rot}deg)`, ...(tile ? { ['--tile-x' as string]: `${px((CARD_MM.w - box.w) / 2)}px`, ['--tile-y' as string]: `${px((CARD_MM.h - box.h) / 2)}px` } : {}) }}
       {...points}
       {...pileKeys}
     >

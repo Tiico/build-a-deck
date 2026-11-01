@@ -3,7 +3,8 @@ import { Texture } from './Texture.js'
 import { hue } from './hue.js'
 import { useT } from '../i18n/index.js'
 import { cardWord } from './keyboard.js'
-import { footprintOf, isTile, tileOf } from '../components.js'
+import { isTile, tileOf } from '../components.js'
+import { TileInCard } from './TileInCard.js'
 
 // "Titta" (K8): one card large, on this screen and nobody else's. The pointer gets here by
 // holding a card down; the keyboard gets here from the address panel, and needs a way out that
@@ -30,9 +31,11 @@ export function CardLook({ card, faces, onClose }: { card: VisibleComponentState
         onClose()
       }}
     >
-      <div data-inspect={card.id} data-face={face} data-shape={tileOf(card)?.shape} style={{ ...(card.cardRef === null ? {} : { ['--hue' as string]: hue(card.cardRef) }), ...(isTile(card) ? { aspectRatio: `${footprintOf(card).w} / ${footprintOf(card).h}`, height: 'auto' } : {}) }}>
-        <Texture faces={faces} c={card} retry />
-        <span>{cardWord(card) ?? ''}</span>
+      <div data-inspect={card.id} data-face={face} data-shape={tileOf(card)?.shape} style={card.cardRef === null ? undefined : { ['--hue' as string]: hue(card.cardRef) }}>
+        <TileInCard c={card}>
+          <Texture faces={faces} c={card} retry />
+          <span>{cardWord(card) ?? ''}</span>
+        </TileInCard>
       </div>
       <button type="button" autoFocus onClick={onClose}>
         {t('kbd.panel.close')}

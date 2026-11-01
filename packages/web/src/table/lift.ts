@@ -21,12 +21,14 @@ export type Box = { left: number; top: number; w: number; h: number }
 
 // `smallestPt`: the card's own smallest text (#523). A card whose words are smaller than the
 // wizard's frame is lifted larger, until they reach the desk's floor or the window's height.
-// `foot` is what is lifted in the felt's millimetres: a card, or a tile in its own proportions
-// (#1485), lifted as tall as a card is, so its words are read at the same size.
+// `foot` is what is lifted in the felt's millimetres: a card, or a tile (#1485), lifted at the
+// pixels per millimetre a card is lifted at, so its words read at a card's size and a coin stays
+// smaller than a hexagon, as it is in the hand.
 export function liftBox(card: Edges, window: { w: number; h: number }, smallestPt?: number | null, foot: { w: number; h: number } = CARD_MM): Box {
   const share = window.h * LIFT_SHARE
-  const need = (readingWidth((share * foot.w) / foot.h, smallestPt, 'desk') * foot.h) / foot.w
-  const h = Math.min(need, window.h - 2 * LIFT_GAP)
+  const need = (readingWidth((share * CARD_MM.w) / CARD_MM.h, smallestPt, 'desk') * CARD_MM.h) / CARD_MM.w
+  const perMm = Math.min(need, window.h - 2 * LIFT_GAP) / CARD_MM.h
+  const h = Math.min(foot.h * perMm, window.h - 2 * LIFT_GAP)
   const w = (h * foot.w) / foot.h
   const onRight = window.w - card.right - LIFT_GAP >= w + LIFT_GAP
   const onLeft = card.left - LIFT_GAP >= w + LIFT_GAP

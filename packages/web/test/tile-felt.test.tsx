@@ -78,15 +78,18 @@ describe('a tile taken off a pile lands where it was carried (#1485, #223)', () 
 })
 
 describe('a tile held up to be read is a tile (#1485, K8, K26)', () => {
-  it('is lifted in its own proportions and in its shape, as large as the card it stands beside', () => {
+  it('is lifted in its own proportions and in its shape, at the scale a card is lifted at', () => {
     const view = tableOf(tileSetup()).view(null)
     const tile = view.components.find((c) => c.cardRef === 'Rågåker')!
     const card = { left: 100, right: 160, top: 100, bottom: 160 }
     const window = { w: 1280, h: 800 }
     const box = liftBox(card, window, null, footprintOf(tile))
     expect(box.w / box.h).toBeCloseTo(52 / ((52 * 2) / Math.sqrt(3)), 3)
-    // As tall as a card held up: the window's share, which is what makes the words on it readable.
-    expect(box.h).toBeCloseTo(liftBox(card, window, null).h, 3)
+    // At a card's pixels per millimetre, which is what makes the words on it readable; a coin is
+    // lifted smaller than a hexagon, as it is in the hand, and never as large as a card.
+    expect(box.h / TILE_HEX.physical.heightMm).toBeCloseTo(liftBox(card, window, null).h / 88, 3)
+    const coin = liftBox(card, window, null, { w: 25, h: 25 })
+    expect(coin.h / 25).toBeCloseTo(liftBox(card, window, null).h / 88, 3)
     render(<Lifted c={tile} box={box} faces={undefined} onAsk={() => undefined} />)
     expect(document.querySelector('.byd-lift')!.getAttribute('data-shape')).toBe('hex')
   })

@@ -1,6 +1,7 @@
 import { TILE_HEX } from '@byd/engine'
-import { deckFromProject } from '@byd/server'
+import { deckFromProject, type ProjectDoc } from '@byd/server'
 import { setupFromProject } from '@byd/server/doc'
+import type { Template } from '@byd/template'
 import { join, tableOf, withQuery } from '../support/api.js'
 import { pastTheWaitingRoom } from '../support/waiting.js'
 import { DESK } from '../support/devices.js'
@@ -12,11 +13,11 @@ import { expect, test } from '../support/test.js'
 // med ringen, och hennes skärm och rummets TV ritar samma sexhörning, med baksidan upp och vriden 60°.
 const hex = { id: TILE_HEX.id, version: TILE_HEX.version }
 
-function tileGame() {
+function tileGame(): ProjectDoc {
   const doc = gameDoc({ players: 2, counters: [], cards: 6 })
   const floor = doc.setup.zones.find((z) => z.id === doc.setup.floor)!.geometry
   const bag = { id: 'bag', kind: 'pile' as const, name: 'Landskap', visibility: 'none' as const, geometry: { x: floor.x + floor.w / 2, y: floor.y + floor.h / 2, w: 0, h: 0, rot: 0 } }
-  const lands = {
+  const lands: Template = {
     faces: {
       front: { base: [{ kind: 'text' as const, id: 't', x: 6, y: 24, w: 40, h: 10, bind: { field: 'title' }, font: { family: 'sans-serif', sizePt: 10, weight: 700 }, color: '#111' }], variants: {} },
       back: { base: [{ kind: 'shape' as const, id: 'bg', x: 0, y: 0, w: 52, h: 61, shape: 'rect' as const, fill: '#4a3424' }], variants: {} },

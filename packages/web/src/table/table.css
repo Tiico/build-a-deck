@@ -1539,12 +1539,18 @@
 .byd-tile-face, .byd-tile-edge { position: absolute; inset: 0; overflow: hidden; clip-path: var(--tile-clip, none); border-radius: var(--tile-r, 0); pointer-events: none; }
 .byd-tile-face { box-sizing: border-box; display: grid; place-items: center; padding: 8% 12%; background: hsl(var(--hue, 0) 40% 86%); text-align: center; overflow-wrap: anywhere; }
 .byd-tile-face[data-face='back'], .byd-pile[data-shape] .byd-pile-top[data-face='back'], .byd-pile[data-shape] .byd-pile-bottom[data-face='back'], .byd-pile[data-shape] .byd-pile-fan-card { background: #4a3424; }
-.byd-tile-face > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.byd-tile-face > img, .byd-inspect .byd-tile-face > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 0; }
 .byd-tile-face > img ~ span:not([data-texture]) { visibility: hidden; }
-.byd-tile-edge { background: #2a1f16; }
-.byd-tile-edge[data-layer]:not([data-layer='0']):nth-of-type(odd) { background: #3a2c20; }
+.byd-tile-edge { background: #6b4f35; }
+.byd-tile-edge[data-layer]:not([data-layer='0']) { background: #574029; }
+.byd-tile-edge[data-layer]:not([data-layer='0']):nth-of-type(odd) { background: #4a3523; }
 .byd-pile[data-shape] .byd-pile-top, .byd-pile[data-shape] .byd-pile-bottom, .byd-pile[data-shape] .byd-pile-fan-card { padding: 0; border: 0; clip-path: var(--tile-clip, none); border-radius: var(--tile-r, 0); }
+/* A pile keeps a card's box for its name, count and handle; its tiles stand in the middle of it. */
+.byd-pile[data-shape] > .byd-pile-top, .byd-pile[data-shape] > .byd-pile-bottom, .byd-pile[data-shape] > .byd-tile-edge, .byd-pile[data-shape] > .byd-pile-fan { inset: var(--tile-y) var(--tile-x); }
 .byd-pile[data-shape][data-count='0'] .byd-pile-top { background: rgba(255, 255, 255, 0.12); }
+/* The count stands on the tile's top edge rather than on the card's: on a coin at eight seats the
+   card's top put the badge over the whole pile, and the pile under it was not there to see. */
+.byd-table-frame[data-mode='tv'] .byd-pile[data-shape] .byd-pile-n { top: var(--tile-y); translate: -50% -70%; }
 /* The steps a tile was just turned through (variant A of #1474): a dot for each way it can lie,
    round it, the one it lies at amber; there for a moment and gone. Under reduced motion it does not
    fade, it is only there and then not. */
@@ -1554,6 +1560,9 @@
 @keyframes byd-detents-fade { 0%, 60% { opacity: 1; } 100% { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .byd-detents { animation: none; } }
 /* Held up to be read (K8, K26), a tile is the tile: cut to its outline, its back the board's. */
-.byd-lift[data-shape], .byd-inspect > [data-inspect][data-shape] { clip-path: var(--tile-clip, none); border-radius: var(--tile-r, 0); display: grid; place-items: center; text-align: center; }
-.byd-lift[data-shape][data-face='back'], .byd-inspect > [data-inspect][data-shape][data-face='back'] { background: #4a3424; }
-.byd-lift[data-shape] img, .byd-inspect > [data-inspect][data-shape] img { border-radius: 0; }
+.byd-lift[data-shape] { clip-path: var(--tile-clip, none); border-radius: var(--tile-r, 0); display: grid; place-items: center; text-align: center; }
+.byd-lift[data-shape][data-face='back'] { background: #4a3424; }
+.byd-lift[data-shape] img { border-radius: 0; }
+/* Where a card's frame stands — «Titta», the TV's column, «Visa för alla» — a tile stands in it at
+   its true size against a card (`TileInCard`), and the frame draws nothing of its own. */
+.byd-inspect > [data-inspect][data-shape], [data-tv] .byd-tv-inspect > div[data-shape], [data-tv] .byd-tv-stage figure > div[data-shape], [data-tv-show][data-shape] { background: none; padding: 0; box-shadow: none; overflow: visible; }
