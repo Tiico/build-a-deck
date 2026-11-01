@@ -88,13 +88,14 @@
   .tyst-marke .g { width: 13px; height: 13px; }
   .ed[data-las-c] { box-shadow: inset 0 3px 0 #c8a24a; }
   .dorr-skymning { position: absolute; inset: 0; z-index: 8; display: grid; place-items: center; padding: 16px; background: rgb(5 7 12 / 72%); }
-  .dorr-skymning .dialog { width: min(540px, 100%); }
+  .dorr-skymning .dialog { width: min(620px, 100%); }
   .dorr-skymning .dialog h2 { display: flex; gap: 10px; align-items: center; }
   .dorr-skymning .dialog h2 .g { width: 20px; height: 20px; color: #ffd98a; }
   .dorr-skymning .dialog .rad3 { display: grid; gap: 4px; margin: 12px 0; padding: 12px 14px; border-radius: 10px; background: #11131a; border: 1px solid #262a35; font-size: 14px; }
   .dorr-skymning .dialog .rad3 span { color: #9aa3b8; }
   .dorr-skymning .dialog .knappar .prim { background: #1f6fd0; color: #fff; border-radius: 8px; }
   .dorr-skymning .dialog .knappar .sek { border-radius: 8px; }
+  .ed .angra button[aria-disabled='true'], .ed .t-data [aria-disabled='true'], .ed .t-box[aria-disabled='true'] { color: #5d6578; }
   .ed-not { padding: 40px 20px; color: #c8b98d; font-size: 14px; line-height: 1.6; }
 </style>
 </head>
@@ -212,10 +213,10 @@ function rad(s, i) {
   let tredje = s.bord ? `${s.bord} bord · senast ${s.spelat}` : 'inte spelat'
   let extra = ''
   if (las && v === 'A') extra = `<span class="lasmarke">${g('book')}Läsläge</span><span class="orsak">${orsak(s, true)}</span>`
-  const meny = st.meny && i === 0 && las ? menyLas() : ''
+  const meny = st.meny && s.k === 'sal' ? menyLas() : ''
   return `<div class="spelrad" ${dim ? 'data-dim' : ''}><span class="tumme" style="--c:${s.c}">${dim ? `<span class="las-ikon" title="Läsläge">${g('lock')}</span>` : ''}</span>
     <div class="txt"><strong>${s.namn}</strong><span class="rad">v${s.v} · ${s.kort} kort · ${s.spelare} spelare</span>${las && v === 'A' ? '' : `<span class="rad">${tredje}</span>`}${extra}</div>
-    <button class="mer" aria-label="Val för ${s.namn}" ${st.meny && i === 0 && las ? 'aria-expanded="true"' : 'aria-expanded="false"'} data-do="meny">⋯</button>${meny}</div>`
+    <button class="mer" aria-label="Val för ${s.namn}" ${st.meny && s.k === 'sal' ? 'aria-expanded="true"' : 'aria-expanded="false"'} data-do="meny">⋯</button>${meny}</div>`
 }
 function menyLas() {
   // Menyns val är de som finns i dag (#909). De som skriver säger varför de inte går, med orsaksraden (#1198).
@@ -292,7 +293,7 @@ function lasMening(medred) {
   }
   return {
     huvud: `${s.namn} har ${s.kort} kort, och Gratis rymmer ${ph(FRI.kort)} per spel${pro === 'med' ? ' sedan ditt Pro gick ut 28 okt' : ''}.`,
-    sma: `Du kan läsa, söka, jämföra versioner och exportera. ${pro === 'med' ? 'Förnya Pro, eller ta bort kort i en kopia efter exporten, så går det att ändra igen.' : 'Spelet går att ändra igen när det ryms; exportera det om du vill ta det med dig.'}`,
+    sma: `Du kan läsa, söka, jämföra versioner och exportera. ${pro === 'med' ? 'Förnya Pro så går det att ändra igen.' : 'Spelet går att ändra igen när kontot rymmer det.'}`,
   }
 }
 function lasbandA(medred) {
@@ -353,7 +354,7 @@ function rita() {
   flikar('bredd', { 1440: '1440', 1280: '1280', 1024: '1024', 390: '390' }, bredd, (k) => (bredd = k))
   document.getElementById('anteckning').innerHTML = V[v].not
   document.getElementById('etikett').innerHTML = `<b>${V[v].namn}</b> · ${YTOR[yta]} · ${bredd} px`
-  const w = +bredd, h = bredd === '390' ? 844 : 800
+  const w = +bredd, h = +(q.get('h') || (bredd === '390' ? 844 : 800))
   sida.style.width = w + 'px'; sida.style.height = h + 'px'; sida.dataset.bredd = bredd
   sida.innerHTML = yta === 'hem' ? minaSpel() : editor(yta === 'medred')
   const p = new URLSearchParams({ v, yta, heron, pro, bredd })
