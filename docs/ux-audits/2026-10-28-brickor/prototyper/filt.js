@@ -248,7 +248,7 @@ window.Filt = (() => {
   // B: vredet ovanför den valda brickan. Dra runt det; brickan snäpper i formens steg.
   function knob(p) {
     const f = root.querySelector('.filt')
-    const R = deckMm(S.shape).h / 2 * mm + 26
+    const R = deckMm(S.shape).h / 2 * mm + 44
     const place = (deg) => { const a = (deg - 90) * Math.PI / 180; return [X(p.x) + R * Math.cos(a), Y(p.y) + R * Math.sin(a)] }
     const k = document.createElement('div')
     k.className = 'vred'; k.tabIndex = 0; k.setAttribute('role', 'slider'); k.setAttribute('aria-label', `Vrid ${p.tile.namn}`)
@@ -313,7 +313,7 @@ window.Filt = (() => {
       V = v; root = scen
       if (!S) reset()
       S.sel = null
-      scen.innerHTML = `<div class="tv"><div class="tv-huvud"><b>Skogens råd</b><span>v3</span><span style="color:var(--chalk-off)">4 vid bordet</span><span class="kod">KX4M</span></div><div class="filt-hus"><div class="filt" role="application" aria-label="Filten"></div></div><aside class="tv-sida"></aside></div>`
+      scen.innerHTML = `<div class="tv"><div class="tv-huvud"><b>Skogens råd</b><span>v3</span><span style="color:var(--chalk-off)">4 vid bordet</span><span class="kod">KX4M</span></div>${innerWidth < 600 ? '<p style="grid-column:1/-1;margin:0;padding:8px 16px;background:#1f1b12;color:#e9d7a8;font:13px/1.45 system-ui">Vid 390 ritas ingen filt i appen: under K9:s 45 px får fönstret spelarytan (se Telefonen). Filten visas här bara förminskad.</p>' : ''}<div class="filt-hus"><div class="filt" role="application" aria-label="Filten"></div></div><aside class="tv-sida"></aside></div>`
       extras(ex)
       render()
       scen.querySelector('.filt').addEventListener('pointerdown', (e) => { if (e.target === e.currentTarget) { S.sel = null; render() } })

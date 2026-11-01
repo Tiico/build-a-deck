@@ -72,7 +72,14 @@ body { display: flex; flex-direction: column; height: 100vh; height: 100dvh; }
 .matt-tab .under { color: #f0a58a; font-weight: 700; }
 .tv-sida .kbd { font: 12px/1.5 system-ui; color: #9aa3b8; }
 .tv-sida kbd { display: inline-block; min-width: 20px; padding: 0 4px; border: 1px solid #3a3f4b; border-radius: 4px; color: #e6ecfa; text-align: center; }
-@media (max-width: 760px) { .tv { grid-template-columns: minmax(0, 1fr); grid-template-rows: 44px minmax(300px, 1fr) auto; } .tv-sida { border-left: 0; border-top: 1px solid #1e2129; } }
+.protorad .omnot { display: none; }
+@media (max-width: 600px) {
+  .protorad .fraga p + p, .protorad .anteckning, .protorad .extra { display: none; }
+  .protorad .omnot { display: inline-block; }
+  body.visa-not .protorad .anteckning, body.visa-not .protorad .extra { display: flex; flex-wrap: wrap; }
+  body.visa-not .protorad .anteckning { display: block; }
+}
+@media (max-width: 760px) { .tv { grid-template-columns: minmax(0, 1fr); grid-template-rows: 44px auto minmax(300px, 1fr) auto; } .tv-sida { border-left: 0; border-top: 1px solid #1e2129; } }
 </style>
 </head>
 <body>
@@ -85,6 +92,7 @@ body { display: flex; flex-direction: column; height: 100vh; height: 100dvh; }
     <button data-yta="filt">Filten</button><button data-yta="telefon">Telefonen</button><button data-yta="editor">Editorn</button><button data-yta="kopia">Fysisk kopia</button>
   </div>
   <div class="vaxlare" role="group" aria-label="Variant"><button data-v="A">A</button><button data-v="B">B</button><button data-v="C">C</button></div>
+  <button class="omnot" id="omnot" aria-expanded="false">Om varianten</button>
   <div class="extra" id="extra"></div>
   <p class="anteckning" id="anteckning" aria-live="polite"></p>
 </div>
@@ -120,6 +128,7 @@ addEventListener('keydown', (e) => {
   if (e.key === 'ArrowRight') { v = vs[(vs.indexOf(v) + 1) % vs.length]; visa() }
   if (e.key === 'ArrowLeft') { v = vs[(vs.indexOf(v) + vs.length - 1) % vs.length]; visa() }
 })
+document.getElementById('omnot').onclick = (e) => { const on = document.body.classList.toggle('visa-not'); e.currentTarget.setAttribute('aria-expanded', String(on)); YTOR[yta].resize?.() }
 addEventListener('resize', () => YTOR[yta].resize?.())
 visa()
 </script>

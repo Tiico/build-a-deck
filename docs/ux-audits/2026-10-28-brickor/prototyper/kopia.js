@@ -9,7 +9,7 @@ window.Kopia = (() => {
   }
   let root, rz = -28, rx = 58, raf = 0, idle = true
   const PX = 2.4
-  const SHEET = { w: 300, h: 214, t: 2.2 }
+  const SHEET = { w: 300, h: 226, t: 2.2 }
   function sheetSvg() {
     const { w, h } = MM.hex
     let tiles = '', holes = ''
@@ -91,7 +91,7 @@ window.Kopia = (() => {
       <div class="ark"><div class="kant s"></div><div class="kant n"></div><div class="kant e"></div><div class="kant w"></div><div class="yta">${sheetSvg()}<i class="glans"></i><i class="ljus"></i></div></div>
       ${loose(TILES[2], SHEET.w + 14, 18, 14, true)}${loose(TILES[8], SHEET.w + 30, 84, -22, true)}${loose(TILES[13], SHEET.w + 8, 146, 40, false)}
       ${coins(-46, 40, 7)}${coins(-40, 92, 3)}
-    </div></div><div class="bildtext"><b>Skogens råd · Landskap</b>Stansark 300 × 214 mm, 2 mm kartong · 18 brickor · 20 guldmynt</div></div>`
+    </div></div><div class="bildtext"><b>Skogens råd · Landskap</b>Stansark 300 × 226 mm, 2 mm kartong · 18 brickor · 20 guldmynt</div></div>`
     apply(); fitScale()
     const k = scen.querySelector('.kopia')
     let start = null
