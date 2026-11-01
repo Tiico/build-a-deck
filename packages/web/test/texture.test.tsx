@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import type { VisibleComponentState } from '@byd/protocol'
-import { Texture } from '../src/table/Texture.js'
+import { BackTexture, Texture } from '../src/table/Texture.js'
 import { contrastRatio, cssCustomProperties } from '../src/player/contrast.js'
 
 const FRONT = 'a'.repeat(64)
@@ -46,6 +46,27 @@ describe('a texture that is still being rendered', () => {
     const lost = render(<Texture faces={FACES} c={faceUp} />)
     exhaust(() => lost.container.querySelector('img') as HTMLImageElement)
     expect(lost.container.querySelector('[data-texture="failed"] i')!.textContent).toBe('Bilden kunde inte laddas')
+    vi.useRealTimers()
+  })
+})
+
+// Variant C of #1546: the waiting side says what it is, a card, a tile or a board, and turns a
+// spinner, which a lost side does not.
+describe('a side that is not drawn yet, in its own words (#1546)', () => {
+  it('says a tile and a board for what they are, and turns a spinner only while it waits', () => {
+    const hex: VisibleComponentState = { ...faceUp, type: { id: 'tile.hex.52', version: 1 } }
+    const tile = render(<Texture faces={FACES} c={hex} />)
+    expect(tile.container.querySelector('[data-texture="pending"] i')!.textContent).toBe('Laddar brickan…')
+    expect(tile.container.querySelector('[data-texture="pending"] [data-texture-spinner]')).not.toBeNull()
+
+    const board = render(<BackTexture faces={FACES} hash={BACK} part="board" />)
+    expect(board.container.querySelector('[data-texture="pending"] i')!.textContent).toBe('Laddar brädet…')
+    expect(board.container.querySelector('[data-texture="pending"] b')).toBeNull()
+
+    vi.useFakeTimers()
+    const lost = render(<Texture faces={FACES} c={faceUp} />)
+    exhaust(() => lost.container.querySelector('img') as HTMLImageElement)
+    expect(lost.container.querySelector('[data-texture="failed"] [data-texture-spinner]')).toBeNull()
     vi.useRealTimers()
   })
 })

@@ -107,7 +107,7 @@ for (const backend of backends) {
       expect(started.status).toBe(201)
       const table = ((await started.json()) as { id: string }).id
       // Ten fronts of their own and the one back they share: every page the table needs, queued once.
-      const pages = (await run.host.get(table))!.textureHashes()
+      const pages = (await run.host.get(table))!.allTextureHashes()
       expect(pages).toHaveLength(11)
       expect(await renders(owner.id)).toBe(11)
       // The test leader who pressed bears nothing: the game's owner bears her testers (A2).
@@ -129,7 +129,7 @@ for (const backend of backends) {
       const own = { ...deck, template: ownBack(++made), rows: Object.fromEntries(Object.keys(deck.rows).map((c) => [c, { title: `${tag} ${c}` }])) }
       const res = await send(ada.cookie, 'POST', '/sessions', { id: tag, version: 'v1', setup: twoSeatSetup(), deck: own })
       expect(res.status).toBe(201)
-      const pages = (await run.host.get(tag))!.textureHashes()
+      const pages = (await run.host.get(tag))!.allTextureHashes()
       expect(pages.length).toBeGreaterThan(0)
       expect(await renders(ada.id)).toBe(pages.length)
     })

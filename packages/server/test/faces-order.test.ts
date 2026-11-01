@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { BOARDS, STANDARD_TYPES, TypeRegistry } from '@byd/engine'
 import type { RenderRequest } from '@byd/render/queue'
-import { queueFaces } from '../src/faces.js'
+import { placesOf, queueFaces, REST_PLACE, seenOf } from '../src/faces.js'
 import { ProjectDoc, deckFromProject } from '../src/projects.js'
 import { setupFromProject } from '../src/setup.js'
 import { openingSetup } from '../src/recipe.js'
@@ -44,8 +44,34 @@ describe('ett bords texturer i sin egen ordning (#1546)', () => {
     for (const p of [...seen, ...rest]) expect(p).toEqual(expect.any(Number))
     expect(Math.max(...(seen as number[]))).toBeLessThan(Math.min(...(rest as number[])))
     expect(rest).toEqual([...(rest as number[])].sort((a, b) => a - b))
-    // Every place once, the seen ones from 0, so every table's seen textures go before any table's rest.
-    expect(new Set(jobs.map((j) => j.order)).size).toBe(jobs.length)
+    // The seen ones from 0, so every table's seen textures go before any table's rest.
     expect([...(seen as number[])].sort((a, b) => a - b)).toEqual([0, 1, 2])
+    // And the start waits for exactly those (beslut A): what is seen when the game starts.
+    expect(seenOf({ ...setup, components }, out.faces, out.ownFaces).sort()).toEqual([out.ownFaces['main']?.['front'], out.faces['r1']?.['back'], out.faces['r4']?.['front']].sort())
+  })
+
+  it('numrerar resten efter djupet i varje hög, så att två högar ritas uppifrån sida vid sida', async () => {
+    const doc = game()
+    const setup = setupFromProject(doc)
+    // A second pile, face down too: the cards r3 and r4 lie there, r3 on top.
+    const zones = [...setup.zones, { id: 'bag', kind: 'pile' as const, name: 'Påsen', visibility: 'none' as const, geometry: { x: 300, y: 0, w: 0, h: 0, rot: 0 } }]
+    const components = setup.components.map((c) => (c.cardRef === 'r3' || c.cardRef === 'r4' ? { ...c, zone: 'bag' } : c))
+    const jobs: RenderRequest[] = []
+    const out = await queueFaces(deckFromProject(doc), { ...setup, zones, components }, registry, 150, 0, async (job) => {
+      jobs.push(job)
+    })
+    const front = (row: string) => jobs.find((j) => j.hash === out.faces[row]?.['front'])?.order
+    expect([front('r1'), front('r2'), front('r3'), front('r4')]).toEqual([REST_PLACE, REST_PLACE + 1, REST_PLACE, REST_PLACE + 1])
+  })
+
+  it('ger högens nya ordning efter en blandning, så att det som dras härnäst ritas först', async () => {
+    const doc = game()
+    const setup = setupFromProject(doc)
+    const out = await queueFaces(deckFromProject(doc), setup, registry, 150, 0, async () => undefined)
+    // Shuffled: r4 on top now, r1 at the bottom.
+    const shuffled = { ...setup, components: [...setup.components].reverse() }
+    const places = new Map(placesOf(shuffled, out.faces).map((p) => [p.hash, p.order]))
+    const front = (row: string) => places.get(out.faces[row]?.['front'] ?? '')
+    expect([front('r4'), front('r3'), front('r2'), front('r1')]).toEqual([REST_PLACE, REST_PLACE + 1, REST_PLACE + 2, REST_PLACE + 3])
   })
 })

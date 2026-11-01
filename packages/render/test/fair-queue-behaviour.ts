@@ -46,6 +46,20 @@ export function fairQueueBehaviour(store: () => RenderStore, tag: string): void 
     expect(await drain(q, 6)).toEqual(['late-b0', 'late-b1', 'late-a2', 'late-b2', 'late-a3', 'late-b3'])
   })
 
+  it('takes a table\'s new order for what is still queued, after a shuffle, and leaves the rest alone (#1546)', async () => {
+    const q = store()
+    for (let i = 0; i < 4; i++) await q.enqueue(req(`re-${i}`, { order: 10 + i, at: 1 + i }))
+    expect(await drain(q, 1)).toEqual(['re-0'])
+    // The pile was shuffled: what lay at the bottom is drawn next, and the one already running keeps its place.
+    await q.reorder([
+      { hash: `${tag}-re-3`, order: 10 },
+      { hash: `${tag}-re-1`, order: 13 },
+      { hash: `${tag}-re-0`, order: 14 },
+    ])
+    expect(await drain(q, 3)).toEqual(['re-3', 're-2', 're-1'])
+    expect(await q.status(`${tag}-re-0`)).toMatchObject({ state: 'running' })
+  })
+
   it('still draws every texture before a print, whichever table asked for it (DRIFT §6)', async () => {
     const q = store()
     await q.enqueue(req('kind-print', { order: 0, at: 1, priority: 'print' }))

@@ -20,7 +20,7 @@ import {
   type TypeRegistry,
 } from '@byd/engine'
 import type { RenderStore } from '@byd/render/queue'
-import { queueFaces, type Deck } from './faces.js'
+import { layoutOf, placesOf, queueFaces, seenOf, type Deck } from './faces.js'
 import { withoutBlocked } from './reports.js'
 import { ADMISSION_ERASED, ADMISSION_REVOKED, isMasked } from './erase.js'
 import type { LogStore } from './store.js'
@@ -87,14 +87,15 @@ export class TableActor {
     const state = replay(initial, registry, log)
     let cards: DeckFacts | undefined
     // The deck of the version the log says the table plays (C7, #677): a refreshed table's, not
-    // the one it started with, over the cards that version deals — the replayed setup, not the start record's.
+    // the one it started with, over the cards that version deals — as the table lies now (#1546),
+    // so what is seen and what is drawn next are this table's and not its start's.
     const stored = await store.deckOf(id, state.version)
     if (stored) {
       // A picture blocked since the table was dealt its deck is drawn empty (#1274), and its faces get
       // new hashes, so no texture of the picture is asked for again.
       const deck = withoutBlocked(stored, blocked())
       // Enqueue is idempotent by hash, so loading a table twice costs nothing the second time.
-      const compiled = await queueFaces(deck, state.setup, registry, TEXTURE_DPI, Date.now(), (job) => renders?.enqueue(job, record.accountId) ?? Promise.resolve())
+      const compiled = await queueFaces(deck, layoutOf(state), registry, TEXTURE_DPI, Date.now(), (job) => renders?.enqueue(job, record.accountId) ?? Promise.resolve())
       cards = { faces: compiled.faces, titles: compiled.titles, texts: compiled.texts, ownFaces: compiled.ownFaces }
     }
     return new TableActor(id, initial, state, log, registry, store, sources ?? defaultSources(), cards, renders, record.accountId, blocked)
@@ -108,6 +109,14 @@ export class TableActor {
     this.cards = { faces: compiled.faces, titles: compiled.titles, texts: compiled.texts, ownFaces: compiled.ownFaces }
   }
 
+  // After a shuffle the pile is drawn in its new order (#1546): its textures still queued are given
+  // the places the new order says, the top first. Not a line of the log, so the log and its replay
+  // are untouched (D4); a store that cannot take the order leaves the queue as it was.
+  private async reorder(): Promise<void> {
+    if (!this.renders || !this.cards) return
+    await this.renders.reorder(placesOf(layoutOf(this.state), this.cards.faces ?? {})).catch(() => undefined)
+  }
+
   get seq(): number {
     return this.state.seq
   }
@@ -118,9 +127,16 @@ export class TableActor {
     return this.cards?.faces ?? {}
   }
 
-  // The boards' own sides (`ownFaces`, #1479) are textures of the table as the cards' are, so the TV
-  // does not say it is ready before the felt's board is drawn (#765, #1539).
+  // The textures «Starta spelet» waits for (#765, revised by beslut A in #1546): what is seen as the
+  // table lies — the boards' own sides (#1539), the backs of the piles and every face-up card — and
+  // not the rest of the deck, which is drawn after the start in the order it is drawn. Read off the
+  // table each time it is asked, so it is true after a draw, a new version and a restart alike.
   textureHashes(): string[] {
+    return this.cards ? seenOf(layoutOf(this.state), this.cards.faces ?? {}, this.cards.ownFaces ?? {}) : []
+  }
+
+  // Every distinct page the table has queued: each card's sides and the boards' own (#1539).
+  allTextureHashes(): string[] {
     const all = new Set<string>()
     for (const faces of [this.cards?.faces ?? {}, this.cards?.ownFaces ?? {}]) for (const perFace of Object.values(faces)) for (const hash of Object.values(perFace)) all.add(hash)
     return [...all]
@@ -302,7 +318,7 @@ export class TableActor {
       const stored = await this.store.deckOf(this.id, this.state.version)
       if (!stored) return
       const renders = this.renders
-      const compiled = await queueFaces(withoutBlocked(stored, this.blocked()), this.state.setup, this.registry, TEXTURE_DPI, Date.now(), (job) => renders?.enqueue(job, this.bearer) ?? Promise.resolve())
+      const compiled = await queueFaces(withoutBlocked(stored, this.blocked()), layoutOf(this.state), this.registry, TEXTURE_DPI, Date.now(), (job) => renders?.enqueue(job, this.bearer) ?? Promise.resolve())
       this.cards = { faces: compiled.faces, titles: compiled.titles, texts: compiled.texts, ownFaces: compiled.ownFaces }
       for (const [sub, previous] of this.subscribers) {
         const next = this.viewFor(sub)
@@ -350,6 +366,7 @@ export class TableActor {
     for (const line of decision.applied) {
       if (line.intent.v === 'seat.release') await this.emptied(line.intent.seat, line.by === null ? 'kicked' : 'left', line.by === line.intent.seat ? answer : undefined)
     }
+    if (decision.applied.some((l) => l.intent.v === 'shuffle' || l.intent.v === 'setup.reset')) await this.reorder()
     return decision
   }
 

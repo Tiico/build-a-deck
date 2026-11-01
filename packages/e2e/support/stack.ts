@@ -125,7 +125,11 @@ export async function serverWith(env: Record<string, string>): Promise<{ origin:
   // Beside the stack: the walk for a port starts at the stack's own, which is therefore the first
   // number it has to turn down (#1371).
   const stack = process.env['BYD_E2E_ORIGIN']
-  const server = await listen({ STATIC_DIR: dist, ...(database ? { DATABASE_URL: database } : {}), ...env }, logFile, stack ? Number(new URL(stack).port) : undefined)
+  // The tiers the suite's own journeys write into the shared database (#1494, #1491): a server refuses
+  // to start beside an `account_plans` row whose tier its `BYD_PLANS` does not name, so a second server
+  // started after such a journey knows them unless it is given tiers of its own.
+  const plans = JSON.stringify({ default: 'free', plans: { free: {}, pro: {} } })
+  const server = await listen({ STATIC_DIR: dist, ...(database ? { DATABASE_URL: database } : {}), BYD_PLANS: plans, ...env }, logFile, stack ? Number(new URL(stack).port) : undefined)
   return {
     origin: server.origin,
     stop: async () => {

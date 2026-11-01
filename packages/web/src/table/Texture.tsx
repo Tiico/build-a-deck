@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import type { VisibleComponentState } from '@byd/protocol'
+import { tileOf, type TileShape } from '../components.js'
 import { useTextureFailure } from './TextureFailures.js'
 import { useT } from '../i18n/index.js'
 import { cardWord } from './keyboard.js'
@@ -35,7 +36,26 @@ export function Texture({ faces, c, retry = false }: TextureProps) {
   if (!src || !c) return null
   // Keyed on the face: a card whose texture changes gets a fresh <img> rather than a new `src`
   // on the old one, so the browser has no decoded bitmap left to show for a frame.
-  return <TextureFace key={src} src={src} name={cardWord(c)} retry={retry} />
+  return <TextureFace key={src} src={src} name={cardWord(c)} retry={retry} shape={tileOf(c)?.shape ?? 'card'} />
+}
+
+// What a side is while it is not drawn yet (#1546, variant C, beställarens beslut 2026-11-01): the
+// skeleton in the side's own shape — the card's box, or the tile's outline it lies in, which clips
+// it — with its words in the widest part of that shape, so a hexagon's name never stands in its
+// point (#1544). The box is said here and not in a sheet, as `tileLook.ts` says a tile's outline,
+// since the sheet is the one the first frame blocks on. Padding is a share of the width.
+type Shape = TileShape | 'card' | 'board'
+const INSCRIBED: Partial<Record<Shape, CSSProperties>> = {
+  hex: { padding: '30% 15%' },
+  circle: { padding: '17%' },
+  square: { padding: '10%' },
+}
+const PENDING_WORD: Record<Shape, 'texture.pending' | 'texture.pending.tile' | 'texture.pending.board'> = {
+  card: 'texture.pending',
+  hex: 'texture.pending.tile',
+  circle: 'texture.pending.tile',
+  square: 'texture.pending.tile',
+  board: 'texture.pending.board',
 }
 
 // The back a face-down pile wears (#313). It has no component to be read off — a hidden pile hands
@@ -43,14 +63,15 @@ export function Texture({ faces, c, retry = false }: TextureProps) {
 // other texture: the same waiting, the same ladder of retries, the same one announcement for the
 // whole screen. A second <img> written beside this one would be a second answer to «what does a
 // texture do while it is not there yet», and there is only ever one.
-export function BackTexture({ faces, hash }: { faces: string | undefined; hash: string | undefined }) {
+// A board's side (#1480) is drawn through here too, nameless as a pile's back, and says it is a board.
+export function BackTexture({ faces, hash, part }: { faces: string | undefined; hash: string | undefined; part?: 'board' }) {
   if (!faces || !hash) return null
   const src = `${faces}/faces/${hash}`
   // Nameless on purpose: what the pile wears says nothing about which card is under it.
-  return <TextureFace key={src} src={src} name={null} retry={false} />
+  return <TextureFace key={src} src={src} name={null} retry={false} shape={part ?? 'card'} />
 }
 
-function TextureFace({ src, name: named, retry }: { src: string; name: string | null; retry: boolean }) {
+function TextureFace({ src, name: named, retry, shape }: { src: string; name: string | null; retry: boolean; shape: Shape }) {
   const t = useT()
   // `attempt` only busts the cache and never goes backwards; `rung` is where on the ladder of
   // growing pauses we are, and a player asking again starts it over.
@@ -96,9 +117,10 @@ function TextureFace({ src, name: named, retry }: { src: string; name: string | 
         onError={onError}
       />
       {phase !== 'ready' && (
-        <span className="byd-texture-state" data-texture={phase}>
+        <span className="byd-texture-state" data-texture={phase} data-shape={shape} style={INSCRIBED[shape]}>
+          {phase === 'pending' && <span className="byd-texture-spin" data-texture-spinner aria-hidden="true" />}
           {name !== null && <b>{name}</b>}
-          <i>{phase === 'pending' ? t('texture.pending') : t('texture.failed')}</i>
+          <i>{phase === 'pending' ? t(PENDING_WORD[shape]) : t('texture.failed')}</i>
           {phase === 'failed' && retry && (
             // The view that holds the card up puts it down on a touch or a click anywhere in
             // it; a press on the way back is neither, so the button keeps both to itself.

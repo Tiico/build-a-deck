@@ -90,7 +90,8 @@ function lost(html: string): string {
   // two renderers write the same element with its attributes in a different order, so the state
   // is found by what it is rather than by matching the waiting markup letter for letter.)
   const state = failed.slice(failed.indexOf('<span class="byd-texture-state"'))
-  const out = html.replace(/data-state="pending"/g, 'data-state="failed"').replace(/<span class="byd-texture-state" data-texture="pending">.*?<\/span>/g, state)
+  // The waiting state holds the spinner (#1546), an empty span of its own, before its words.
+  const out = html.replace(/data-state="pending"/g, 'data-state="failed"').replace(/<span class="byd-texture-state" data-texture="pending"[^>]*>(?:<span[^>]*><\/span>)?.*?<\/span>/g, state)
   expect(out).toMatch(/data-texture="failed"/)
   expect(out).not.toMatch(/pending/)
   return out

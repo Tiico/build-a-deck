@@ -76,14 +76,20 @@ test.describe('the television chrome that opens (#684)', () => {
   })
 
   // The suite runs no renderer, so every card is still queued: the table the room sees before the
-  // renderer has caught up (#765, beslut B).
+  // renderer has caught up (#765, revised by beslut A in #1546: the start waits for what is seen).
   test('says the cards still being drawn at the floor, and the start waits for them', async ({ request, open, player }) => {
     // Faces nothing else in the run has: a texture is addressed by what it draws, and a journey
     // that starts a renderer (`render.ts`) leaves the recipe's cards rendered in a shared database.
-    // The back is the recipe's and may already be done, so the count is read as a count, not as 0.
+    // What the start waits for is what is seen, the draw pile's back, so the back is this test's own.
     const nonce = crypto.randomUUID()
     const recipe = gameThatStarts()
-    const doc = { ...recipe, rows: recipe.rows.map((r) => ({ ...r, fields: { ...r.fields, body: `${String(r.fields['body'])} ${nonce}` } })) }
+    const back = recipe.template.faces['back'] ?? { base: [], variants: {} }
+    const mark = { kind: 'text' as const, id: 'nonce', x: 5, y: 5, w: 30, h: 4, bind: { literal: nonce }, font: { family: 'sans-serif', sizePt: 6 }, color: '#000' }
+    const doc = {
+      ...recipe,
+      template: { ...recipe.template, faces: { ...recipe.template.faces, back: { ...back, base: [...back.base, mark] } } },
+      rows: recipe.rows.map((r) => ({ ...r, fields: { ...r.fields, body: `${String(r.fields['body'])} ${nonce}` } })),
+    }
     const table = await tableFromSetup(request, setupFromProject(doc), deckFromProject(doc))
     await player(table, { name: 'Ada', seat: 'A' })
     const { page } = await open(TV, withQuery(table.tvUrl, 'lang=sv'))

@@ -4758,7 +4758,23 @@ Beställaren valde 2026-11-01 alternativ A av tre (#1546): «Starta spelet» vä
 B, att vänta på allt och bara turas om, nådde inte målet att varje bord kan börja inom en minut; C, att också vänta på nästa varv kort, var en mellanväg som inte behövdes.
 Det ersätter «tills alla kort är klara» ovan; den släckta brickan, spaltens rad och «Starta ändå» står kvar som de är, och räknar det starten väntar på.
 Kön är byggd först: varje bords texturer numreras från 0, det som syns först, och resten från en fast bas i högarnas ordning, och kön delar ut lägsta plats först inom varje jobbslag (DRIFT §6).
-Hur en sida ser ut när den dras innan dess textur är ritad — kort, brickor i alla former och bräden — prototypas i #1546 och byggs när den är godkänd, och starten ändras samtidigt.
+
+Starten räknar sedan det som syns som bordet ligger, varje gång den frågas (`textureHashes`): brädenas egna sidor, högarnas översta sida och varje uppvänt kort.
+Det är samma räkning i TV:ns spalt, på brickan, i väntrummet och i Bord-flikens rad, och editorns «Öppna bordet» väntar på samma sak (L5).
+«Uppdatera bordet» väntar fortfarande på varje sida av den nya versionen, eftersom bytet görs i ett drag.
+Resten av leken ritas i den ordning den dras: efter en blandning får högens köade sidor nya platser, översta först (`RenderStore.reorder`), och två högar ritas uppifrån sida vid sida.
+Ordningen är inte en rad i loggen, så loggen och dess uppspelning är orörda (D4).
+
+**Hur en sida ser ut innan den är ritad: variant C, av beställaren 2026-11-01** (#1546, prototypen i `docs/ux-audits/2026-11-01-otecknat-kort/`).
+Tre varianter prototypades för kort, brickor i sexkant, fyrkant och rund form, och bräden, på TV:ns filt och i telefonen.
+**A, tryckprovet**, där sidan står på papper med kortets namn och regeltext. **B, ryggen och en lapp**, där baksidan visas med en lapp med namnet. **C, formens skelett**, där dagens svep klipps till formen.
+Valet blev C: dagens svep, klippt i sidans form, med namnet i formens inskrivna ruta och en snurra, och orden säger vad sidan är, «Laddar kortet…», «Laddar brickan…» eller «Laddar brädet…».
+Formens ruta står inline i `Texture` och inte i ett ark, som brickans kontur i `tileLook.ts`, eftersom arket är det första bildrutan väntar på.
+I sexkanten står namnet mellan en fjärdedel och tre fjärdedelar av höjden, i den runda brickan i kvadraten inuti, och aldrig i spetsen som förut (#1544).
+Ett bräde visar nu också väntan, utan namn, där det förut stod i sin kartongfärg (#1480).
+I kolumnen på `/online`, där korten ligger över varandra, går snurran med väntraden på kortet som ligger helt, så att namnet står överst i remsan.
+
+Grindarna: `packages/render/test/fair-queue*.test.ts` (kön turvis och efter en blandning, i minnet och i Postgres), `packages/server/test/faces-order.test.ts` och `packages/server/test/texture-order.test.ts` (platserna, det som syns och den nya ordningen), `packages/web/test/texture-layout.test.tsx` (namnet och snurran inne i formen, mätt i Chromium) och `packages/web/test/start-waits-for-textures.test.tsx` (starten tänds när det som syns är ritat).
 
 **Tillägg 2026-10-25 (#1344): platsernas skyltar står fritt från brickan.**
 Pillren under högarna trycker ned brickan i pixlar, mot platserna, och platsens skylt på TV:n (#683) står i pixlar ovanför platsens zoner.

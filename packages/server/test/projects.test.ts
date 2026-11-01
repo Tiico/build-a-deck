@@ -198,12 +198,14 @@ describe('refreshing a running table from its project (C7, L5)', () => {
     const before = await fronts()
     expect(Object.keys(before).sort()).toEqual(['dragon', 'knight', 'phoenix', 'wizard'])
     expect(Object.values(before).every((h) => h !== undefined)).toBe(true)
-    // Four fronts — the dragon's new one and the phoenix among them — and the one shared back.
-    expect((await textures()).total).toBe(5)
+    // What the start waits for is what is seen (beslut A, #1546): every card lies face up on the
+    // table, so it is the four fronts, the dragon's new one and the phoenix among them, and the
+    // back they share lies under nothing anyone sees.
+    expect((await textures()).total).toBe(4)
 
     await run.restart()
     expect(await fronts()).toEqual(before)
-    expect((await textures()).total).toBe(5)
+    expect((await textures()).total).toBe(4)
   })
 
   it('refuses to refresh a session that was not started from a project', async () => {
@@ -218,13 +220,14 @@ describe('texture readiness (L5)', () => {
     const { id } = (await (await json('POST', '/projects', project())).json()) as { id: string; hostKey: string }
     const { id: sessionId } = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string; hostKey: string }
     const before = await (await fetch(`${run.http}/sessions/${sessionId}/textures`)).json()
-    // Three cards, two faces each: the back is one shared texture, the fronts are three.
-    expect(before).toEqual({ total: 4, done: 0, failed: [], smallest: {} })
+    // Three cards face down in the draw pile: what is seen, and so what the start waits for (beslut A,
+    // #1546), is the one back they share. Their fronts are queued behind it, in the pile's order.
+    expect(before).toEqual({ total: 1, done: 0, failed: [], smallest: {} })
     await run.renderAll()
     const after = await (await fetch(`${run.http}/sessions/${sessionId}/textures`)).json()
     // And what each card's front was fitted to once it is rendered (#523): the editor says, after a
     // start, which cards a phone cannot read. The template's one text is a 14 pt title.
-    expect(after).toEqual({ total: 4, done: 4, failed: [], smallest: { dragon: 14, knight: 14, wizard: 14 } })
+    expect(after).toEqual({ total: 1, done: 1, failed: [], smallest: { dragon: 14, knight: 14, wizard: 14 } })
     expect((await fetch(`${run.http}/sessions/nope/textures`)).status).toBe(404)
   }, 60_000)
 })

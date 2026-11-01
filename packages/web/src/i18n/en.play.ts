@@ -14,6 +14,8 @@ export const enPlay: Record<keyof typeof svPlay, string> = {
   'way.editor.aria': 'Back to {game} in the editor',
 
   'texture.pending': 'Loading the card…',
+  'texture.pending.tile': 'Loading the tile…',
+  'texture.pending.board': 'Loading the board…',
   'texture.failed': 'The image could not be loaded',
   'texture.retry': 'Try again',
 

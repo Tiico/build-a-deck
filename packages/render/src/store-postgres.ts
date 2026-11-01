@@ -95,6 +95,17 @@ export class PostgresRenderStore implements RenderStore {
     return { hash: row.hash, kind: row.kind, priority: row.priority, compiled: row.compiled, requestedAt: Number(row.requested_at), startedAt: now }
   }
 
+  async reorder(places: readonly { hash: string; order: number }[]): Promise<void> {
+    if (places.length === 0) return
+    const hashes = places.map((p) => p.hash)
+    const orders = places.map((p) => p.order)
+    await this.sql`
+      update render_jobs set place = p.place
+      from unnest(${hashes}::text[], ${orders}::int[]) as p(hash, place)
+      where render_jobs.hash = p.hash and render_jobs.state = 'queued'
+    `
+  }
+
   async complete(hash: string, output: Uint8Array, fit: Fit = { smallestPt: null }): Promise<void> {
     if (this.objects) {
       const [job] = await this.sql<Pick<Row, 'kind'>[]>`select kind from render_jobs where hash = ${hash}`

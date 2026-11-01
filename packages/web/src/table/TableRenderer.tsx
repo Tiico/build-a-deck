@@ -1547,7 +1547,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
                   <span className="byd-board-side" data-board-face>
                     {boardSide(c, { px, left, top, scale })}
                   </span>
-                )) || <BackTexture faces={faces} hash={c.faces?.['front']} />}
+                )) || <BackTexture faces={faces} hash={c.faces?.['front']} part="board" />}
               </div>
             )
           })}

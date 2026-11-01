@@ -23,6 +23,8 @@ export const svPlay = {
 
   // Ett korts bild medan den laddas, när den gått förlorad, och när någon ber om den igen (#10).
   'texture.pending': 'Laddar kortet…',
+  'texture.pending.tile': 'Laddar brickan…',
+  'texture.pending.board': 'Laddar brädet…',
   'texture.failed': 'Bilden kunde inte laddas',
   'texture.retry': 'Försök igen',
 
