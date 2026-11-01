@@ -1814,17 +1814,30 @@ export class ProjectClient {
     return ((await res.json()) as { hash: string }).hash
   }
 
-  // Whether a rendering is finished, so a link is offered only when there is a file behind it.
-  // A 200 and nothing else: the queue's 202 is `ok` too, and read as done it put the link in
-  // front of a file that was not there yet (#678).
+  // A rendering waited for until the queue has an answer, so a link is offered only when there is
+  // a file behind it: true once the file is there, false when the job failed or is unknown.
   //
-  // Or a redirect, which is how a finished file answers on the box (DRIFT §4): the bytes are in
-  // R2, and R2 answers without CORS, so a fetch that followed the redirect failed there and the
-  // link never came (#1008) — green everywhere without an object store, broken on the one machine
-  // that has one. The redirect is the answer; the file behind it is not fetched to learn it.
-  async rendered(hash: string): Promise<boolean> {
-    const res = await fetch(`${this.http}/faces/${hash}`, { ...withCredentials(), redirect: 'manual' })
-    return res.status === 200 || res.type === 'opaqueredirect'
+  // Done is a 200 and nothing else: the queue's 202 is `ok` too, and read as done it put the link
+  // in front of a file that was not there yet (#678). Or a redirect, which is how a finished file
+  // answers on the box (DRIFT §4): the bytes are in R2, and R2 answers without CORS, so a fetch
+  // that followed the redirect failed there and the link never came (#1008) — green everywhere
+  // without an object store, broken on the one machine that has one. The redirect is the answer;
+  // the file behind it is not fetched to learn it.
+  //
+  // It asks again for as long as the queue says the job is queued or running (202), however long
+  // that is (#1500): a still or a booklet waits behind every table's textures (DRIFT §6), which on
+  // a busy box is minutes, and a press that gave up after a fixed count of questions left a file
+  // that came anyway with nobody to hand it to. A job whose worker died is put back by the
+  // reaper, so a running job does not wait for ever. `going` lets the asker stop waiting for a
+  // file it no longer wants.
+  async whenRendered(hash: string, going: () => boolean = () => true): Promise<boolean> {
+    while (going()) {
+      const res = await fetch(`${this.http}/faces/${hash}`, { ...withCredentials(), redirect: 'manual' })
+      if (res.status === 200 || res.type === 'opaqueredirect') return true
+      if (res.status !== 202) return false
+      await new Promise((r) => setTimeout(r, 250))
+    }
+    return false
   }
 
   // The booklet under the name it is opened and saved by (#678).
