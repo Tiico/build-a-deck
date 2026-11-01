@@ -43,6 +43,7 @@ export function whatOf(intent: EditIntent): Key {
       return 'undo.what.template'
     case 'setRecipe':
     case 'setDice':
+    case 'setPieces':
     case 'addZone':
     case 'insertZone':
     case 'addSeatZone':

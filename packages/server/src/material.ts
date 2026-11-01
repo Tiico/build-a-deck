@@ -1,12 +1,13 @@
 import { seatEdgeOf } from '@byd/engine'
-import { CHIP_MM, DIE_MM, counterSpots, diceSpots, type Counter, type Die, type Geometry, type Setup, type Zone } from './recipe.js'
+import { CHIP_MM, DIE_MM, PIECE_MM, counterSpots, diceSpots, type Counter, type Die, type Geometry, type Piece, type Setup, type Zone } from './recipe.js'
 
 // Imported by the editor as well as the server, so this module stays free of anything Node.
 // Where the game's material lies when a table is laid (#1292): the counters (C4) and the dice
 // (K28), piece by piece, each with the line of the setup it comes from. The table is laid from
 // this list (`setupFromProject`) and the editor's felt draws its handles from the same list, so
 // the piece the designer takes hold of is the piece the players are dealt.
-export type MaterialLine = { kind: 'die'; index: number } | { kind: 'counter'; index: number }
+export type MaterialLine = { kind: 'die'; index: number } | { kind: 'counter'; index: number } | { kind: 'piece'; index: number }
+export type PieceKind = Piece['kind']
 export type MaterialPiece = {
   line: MaterialLine
   zone: string
@@ -21,6 +22,17 @@ export type MaterialPiece = {
   faces?: number
   counter?: number
   name?: string
+  // Which wooden piece (#1471), and the seat whose colour it wears (L11); null wears none.
+  kind?: PieceKind
+  owner?: string | null
+}
+
+// A die or a piece on its way to a spot: its line, the seat whose chair its point is read from, and
+// for a piece the seat whose colour it wears.
+type Laid = { line: MaterialLine; seat: string | null; owner: string | null; faces?: number; kind?: PieceKind }
+function pieceOf(zone: string, l: Laid, at: { x: number; y: number }): MaterialPiece {
+  const size = l.kind === undefined ? DIE_MM : PIECE_MM
+  return { line: l.line, zone, seat: l.seat, size, ...(l.faces !== undefined ? { faces: l.faces } : {}), ...(l.kind !== undefined ? { kind: l.kind, owner: l.owner } : {}), ...at }
 }
 
 // A point said from seat A's chair, in the zone a seat at `edge` has (#1292): along the rim from
@@ -68,34 +80,46 @@ export function layMaterial(setup: Setup): MaterialPiece[] {
       pieces.push({ line: { kind: 'counter', index }, zone: zone.id, seat, size: CHIP_MM, counter: c.start, name: c.name, ...(at ?? { x: 0, y: 0 }) })
     })
   }
-  // The dice side by side in the area each is put in and clear of what stands in it (the floor's
-  // piles, #1137) — or, for a line the designer dragged, in a row on the point it was dragged to.
-  // A die put in a zone that is gone lies nowhere.
-  const byZone = new Map<string, { index: number; faces: number; seat: string | null }[]>()
-  const put = (zone: string, index: number, faces: number, count: number, seat: string | null) => byZone.set(zone, [...(byZone.get(zone) ?? []), ...Array.from({ length: count }, () => ({ index, faces, seat }))])
-  const placed = (zoneId: string, index: number, faces: number, count: number, at: { x: number; y: number }, seat: string | null) => {
+  // The dice and the wooden pieces (#1471) side by side in the area each is put in and clear of what
+  // stands in it (the floor's piles, #1137) — or, for a line the designer dragged, in a row on the
+  // point it was dragged to. A line put in a zone that is gone lies nowhere. A die and a piece take
+  // the same room (`PIECE_MM` is `DIE_MM` until the felt draws a piece), so they share the spots.
+  const byZone = new Map<string, Laid[]>()
+  const lay = (zoneId: string, count: number, at: { x: number; y: number } | undefined, seat: string | null, of: (i: number) => Laid) => {
+    const laid = Array.from({ length: count }, (_, i) => of(i))
+    if (at === undefined) {
+      byZone.set(zoneId, [...(byZone.get(zoneId) ?? []), ...laid])
+      return
+    }
     const zone = zoneOf(setup, zoneId)
     if (!zone) return
     const point = seat === null ? at : seatPoint(at, zone.geometry, edgeOf(setup, seat))
-    for (const spot of piecesAt(point, zone.geometry, count, DIE_MM)) pieces.push({ line: { kind: 'die', index }, zone: zoneId, seat, size: DIE_MM, faces, ...spot })
+    piecesAt(point, zone.geometry, count, DIE_MM).forEach((spot, i) => {
+      const l = laid[i]
+      if (l) pieces.push(pieceOf(zoneId, l, spot))
+    })
   }
-  ;(setup.dice ?? []).forEach((d, index) => {
+  const lines: { line: MaterialLine; d: Die | Piece; faces?: number; kind?: PieceKind }[] = [
+    ...(setup.dice ?? []).map((d, index) => ({ line: { kind: 'die' as const, index }, d, faces: d.faces })),
+    ...(setup.pieces ?? []).map((d, index) => ({ line: { kind: 'piece' as const, index }, d, kind: d.kind })),
+  ]
+  for (const { line, d, faces, kind } of lines) {
+    const what = { line, ...(faces !== undefined ? { faces } : {}), ...(kind !== undefined ? { kind } : {}) }
+    // A piece laid for a seat wears its colour (L11): the seat whose area it lies in, or, counted per
+    // seat on a shared area, the seat its copy is counted for. A die has no colour.
+    const colour = (seat: string | null) => (kind === undefined ? null : seat)
     if (d.role !== undefined) {
-      for (const seat of setup.seats) {
-        if (d.at) placed(`${d.role}:${seat}`, index, d.faces, d.count, d.at, seat)
-        else put(`${d.role}:${seat}`, index, d.faces, d.count, seat)
-      }
+      for (const seat of setup.seats) lay(`${d.role}:${seat}`, d.count, d.at, seat, () => ({ ...what, seat, owner: colour(seat) }))
     } else if (d.zone !== undefined) {
       const count = d.perSeat ? d.count * setup.seats.length : d.count
-      if (d.at) placed(d.zone, index, d.faces, count, d.at, null)
-      else put(d.zone, index, d.faces, count, null)
+      lay(d.zone, count, d.at, null, (i) => ({ ...what, seat: null, owner: d.perSeat ? colour(setup.seats[Math.floor(i / d.count)] ?? null) : null }))
     }
-  })
-  for (const [zoneId, dice] of byZone) {
+  }
+  for (const [zoneId, laid] of byZone) {
     const zone = zoneOf(setup, zoneId)
     if (!zone) continue
-    const spots = diceSpots(zone.geometry, dice.length, setup.zones.filter((z) => z.id !== zoneId))
-    dice.forEach((d, i) => pieces.push({ line: { kind: 'die', index: d.index }, zone: zoneId, seat: d.seat, size: DIE_MM, faces: d.faces, ...(spots[i] ?? { x: 0, y: 0 }) }))
+    const spots = diceSpots(zone.geometry, laid.length, setup.zones.filter((z) => z.id !== zoneId))
+    laid.forEach((l, i) => pieces.push(pieceOf(zoneId, l, spots[i] ?? { x: 0, y: 0 })))
   }
   return pieces
 }
@@ -123,7 +147,7 @@ export function chairPoint(at: { x: number; y: number }, zone: Geometry, edge: '
 // said from seat A's chair; any other area holds it as the one zone it is. A counter is every
 // seat's by nature, so it lies only in a family's area, and a die that counts per seat keeps
 // counting so. Null when nothing under the point can hold this line, and the drag leaves it be.
-export function placeLine(setup: Setup, line: MaterialLine, center: { x: number; y: number }): Die | Counter | null {
+export function placeLine(setup: Setup, line: MaterialLine, center: { x: number; y: number }): Die | Piece | Counter | null {
   const areas = setup.zones.filter((z) => z.kind === 'area' && contains(z.geometry, center))
   const area = areas.sort((a, b) => a.geometry.w * a.geometry.h - b.geometry.w * b.geometry.h)[0]
   if (!area) return null
@@ -136,7 +160,7 @@ export function placeLine(setup: Setup, line: MaterialLine, center: { x: number;
     const { role: _role, at: _at, ...rest } = c
     return { ...rest, ...(role !== 'counters' ? { role } : {}), at }
   }
-  const d = setup.dice?.[line.index]
+  const d = line.kind === 'die' ? setup.dice?.[line.index] : setup.pieces?.[line.index]
   if (!d) return null
   const { zone: _zone, role: _role, at: _at, perSeat, ...rest } = d
   if (role !== null) return { ...rest, role, at }

@@ -2,8 +2,8 @@ import type { AssetCrop as Crop, CardQuery, FaceId, ZoneAction, ZoneBeside } fro
 import { RuleBlock, isSymbolName, type Element, type FaceTemplate, type Variant } from '@byd/template'
 import { showsWholePicture } from '@byd/protocol'
 import { BOX_SIDES, BoxFace, type BoxClearance, type BoxSide } from '@byd/engine'
-import { AssetCrop, PictureName, ProjectBox, ProjectDice } from './projects.js'
-import type { Cell, Picture, ProjectDie, ProjectCredit, ProjectDoc, ProjectFont, ProjectRow, ProjectTheme, RuleDoc } from './projects.js'
+import { AssetCrop, PictureName, ProjectBox, ProjectDice, ProjectPieces } from './projects.js'
+import type { Cell, Picture, ProjectDie, ProjectPiece, ProjectCredit, ProjectDoc, ProjectFont, ProjectRow, ProjectTheme, RuleDoc } from './projects.js'
 import { DEFAULT_BOX_TYPE } from './box.js'
 import { applyRevert, decideRevert, type Revert } from './undo.js'
 import { columnsOf } from './columns.js'
@@ -164,6 +164,8 @@ export type EditIntent =
   // a die added, changed or taken away is one version and one step back (B4). A line that names a
   // zone nobody has any more is kept, and lies nowhere until the zone is back (`setupFromProject`).
   | { v: 'setDice'; dice: ProjectDie[] }
+  // The game's wooden pieces (#1471), the whole list at once as the dice: one version, one step back.
+  | { v: 'setPieces'; pieces: ProjectPiece[] }
   // `geometry` is where the zone was born, decided once when the edit is made (`decideEdit`) and
   // written into the log with it (#894). Where a new zone goes is a rule that changes with a
   // deploy (#443, #480, #881), and a line that asked the rule again on replay would put the zone
@@ -591,6 +593,11 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
       const dice = ProjectDice.parse(intent.dice)
       const { dice: _gone, ...rest } = doc.setup
       return { ...doc, setup: dice.length > 0 ? { ...rest, dice } : rest }
+    }
+    case 'setPieces': {
+      const pieces = ProjectPieces.parse(intent.pieces)
+      const { pieces: _gone, ...rest } = doc.setup
+      return { ...doc, setup: pieces.length > 0 ? { ...rest, pieces } : rest }
     }
     case 'addZone': {
       if (doc.setup.zones.some((z) => z.id === intent.id)) throw new Error(`zone ${intent.id} already exists`)

@@ -16,7 +16,8 @@ export const ComponentTypeDef = z.object({
   id: z.string().min(1),
   version: z.number().int().nonnegative(),
   physical: z.object({
-    shape: z.enum(['rect', 'roundedRect', 'hex', 'circle', 'polyhedron']),
+    // A figure (#1471) is a piece cut in a silhouette, as a meeple is: none of the outlines above.
+    shape: z.enum(['rect', 'roundedRect', 'hex', 'circle', 'polyhedron', 'figure']),
     widthMm: z.number().positive(),
     heightMm: z.number().positive(),
     thicknessMm: z.number().positive(),
@@ -26,12 +27,18 @@ export const ComponentTypeDef = z.object({
   faces: z.array(FaceId).min(1),
   // The face that carries the component's identity. Showing any other face hides it.
   contentFace: FaceId,
+  // A type whose every face shows what it is (#1471): a meeple lying down is the same meeple, in the
+  // same colour, as one standing. Absent, a face other than `contentFace` hides it, as a card's back.
+  everyFaceShows: z.literal(true).optional(),
   behaviours: z.object({
     stackable: z.boolean(),
     shufflable: z.boolean(),
     flippable: z.boolean(),
     rollable: z.union([z.literal(false), z.object({ faces: z.number().int().min(2) })]),
     counter: z.boolean(),
+    // Never held in a hand (K32, #1471): material that lies on the table. Declared by the type rather
+    // than guessed from whether it rolls or counts, since a meeple does neither. Absent, it is held.
+    holdable: z.literal(false).optional(),
   }),
   editorSchema: z.array(FieldDef),
   print: z.object({
@@ -48,9 +55,9 @@ export const ComponentTypeDef = z.object({
 })
 export type ComponentTypeDef = z.infer<typeof ComponentTypeDef>
 
-// Material (K31, K32): a piece that is rolled or keeps a count, as against a card. It lies on the
-// table and is never held in a hand.
-export const isMaterial = (def: ComponentTypeDef): boolean => def.behaviours.rollable !== false || def.behaviours.counter
+// Material (K31, K32): a piece that lies on the table and is never held in a hand, as against a card.
+// What the type declares (`holdable: false`), and nothing else (#1471).
+export const isMaterial = (def: ComponentTypeDef): boolean => def.behaviours.holdable === false
 
 export const typeKey = (ref: TypeRef): string => `${ref.id}@${ref.version}`
 
@@ -174,7 +181,7 @@ export const TOKEN_COUNTER: ComponentTypeDef = {
   physical: { shape: 'circle', widthMm: 20, heightMm: 20, thicknessMm: 2, material: 'acrylic' },
   faces: ['front'],
   contentFace: 'front',
-  behaviours: { stackable: false, shufflable: false, flippable: false, rollable: false, counter: true },
+  behaviours: { stackable: false, shufflable: false, flippable: false, rollable: false, counter: true, holdable: false },
   editorSchema: [{ key: 'title', label: 'Title', kind: 'text', required: true }],
   print: { bleedMm: 0, safeMm: 1, dpi: 300, colorProfile: 'sRGB', minPtByScript: { Latn: 6 } },
   manufacturableBy: [],
@@ -191,15 +198,39 @@ const die = (faces: number, sizeMm: number): ComponentTypeDef => ({
   physical: { shape: 'polyhedron', widthMm: sizeMm, heightMm: sizeMm, thicknessMm: sizeMm, material: 'acrylic' },
   faces: ['front'],
   contentFace: 'front',
-  behaviours: { stackable: false, shufflable: false, flippable: false, rollable: { faces }, counter: false },
+  behaviours: { stackable: false, shufflable: false, flippable: false, rollable: { faces }, counter: false, holdable: false },
   editorSchema: [],
   print: { bleedMm: 0, safeMm: 0, dpi: 300, colorProfile: 'sRGB', minPtByScript: { Latn: 6 }, stock: true },
   manufacturableBy: [],
 })
 export const DICE: readonly ComponentTypeDef[] = [die(4, 18), die(6, 16), die(8, 18), die(10, 18), die(12, 20), die(20, 20)]
 
+// The wooden pieces (#1471, #1470): a meeple, a cube and a disc, one family of types as the dice are
+// one (beställarens beslut 3, 2026-10-28). Nothing is printed on them, and the colour is the seat's
+// (L11, beslut 2): a piece laid for a seat carries the seat as its `cardRef`, as a counter carries
+// its name. They are moved and nothing else, and never held (K32). A meeple may be laid down
+// (beslut 4): `flip` between standing and lying, and lying it is still the same meeple to everyone.
+// Like a die they are stock the partner packs and never cards (beslut 5, #1140). The sizes are the
+// common wooden pieces and only matter to print.
+const wood = (id: string, physical: ComponentTypeDef['physical'], faces: string[]): ComponentTypeDef => ({
+  id: `piece.${id}`,
+  version: 1,
+  physical,
+  faces,
+  contentFace: faces[0] ?? 'front',
+  ...(faces.length > 1 ? { everyFaceShows: true as const } : {}),
+  behaviours: { stackable: false, shufflable: false, flippable: faces.length > 1, rollable: false, counter: false, holdable: false },
+  editorSchema: [],
+  print: { bleedMm: 0, safeMm: 0, dpi: 300, colorProfile: 'sRGB', minPtByScript: { Latn: 6 }, stock: true },
+  manufacturableBy: [],
+})
+export const MEEPLE = wood('meeple', { shape: 'figure', widthMm: 16, heightMm: 16, thicknessMm: 10, material: 'wood' }, ['standing', 'lying'])
+export const CUBE = wood('cube', { shape: 'polyhedron', widthMm: 8, heightMm: 8, thicknessMm: 8, material: 'wood' }, ['front'])
+export const DISC = wood('disc', { shape: 'circle', widthMm: 16, heightMm: 16, thicknessMm: 5, material: 'wood' }, ['front'])
+export const PIECES: readonly ComponentTypeDef[] = [MEEPLE, CUBE, DISC]
+
 // What every table knows.
-export const STANDARD_TYPES: readonly ComponentTypeDef[] = [CARD_STANDARD_63x88, TOKEN_COUNTER, ...DICE]
+export const STANDARD_TYPES: readonly ComponentTypeDef[] = [CARD_STANDARD_63x88, TOKEN_COUNTER, ...DICE, ...PIECES]
 
 // The tuckbox (#1412, L91): the one box of step 1 (#1406, beslut 4). The deck stands in it on its edge
 // and the lid tucks in at the top. Its measure follows the deck with 1 mm of air around the card and

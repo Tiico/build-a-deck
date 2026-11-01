@@ -10,3 +10,6 @@ export const CHIP_MM = 24
 // The felt draws a die larger than life, and this is what it reserves; the recipe spaces a zone's
 // dice for it (#1136).
 export const DIE_MM = 30
+// What the recipe reserves for a wooden piece (#1471) when it spaces a line of them: a die's room,
+// until the felt draws them (#1475) and says otherwise.
+export const PIECE_MM = DIE_MM
