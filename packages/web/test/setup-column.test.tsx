@@ -300,7 +300,7 @@ describe('brickorna i trädet (#1487)', () => {
     fireEvent.click(screen.getByRole('button', { name: `Lägg till i ${node}` }))
     const menu = screen.getByRole('menu', { name: `Lägg till i ${node}` })
     const tile = within(menu).getByRole('menuitem', { name: '＋ Bricka' })
-    expect(tile.textContent).toContain('markör eller hög ur en lek')
+    expect(tile.textContent).toContain('markör eller lek')
     expect(tile.getAttribute('aria-expanded')).toBe('false')
     fireEvent.click(tile)
     expect(tile.getAttribute('aria-expanded')).toBe('true')
@@ -345,8 +345,8 @@ describe('brickorna i trädet (#1487)', () => {
     expect(deck).toMatchObject({ id: 'brickor-1', name: 'Brickor', type: { id: 'tile.hex.52', version: 1 }, rows: [{ id: 'kort-1', fields: { title: '', antal: 1 } }] })
     const pile = doc.setup.zones.find((z) => z.id === deck.zone)!
     expect(pile).toMatchObject({ kind: 'pile', name: 'Brickor' })
-    expect(names('Spelyta')).toEqual(['Draghög leken', 'Kasthög', 'Brickor leken Brickor'])
-    expect(names('Brickor')).toEqual(['1 × Brickor sexhörning 52 mm, hög ur en lek'])
+    expect(names('Spelyta')).toEqual(['Draghög leken', 'Kasthög', 'Brickor leken'])
+    expect(names('Brickor')).toEqual(['1 × Brickor sexhörning 52 mm'])
     // Ett steg tillbaka tar både högen och leken.
     fireEvent.keyDown(document, { key: 'z', ctrlKey: true })
     await waitFor(async () => expect((await truth()).decks).toBeUndefined())

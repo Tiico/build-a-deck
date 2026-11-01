@@ -989,8 +989,9 @@
 .byd-setup-undo button { border: 1px solid #5c4a1f; border-radius: 8px; padding: 4px 8px; background: #241f13; color: #ffd98a; font-weight: 700; cursor: pointer; }
 /* The list of zones: every one the table has, in two groups, and the row is the way into it —
    the only way to one that lies under another on the felt. */
-.byd-setup-zones { display: grid; gap: 14px; }
-.byd-setup-zones ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.byd-setup-zones { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+/* A grid row keeps its min-content, and a row's words are nowrap: the tracks are held to the column (#1487). */
+.byd-setup-zones ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 2px; }
 .byd-setup-zones li[data-open='true'] { background: #171a23; border-radius: 10px; }
 .byd-setup-row { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .byd-setup-name { flex: 1; min-width: 0; display: flex; gap: 8px; align-items: center; border: 0; background: transparent; color: #e6ecfa; text-align: left; padding: 8px; border-radius: 8px; cursor: pointer; font: inherit; }
@@ -1003,7 +1004,7 @@
 .byd-setup-name i[data-kind='hand'] { width: 16px; height: 7px; box-shadow: none; }
 .byd-setup-name i[data-kind='die'] { width: 12px; height: 12px; border-radius: 3px; border-color: #f3e9d6; background: #f3e9d6; box-shadow: inset 0 0 0 4px #f3e9d6, inset 0 0 0 6px #1c1c1c; }
 .byd-setup-name i[data-kind='counter'] { width: 12px; height: 12px; border-radius: 50%; border-color: #ffd98a; background: #2a2f3c; box-shadow: none; }
-.byd-setup-name small { flex: none; color: #9aa3b8; font-size: 11px; }
+.byd-setup-name small { flex: 0 100 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #9aa3b8; font-size: 11px; }
 /* A wooden piece (#1477, K33) drawn as its silhouette in wood, since its colour is each seat's (L11):
    a meeple, a cube, a disc. The same glyph stands in the row and in the row's kind buttons. */
 i[data-kind='piece'] { flex: none; display: inline-block; width: 14px; height: 14px; border: 0; border-radius: 0; box-shadow: none; background: #e3b878; }
@@ -5150,8 +5151,6 @@ label.byd-ai-rules { cursor: pointer; }
 .byd-tile-measures dd { margin: 0; font-size: 13px; color: #e6ecfa; font-variant-numeric: tabular-nums; }
 /* Snittet över en brickas yta i Mall (#1487): det som stansas bort är dämpat, och konturen streckad. */
 .byd-canvas-cut { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
-.byd-canvas-cut > path:first-child { fill: rgb(21 23 28 / 72%); }
-.byd-canvas-cut > .byd-canvas-cut-line { fill: none; stroke: #ffd98a; stroke-width: 1.5px; stroke-dasharray: 6px 4px; vector-effect: non-scaling-stroke; }
 /* Kortväggen med ett avsnitt per lek (#1487): ett huvud per lek med vägen till dess Mall och Tabell. */
 .byd-wall-deck-head { display: flex; align-items: center; gap: var(--byd-s2); min-width: 0; margin: 0 0 var(--byd-s3); }
 .byd-wall-deck-head > h2 { margin: 0; font-size: 15px; color: #fff; }

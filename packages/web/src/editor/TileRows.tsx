@@ -39,10 +39,10 @@ export function markerWords(marker: Marker, t: T): { label: string; detail: stri
   return { label: t('setup.piece.row', { count: marker.count, kind: marker.name }), detail: t('setup.tile.detail', { shape: type ? shapeWords(type, t) : '', rest: count }) }
 }
 
-// What a deck of tiles' row says: «18 × Landskap · sexhörning 52 mm, hög ur en lek».
+// What a deck of tiles' row says: «18 × Landskap · sexhörning 52 mm», under the pile it starts in.
 export function deckWords(deck: ProjectDeck, t: T): { label: string; detail: string } {
   const type = tileType(deck.type)
-  return { label: t('setup.piece.row', { count: tilesIn(deck), kind: deck.name }), detail: t('setup.tile.detail', { shape: type ? shapeWords(type, t) : t('tile.shape.card'), rest: t('setup.tile.fromDeck') }) }
+  return { label: t('setup.piece.row', { count: tilesIn(deck), kind: deck.name }), detail: type ? shapeWords(type, t) : t('tile.shape.card') }
 }
 
 // The shape a tile is cut in, chosen among the registry's four (B3): one type per shape and size.

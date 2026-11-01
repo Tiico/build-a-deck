@@ -310,6 +310,18 @@ function useAddMenu(name: string, items: AddItem[] | undefined): { button: React
     document.addEventListener('pointerdown', away, true)
     return () => document.removeEventListener('pointerdown', away, true)
   }, [open])
+  // The choices an item opens stand under the menu's foot, and at 1024 × 640 the column's own foot is
+  // above them (#711): they are brought into view where they open, with the menu above them.
+  useEffect(() => {
+    if (opened === null) return
+    // Up and down only: the column is the one that scrolls, and it must not be pulled sideways.
+    const pair = menu.current?.querySelector<HTMLElement>('.byd-setup-add-pair')
+    let column = pair?.parentElement ?? null
+    while (column && !(column.scrollHeight > column.clientHeight && /auto|scroll/.test(getComputedStyle(column).overflowY))) column = column.parentElement
+    if (!pair || !column) return
+    const below = pair.getBoundingClientRect().bottom - column.getBoundingClientRect().bottom
+    if (below > 0) column.scrollTop += below
+  }, [opened])
   if (reading || !items || items.length === 0) return { button: null, list: null }
   const label = t('setup.add.to', { name })
   const close = () => {
@@ -453,7 +465,8 @@ function ZoneRow({
   zone: Zone
   setup: Setup
   rows: ProjectDoc['rows']
-  // The name of another deck that starts in this pile (#1487), said as the own deck's «leken» is.
+  // The name of another deck that starts in this pile (#1487): the pile says «leken» as the own deck's
+  // does, and the deck's own row under it says which.
   holds?: string | undefined
   selected: string | null
   add?: AddItem[] | undefined
@@ -478,7 +491,7 @@ function ZoneRow({
           <span>{zone.name}</span>
           {zone.owner !== undefined && <> <em>{zone.owner}</em></>}
           {deck && <> <strong>{t('setup.deck.mark')}</strong></>}
-          {holds !== undefined && <> <strong>{t('setup.deck.markOf', { name: holds })}</strong></>}
+          {holds !== undefined && <> <strong>{t('setup.deck.mark')}</strong></>}
         </button>
         {adding.button}
         {why === null ? (

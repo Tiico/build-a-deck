@@ -161,8 +161,8 @@ function CutLine({ type }: { type: ComponentTypeDef }) {
   const outline = shape === 'hex' ? `M ${w / 2} 0 L ${w} ${h / 4} L ${w} ${(3 * h) / 4} L ${w / 2} ${h} L 0 ${(3 * h) / 4} L 0 ${h / 4} Z` : `M ${w / 2} 0 A ${w / 2} ${h / 2} 0 1 1 ${w / 2} ${h} A ${w / 2} ${h / 2} 0 1 1 ${w / 2} 0 Z`
   return (
     <svg className="byd-canvas-cut" data-cut={shape} viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" aria-hidden="true">
-      <path d={`M 0 0 H ${w} V ${h} H 0 Z ${outline}`} fillRule="evenodd" />
-      <path d={outline} className="byd-canvas-cut-line" />
+      <path d={`M 0 0 H ${w} V ${h} H 0 Z ${outline}`} fillRule="evenodd" style={{ fill: 'rgb(21 23 28 / 80%)', stroke: 'none' }} />
+      <path d={outline} style={{ fill: 'none', stroke: '#ffd98a', strokeWidth: 0.3, strokeDasharray: '1.2 0.8' }} />
     </svg>
   )
 }
