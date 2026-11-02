@@ -31,7 +31,7 @@ import { CODE_TTL_MS, GUEST_PENDING_TTL_MS, codeExpiry, newCode, newSecret, norm
 import { canDelete, canEdit, canRead, canShare, canStartTables, INVITE_TTL_MS, roleWord, ROLES, type Role } from './roles.js'
 import { inviteMail } from './invite-mail.js'
 import { NAME_MAX, nameOf } from './account-name.js'
-import { printExportOf, queueFaces } from './faces.js'
+import { printExportOf, queueFaces, STALE_PLACE } from './faces.js'
 import { printFileJobsOf, printManifestOf, type PrintFileJob } from './print-files.js'
 import { boxFactsOf, boxPrintOf } from './box-print.js'
 import { boxStillJobOf } from './box-still.js'
@@ -3209,6 +3209,16 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       // Borne by the table, as everything it renders is (#1197, #1194): whoever pressed «Uppdatera».
       await renders.enqueue(job, session.accountId)
     })
+    // The new version goes ahead of what is left of the old one (#1549): the table stops showing the
+    // old pages the moment it switches, so those still queued go after every other table's, unless
+    // another table in this process still waits for them. Not a line of the log (D4).
+    const actor = renders ? await opts.host.get(session.id) : null
+    if (renders && actor) {
+      const fresh = new Set(compiled.hashes)
+      const others = new Set((await opts.host.loaded()).filter((a) => a !== actor).flatMap((a) => a.allTextureHashes()))
+      const stale = actor.allTextureHashes().filter((h) => !fresh.has(h) && !others.has(h))
+      await renders.reorder(stale.map((hash, i) => ({ hash, order: STALE_PLACE + i }))).catch(() => undefined)
+    }
     json(res, 200, await progress(opts, compiled.hashes, frontsOf(compiled.faces)))
     return true
   }

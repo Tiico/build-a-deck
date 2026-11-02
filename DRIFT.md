@@ -174,7 +174,18 @@ Resten av leken ritas medan spelet pågår, kort för kort turvis mellan borden 
 «Uppdatera bordet» väntar som förut på varje sida av den nya versionen, men den delar nu kön med det som är kvar av den gamla versionens lek, eftersom starten inte längre ritar hela leken först.
 Därför blev alla tre bordens nya version klar samtidigt efter 813 sekunder.
 Räknat från starten är det ändå tidigare än förut: före #1546 var det sista bordet uppdaterat efter minst 865 sekunder (426 + 439), nu efter 817.
-Att en ny version går före den gamla versionens rest är #1549.
+
+Sedan #1549 går en ny version före den gamla versionens rest.
+När «Uppdatera bordet» förbereder den nya versionen får det som är kvar av den gamla för bordet platser efter alla bords rest (§6), utom sidor som ett annat bord fortfarande väntar på.
+Samma lasttest kördes om samma natt, med en last på 3–4:
+
+| 3 bord, 500 kort, 72 brickor, bräde | app | render | postgres | start | ny version |
+|---|---|---|---|---|---|
+| efter #1546 | 162 | 1 028 | 219 | 4 s | 813 s |
+| efter #1549 | 171 | 960 | 218 | 4 s | 423 s |
+
+Den nya versionen är nu klar ungefär lika fort som före #1546, och starten tar fortfarande fyra sekunder.
+Minnet rör sig inte; topparna är i MiB, och ingen container kom inom en tiondel av sitt tak.
 
 ### AI-frågornas kostnad för lådan (#1007)
 
@@ -394,6 +405,7 @@ Resten numreras efter hur djupt kortet ligger i sin hög, så att två högar ri
 Efter en blandning får högens köade jobb nya platser i den nya ordningen (`RenderStore.reorder`), så det som dras härnäst ritas först.
 «Starta spelet» väntar bara på det som syns (beslut A i #1546), och «Uppdatera bordet» väntar på varje sida av den nya versionen.
 Med tre bord à 500 kort, brickor och bräde kan varje bord starta efter 4 sekunder i stället för 6–10 minuter (§1).
+När ett bord förbereder en ny version får den gamla versionens köade sidor för bordet en plats efter alla bords rest (#1549), utom de som ett annat bord väntar på; den nya versionen är då klar på 423 sekunder i stället för 813 (§1).
 Minnet är detsamma, eftersom samma sidor ritas i en annan ordning.
 En Chromium-container med en sida i taget och det minnestak §1 ger den — 1,5 GB sedan 2026-09-11.
 Sidan namnger sina bilder och typsnitt med hash, och workern läser bytesen själv ur Postgres eller R2 (§4, #1028).
